@@ -1,0 +1,36 @@
+<?
+
+ class Reassign extends MY_Controller {
+
+	function Reassign () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/reassign");
+		$this->tpl->assign(array("tab_page" => true));
+		
+	}
+
+	function index () {
+
+		if ($this->validation->run() == TRUE) {
+			
+			foreach ($this->visitlogmdl->getVisitTaskList(null, $this->input->post('approver_user'), null, null, $this->getAgencyType() == 'C' ? 8 : 3) as $visitlog) {
+				
+				$this->visitlogmdl->updateUserApprover($visitlog->visit_log_id, $this->input->post('to_approver_user'));
+				
+			}
+			
+		}
+		
+		$this->tpl->assign('penging_approvers_list', $this->visitlogmdl->getApproverPending($this->getAgencyId(), ($this->getAgencyType() == 'C' ? 8 : 3)));
+		$this->tpl->assign('us_agy_list', $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false));
+		
+		$this->lang->language['grl_save'] = 'Reassign';
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "task/reassign_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+ }

@@ -1,0 +1,61 @@
+<?
+
+ class FaqMdl extends Model {
+
+	var $faq_id;
+	var $title;
+	var $answer;
+	var $publish;
+	var $faq_group_id;
+	var $sequence;
+  	
+	function FaqMdl () {
+		parent::Model();
+	}
+	
+	function get($faq_group_id=null, $keyword=null, $publish='yes'){
+		if ($faq_group_id) {
+			$this->db->where('faq_questions.faq_group_id',$faq_group_id);
+		}
+		if (in_array($publish, array('yes','no'))) {
+			$this->db->where('publish',$publish);
+		}
+		if ($keyword) {
+			$this->db->like('title',$keyword);
+			$this->db->or_like('answer',$keyword);
+		}	
+		$this->db->join('faq_groups', 'faq_groups.faq_group_id = faq_questions.faq_group_id');
+		$this->db->order_by("sequence", "asc"); 	
+		$query = $this->db->get('faq_questions');
+		return $query->result();
+	}
+	
+	function getById ( $faq_id ) {
+		$this->db->where('faq_id', $faq_id);
+		$this->db->join('faq_groups', 'faq_groups.faq_group_id = faq_questions.faq_group_id');
+		$query = $this->db->get('faq_questions');
+		return $query->row();
+	}
+	
+	function insert (  $faq_group_id = "" ) {
+		if ($faq_group_id) {
+			$this->faq_group_id = $faq_group_id;
+		}		
+		$this->faq_id = null;
+		$this->db->insert('faq_questions', $this);		
+	}
+	
+	function update ( $faq_group_id, $faq_id ) {
+		$this->faq_group_id = $faq_group_id;
+		$this->db->where('faq_id', $faq_id);
+		$this->db->update('faq_questions', $this);		
+	}
+	
+	function delete ( $faq_id ) {
+		$this->db->where('faq_id', $faq_id);
+		$this->db->delete('faq_questions');
+	}
+		
+		
+	
+ }

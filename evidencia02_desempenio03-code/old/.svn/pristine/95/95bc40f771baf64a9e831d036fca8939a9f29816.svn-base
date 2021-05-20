@@ -1,0 +1,113 @@
+
+  {if $payroll_batch->contractor_or_employee neq 'C'}
+    <b>{$agency->agency_name}</b>
+    <br>{$agency->address}<br>
+    {if $agency->address2 != ""}{$agency->address2}<br>{/if}
+    {if $agency->city != ""}{$agency->city}, {/if}
+    {if $agency->state_name_short != ""}{$agency->state_name_short}. {/if}
+    {if $agency->zip != ""}{$agency->zip}{/if}
+    <br>
+    {if $agency->phone_primary != ""}{$agency->phone_primary}<br>{/if}
+    {if $agency->fax != ""}{$agency->fax}{/if}
+  {/if}
+  <br>
+  
+  <table>
+    <tr>
+      <td align="center"><font size="15"><b>{if $payroll_batch->contractor_or_employee eq 'C'} Invoice {else} Payroll Stub {/if}</b></font></td>
+    </tr>
+  </table>
+  
+  <hr>
+  
+  <table>
+    <tr>
+      <td colspan="4"></td>
+    </tr>
+    <tr>
+      <td width="15%"><b>Employee/User:</b></td>
+      <td width="35%">
+        {$payroll_batch->first_name} {$payroll_batch->last_name} {if $payroll_batch->legal_name neq ''}- {$payroll_batch->legal_name} {/if}<br>
+        {$payroll_batch->address}<br>
+        {if $payroll_batch->address2 != ""}{$payroll_batch->address2}<br>{/if}
+        {if $payroll_batch->city != ""}{$payroll_batch->city}, {/if}
+        {if $payroll_batch->state_name_short != ""}{$payroll_batch->state_name_short}. {/if}
+        {if $payroll_batch->zip != ""}{$payroll_batch->zip}{/if}
+        <br>
+        {if $payroll_batch->phone_primary != ""}{$payroll_batch->phone_primary}<br>{/if}
+        {if $payroll_batch->fax != ""}{$payroll_batch->fax}{/if}
+      </td>
+      <td width="20%">
+        <b>Process Date:</b><br>
+        <b>Payment Date:</b><br>
+        <b>Payment Type:</b>
+      </td>
+      <td width="30%">
+        {$payroll_batch->payroll_batch_process_date|date_format}<br>
+        {$payroll_batch->check_date|date_format}<br>
+        {$payroll_batch->payment_type}<br>
+      </td>
+    </tr>
+    <tr>
+      <td><b>Period From:</b></td>
+      <td>{$payroll_batch->payroll_batch_process_period_from|date_format}</td>
+      <!-- <td><b>Check Amount:</b></td> -->
+      <td><b>Payment Amount:</b></td>
+      <td>{$payroll_batch->check_amount}</td>
+    </tr>
+    <tr>
+      <td><b>Period to:</b></td>
+      <td>{$payroll_batch->payroll_batch_process_period_end|date_format}</td>
+      <td><b>Nbr. of payable visits:</b></td>
+      <td>{$payroll_batch->visit_count}</td>
+    </tr>    
+    {if $payroll_batch->notes}
+    <tr>
+      <td><b>Notes</b></td>
+      <td colspan="3">{$payroll_batch->notes}</td>
+    </tr>
+    {/if}
+  </table>
+  
+  <hr>
+  
+  <div></div>
+  
+  {foreach item=patient from=$patients}
+
+	  <table cellspacing="0" cellpadding="1" border="0">
+	  
+	    <tr>
+	      <td colspan="3" style="border-bottom: 0.5px solid black">Patient: {$patient->first_name} {$patient->last_name}</td>
+	    </tr>
+	  
+	    <tr>
+	      <td style="border-bottom: 0.5px solid black" width="33%"><b>Visit Date</b></td>
+	      <td style="border-bottom: 0.5px solid black" width="33%"><b>Type of Visit</b></td>
+	      <td style="border-bottom: 0.5px solid black" width="34%"><b>Amount</b></td>
+	    </tr>
+	    
+	  	{foreach from=$detail item=visit}
+	
+			{if $patient->patient_id == $visit->patient_id}
+		    <tr>
+		      <td>{$visit->visit_date_time|date_format}</td>
+		      <td>{$visit->visit_description}{if $visit->billable_YN=='0'} (NB) {/if}</td>
+          {if $visit->billable_YN=='0'}
+		      <td>$ 0.00</td>
+          {else}
+          <td>$ {$visit->mileage_amount+$visit->visit_amount|string_format:"%.2f"}</td>
+          {/if}
+		    </tr>
+		    {/if}
+	  	
+		{/foreach}
+		
+	    <tr>
+	      <td colspan="3" height="1"></td>
+	    </tr>
+	
+	  </table>
+	  
+  {/foreach}
+  

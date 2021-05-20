@@ -1,0 +1,35 @@
+<?
+
+ class ApplicationMdl extends Model {
+
+	var $application_id;
+  	var $application_name;
+  	var $application_path;
+  	var $home_app;
+
+	function ApplicationMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $application_id ) {
+		
+		$this->db->where('application_id', $application_id);
+		
+		$query = $this->db->get('x_application');
+		return $query->row();
+		
+	}
+	
+	function getHomeApps () {
+		
+		$this->db->where('home_app', 1);
+		$this->db->order_by('application_name');
+		
+		$query = $this->db->get('x_application');
+		return $query->result2('application_id', 'application_name');
+		
+	}
+
+ }

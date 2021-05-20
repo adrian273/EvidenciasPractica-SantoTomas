@@ -1,0 +1,236 @@
+
+{*<form action="{$index_url}contractor/billingready/print_draft_invoice/{$agency_contractor_id}/{$from_date}/{$to_date}" method="post" target="print_draft" id="print_draft_frm" name="print_draft_frm">
+	<input type="submit" style="display:none" value="Submit" />	*}
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr id="lala" height="20"> 
+    <td>
+		Agency: <b>{$agency_name}</b>
+		</td>
+  </tr>
+	<tr height="20">
+		<td align="left" colspan="3">
+		Total for Agency: <b id="total_bill_balance">${$total_final_rate}</b>
+    </td>    
+  </tr>
+  <tr height="20"> 
+    <td valign="bottom" colspan="3">
+			Period Date: {$from_date} / {$to_date}
+    </td>
+  </tr>	
+  <tr> 
+    <td height="20" colspan="3">
+		<a href="javascript://" onclick="batchChangeStatus(1)">Confirm All</a> | 
+		<a href="javascript://" onclick="batchChangeStatus(0)">Disonfirm All</a> | 
+		<label><input type="checkbox" name="include_removed" value="1" onchange="loadGrid();"> Include Removed Visits</label>
+    </td>
+  </tr>	
+</table> 
+
+<script>
+
+	function deleteRate (rate_id) {literal}{{/literal}
+	
+	  
+	{literal}}{/literal}
+	
+	
+	
+  function editVisit (visit_id) {literal}{{/literal}
+			visit_id = parseInt(visit_id);
+			if(visit_id <= 0)
+			return;
+			
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 400, 250);
+			w2.setText("Edit Visit Rate");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/billingready/edit_visit_rate/"+visit_id);
+			
+    {literal}}{/literal}
+	{literal}
+	function getInvoiceDueDate(invoice_by){
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, 400, 250);
+		if (typeof(invoice_by) != 'undefinded' && invoice_by==1) {
+			w2.setText("Create Invoice By Discipline");
+		} else if (typeof(invoice_by) != 'undefinded' && invoice_by==2) {
+			w2.setText("Create Invoice By Patient");
+		} else {
+			w2.setText("Create Invoice");
+		}
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		w2.denyResize(); // deny resizing
+		w2.denyMove(); 
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		if (typeof(invoice_by) != 'undefinded' && invoice_by==1) { {/literal}
+			w2.attachURL("{$index_url}contractor/billingready/pre_ask_invoice_due_date_bydiscipline/{$agency_contractor_id}/{$from_date}/{$to_date}");
+		{literal} } else if (typeof(invoice_by) != 'undefinded' && invoice_by==2) { {/literal}
+			w2.attachURL("{$index_url}contractor/billingready/pre_ask_invoice_due_date_by_patient/{$agency_contractor_id}/{$from_date}/{$to_date}");
+		{literal} } else { {/literal}
+			w2.attachURL("{$index_url}contractor/billingready/pre_ask_invoice_due_date/{$agency_contractor_id}/{$from_date}/{$to_date}");
+		{literal}
+		}
+	} 
+	{/literal}
+
+	{literal} 
+    function changeConfirm ( visit_log_id, estatus, obj ) {
+
+	  	{/literal}
+			url = '{$index_url}contractor/billingready/changeConfirm/' + visit_log_id + '/' + estatus;
+			{literal}
+
+		if (estatus == 1) {
+			$(obj).attr({ 
+				"src" : {/literal}"{$base_url}style/grid/imgs/item_chk1.gif"{literal},
+				"onClick": "changeConfirm("+visit_log_id+", 0, this)" 
+			});
+			$(obj).addClass('active');
+		} else {
+			$(obj).attr({ 
+				"src" : {/literal}"{$base_url}style/grid/imgs/item_chk0.gif"{literal},
+				"onClick": "changeConfirm("+visit_log_id+", 1, this)"
+			});
+			$(obj).removeClass('active');
+		}
+	    ajaxRequest.getRequest(url, [], [], function(data){
+			// loadGrid();
+			{/literal}
+			ajax("{$index_url}contractor/billingready/agency_bill_balance/{$agency_contractor_id}/{$from_date}/{$to_date}/", ajaxParseAction);
+			{literal}
+	    });
+	  	  
+    }
+
+    function ptAllConfirm(patient_id, status) {
+    	$('.vt-pt-'+patient_id).each(function(){
+    		if (status == '1') {
+    			if(!$(this).hasClass('active')){
+    				let visit_log_id = $(this).attr('data-vt-id');
+    				changeConfirm(visit_log_id, 1, this);
+    			}
+    		} else {
+    			if($(this).hasClass('active')){
+    				let visit_log_id = $(this).attr('data-vt-id');
+    				changeConfirm(visit_log_id, 0, this);
+    			}
+    		}
+    	});
+
+    	if (status == '1') {
+    		$('#pt-chk-'+patient_id).attr({ 
+				"src" : {/literal}"{$base_url}style/grid/imgs/item_chk1.gif"{literal},
+				"onClick": "ptAllConfirm("+patient_id+", 0)"
+			});
+    	} else {    		
+	    	$('#pt-chk-'+patient_id).attr({ 
+				"src" : {/literal}"{$base_url}style/grid/imgs/item_chk0.gif"{literal},
+				"onClick": "ptAllConfirm("+patient_id+", 1)"
+			});
+    	}
+    }
+    
+    function batchChangeStatus ( estatus ) {
+			{/literal}
+	  	url = '{$index_url}contractor/billingready/batchChangeStatus/' + estatus + '/{$agency_contractor_id}/{$from_date}/{$to_date}' ;
+			{literal}
+	    ajaxRequest.getRequest(url, [], [], function(data){
+			loadGrid();
+			{/literal}
+			ajax("{$index_url}contractor/billingready/agency_bill_balance/{$agency_contractor_id}/{$from_date}/{$to_date}/", ajaxParseAction);
+			{literal}
+	    });
+	  	  
+    }
+
+	function updateBillableBalance(balance){
+			document.getElementById('total_bill_balance').innerHTML = balance;
+	}
+		
+	function removeVisit ( visit_log_id) {
+		if(confirm("Are you sure you want to remove the visit from the list?")){
+	  	{/literal}
+			url = '{$index_url}contractor/billingready/removeVisit/' + visit_log_id ;
+			{literal}
+			ajaxRequest.getRequest(url, [], [], function(data){
+			loadGrid();
+			{/literal}
+			ajax("{$index_url}contractor/billingready/agency_bill_balance/{$agency_contractor_id}/{$from_date}/{$to_date}/", ajaxParseAction);
+			{literal}
+			});
+			
+		}
+	  	  
+    }
+
+    function restoreVisit ( visit_log_id) {
+		if(confirm("Are you sure you want to Restore to Ready to Billing list?")){
+	  	{/literal}
+			url = '{$index_url}contractor/billingready/restoreVisit/' + visit_log_id ;
+			{literal}
+			ajaxRequest.getRequest(url, [], [], function(data){
+			loadGrid();
+			{/literal}
+			ajax("{$index_url}contractor/billingready/agency_bill_balance/{$agency_contractor_id}/{$from_date}/{$to_date}/", ajaxParseAction);
+			{literal}
+			});
+			
+		}
+	  	  
+    }
+	{/literal}
+
+	function addToInvoice (agency_contractor_id) {literal}{{/literal}
+			agency_contractor_id = parseInt(agency_contractor_id);
+			if(agency_contractor_id <= 0)
+			return;
+			
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 700, 470);
+			w2.setText("Add Visit to Existing Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			// w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/billingready/add_visit_to_invoice/"+agency_contractor_id);
+			
+    {literal}}{/literal}
+
+	{literal}
+    function reCalcVisitRates (obj) {
+    	if(confirm("Are you sure want to Re-Calculate visit rates for the agency?")){
+	    	$(obj).attr('disabled','disabled')
+	    	$(obj).val('Re-Calculating...');
+			{/literal}
+
+		  	url = '{$index_url}contractor/billingready/reCalcVisitRates/{$agency_contractor_id}/{$from_date}/{$to_date}' ;
+				{literal}
+		    ajaxRequest.getRequest(url, [], [], function(data){
+		    	$(obj).val('Recalc');
+		    	$(obj).removeAttr('disabled');
+				loadGrid();
+				{/literal}
+				ajax("{$index_url}contractor/billingready/agency_bill_balance/{$agency_contractor_id}/{$from_date}/{$to_date}/", ajaxParseAction);
+				{literal}
+		    });
+
+	    }
+	  	  
+    }
+    {/literal}
+</script>

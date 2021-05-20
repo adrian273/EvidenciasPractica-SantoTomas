@@ -1,0 +1,68 @@
+<?
+
+ class EpisodeFrequencyMdl extends Model {
+
+	var $cms_485_freq_dura_id;
+	var $cms485_id;
+	var $discipline_id;
+	var $freq_dura;
+	var $nbr_planned_visits;
+
+	function EpisodeFrequencyMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $cms485_id ) {
+	
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = cms_485_freq_dura.discipline_id', 'LEFT');
+		$this->db->order_by("description");
+		
+		$this->db->where("cms485_id", $cms485_id);
+		
+		$query = $this->db->get('cms_485_freq_dura');
+		return $query->result();
+
+	}
+	
+	function getById ( $cms_485_freq_dura_id ) {
+		
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = cms_485_freq_dura.discipline_id', 'LEFT');
+		
+		$this->db->where("cms_485_freq_dura_id", $cms_485_freq_dura_id);
+		
+		$query = $this->db->get('cms_485_freq_dura');
+		return $query->row();
+		
+	}
+	
+	function insert ( $cms485_id ) {
+		
+		$this->cms485_id = $cms485_id;
+		
+		$this->db->insert('cms_485_freq_dura', $this);
+		$this->cms_485_freq_dura_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $cms485_id, $cms_485_freq_dura_id ) {
+		
+		$this->cms485_id 			= $cms485_id;
+		$this->cms_485_freq_dura_id = $cms_485_freq_dura_id;
+		
+		$this->db->where('cms_485_freq_dura_id', $cms_485_freq_dura_id);
+		
+		$this->db->update('cms_485_freq_dura', $this);
+		
+	}
+	
+	function delete ( $cms_485_freq_dura_id ) {
+		
+		$this->db->where('cms_485_freq_dura_id', $cms_485_freq_dura_id);
+		
+		$this->db->delete('cms_485_freq_dura'); 
+		
+	}
+	
+ }

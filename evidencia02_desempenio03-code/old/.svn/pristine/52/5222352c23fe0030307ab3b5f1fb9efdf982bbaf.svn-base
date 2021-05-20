@@ -1,0 +1,2621 @@
+<?php
+include 'visitform.php';
+
+class ptev extends VisitForm
+{
+
+    public function ptev()
+    {
+
+        parent::VisitForm();
+
+        $this->load->model('ptevmdl');
+
+        $this->tpl->assign("resource_path", "task/ptev");
+        $this->tpl->assign(array(
+            "tab_page" => true,
+        ));
+
+        $this->tpl->assign('tab_20_list', $this->parametermdl->getByType(20));
+        $this->tpl->assign('tab_27_list', $this->parametermdl->getByType(27));
+        $this->tpl->assign('tab_32_assess_type_lsit', $this->parametermdl->getByType(32));
+        $this->tpl->assign('tab_33_list', $this->parametermdl->getByType(33));
+        $this->tpl->assign('tab_48_list', $this->parametermdl->getByType(48));
+        $this->tpl->assign('tab_49_list', $this->parametermdl->getByType(49));
+        $this->tpl->assign('tab_62_list', $this->parametermdl->getByType(62));
+        $this->tpl->assign('tab_63_list', $this->parametermdl->getByType(63));
+        $this->tpl->assign('tab_64_list', $this->parametermdl->getByType(64));
+        $this->tpl->assign('tab_78_list', $this->parametermdl->getByType(78));
+        $this->tpl->assign('tab_79_list', $this->parametermdl->getByType(79));
+        $this->tpl->assign('tab_52_list', array(
+            1 => 1,
+            2 => 2,
+        ));
+        $this->tpl->assign('tab_87_list', $this->parametermdl->getByType(87));
+        $this->tpl->assign('tab_88_list', $this->parametermdl->getByType(88));
+        $this->tpl->assign('tab_90_list', $this->parametermdl->getByType(90));
+        $this->tpl->assign('tab_109_list', $this->parametermdl->getByType(109));
+        $this->tpl->assign('validatationVisit', true);
+    }
+
+    public function index($visit_log_id, $action = 'task', $window = 'self')
+    {
+
+        $goals_to_import = array(
+            'p2_return_to_pre',
+            'p2_return_to_pre_weeks',
+            'p2_return_to_pre_met',
+            'p2_return_to_pre_on_date',
+            'p2_patient_will',
+            'p2_patient_will_weeks',
+            'p2_patient_will_met',
+            'p2_patient_will_on_date',
+            'p2_return_to_opti',
+            'p2_return_to_opti_weeks',
+            'p2_return_to_opti_met',
+            'p2_return_to_opti_on_date',
+            'p2_demost_eff',
+            'p2_demost_eff_weeks',
+            'p2_demost_eff_met',
+            'p2_demost_eff_on_date',
+            'p2_improv_bed_mov',
+            'p2_improv_bed_mov_desc1',
+            'p2_improv_bed_mov_weeks',
+            'p2_improv_bed_mov_met',
+            'p2_improv_bed_mov_on_date',
+            'p2_improv_bed_mov_indep',
+            'p2_improv_bed_mov_indep_weeks',
+            'p2_improv_bed_mov_indep_met',
+            'p2_improv_bed_mov_indep_on_date',
+            'p2_improv_trans',
+            'p2_improv_trans_desc1',
+            'p2_improv_trans_desc2',
+            'p2_improv_trans_weeks',
+            'p2_improv_trans_met',
+            'p2_improv_trans_on_date',
+            'p2_indep_trans',
+            'p2_indep_trans_weeks',
+            'p2_indep_trans_met',
+            'p2_indep_trans_on_date',
+            'p2_pat_indep',
+            'p2_pat_indep_weeks',
+            'p2_pat_indep_met',
+            'p2_pat_indep_on_date',
+            'p2_improv_wheel',
+            'p2_improv_wheel_desc',
+            'p2_improv_wheel_weeks',
+            'p2_improv_wheel_met',
+            'p2_improv_wheel_on_date',
+            'p2_pat_ambul',
+            'p2_pat_ambul_desc1',
+            'p2_pat_ambul_desc2',
+            'p2_pat_ambul_weeks',
+            'p2_pat_ambul_met',
+            'p2_pat_ambul_on_date',
+            'p2_climb',
+            'p2_climb_desc1',
+            'p2_climb_desc2',
+            'p2_climb_met',
+            'p2_tab_063_climb_weeks',
+            'p2_climb_on_date',
+            'p2_indep_ambul',
+            'p2_indep_ambul_desc',
+            'p2_indep_ambul_weeks',
+            'p2_indep_ambul_met',
+            'p2_indep_ambul_on_date',
+            'p2_ambul_endur',
+            'p2_ambul_endur_desc1',
+            'p2_ambul_endur_desc2',
+            'p2_ambul_endur_weeks',
+            'p2_ambul_endur_met',
+            'p2_ambul_endur_on_date',
+            'p2_increa_stren_UE',
+            'p2_increa_stren_UE_5',
+            'p2_increa_stren_UE_weeks',
+            'p2_increa_stren_UE_met',
+            'p2_increa_stren_UE_on_date',
+            'p2_increa_stren_LE',
+            'p2_increa_stren_LE_5',
+            'p2_increa_stren_LE_weeks',
+            'p2_increa_stren_LE_met',
+            'p2_increa_stren_LE_on_date',
+            'p2_increa_rom',
+            'p2_increa_rom_desc1',
+            'p2_increa_rom_desc2',
+            'p2_increa_rom_desc3',
+            'p2_increa_rom_weeks',
+            'p2_increa_rom_met',
+            'p2_increa_rom_on_date',
+            'p2_increa_rom2',
+            'p2_increa_rom2_desc1',
+            'p2_increa_rom2_desc2',
+            'p2_increa_rom2_desc3',
+            'p2_increa_rom2_weeks',
+            'p2_increa_rom2_met',
+            'p2_increa_rom2_on_date',
+            'p2_demos_rom',
+            'p2_demos_rom_weeks',
+            'p2_demos_rom_met',
+            'p2_demos_rom_on_date',
+            'p2_demos_proper',
+            'p2_demos_proper_prosthe',
+            'p2_demos_proper_brace',
+            'p2_demos_proper_splint',
+            'p2_demos_proper_weeks',
+            'p2_demos_proper_met',
+            'p2_demos_proper_on_date',
+            'p2_demos_proper_dme',
+            'p2_demos_proper_dme_weeks',
+            'p2_demos_proper_dme_met',
+            'p2_demos_proper_dme_on_date',
+            'p2_tinetti_bal',
+            'p2_tinetti_bal_score',
+            'p2_tinetti_bal_weeks',
+            'p2_tinetti_bal_met',
+            'p2_tinetti_bal_on_date',
+            'p2_improv_score',
+            'p2_improv_score_desc1',
+            'p2_improv_score_desc2',
+            'p2_improv_score_met',
+            'p2_improv_score_on_date',
+            'p2_follow_exer',
+            'p2_follow_exer_date',
+            'p2_follow_exer_met',
+            'p2_follow_exer_on_date',
+            'p2_other3',
+            'p2_other3_desc',
+            'p2_other3_weeks',
+            'p2_other3_met',
+            'p2_other3_on_date',
+            'p2_other4',
+            'p2_other4_desc',
+            'p2_other4_weeks',
+            'p2_other4_met',
+            'p2_other4_on_date',
+            'p2_other5',
+            'p2_other5_desc',
+            'p2_other5_weeks',
+            'p2_other5_met',
+            'p2_other5_on_date',
+            'p2_other6',
+            'p2_other6_desc',
+            'p2_other6_weeks',
+            'p2_other6_met',
+            'p2_other6_on_date',
+        );
+
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+        $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+        $user = $this->usermdl->getById($usAgy->user_id);
+        $this->tpl->assign('open_patient_signature_user', $user->open_patient_signature);
+
+        $visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+        $company_settings = $this->agencysettingsmdl->get($visit_user->agency_id);
+        
+        // look all PTPN/PTEV of current SOC
+        $prevGoals = false;
+        if (isset($company_settings->track_goals_ptpn) AND $company_settings->track_goals_ptpn == 1) {
+            $prevGoals = $this->ptevmdl->getPreviousGoals($visitlog->visit_date_time, $visitlog->cms485_id, true);
+        }
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        $PTEV = $this->ptevmdl->get($visit_log_id);
+
+        if (!count($this->ptevmdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+
+            $ptevs = $this->ptevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id);
+
+            if (count($ptevs) == 0) {
+                $ptevs = $this->ptevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id, true); // look all PTEV of current SOC
+                //print_r($ptevs);
+
+            }
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[count($ptevs) - 1];
+
+                $prev_visit_log_id = $ptev->visit_log_id;
+
+                $not_to_import = array(
+                    'visit_log_id',
+                    'pt_assess_id',
+                    'p1_fun_sts_tab048_bed_mob',
+                    'p1_fun_sts_tab048_trans_wc_bed',
+                    'p1_fun_sts_tab048_trans_tub_show',
+                    'p1_fun_sts_tab048_supine_tosit',
+                    'p1_fun_sts_tab048_sittostand',
+                    'p1_fun_sts_gait_feet',
+                    'p1_fun_sts_tab048_gait_ft',
+                    'p1_fun_sts_tab078_gait_dev_typ',
+                    'weig_bear_rle',
+                    'weig_bear_lle',
+                    'p1_fun_sts_tab090_weig_bear_12345',
+                    'p1_fun_sts_weig_bear_sts_other_weight',
+                    'p1_fun_sts_tab027_weig_bear_sts_other_weight',
+                    'p1_fun_sts_tab048_stairs',
+                    'p1_fun_sts_tab048_stepscurb',
+                    'p1_fun_sts_tab048_toileting',
+                    'p1_fun_sts_tab048_wheelcha',
+                    'p1_fun_sts_tab048_Other',
+                    'verbal_doctor_order',
+                    'verbal_doctor_order_date',
+                    'verbal_doctor_order_comments',
+                    'upload_document_name',
+                    'upload_document_name2',
+                );
+                foreach ($ptev as $k => $v) {
+                    if (property_exists($this->ptevmdl, $k)) {
+                        if (!in_array($k, $not_to_import)) {
+                            $this->ptevmdl->$k = $v;
+                        } else if (isset($PTEV->$k)) {
+                            $this->ptevmdl->$k = $PTEV->$k;
+                        }
+
+                    }
+                }
+
+                if ($prevGoals and is_object($prevGoals)) {
+                    foreach ($prevGoals as $k => $v) {
+                        if (in_array($k, $goals_to_import) and property_exists($this->ptevmdl, $k)) {
+                            // echo '<font color=green>'.$k.'='.$v.'</font><br>';
+                            $this->ptevmdl->$k = $v;
+                        } else {
+                            // echo '<font color=red>'.$k.'='.$v.'</font><br>';
+                        }
+                    }
+                }
+
+
+                if (count($PTEV)) {
+                    $this->ptevmdl->visit_log_id = $visit_log_id;
+                    $this->ptevmdl->update($visit_log_id);
+                } else {
+                    $this->ptevmdl->visit_log_id = $visit_log_id;
+                    $this->ptevmdl->insert($visit_log_id);
+                }
+
+                // Import tinetti scores
+                // Update PTEV record for tinettiscores
+                $this->ptevmdl->updateFlex($visit_log_id, 'p1_bal_tinetti', $ptev->p1_bal_tinetti);
+                $this->ptevmdl->updateFlex($visit_log_id, 'p1_bal_gait_score', $ptev->p1_bal_gait_score);
+                $this->ptevmdl->updateFlex($visit_log_id, 'p1_bal_score', $ptev->p1_bal_score);
+                $this->load->model('tinettibalancescoresmdl');
+                $this->load->model('tinettigaitscoresmdl');
+
+                $prev_bs = $this->tinettibalancescoresmdl->get($prev_visit_log_id);
+                if (!empty($prev_bs)) {
+                    $this->assignPostData($this->tinettibalancescoresmdl, $prev_bs);
+                    $BS = $this->tinettibalancescoresmdl->get($visit_log_id);
+                    if (!empty($BS)) {
+                        $this->tinettibalancescoresmdl->update($visit_log_id, $BS->id);
+                    } else {
+                        $this->tinettibalancescoresmdl->insert($visit_log_id);
+                    }
+                }
+
+                $prev_gs = $this->tinettigaitscoresmdl->get($prev_visit_log_id);
+                if (!empty($prev_gs)) {
+                    $this->assignPostData($this->tinettigaitscoresmdl, $prev_gs);
+                    $GS = $this->tinettigaitscoresmdl->get($visit_log_id);
+                    if (!empty($GS)) {
+                        $this->tinettigaitscoresmdl->update($visit_log_id, $GS->id);
+                    } else {
+                        $this->tinettigaitscoresmdl->insert($visit_log_id);
+                    }
+                }
+                // End of Importing tinetti scores
+
+            } else {
+                if ($prevGoals and is_object($prevGoals)) {
+                    foreach ($prevGoals as $k => $v) {
+                        if (in_array($k, $goals_to_import) and property_exists($this->ptevmdl, $k)) {
+                            // echo '<font color=green>'.$k.'='.$v.'</font><br>';
+                            $this->ptevmdl->$k = $v;
+                        } else {
+                            // echo '<font color=red>'.$k.'='.$v.'</font><br>';
+                        }
+                    }
+                    
+                    if (count($PTEV)) {
+                        $this->ptevmdl->visit_log_id = $visit_log_id;
+                        $this->ptevmdl->update($visit_log_id);
+                    } else {
+                        $this->ptevmdl->visit_log_id = $visit_log_id;
+                        $this->ptevmdl->insert($visit_log_id);
+                    }
+                }
+
+            }
+
+            $ptevs = $this->ptevmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[0];
+
+                $next_visit_log_id = $ptev->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        } else {
+            $ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptevs) == 0) {
+                $ptevs = $this->ptevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id, true); // look all PTEV of current SOC
+                //print_r($ptevs);
+
+            }
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[count($ptevs) - 1];
+
+                $prev_visit_log_id = $ptev->visit_log_id;
+            }
+
+            $ptevs = $this->ptevmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[0];
+
+                $next_visit_log_id = $ptev->visit_log_id;
+            }
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        }
+
+        $episode = $this->episodemdl->getById($visitlog->cms485_id);
+        $this->tpl->assign('doctor_office_id', $episode->doctor_office_id);
+
+        $this->assignObject($visitlog);
+        $PTEV = $this->ptevmdl->get($visit_log_id);
+        if (empty($PTEV)) {
+            $PTEV = $this->ptevmdl->getEmpty();
+        }
+        $this->assignObject($PTEV);
+
+        $assess_type = null;
+
+        if ($prev_visit_log_id) {
+            $prev_visitlog = $this->visitlogmdl->getById($prev_visit_log_id);
+            $this->tpl->assign_by_ref('prev_visitlog', $prev_visitlog);
+            //print_r($this->ptevmdl->get($prev_visit_log_id));
+            $this->tpl->assign_by_ref('prev_ptev', $this->ptevmdl->get($prev_visit_log_id));
+            // }else if(@$PTEV->tab_32_assess_type == NULL OR @$PTEV->tab_32_assess_type==1){
+        } else {
+            $this->load->model('ptevinitialmdl');
+            $assess_type = 'initial';
+            $this->tpl->assign('assess_type', 'initial');
+            $this->tpl->assign_by_ref('prev_ptev', $this->ptevinitialmdl->get($visit_log_id));
+            /*if (count($this->ptevinitialmdl->get($visit_log_id))) {
+        $this->tpl->assign('initial_edit', 'no');
+        }*/
+        }
+
+        $rules = array(
+            'visit_duration' => 'required|callback_checkduration',
+        );
+
+        $fields = array(
+            'visit_duration' => 'Visit Duration',
+        );
+
+        if ($this->input->post('verbal_doctor_order') == 1) {
+            $rules['verbal_doctor_order_date'] = 'required';
+            $fields['verbal_doctor_order_date'] = 'Obtained Order Date';
+        }
+
+        $this->validation->set_fields($fields);
+        $this->validation->set_rules($rules);
+
+        if ($this->validation->run() == true) {
+            foreach (get_class_vars('PtEvMdl') as $key => $val) {
+                $this->ptevmdl->$key = null;
+            }
+            if ($this->updateFormEdition($visit_log_id)) {
+                $this->assignPostData($this->ptevmdl);
+
+                if ($this->input->post('ther_na') == 1 or $this->input->post('ther_na') == '1') {
+                    $this->ptevmdl->ther_name = null;
+                    $this->ptevmdl->ther_implem_plan = null;
+                    $this->ptevmdl->ther_follow_plan = null;
+                    $this->ptevmdl->ther_raport_pat_fam = null;
+                    $this->ptevmdl->ther_eval_plan = null;
+                } else {
+                    $this->ptevmdl->ther_na = null;
+                }
+
+                if ($this->input->post('p2_discha') == false) {
+                    $this->ptevmdl->p2_discha = null;
+                }
+
+                if (count($this->ptevmdl->get($visit_log_id))) {
+                    $this->ptevmdl->update($visit_log_id);
+                } else {
+                    $this->ptevmdl->insert($visit_log_id);
+                }
+
+                if ($this->input->post('p1_bal_tinetti') != '') {
+                    $this->ptevmdl->updateFlex($visit_log_id, 'p1_bal_tinetti', $this->input->post('p1_bal_tinetti'));
+                }
+
+                //echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+                if ($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id and $this->visitlogmdl->visit_status_id == 8) {
+                    // when tasks are "sent for approval" they should be copied to the vt_pt_evaluation_copy table
+                    $this->db->query("REPLACE INTO vt_pt_evaluation_copy SELECT * FROM `vt_pt_evaluation` WHERE visit_log_id = {$visit_log_id}");
+                }
+
+                $this->load->helper('ajax');
+                $this->load->model('ptevinitialmdl');
+
+                if (!$prev_visit_log_id) {
+                    if (count($this->ptevinitialmdl->get($visit_log_id))) {
+                        $this->assignPostData($this->ptevinitialmdl);
+                        $this->ptevinitialmdl->update($visit_log_id);
+                    } else if (!isAjax()) {
+                        $this->assignPostData($this->ptevinitialmdl);
+                        $this->ptevinitialmdl->insert($visit_log_id);
+                    }
+                }
+
+                if (isAjax()) {
+                    echo "1";
+                    exit;
+                } else {
+                    //if(!$prev_visit_log_id AND @$PTEV->tab_32_assess_type==1){
+                    // if(@$PTEV->tab_32_assess_type == NULL OR @$PTEV->tab_32_assess_type==1){
+                    if (!$prev_visit_log_id) {
+                        $this->tpl->assign('assess_type', 'initial');
+                        //print_r($this->ptevinitialmdl->get($visit_log_id));exit;
+                        $this->tpl->assign_by_ref('prev_ptev', $this->ptevinitialmdl->get($visit_log_id));
+                        /*if (count($this->ptevinitialmdl->get($visit_log_id))) {
+                    $this->tpl->assign('initial_edit', 'no');
+                    }*/
+                    }
+
+                    $PTEV = $this->ptevmdl->get($visit_log_id);
+                    $this->assignObject($PTEV);
+                }
+            }
+
+            $this->formRedirection($visit_log_id);
+        }
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            2,
+            3,
+        )));
+
+        // Get Tinetti Scores
+        // $tinetti_scores = $this->ptevmdl->getTinettiScores($visit_log_id);
+        // $this->assignObject($tinetti_scores);
+        $risk_of_falls = '';
+        $tinetti_total_scores = '';
+        if (!is_null($PTEV->p1_bal_gait_score) and !is_null($PTEV->p1_bal_score)) {
+            $risk_of_falls = $this->ptevmdl->getTinettiRiskOfFalls(($PTEV->p1_bal_gait_score + $PTEV->p1_bal_score));
+            $tinetti_total_scores = ($PTEV->p1_bal_gait_score + $PTEV->p1_bal_score);
+        }
+        $this->tpl->assign('tinetti_total_scores', $tinetti_total_scores);
+        $this->tpl->assign('risk_of_falls', $risk_of_falls);
+
+        $additional_buttons = array();
+
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                if ($PTEV->upload_document_name OR $PTEV->upload_document_name2) {
+                    $additional_buttons['Change Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                    $additional_buttons['Remove Document'] = 'removeScannedDocument(' . $visit_log_id . ')';
+                } else {
+                    $additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                }
+            }
+        }
+
+        $additional_buttons['Patient Signature'] = 'capture_pt_signature(' . $visit_log_id . ')';
+        $this->tpl->assign('additional_buttons', $additional_buttons);
+
+        $this->getPatientInfo($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/ptev");
+        $this->setfbase($visit_log_id, $action);
+
+        // For user with profile=Company or Agency Manager, for notes w/scanned documents,
+        // we need to also display button "Save" in addition to "Submit for approval"
+        if ($PTEV->upload_document_name
+            and $visitlog->visit_user_id != $this->getUsAgyId()
+            and ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2)
+            and ($this->getUserProfileId() == 1 or $this->getUserProfileId() == 3)) {
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/fbase");
+        }
+
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    public function tinetti_scores($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $tinetti_scores = $this->ptevmdl->getTinettiScores($visit_log_id);
+        $this->assignObject($tinetti_scores);
+
+        $risk_of_falls = '';
+        if (isset($tinetti_scores->total_score)) {
+            $risk_of_falls = $this->ptevmdl->getTinettiRiskOfFalls($tinetti_scores->total_score);
+        } else {
+            // $risk_of_falls = $this->ptevmdl->getTinettiRiskOfFalls(0);
+        }
+
+        $this->tpl->assign('risk_of_falls', $risk_of_falls);
+        $this->tpl->assign('visit_log_id', $visit_log_id);
+
+        $no_commit_form = true; // can't update default
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5 or $visitlog->visit_status_id == 6) {
+            if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+                $no_commit_form = false; // can update tinitte scores
+            }
+        }
+
+        $this->tpl->assign('no_commit_form', $no_commit_form);
+
+        $this->tpl->assign_include("dynamic_tpl", "task/documents/tinetti_scores");
+        $this->tpl->view("task/ibase", $this->lang->language);
+    }
+
+    public function save_tinetti_score($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        $can_update = false; // can't update default
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5 or $visitlog->visit_status_id == 6) {
+            if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_update = true; // can update tinitte scores
+            }
+        }
+
+        if ($can_update) {
+            $this->load->model('tinettibalancescoresmdl');
+            $this->load->model('tinettigaitscoresmdl');
+
+            $this->assignPostData($this->tinettibalancescoresmdl);
+            $BS = $this->tinettibalancescoresmdl->get($visit_log_id);
+            if (!empty($BS)) {
+                $this->tinettibalancescoresmdl->update($visit_log_id, $BS->id);
+            } else {
+                $this->tinettibalancescoresmdl->insert($visit_log_id);
+            }
+
+            $this->assignPostData($this->tinettigaitscoresmdl);
+            $GS = $this->tinettigaitscoresmdl->get($visit_log_id);
+            if (!empty($GS)) {
+                $this->tinettigaitscoresmdl->update($visit_log_id, $GS->id);
+            } else {
+                $this->tinettigaitscoresmdl->insert($visit_log_id);
+            }
+
+            $ptev = $this->ptevmdl->get($visit_log_id);
+            if (empty($ptev)) {
+                $this->ptevmdl->visit_log_id = $visit_log_id;
+                $this->ptevmdl->insert($visit_log_id);
+            }
+
+            // Update PTEV record for tinettiscores
+            $this->ptevmdl->updateFlex($visit_log_id, 'p1_bal_tinetti', '1');
+
+            $gait_total = 0;
+            $balance_total = 0;
+            // $total = 0;
+
+            // Get updated tinetti scores
+            $tinetti_scores = $this->ptevmdl->getTinettiScores($visit_log_id);
+
+            if (!empty($tinetti_scores)) {
+                $gait_total = $tinetti_scores->total_gait_score;
+                $balance_total = $tinetti_scores->total_balance_score;
+                // $total = $tinetti_scores->total_score;
+            }
+
+            $this->ptevmdl->updateFlex($visit_log_id, 'p1_bal_gait_score', $gait_total);
+            $this->ptevmdl->updateFlex($visit_log_id, 'p1_bal_score', $balance_total);
+
+            if ($visitlog->visit_status_id == 1) {
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+            }
+
+        }
+
+        echo "1";
+        exit;
+    }
+
+    public function capture_pt_signature($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+        $user = $this->usermdl->getById($usAgy->user_id);
+        // $ptev = $this->ptevmdl->get($visit_log_id);
+        //echo FCPATH;
+        $rules = array(
+            'signature' => 'required',
+        );
+        $this->validation->set_rules($rules);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+
+        if ($this->validation->run() == false) {
+            // get the image name based on the visit_log_id
+            // $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+            //echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+            if (isset($visitlog->signature)) {
+                $this->tpl->assign("signature", $visitlog->signature);
+            }
+            $this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+            $this->tpl->view("task/ibase", $this->lang->language);
+        } else {
+            if (!is_null($this->input->post('signature'))) {
+                /*if (empty($ptev)) {
+                $this->ptevmdl->visit_log_id = $visit_log_id;
+                $this->ptevmdl->insert($visit_log_id);
+                }*/
+
+                $signature = $this->input->post('signature');
+                $temp_array = explode(",", $signature);
+                $encoded_image = $temp_array[1];
+                $decoded_image = base64_decode($encoded_image);
+                $signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+                $upload_path = str_replace("\\", "/", FCPATH) . "upload/signatures/";
+
+                file_put_contents($upload_path . $signature_file_name, $decoded_image);
+                $this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+
+                $config = &get_config();
+
+                echo 'Signature has been captured and saved successfully.';
+                if ($user->open_patient_signature == 1) {
+                    echo '<script>
+                        window.open("","_parent","");
+                        window.close();
+                    </script>';
+                } else {
+                    echo '<script>
+                        setTimeout(function(){
+                            parent.location.href=\'' . $config["index_url"] . 'task/ptev/index/' . $visit_log_id . '?r=' . time() . '#anchor_pt_signature\';
+                        }, 2000);
+                    </script>';
+                }
+            }
+        }
+    }
+
+    public function upload_document($visit_log_id)
+    {
+        $can_upload = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_upload = true;
+            }
+        }
+
+        if (!$can_upload) {
+            exit('Can\'t Upload!');
+        }
+
+        if ((isset($_FILES['document']) and $_FILES['document']['error'] == 0) OR (isset($_FILES['document2']) AND $_FILES['document2']['error']==0)) {
+            $config = &get_config();
+
+            // Save form 
+            $fname = "";
+            $fname2 = "";
+
+            if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+                $fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+                $fname = str_replace(" ", "_", $fname);
+                $fname = str_replace("%", "_", $fname);
+                $fname = str_replace("#", "", $fname);
+                $fname = str_replace("&", "", $fname);
+                $fname = str_replace(":", "-", $fname);
+                
+                if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH . '/datastore/ptev/' . $fname)) {
+                    $fname = "";
+                }
+            }
+
+            if (isset($_FILES['document2']) AND $_FILES['document2']['error']==0) {
+                $fname2 = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document2']['name'], PATHINFO_EXTENSION);
+                $fname2 = str_replace(" ","_",$fname2);
+                $fname2 = str_replace("%","_",$fname2);
+                $fname2 = str_replace("#","",$fname2);
+                $fname2 = str_replace("&","",$fname2);
+                $fname2 = str_replace(":","-",$fname2);
+                if (!move_uploaded_file($_FILES['document2']['tmp_name'], FCPATH.'/datastore/ptev/'.$fname2)) {
+                    $fname2 = "";
+                }
+            }
+
+
+            // $fname = microtime()."_".$fname;
+            if($fname OR $fname2) {
+                $ptev = $this->ptevmdl->get($visit_log_id);
+
+                if (empty($ptev)) {
+                    $this->ptevmdl->visit_log_id = $visit_log_id;
+                    $this->ptevmdl->upload_document_name = $fname;
+                    $this->ptevmdl->upload_document_name2 = $fname2;
+                    $this->ptevmdl->insert($visit_log_id);
+                } else {
+                    if ($fname) {
+                        @unlink(FCPATH . '/datastore/ptev/' . $ptev->upload_document_name);
+                        $this->ptevmdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+                    }
+
+                    if ($fname2) {
+                        @unlink(FCPATH . '/datastore/ptev/' . $ptev->upload_document_name2);
+                        $this->ptevmdl->updateFlex($visit_log_id, 'upload_document_name2', $fname2);
+                    }
+                }
+
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+
+                echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='" . $config["index_url"] . "task/ptev/index/" . $visit_log_id . "';</SCRIPT>";
+            } else {
+                exit("Document Upload Failed!");
+            }
+        } else {
+            if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 AND isset($_FILES['document2']['error']) AND $_FILES['document2']['error'] != 0) {
+                $error_string = $this->tpl->get_template_vars('error_string');
+                $error_string .= "<br>Please select Document";
+                $this->tpl->assign("error_string", $error_string);
+            }
+            
+            $ptev = $this->ptevmdl->get($visit_log_id);
+            $this->assignObject($ptev);
+
+            $this->tpl->assign("visit_log_id", $visit_log_id);
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/upload_ptev_document");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        }
+    }
+
+    function pre_remove_document($visit_log_id){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+
+        $ptev = $this->ptevmdl->get($visit_log_id);
+        $this->assignObject($ptev);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign_include("dynamic_tpl", "task/documents/remove_ptev_document");
+        
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function remove_document($visit_log_id, $doc_number){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+        $ptev = $this->ptevmdl->get($visit_log_id);
+        
+        switch ($doc_number) {
+            case '1':
+                if (isset($ptev->upload_document_name)) {
+                    @unlink(FCPATH.'/datastore/ptev/'.$ptev->upload_document_name);
+                    $this->ptevmdl->updateFlex($visit_log_id, 'upload_document_name', null);
+                }
+                break;
+            case '2':
+                if (isset($ptev->upload_document_name2)) {
+                    @unlink(FCPATH.'/datastore/ptev/'.$ptev->upload_document_name2);
+                    $this->ptevmdl->updateFlex($visit_log_id, 'upload_document_name2', null);
+                }
+                break;
+            default:
+                exit('Document Not found.');
+                break;
+        }
+        
+        echo "1";exit();
+
+    }
+
+    public function index_archive($visit_log_id, $action = 'task', $window = 'self')
+    {
+        $this->load->model('ptevarchivemdl');
+        $visitlog = $this->visitlogmdl->getByIdArchive($visit_log_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        if (!count($this->ptevarchivemdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+
+            $ptevs = $this->ptevarchivemdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id);
+
+            if (count($ptevs) == 0) {
+                $ptevs = $this->ptevarchivemdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id, true); // look all PTEV of current SOC
+                //print_r($ptevs);
+
+            }
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[count($ptevs) - 1];
+
+                $prev_visit_log_id = $ptev->visit_log_id;
+
+                /*$not_to_import = array (
+            'visit_log_id',
+            'pt_assess_id'
+            );
+            foreach ($ptev as $k => $v) {
+            if (!in_array($k, $not_to_import) AND property_exists($this->ptevarchivemdl, $k))
+            $this->ptevarchivemdl-> $k = $v;
+            }
+
+            if (count($this->ptevarchivemdl->get($visit_log_id))) {
+            $this->ptevarchivemdl->visit_log_id = $visit_log_id;
+            $this->ptevarchivemdl->update($visit_log_id);
+            } else {
+            $this->ptevarchivemdl->visit_log_id = $visit_log_id;
+            $this->ptevarchivemdl->insert($visit_log_id);
+            }*/
+
+            }
+
+            $ptevs = $this->ptevarchivemdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[0];
+
+                $next_visit_log_id = $ptev->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        } else {
+            $ptevs = $this->ptevarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[count($ptevs) - 1];
+
+                $prev_visit_log_id = $ptev->visit_log_id;
+            }
+
+            $ptevs = $this->ptevarchivemdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($ptevs)) {
+                $ptev = $ptevs[0];
+
+                $next_visit_log_id = $ptev->visit_log_id;
+            }
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        }
+
+        $episode = $this->episodemdl->getById($visitlog->cms485_id);
+        $this->tpl->assign('doctor_office_id', $episode->doctor_office_id);
+
+        $this->assignObject($visitlog);
+        $PTEV = $this->ptevarchivemdl->get($visit_log_id);
+        $this->assignObject($PTEV);
+
+        $assess_type = null;
+        if ($prev_visit_log_id) {
+            $prev_visitlog = $this->visitlogmdl->getByIdArchive($prev_visit_log_id);
+            $this->tpl->assign_by_ref('prev_visitlog', $prev_visitlog);
+            //print_r($this->ptevarchivemdl->get($prev_visit_log_id));
+            $this->tpl->assign_by_ref('prev_ptev', $this->ptevarchivemdl->get($prev_visit_log_id));
+        } else if (@$PTEV->tab_32_assess_type == null or @$PTEV->tab_32_assess_type == 1) {
+            $this->load->model('ptevinitialmdl');
+            $assess_type = 'initial';
+            $this->tpl->assign('assess_type', 'initial');
+            $this->tpl->assign_by_ref('prev_ptev', $this->ptevinitialmdl->get($visit_log_id));
+            /*if (count($this->ptevinitialmdl->get($visit_log_id))) {
+        $this->tpl->assign('initial_edit', 'no');
+        }*/
+        }
+
+        if ($this->input->post('verbal_doctor_order') == 1) {
+            $rules = array(
+                'verbal_doctor_order_date' => 'required',
+            );
+
+            $fields = array(
+                'verbal_doctor_order_date' => 'Obtained Order Date',
+            );
+            $this->validation->set_fields($fields);
+            $this->validation->set_rules($rules);
+        }
+
+        /*if ($this->validation->run() == TRUE) {
+        foreach( get_class_vars('PtEvArchiveMdl') as $key=>$val){
+        $this->ptevarchivemdl->$key = null;
+        }
+        $this->updateFormEdition($visit_log_id);
+        $this->assignPostData($this->ptevarchivemdl);
+
+        if ($this->input->post('ther_na') == 1 OR $this->input->post('ther_na') == '1') {
+        $this->ptevarchivemdl->ther_name = null;
+        $this->ptevarchivemdl->ther_implem_plan = null;
+        $this->ptevarchivemdl->ther_follow_plan = null;
+        $this->ptevarchivemdl->ther_raport_pat_fam = null;
+        $this->ptevarchivemdl->ther_eval_plan = null;
+        } else {
+        $this->ptevarchivemdl->ther_na = null;
+        }
+
+        if ($this->input->post('p2_discha') == false) {
+        $this->ptevarchivemdl->p2_discha = null;
+        }
+
+        if (count($this->ptevarchivemdl->get($visit_log_id))) {
+        $this->ptevarchivemdl->update($visit_log_id);
+        } else {
+        $this->ptevarchivemdl->insert($visit_log_id);
+        }
+
+        $this->load->helper('ajax');
+        $this->load->model('ptevinitialmdl');
+
+        if (count($this->ptevinitialmdl->get($visit_log_id))) {
+        $this->assignPostData($this->ptevinitialmdl);
+        $this->ptevinitialmdl->update($visit_log_id);
+        } else if (!isAjax()) {
+        $this->assignPostData($this->ptevinitialmdl);
+        $this->ptevinitialmdl->insert($visit_log_id);
+        }
+
+        if (isAjax()) {
+        echo "1";
+        exit;
+        }else{
+        if(@$PTEV->tab_32_assess_type == NULL OR @$PTEV->tab_32_assess_type==1){
+        $this->tpl->assign('assess_type', 'initial');
+        $this->tpl->assign_by_ref('prev_ptev', $this->ptevinitialmdl->get($visit_log_id));
+        }
+
+        $this->assignObject($this->ptevarchivemdl->get($visit_log_id));
+        }
+        $this->formRedirection($visit_log_id);
+
+        }*/
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            2,
+            3,
+        )));
+
+        $this->getPatientInfoArchive($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/ptev");
+        $this->setfbasearchive($visit_log_id, $action);
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    public function changeStatus($visit_log_id)
+    {
+
+        if ($this->input->post('visit_status_id') == 4) { // approving
+
+            $this->load->model('doctororder/doctororderptevmdl');
+
+            $visitlog = $this->visitlogmdl->getById($visit_log_id);
+            $cms485 = $this->episodemdl->getById($visitlog->cms485_id);
+
+            $this->docdoctorordermdl->order_date = date('Y-m-d');
+            $this->docdoctorordermdl->doc_doctor_order_type_id = 6;
+            $this->docdoctorordermdl->order_by_user_id = $visitlog->visit_user_id;
+            $this->docdoctorordermdl->doctor_office_id = $cms485->doctor_office_id;
+            $this->docdoctorordermdl->insert($visitlog->patient_id);
+
+            $this->doctororderptevmdl->insert($this->docdoctorordermdl->doc_doctor_order_id, $visit_log_id);
+
+        }
+
+        parent::changeStatus($visit_log_id);
+
+    }
+
+    public function editVDO($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        $ptev = $this->ptevmdl->get($visit_log_id);
+
+        if ($this->input->post('verbal_doctor_order') == 1) {
+            $rules = array(
+                'verbal_doctor_order_date' => 'required',
+            );
+
+            $fields = array(
+                'verbal_doctor_order_date' => 'Obtained Order Date',
+            );
+            $this->validation->set_fields($fields);
+            $this->validation->set_rules($rules);
+        }
+
+        if ($this->validation->run() == true) {
+
+            if (count($this->ptevmdl->get($visit_log_id))) {
+                foreach ($ptev as $k => $v) {
+                    if (property_exists($this->ptevmdl, $k)) {
+                        $this->ptevmdl->$k = $v;
+                    }
+
+                }
+
+                $this->ptevmdl->verbal_doctor_order = $this->input->post('verbal_doctor_order');
+                $this->ptevmdl->verbal_doctor_order_date = standard_date(human_to_unix($this->input->post('verbal_doctor_order_date')), 'MYSQL_NOTIME');
+                $this->ptevmdl->verbal_doctor_order_comments = $this->input->post('verbal_doctor_order_comments');
+                $this->ptevmdl->visit_log_id = $visit_log_id;
+                $this->ptevmdl->update($visit_log_id);
+            } else {
+                // do nothing
+            }
+            // echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+            $config = &get_config();
+            echo "<SCRIPT>parent.location.href='" . $config["index_url"] . "task/ptev/index/" . $visit_log_id . "';parent.dhxWins.unload()</SCRIPT>";
+        } else {
+            $this->assignObject($visitlog);
+            $this->tpl->assign('visit_date_time', standard_date(mysql_to_unix($visitlog->visit_date_time), 'USA_DATE'));
+            $this->assignObject($ptev);
+            $this->tpl->assign("visit_log_id", $visit_log_id);
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/ptev_editvdo_form");
+
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        }
+    }
+
+    public function pdf($visit_log_id)
+    {
+        $this->load->helper('visit_pdf');
+        ptev_pdf($visit_log_id, 'D');
+
+        return;
+    }
+
+    public function edit_template($tpl_id)
+    {
+        $tpl_type = 'ptev';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $this->tpl->assign("tpl_type", $tpl_type);
+        // $this->tpl->assign("entity_id", $tpl_type);
+        $this->tpl->assign("record_id", $tpl_id);
+        $this->tpl->assign("faction", 'edit_template');
+        $this->tpl->assign("resource_delete", 'delete_template');
+        // $this->tpl->assign("no_delete_form", true);
+
+        // $this->validation->set_rules(array('template_name' => 'required'));
+        // $this->validation->set_fields(array('template_name' => 'Template Name'));
+
+        $template_field = "tpl_{$tpl_type}_name";
+        $template = $this->visitformtplmdl->get($tpl_id);
+
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to edit this template");
+        }
+
+        if ($this->validation->run() == false) {
+            $this->assignObject($template);
+
+            $this->lang->language['grl_cancel'] = 'Back';
+            $this->tpl->assign("back_url", $back_url);
+            $this->tpl->assign("tpl_type_external_resource", "{$tpl_type}_external_resource");
+            $this->tpl->assign("tpl_type_form", "{$tpl_type}_form");
+            $this->tpl->assign("form_title", "Edit Template");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "user/templates/edit_data");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        } else {
+            $this->assignPostData($this->visitformtplmdl);
+            $this->visitformtplmdl->tpl_ptev_name = $template->tpl_ptev_name;
+            $this->visitformtplmdl->update($tpl_id);
+
+            $this->tpl->assign('gmessage', "Template has been updated");
+            redirect("task/ptev/edit_template/" . $tpl_id);
+        }
+    }
+
+    public function delete_template($tpl_id)
+    {
+        $tpl_type = 'ptev';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $template = $this->visitformtplmdl->get($tpl_id);
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to delete this template");
+        }
+
+        $this->visitformtplmdl->delete($tpl_id, $this->getUserId());
+        if ($back_url) {
+            redirect($back_url);
+        } else {
+            redirect("user/templates");
+        }
+    }
+
+    public function checkduration($visit_duration)
+    {
+        if (!is_numeric($visit_duration)) {
+            $this->validation->set_message('checkduration', "Error: please enter number only in visit duration field.");
+            return false;
+        }
+
+        if ($visit_duration > 300) {
+            $this->validation->set_message('checkduration', "Error: visit duration can be 300 minutes maximum.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public function validation_visit($visit_log_id)
+    {
+        $this->load->model('agencysettingsmdl');
+        $agency_conf = $this->agencysettingsmdl->get($this->getAgencyId());
+        $validation_success = 0;
+        $msg = 0;
+        if ($agency_conf->pt_validation == '1') {
+
+            $rules = array(
+                'visit_duration' => 'callback_checkduration',
+                'primary_diag' => 'required',
+                //'primary_diag_date' => 'required',
+                'secondary_diag' => 'required',
+                //'secondary_diag_date' => 'required',
+                'tab_32_assess_type' => 'required',
+
+                'therapytype' => 'required',
+                'cognition_subjective' => 'required',
+
+                'tab_020_hip_abd_sl' => 'required',
+                'tab_020_hip_abd_sr' => 'required',
+
+                'tab_020_hip_add_sl' => 'required',
+                'tab_020_hip_add_sr' => 'required',
+
+                'tab_020_hip_rot_sl' => 'required',
+                'tab_020_hip_rot_sr' => 'required',
+
+                'tab_020_hip_fle_sl' => 'required',
+                'tab_020_hip_fle_sr' => 'required',
+
+                'tab_020_hip_ext_sl' => 'required',
+                'tab_020_hip_ext_sr' => 'required',
+
+                'tab_020_kne_fle_sl' => 'required',
+                'tab_020_kne_fle_sr' => 'required',
+
+                'tab_020_kne_ext_sl' => 'required',
+                'tab_020_kne_ext_sr' => 'required',
+
+                'tab_020_ank_dor_sl' => 'required',
+                'tab_020_ank_dor_sr' => 'required',
+
+                'tab_020_ank_plan_sl' => 'required',
+                'tab_020_ank_plan_sr' => 'required',
+
+                'tab_020_ank_inv_sl' => 'required',
+                'tab_020_ank_inv_sr' => 'required',
+
+                'tab_020_ank_ever_sl' => 'required',
+                'tab_020_ank_ever_sr' => 'required',
+
+                'tab_020_sho_fle_sl' => 'required',
+                'tab_020_sho_fle_sr' => 'required',
+
+                'tab_020_sho_ext_sl' => 'required',
+                'tab_020_sho_ext_sr' => 'required',
+
+                'tab_020_sho_abd_sl' => 'required',
+                'tab_020_sho_abd_sr' => 'required',
+
+                'tab_020_sho_add_sl' => 'required',
+                'tab_020_sho_add_sr' => 'required',
+
+                'tab_020_elb_fle_sl' => 'required',
+                'tab_020_elb_fle_sr' => 'required',
+
+                'tab_020_elb_ext_sl' => 'required',
+                'tab_020_elb_ext_sr' => 'required',
+
+                'tab_020_wri_gri_sl' => 'required',
+                'tab_020_wri_gri_sr' => 'required',
+
+                'p1_fun_sts_tab048_bed_mob' => 'required',
+                'p1_fun_sts_tab048_trans_wc_bed' => 'required',
+
+                'p1_fun_sts_tab048_trans_tub_show' => 'required',
+                'p1_fun_sts_tab048_supine_tosit' => 'required',
+
+                'p1_fun_sts_tab048_sittostand' => 'required',
+                'p1_fun_sts_tab048_gait_ft' => 'required',
+
+                'p1_fun_sts_tab078_gait_dev_typ' => 'required',
+                'p1_fun_sts_tab090_weig_bear_12345' => 'required',
+
+                'p1_fun_sts_weig_bear_sts_other_weight' => 'required',
+                'p1_fun_sts_tab027_weig_bear_sts_other_weight' => 'required',
+
+                'p1_fun_sts_tab048_stairs' => 'required',
+                'p1_fun_sts_tab048_stepscurb' => 'required',
+
+                'p1_fun_sts_tab048_toileting' => 'required',
+                'p1_fun_sts_tab048_wheelcha' => 'required',
+
+                'p1_bal_tinetti' => 'required',
+                'p1_bal_berg' => 'required',
+                'p1_bal_desc' => 'required',
+                'p1_bal_tug' => 'required',
+                'p1_bal_tug_desc' => 'required',
+                'p1_bal_tab048_assist_stat' => 'required',
+                'p1_bal_tab048_assist_dyn_sitt' => 'required',
+                'p1_bal_tab048_assist_dyn_stan' => 'required',
+                'p1_pos_tab049_sitt_tabyyy' => 'required',
+                'p1_pos_tab049_stand_tabyyy' => 'required',
+                'p1_postab_049_tran_tabyyy' => 'required',
+                'p1_gait_dist_surf' => 'required',
+
+                'p1_sa_bp1' => 'required',
+                'p1_sa_bp2' => 'required',
+                'tab_062_right_left' => 'required',
+
+                'p1_sa_sitt_lyi_stand' => 'required',
+                'p1_sa_hr' => 'required',
+                'p1_sa_o2_sat' => 'required',
+                'p1_sa_resp' => 'required',
+                'p1_sa_temp' => 'required',
+                'p1_sa_skin' => 'required',
+
+                'p1_pa_nbr' => 'required',
+                'p1_pa_time_since_last_med' => 'required',
+                'p1_pa_locat' => 'required',
+                'p1_pa_curr_pain' => 'required',
+
+                'mental_status' => 'callback_validate_mental_status[mental_status]',
+                'home_evaluation' => 'callback_validate_home_evaluation[home_evaluation]',
+                'safety_measure' => 'callback_validate_safety_measure[safety_measure]',
+                'p1_other_assessment' => 'required',
+
+                'equipment_house' => 'callback_validate_equipment_house[equipment_house]',
+                'therapy_intervention' => 'callback_validate_therapy_intervention[therapy_intervention]',
+                'functional_limitation' => 'callback_validate_functional_limitation[functional_limitation]',
+                'plan_of_care' => 'callback_validate_plan_of_care[plan_of_care]',
+
+                'p2_return_to_pre' => 'callback_val_p2_return_to_pre[p2_return_to_pre]',
+                'p2_patient_will' => 'callback_val_p2_patient_will[p2_patient_will]',
+                'p2_return_to_opti' => 'callback_val_p2_return_to_opti[p2_return_to_opti]',
+                'p2_demost_eff' => 'callback_val_p2_demost_eff[p2_demost_eff]',
+                'p2_improv_bed_mov' => 'callback_val_p2_improv_bed_mov[p2_improv_bed_mov]',
+                'p2_improv_bed_mov_indep' => 'callback_val_p2_improv_bed_mov_indep[p2_improv_bed_mov_indep]',
+                'p2_improv_trans' => 'callback_val_p2_improv_trans[p2_improv_trans]',
+                'p2_indep_trans' => 'callback_val_p2_indep_trans[p2_indep_trans]',
+                'p2_pat_indep' => 'callback_val_p2_pat_indep[p2_pat_indep]',
+                'p2_improv_wheel' => 'callback_val_p2_improv_wheel[p2_improv_wheel]',
+                'p2_pat_ambul' => 'callback_val_p2_pat_ambul[p2_pat_ambul]',
+                'p2_climb' => 'callback_val_p2_climb[p2_climb]',
+                'p2_indep_ambul' => 'callback_val_p2_indep_ambul[p2_indep_ambul]',
+                'p2_ambul_endur' => 'callback_val_p2_ambul_endur[p2_ambul_endur]',
+                'p2_increa_stren_UE' => 'callback_val_p2_increa_stren_UE[p2_increa_stren_UE]',
+                'p2_increa_stren_LE' => 'callback_val_p2_increa_stren_LE[p2_increa_stren_LE]',
+                'p2_increa_rom' => 'callback_val_p2_increa_rom[p2_increa_rom]',
+                'p2_increa_rom2' => 'callback_val_p2_increa_rom2[p2_increa_rom2]',
+                'p2_demos_rom' => 'callback_val_p2_demos_rom[p2_demos_rom]',
+                'p2_demos_proper' => 'callback_val_p2_demos_proper[p2_demos_proper]',
+                'p2_demos_proper_dme' => 'callback_val_p2_demos_proper_dme[p2_demos_proper_dme]',
+                'p2_tinetti_bal' => 'callback_val_p2_tinetti_bal[p2_tinetti_bal]',
+                'p2_improv_score' => 'callback_val_p2_improv_score[p2_improv_score]',
+                'p2_follow_exer' => 'callback_val_p2_follow_exer[p2_follow_exer]',
+                'p2_other3' => 'callback_val_p2_other3[p2_other3]',
+                'p2_other4' => 'callback_val_p2_other4[p2_other4]',
+                'p2_other5' => 'callback_val_p2_other5[p2_other5]',
+                'p2_other6' => 'callback_val_p2_other6[p2_other6]',
+
+                'p2_tab_064_discha_reason' => 'callback_val_p2_tab_064_discha_reason[p2_tab_064_discha_reason]',
+
+                #'p2_dis_instructions' => 'required',
+                'discharge_plan' => 'callback_validate_discharge_plan[discharge_plan]',
+                'p2_tab_033_rehab_pot' => 'required',
+                'home_bound_status' => 'callback_validate_home_bound_status[home_bound_status]',
+                'freq_duration' => 'required',
+                'coordination_care' => 'callback_validate_coordination_care[coordination_care]',
+
+                'ther_name' => 'required',
+                'ther_implem_plan' => 'required',
+                'ther_follow_plan' => 'required',
+                'ther_raport_pat_fam' => 'required',
+                'ther_eval_plan' => 'required',
+                'ther_notes' => 'required',
+
+                'p1_saf_use_dme' => 'callback_val_p1_saf_use_dme[p1_saf_use_dme]',
+                'p1_equi_other' => 'callback_val_p1_equi_other[p1_equi_other]',
+                'p1_ther_other' => 'callback_val_p1_ther_other[p1_ther_other]',
+                'p2_swollen' => 'callback_val_p2_swollen[p2_swollen]',
+                'p2_other_func' => 'callback_val_p2_other_func[p2_other_func]',
+                'p2_modal' => 'callback_val_p2_modal[p2_modal]',
+                'p2_other_interv' => 'callback_val_p2_other_interv[p2_other_interv]',
+                'p2_dis_other' => 'callback_val_p2_dis_other[p2_dis_other]',
+                'p2_home_other' => 'callback_val_p2_home_other[p2_home_other]',
+                'coord_other' => 'callback_val_coord_other[coord_other]'
+            );
+
+            $fields = array(
+                'primary_diag' => 'Primary Diagnosis',
+                //'primary_diag_date' => 'Primary Diagnosis Date',
+                'secondary_diag' => 'Therapy Diagnosis',
+                //'secondary_diag_date' => 'Therapy Diagnosis Date',
+                'tab_32_assess_type' => 'Assessment Type',
+
+                'therapytype' => 'Therapy Type',
+                'cognition_subjective' => 'Subjective / Objective / Hx ',
+
+                'tab_020_hip_abd_sl' => 'Streng Left Abduction',
+                'tab_020_hip_abd_sr' => 'Streng Right Abduction',
+
+                'tab_020_hip_add_sl' => 'Streng Left Adduction',
+                'tab_020_hip_add_sr' => 'Streng Right Adduction',
+
+                'tab_020_hip_rot_sl' => 'Streng Left Rotation',
+                'tab_020_hip_rot_sr' => 'Streng Right Rotation',
+
+                'tab_020_hip_fle_sl' => 'Streng Left Flexion',
+                'tab_020_hip_fle_sr' => 'Streng Right Flexion',
+
+                'tab_020_hip_ext_sl' => 'Streng Left Extension	',
+                'tab_020_hip_ext_sr' => 'Streng Right Extension	',
+
+                'tab_020_kne_fle_sl' => 'Streng Left Flexion',
+                'tab_020_kne_fle_sr' => 'Streng Right Flexion',
+
+                'tab_020_kne_ext_sl' => 'Streng Left Extension	',
+                'tab_020_kne_ext_sr' => 'Streng Right Extension	',
+
+                'tab_020_ank_dor_sl' => 'Streng Left Dorsiflex',
+                'tab_020_ank_dor_sr' => 'Streng Right Dorsiflex',
+
+                'tab_020_ank_plan_sl' => 'Streng Left Plantar Flex	',
+                'tab_020_ank_plan_sr' => 'Streng Right Plantar Flex	',
+
+                'tab_020_ank_inv_sl' => 'Streng Left Inversion',
+                'tab_020_ank_inv_sr' => 'Streng Right Inversion',
+
+                'tab_020_ank_ever_sl' => 'Streng Left Eversion',
+                'tab_020_ank_ever_sr' => 'Streng Right Eversion',
+
+                'tab_020_sho_fle_sl' => 'Streng Shoulder Left Flexion',
+                'tab_020_sho_fle_sr' => 'Streng Shoulder Right Flexion',
+
+                'tab_020_sho_ext_sl' => 'Streng Shoulder Left Extension',
+                'tab_020_sho_ext_sr' => 'Streng Shoulder Right Extension',
+
+                'tab_020_sho_abd_sl' => 'Streng Shoulder Left Abduction',
+                'tab_020_sho_abd_sr' => 'Streng Shoulder Right Abduction',
+
+                'tab_020_sho_add_sl' => 'Streng Shoulder Left Adduction',
+                'tab_020_sho_add_sr' => 'Streng Shoulder Right Adduction',
+
+                'tab_020_elb_fle_sl' => 'Streng Elbow Left Flexion',
+                'tab_020_elb_fle_sr' => 'Streng Elbow Right Flexion',
+
+                'tab_020_elb_ext_sl' => 'Streng Elbow Left Extension',
+                'tab_020_elb_ext_sr' => 'Streng Elbow Right Extension',
+
+                'tab_020_wri_gri_sl' => 'Streng Elbow Left Wrist/Grip	',
+                'tab_020_wri_gri_sr' => 'Streng Elbow Right Wrist/Grip	',
+
+                'p1_fun_sts_tab048_bed_mob' => 'Functional Status Current Bed Mobility',
+                'p1_fun_sts_tab048_trans_wc_bed' => 'Functional Status Current Transfers W/C',
+
+                'p1_fun_sts_tab048_trans_tub_show' => 'Functional Status Current Transfers Tub/Shower',
+                'p1_fun_sts_tab048_supine_tosit' => 'Functional Status Current Supine to Sit',
+
+                'p1_fun_sts_tab048_sittostand' => 'Functional Status Current Sit to stand	',
+                'p1_fun_sts_tab048_gait_ft' => 'Functional Status Current Gait',
+
+                'p1_fun_sts_tab078_gait_dev_typ' => 'Functional Status Current Gait Device Type	',
+                'p1_fun_sts_tab090_weig_bear_12345' => 'Functional Status Current Weight Bearing Status	',
+
+                'p1_fun_sts_weig_bear_sts_other_weight' => 'Functional Status Current Other',
+                'p1_fun_sts_tab027_weig_bear_sts_other_weight' => 'Functional Status Current Other',
+
+                'p1_fun_sts_tab048_stairs' => 'Functional Status Current Stairs	',
+                'p1_fun_sts_tab048_stepscurb' => 'Functional Status Current Steps / Curb	',
+
+                'p1_fun_sts_tab048_toileting' => 'Functional Status Current Toileting',
+                'p1_fun_sts_tab048_wheelcha' => 'Functional Status Current Wheelchair Mgmnt	',
+
+                'p1_bal_tinetti' => 'Balance 1',
+                'p1_bal_berg' => 'Balance	2',
+                'p1_bal_desc' => 'Balance 2 Description',
+                'p1_bal_tug' => 'Balance	3',
+                'p1_bal_tug_desc' => 'Balance 3 Description',
+                'p1_bal_tab048_assist_stat' => 'Balance Assist	Static Sitting	',
+                'p1_bal_tab048_assist_dyn_sitt' => 'Balance Assist Select	Dynamic Sitting	1',
+                'p1_bal_tab048_assist_dyn_stan' => 'Balance Assist Select	Dynamic Standing 2',
+                'p1_pos_tab049_sitt_tabyyy' => 'Posture',
+                'p1_pos_tab049_stand_tabyyy' => 'Posture',
+                'p1_postab_049_tran_tabyyy' => 'Posture',
+                'p1_gait_dist_surf' => 'Gait / Distance / Surface',
+
+                'p1_sa_bp1' => 'BP',
+                'p1_sa_bp2' => 'BP 2',
+                'tab_062_right_left' => 'Right or Left',
+
+                'p1_sa_sitt_lyi_stand' => 'Sitting or Lying or Standing',
+                'p1_sa_hr' => 'HR',
+                'p1_sa_o2_sat' => '02 Sat %',
+                'p1_sa_resp' => 'Resp',
+                'p1_sa_temp' => 'Temp',
+                'p1_sa_skin' => 'Skin',
+
+                'p1_pa_nbr' => 'Pain Assessment',
+                'p1_pa_time_since_last_med' => 'Pain Assessment Time since last medication',
+                'p1_pa_locat' => 'Pain Assessment Location',
+                'p1_pa_curr_pain' => 'Pain Assessment Current Pain control',
+
+                'p1_other_assessment' => 'Other Assessments/Additional PFLOA/Trunk Assessment',
+
+                'p2_dis_instructions' => 'Discharge Instructions',
+                'p2_tab_033_rehab_pot' => 'Rehab Potential',
+                'freq_duration' => ' Frequency / Duration',
+
+                'ther_name' => 'Name of Therapist being Evaluated',
+                'ther_implem_plan' => 'Implemented Plan of Care?',
+                'ther_follow_plan' => 'Followed Plan of Care?',
+                'ther_raport_pat_fam' => 'Demonstrated good rapport with patient/family?',
+                'ther_eval_plan' => 'Evaluation of Plan of Care',
+                'ther_notes' => 'Supervisor Notes',
+            );
+
+            if ($this->input->post('p2_discha')) {
+                $rules['p2_tab_064_discha_reason'] = 'required';
+                $fields['p2_tab_064_discha_reason'] = 'Discharge from PT Reason';
+                if ($this->input->post('p2_tab_064_discha_reason') === '6') {
+                    $rules['p2_discha_other'] = 'required';
+                    $fields['p2_discha_other'] = 'Discharge from PT Reason Other';
+                }
+            }
+
+            if (!$this->input->post('tab_052_hip_abd_rl') && !$this->input->post('tab_052_hip_abd_rl_deg')) {
+                $rules['tab_052_hip_abd_rl'] = 'required';
+                $fields['tab_052_hip_abd_rl'] = 'ROM Left HIP Abduction';
+						}
+						
+            if (!$this->input->post('tab_052_hip_abd_rr') && !$this->input->post('tab_052_hip_abd_rr_deg')) {
+                $rules['tab_052_hip_abd_rr'] = 'required';
+                $fields['tab_052_hip_abd_rr'] = 'ROM Right HIP Abduction';
+            }
+
+            if (!$this->input->post('tab_052_hip_add_rl') && !$this->input->post('tab_052_hip_add_rl_deg')) {
+                $rules['tab_052_hip_add_rl'] = 'required';
+                $fields['tab_052_hip_add_rl'] = 'ROM Left HIP Adduction';
+            }
+            if (!$this->input->post('tab_052_hip_add_rr') && !$this->input->post('tab_052_hip_add_rr_deg')) {
+                $rules['tab_052_hip_add_rr'] = 'required';
+                $fields['tab_052_hip_add_rr'] = 'ROM Right HIP Adduction';
+            }
+
+            if (!$this->input->post('tab_052_hip_rot_rl') && !$this->input->post('tab_052_hip_rot_rl_deg')) {
+                $rules['tab_052_hip_rot_rl'] = 'required';
+                $fields['tab_052_hip_rot_rl'] = 'ROM Left HIP Rotation	';
+            }
+            if (!$this->input->post('tab_052_hip_rot_rr') && !$this->input->post('tab_052_hip_rot_rr_deg')) {
+                $rules['tab_052_hip_rot_rr'] = 'required';
+                $fields['tab_052_hip_rot_rr'] = 'ROM Right HIP Rotation	';
+            }
+
+            if (!$this->input->post('tab_052_hip_fle_rl') && !$this->input->post('tab_052_hip_fle_rl_deg')) {
+                $rules['tab_052_hip_fle_rl'] = 'required';
+                $fields['tab_052_hip_fle_rl'] = 'ROM Left HIP Flexion	';
+            }
+            if (!$this->input->post('tab_052_hip_fle_rr') && !$this->input->post('tab_052_hip_fle_rr_deg')) {
+                $rules['tab_052_hip_fle_rr'] = 'required';
+                $fields['tab_052_hip_fle_rr'] = 'ROM Right HIP Flexion	';
+            }
+
+            if (!$this->input->post('tab_052_hip_fle_rl') && !$this->input->post('tab_052_hip_ext_rl_deg')) {
+                $rules['tab_052_hip_fle_rl'] = 'required';
+                $fields['tab_052_hip_fle_rl'] = 'ROM Left HIP Extension	';
+            }
+            if (!$this->input->post('tab_052_hip_ext_rr') && !$this->input->post('tab_052_hip_ext_rr_deg')) {
+                $rules['tab_052_hip_ext_rr'] = 'required';
+                $fields['tab_052_hip_ext_rr'] = 'ROM Right HIP Extension	';
+            }
+
+            if (!$this->input->post('tab_052_kne_fle_rl') && !$this->input->post('tab_052_kne_fle_rl_deg')) {
+                $rules['tab_052_kne_fle_rl'] = 'required';
+                $fields['tab_052_kne_fle_rl'] = 'ROM Left Knee Flexion	';
+            }
+            if (!$this->input->post('tab_052_kne_fle_rr') && !$this->input->post('tab_052_kne_fle_rr_deg')) {
+                $rules['tab_052_kne_fle_rr'] = 'required';
+                $fields['tab_052_kne_fle_rr'] = 'ROM Right Knee Flexion	';
+            }
+
+            if (!$this->input->post('tab_052_kne_ext_rl') && !$this->input->post('tab_052_kne_ext_rl_deg')) {
+                $rules['tab_052_kne_ext_rl'] = 'required';
+                $fields['tab_052_kne_ext_rl'] = 'ROM Left Knee Extension	';
+            }
+            if (!$this->input->post('tab_052_kne_ext_rr') && !$this->input->post('tab_052_kne_ext_rr_deg')) {
+                $rules['tab_052_kne_ext_rr'] = 'required';
+                $fields['tab_052_kne_ext_rr'] = 'ROM Right Knee Extension	';
+            }
+
+            if (!$this->input->post('tab_052_ank_dor_rl') && !$this->input->post('tab_052_ank_dor_rl_deg')) {
+                $rules['tab_052_ank_dor_rl'] = 'required';
+                $fields['tab_052_ank_dor_rl'] = 'ROM Left Ankle Dorsiflex	';
+            }
+            if (!$this->input->post('tab_052_ank_dor_rr') && !$this->input->post('tab_052_ank_dor_rr_deg')) {
+                $rules['tab_052_ank_dor_rr'] = 'required';
+                $fields['tab_052_ank_dor_rr'] = 'ROM Right Ankle Dorsiflex	';
+            }
+
+            if (!$this->input->post('tab_052_ank_plan_rl') && !$this->input->post('tab_052_ank_plan_rl_deg')) {
+                $rules['tab_052_ank_plan_rl'] = 'required';
+                $fields['tab_052_ank_plan_rl'] = 'ROM Left Ankle Plantar Flex		';
+            }
+            if (!$this->input->post('tab_052_ank_plan_rr') && !$this->input->post('tab_052_ank_plan_rr_deg')) {
+                $rules['tab_052_ank_plan_rr'] = 'required';
+                $fields['tab_052_ank_plan_rr'] = 'ROM Right Ankle Plantar Flex		';
+            }
+
+            if (!$this->input->post('tab_052_ank_inv_rl') && !$this->input->post('tab_052_ank_inv_rl_deg')) {
+                $rules['tab_052_ank_inv_rl'] = 'required';
+                $fields['tab_052_ank_inv_rl'] = 'ROM Left Ankle Inversion				';
+            }
+            if (!$this->input->post('tab_052_ank_inv_rr') && !$this->input->post('tab_052_ank_inv_rr_deg')) {
+                $rules['tab_052_ank_inv_rr'] = 'required';
+                $fields['tab_052_ank_inv_rr'] = 'ROM Right Ankle Inversion		';
+            }
+
+            if (!$this->input->post('tab_052_ank_ever_rl') && !$this->input->post('tab_052_ank_ever_rl_deg')) {
+                $rules['tab_052_ank_ever_rl'] = 'required';
+                $fields['tab_052_ank_ever_rl'] = 'ROM Left Ankle Eversion	';
+            }
+            if (!$this->input->post('tab_052_ank_ever_rr') && !$this->input->post('tab_052_ank_ever_rr_deg')) {
+                $rules['tab_052_ank_ever_rr'] = 'required';
+                $fields['tab_052_ank_ever_rr'] = 'ROM Right Ankle Eversion			';
+            }
+
+            if (!$this->input->post('tab_052_sho_fle_rl') && !$this->input->post('tab_052_sho_fle_rl_deg')) {
+                $rules['tab_052_sho_fle_rl'] = 'required';
+                $fields['tab_052_sho_fle_rl'] = 'ROM Left Shoulder Flexion';
+            }
+            if (!$this->input->post('tab_052_sho_fle_rr') && !$this->input->post('tab_052_sho_fle_rr_deg')) {
+                $rules['tab_052_sho_fle_rr'] = 'required';
+                $fields['tab_052_sho_fle_rr'] = 'ROM Right Shoulder Flexion';
+            }
+
+            if (!$this->input->post('tab_052_sho_ext_rl') && !$this->input->post('tab_052_sho_ext_rl_deg')) {
+                $rules['tab_052_sho_ext_rl'] = 'required';
+                $fields['tab_052_sho_ext_rl'] = 'ROM Left Shoulder Extension';
+            }
+            if (!$this->input->post('tab_052_sho_ext_rr') && !$this->input->post('tab_052_sho_ext_rr_deg')) {
+                $rules['tab_052_sho_ext_rr'] = 'required';
+                $fields['tab_052_sho_ext_rr'] = 'ROM Right Shoulder Extension';
+            }
+
+            if (!$this->input->post('tab_052_sho_ext_rl') && !$this->input->post('tab_052_sho_ext_rl_deg')) {
+                $rules['tab_052_sho_ext_rl'] = 'required';
+                $fields['tab_052_sho_ext_rl'] = 'ROM Left Shoulder Extension';
+            }
+            if (!$this->input->post('tab_052_sho_ext_rr') && !$this->input->post('tab_052_sho_ext_rr_deg')) {
+                $rules['tab_052_sho_ext_rr'] = 'required';
+                $fields['tab_052_sho_ext_rr'] = 'ROM Right Shoulder Extension';
+            }
+
+            if (!$this->input->post('tab_052_sho_abd_rl') && !$this->input->post('tab_052_sho_abd_rl_deg')) {
+                $rules['tab_052_sho_abd_rl'] = 'required';
+                $fields['tab_052_sho_abd_rl'] = 'ROM Left Shoulder Abduction';
+            }
+            if (!$this->input->post('tab_052_sho_abd_rr') && !$this->input->post('tab_052_sho_abd_rr_deg')) {
+                $rules['tab_052_sho_abd_rr'] = 'required';
+                $fields['tab_052_sho_abd_rr'] = 'ROM Right Shoulder Abduction';
+            }
+
+            if (!$this->input->post('tab_052_sho_add_rl') && !$this->input->post('tab_052_sho_add_rl_deg')) {
+                $rules['tab_052_sho_add_rl'] = 'required';
+                $fields['tab_052_sho_add_rl'] = 'ROM Left Shoulder Adduction';
+            }
+            if (!$this->input->post('tab_052_sho_add_rr') && !$this->input->post('tab_052_sho_add_rr_deg')) {
+                $rules['tab_052_sho_add_rr'] = 'required';
+                $fields['tab_052_sho_add_rr'] = 'ROM Right Shoulder Adduction';
+            }
+
+            if (!$this->input->post('tab_052_elb_fle_rl') && !$this->input->post('tab_052_elb_fle_rl_deg')) {
+                $rules['tab_052_elb_fle_rl'] = 'required';
+                $fields['tab_052_elb_fle_rl'] = 'ROM Left Elbow Flexion';
+            }
+            if (!$this->input->post('tab_052_elb_fle_rr') && !$this->input->post('tab_052_elb_fle_rr_deg')) {
+                $rules['tab_052_elb_fle_rr'] = 'required';
+                $fields['tab_052_elb_fle_rr'] = 'ROM Right Elbow Flexion';
+            }
+
+            if (!$this->input->post('tab_052_elb_ext_rl') && !$this->input->post('tab_052_elb_ext_rl_deg')) {
+                $rules['tab_052_elb_ext_rl'] = 'required';
+                $fields['tab_052_elb_ext_rl'] = 'ROM Left Elbow Extension';
+            }
+            if (!$this->input->post('tab_052_elb_ext_rr') && !$this->input->post('tab_052_elb_ext_rr_deg')) {
+                $rules['tab_052_elb_ext_rr'] = 'required';
+                $fields['tab_052_elb_ext_rr'] = 'ROM Right Elbow Extension';
+            }
+
+            if (!$this->input->post('tab_052_wri_gri_rl') && !$this->input->post('tab_052_wri_gri_rl_deg')) {
+                $rules['tab_052_wri_gri_rl'] = 'required';
+                $fields['tab_052_wri_gri_rl'] = 'ROM Left Elbow Wrist/Grip';
+            }
+            if (!$this->input->post('tab_052_wri_gri_rr') && !$this->input->post('tab_052_wri_gri_rr_deg')) {
+                $rules['tab_052_wri_gri_rr'] = 'required';
+                $fields['tab_052_wri_gri_rr'] = 'ROM Right Elbow Wrist/Grip	';
+            }
+
+            $this->validation->set_rules($rules);
+            $this->validation->set_fields($fields);
+
+            if ($this->validation->run() == true) {
+                $validation_success = 1;
+            } else {
+                $msg = $this->validation->get_error_msg();
+            }
+
+        } else {
+            $validation_success = 2;
+        }
+
+        echo json_encode(array('validation_success' => $validation_success, 'msg' => $msg));
+        exit();
+    }
+
+    public function validate_mental_status($mental_status)
+    {
+        $config = array(
+            'name_callback' => 'validate_mental_status',
+            'value' => $mental_status,
+            'msg' => 'Mental Status',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_home_evaluation($home_evaluation)
+    {
+        $config = array(
+            'name_callback' => 'validate_home_evaluation',
+            'value' => $home_evaluation,
+            'msg' => 'Home Evaluation',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_safety_measure($safety_measure)
+    {
+        $config = array(
+            'name_callback' => 'validate_safety_measure',
+            'value' => $safety_measure,
+            'msg' => 'Safety Measure',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_equipment_house($equipment_house)
+    {
+        $config = array(
+            'name_callback' => 'validate_equipment_house',
+            'value' => $equipment_house,
+            'msg' => ' Equipment in the House		',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_therapy_intervention($therapy_intervention)
+    {
+        $config = array(
+            'name_callback' => 'validate_therapy_intervention',
+            'value' => $therapy_intervention,
+            'msg' => 'Therapy Intervention / Instruction',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_functional_limitation($functional_limitation)
+    {
+        $config = array(
+            'name_callback' => 'validate_functional_limitation',
+            'value' => $functional_limitation,
+            'msg' => ' Functional Limitations / Problems Areas',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_plan_of_care($plan_of_care)
+    {
+        $config = array(
+            'name_callback' => 'validate_plan_of_care',
+            'value' => $plan_of_care,
+            'msg' => 'Plan of Care',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_discharge_plan($discharge_plan)
+    {
+        $config = array(
+            'name_callback' => 'validate_discharge_plan',
+            'value' => $discharge_plan,
+            'msg' => 'Discharge Plans',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_home_bound_status($home_bound_status)
+    {
+        $config = array(
+            'name_callback' => 'validate_home_bound_status',
+            'value' => $home_bound_status,
+            'msg' => 'Home Bound Status',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_coordination_care($coordination_care)
+    {
+        $config = array(
+            'name_callback' => 'validate_coordination_care',
+            'value' => $coordination_care,
+            'msg' => 'Coordination of Care',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_return_to_pre($p2_return_to_pre)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_return_to_pre',
+            'check' => $p2_return_to_pre,
+            'select_value' => $this->input->post('p2_return_to_pre_weeks'),
+            'select_met' => $this->input->post('p2_return_to_pre_met'),
+            'date' => $this->input->post('p2_return_to_pre_on_date'),
+            'other_field' => false,
+            'msg' => 'Return to pre-injury / illness level of function within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_patient_will($p2_patient_will)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_patient_will',
+            'check' => $p2_patient_will,
+            'select_value' => $this->input->post('p2_patient_will_weeks'),
+            'select_met' => $this->input->post('p2_patient_will_met'),
+            'date' => $this->input->post('p2_patient_will_on_date'),
+            'other_field' => false,
+            'msg' => 'Patient will meet maximum potential within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_return_to_opti($p2_return_to_opti)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_return_to_opti',
+            'check' => $p2_return_to_opti,
+            'select_value' => $this->input->post('p2_return_to_opti_weeks'),
+            'select_met' => $this->input->post('p2_return_to_opti_met'),
+            'date' => $this->input->post('p2_return_to_opti_on_date'),
+            'other_field' => false,
+            'msg' => 'Patient will meet maximum potential within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_demost_eff($p2_demost_eff)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_demost_eff',
+            'check' => $p2_demost_eff,
+            'select_value' => $this->input->post('p2_demost_eff_weeks'),
+            'select_met' => $this->input->post('p2_demost_eff_met'),
+            'date' => $this->input->post('p2_demost_eff_on_date'),
+            'other_field' => false,
+            'msg' => 'Demonstrate effective pain management within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_improv_bed_mov($p2_improv_bed_mov)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_improv_bed_mov',
+            'check' => $p2_improv_bed_mov,
+            'select_value' => $this->input->post('p2_improv_bed_mov_weeks'),
+            'select_met' => $this->input->post('p2_improv_bed_mov_met'),
+            'date' => $this->input->post('p2_improv_bed_mov_on_date'),
+            'other_field' => $this->input->post('p2_improv_bed_mov_desc1'),
+            'msg' => 'Improve bed mobility to ',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_improv_bed_mov_indep($p2_improv_bed_mov_indep)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_improv_bed_mov_indep',
+            'check' => $p2_improv_bed_mov_indep,
+            'select_value' => $this->input->post('p2_improv_bed_mov_indep_weeks'),
+            'select_met' => $this->input->post('p2_improv_bed_mov_indep_met'),
+            'date' => $this->input->post('p2_improv_bed_mov_indep_on_date'),
+            'other_field' => false,
+            'msg' => ' Improve bed mobilty to independent within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_improv_trans($p2_improv_trans)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_improv_trans',
+            'check' => $p2_improv_trans,
+            'select_value' => $this->input->post('p2_improv_trans_weeks'),
+            'select_met' => $this->input->post('p2_improv_trans_met'),
+            'date' => $this->input->post('p2_improv_trans_on_date'),
+            'other_field' => $this->input->post('p2_improv_trans_desc1'),
+            'msg' => ' Improve transfers to',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_indep_trans($p2_indep_trans)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_indep_trans',
+            'check' => $p2_indep_trans,
+            'select_value' => $this->input->post('p2_indep_trans_weeks'),
+            'select_met' => $this->input->post('p2_indep_trans_met'),
+            'date' => $this->input->post('p2_indep_trans_on_date'),
+            'other_field' => false,
+            'msg' => 'Independent with transfer skills within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_pat_indep($p2_pat_indep)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_pat_indep',
+            'check' => $p2_pat_indep,
+            'select_value' => $this->input->post('p2_pat_indep_weeks'),
+            'select_met' => $this->input->post('p2_pat_indep_met'),
+            'date' => $this->input->post('p2_pat_indep_on_date'),
+            'other_field' => false,
+            'msg' => 'Pt-Cg to be independent with safety issues',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_improv_wheel($p2_improv_wheel)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_improv_wheel',
+            'check' => $p2_improv_wheel,
+            'select_value' => $this->input->post('p2_improv_wheel_weeks'),
+            'select_met' => $this->input->post('p2_improv_wheel_met'),
+            'date' => $this->input->post('p2_improv_wheel_on_date'),
+            'other_field' => $this->input->post('p2_improv_wheel_desc'),
+            'msg' => 'Improve wheelchair',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_pat_ambul($p2_pat_ambul)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_pat_ambul',
+            'check' => $p2_pat_ambul,
+            'select_value' => $this->input->post('p2_pat_ambul_weeks'),
+            'select_met' => $this->input->post('p2_pat_ambul_met'),
+            'date' => $this->input->post('p2_pat_ambul_on_date'),
+            'other_field' => $this->input->post('p2_pat_ambul_desc1'),
+            'msg' => 'Patient will ambulate',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_climb($p2_climb)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_climb',
+            'check' => $p2_climb,
+            'select_value' => $this->input->post('p2_tab_063_climb_weeks'),
+            'select_met' => $this->input->post('p2_climb_met'),
+            'date' => $this->input->post('p2_climb_on_date'),
+            'other_field' => $this->input->post('p2_climb_desc1'),
+            'msg' => 'Pt will be able to climb stairs ',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_indep_ambul($p2_indep_ambul)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_indep_ambul',
+            'check' => $p2_indep_ambul,
+            'select_value' => $this->input->post('p2_indep_ambul_weeks'),
+            'select_met' => $this->input->post('p2_indep_ambul_met'),
+            'date' => $this->input->post('p2_indep_ambul_on_date'),
+            'other_field' => $this->input->post('p2_indep_ambul_desc'),
+            'msg' => 'Independent with ambulation',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_ambul_endur($p2_ambul_endur)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_ambul_endur',
+            'check' => $p2_ambul_endur,
+            'select_value' => $this->input->post('p2_ambul_endur_weeks'),
+            'select_met' => $this->input->post('p2_ambul_endur_met'),
+            'date' => $this->input->post('p2_ambul_endur_on_date'),
+            'other_field' => $this->input->post('p2_ambul_endur_desc1'),
+            'msg' => 'Ambulation endurance',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_increa_stren_UE($p2_increa_stren_UE)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_increa_stren_UE',
+            'check' => $p2_increa_stren_UE,
+            'select_value' => $this->input->post('p2_increa_stren_UE_weeks'),
+            'select_met' => $this->input->post('p2_increa_stren_UE_met'),
+            'date' => $this->input->post('p2_increa_stren_UE_on_date'),
+            'other_field' => $this->input->post('p2_increa_stren_UE_5'),
+            'msg' => 'Increase strength of extremity',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_increa_stren_LE($p2_increa_stren_LE)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_increa_stren_LE',
+            'check' => $p2_increa_stren_LE,
+            'select_value' => $this->input->post('p2_increa_stren_LE_weeks'),
+            'select_met' => $this->input->post('p2_increa_stren_LE_met'),
+            'date' => $this->input->post('p2_increa_stren_LE_on_date'),
+            'other_field' => $this->input->post('p2_increa_stren_LE_5'),
+            'msg' => ' Increase strength of extremity',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_increa_rom($p2_increa_rom)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_increa_rom',
+            'check' => $p2_increa_rom,
+            'select_value' => $this->input->post('p2_increa_rom_weeks'),
+            'select_met' => $this->input->post('p2_increa_rom_met'),
+            'date' => $this->input->post('p2_increa_rom_on_date'),
+            'other_field' => $this->input->post('p2_increa_rom_desc1'),
+            'msg' => ' Increase ROM',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_increa_rom2($p2_increa_rom2)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_increa_rom2',
+            'check' => $p2_increa_rom2,
+            'select_value' => $this->input->post('p2_increa_rom2_weeks'),
+            'select_met' => $this->input->post('p2_increa_rom2_met'),
+            'date' => $this->input->post('p2_increa_rom2_on_date'),
+            'other_field' => $this->input->post('p2_increa_rom2_desc1'),
+            'msg' => ' Increase ROM 2',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_demos_rom($p2_demos_rom)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_demos_rom',
+            'check' => $p2_demos_rom,
+            'select_value' => $this->input->post('p2_demos_rom_weeks'),
+            'select_met' => $this->input->post('p2_demos_rom_met'),
+            'date' => $this->input->post('p2_demos_rom_on_date'),
+            'other_field' => false,
+            'msg' => 'Demos Rom',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_demos_proper($p2_demos_proper)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_demos_proper',
+            'check' => $p2_demos_proper,
+            'select_value' => $this->input->post('p2_demos_proper_weeks'),
+            'select_met' => $this->input->post('p2_demos_proper_met'),
+            'date' => $this->input->post('p2_demos_proper_on_date'),
+            'other_field' => false,
+            'msg' => 'Demonstrate proper',
+        );
+        if ($p2_demos_proper) {
+            $config_check = array(
+                'name_callback' => 'val_p2_demos_proper',
+                'value' => $this->input->post('demos_proper'),
+                'msg' => 'Demonstrate proper',
+            );
+            if ($this->validate_check($config_check) === false) {
+                return false;
+            } else if ($this->validate_s_l_time_frames($config) === false) {
+                return false;
+            } else {
+                return true;
+            }
+
+        }
+    }
+
+    public function val_p2_demos_proper_dme($p2_demos_proper_dme)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_demos_proper_dme',
+            'check' => $p2_demos_proper_dme,
+            'select_value' => $this->input->post('p2_demos_proper_dme_weeks'),
+            'select_met' => $this->input->post('p2_demos_proper_dme_met'),
+            'date' => $this->input->post('p2_demos_proper_dme_on_date'),
+            'other_field' => false,
+            'msg' => 'Demonstrate proper use of DME',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_tinetti_bal($p2_tinetti_bal)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_tinetti_bal',
+            'check' => $p2_tinetti_bal,
+            'select_value' => $this->input->post('p2_tinetti_bal_weeks'),
+            'select_met' => $this->input->post('p2_tinetti_bal_met'),
+            'date' => $this->input->post('p2_tinetti_bal_on_date'),
+            'other_field' => $this->input->post('p2_tinetti_bal_score'),
+            'msg' => 'Patient will have an increase in Tinetti Balance ',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_improv_score($p2_improv_score)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_improv_score',
+            'check' => $p2_improv_score,
+            'select_value' => $this->input->post('p2_improv_score_desc1'),
+            'select_met' => $this->input->post('p2_improv_score_met'),
+            'date' => $this->input->post('p2_improv_score_on_date'),
+            'other_field' => $this->input->post('p2_improv_score_desc2'),
+            'msg' => 'Improve balance score ',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_follow_exer($p2_follow_exer)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_follow_exer',
+            'check' => $p2_follow_exer,
+            'select_value' => $this->input->post('p2_follow_exer_date'),
+            'select_met' => $this->input->post('p2_follow_exer_met'),
+            'date' => $this->input->post('p2_follow_exer_on_date'),
+            'other_field' => false,
+            'msg' => ' Pt-Cg will demonstrate ability to follow home exercise program',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_other3($p2_other3)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_other3',
+            'check' => $p2_other3,
+            'select_value' => $this->input->post('p2_other3_weeks'),
+            'select_met' => $this->input->post('p2_other3_met'),
+            'date' => $this->input->post('p2_other3_on_date'),
+            'other_field' => $this->input->post('p2_other3_desc'),
+            'msg' => 'Other 3',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_other4($p2_other4)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_other4',
+            'check' => $p2_other4,
+            'select_value' => $this->input->post('p2_other4_weeks'),
+            'select_met' => $this->input->post('p2_other4_met'),
+            'date' => $this->input->post('p2_other4_on_date'),
+            'other_field' => $this->input->post('p2_other4_desc'),
+            'msg' => 'Other 4',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_other5($p2_other5)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_other5',
+            'check' => $p2_other5,
+            'select_value' => $this->input->post('p2_other5_weeks'),
+            'select_met' => $this->input->post('p2_other5_met'),
+            'date' => $this->input->post('p2_other5_on_date'),
+            'other_field' => $this->input->post('p2_other5_desc'),
+            'msg' => 'Other 5',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_other6($p2_other6)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_other6',
+            'check' => $p2_other6,
+            'select_value' => $this->input->post('p2_other6_weeks'),
+            'select_met' => $this->input->post('p2_other6_met'),
+            'date' => $this->input->post('p2_other6_on_date'),
+            'other_field' => $this->input->post('p2_other6_desc'),
+            'msg' => 'Other 6',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_tab_064_discha_reason($p2_tab_064_discha_reason)
+    {
+        $config = array(
+            'name_callback' => 'p2_tab_064_discha_reason',
+            'value_other' => $p2_tab_064_discha_reason,
+            'value_other_desc' => $this->input->post('p2_discha_other'),
+            'msg' => 'Discharge from PT Reason Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    function val_p1_saf_use_dme($p1_saf_use_dme)
+    {
+        $config = array(
+            'name_callback' => 'val_p1_saf_use_dme',
+            'value_other' => $p1_saf_use_dme,
+            'value_other_desc' => $this->input->post('p1_saf_use_dme_desc'),
+            'msg' => '	Safety Measures Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p1_equi_other($p1_equi_other)
+    {
+        $config = array(
+            'name_callback' => 'val_p1_equi_other',
+            'value_other' => $p1_equi_other,
+            'value_other_desc' => $this->input->post('p1_equi_other_desc'),
+            'msg' => 'Equipment in the House Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p1_ther_other($p1_ther_other)
+    {
+        $config = array(
+            'name_callback' => 'val_p1_ther_other',
+            'value_other' => $p1_ther_other,
+            'value_other_desc' => $this->input->post('p1_ther_other_text'),
+            'msg' => 'Therapy Intervention / Instruction Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p2_swollen($p2_swollen)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_swollen',
+            'value_other' => $p2_swollen,
+            'value_other_desc' => $this->input->post('p2_swollen_specify'),
+            'msg' => 'Functional Limitations Swollen painful joints ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p2_other_func($p2_other_func)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_other_func',
+            'value_other' => $p2_other_func,
+            'value_other_desc' => $this->input->post('p2_other_func_desc'),
+            'msg' => 'Functional Limitations Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p2_modal($p2_modal)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_modal',
+            'value_other' => $p2_modal,
+            'value_other_desc' => $this->input->post('p2_modal_desc'),
+            'msg' => 'Plan of Care Modality ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p2_other_interv($p2_other_interv)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_other_interv',
+            'value_other' => $p2_other_interv,
+            'value_other_desc' => $this->input->post('p2_other_interv_desc'),
+            'msg' => 'Plan of Care Other',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p2_dis_other($p2_dis_other)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_dis_other',
+            'value_other' => $p2_dis_other,
+            'value_other_desc' => $this->input->post('p2_dis_other_desc'),
+            'msg' => 'Discharge Plans Other',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_p2_home_other($p2_home_other)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_home_other',
+            'value_other' => $p2_home_other,
+            'value_other_desc' => $this->input->post('p2_home_other_desc'),
+            'msg' => 'Home Bound Status Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function val_coord_other($coord_other)
+    {
+        $config = array(
+            'name_callback' => 'val_coord_other',
+            'value_other' => $coord_other,
+            'value_other_desc' => $this->input->post('coord_oth_text'),
+            'msg' => 'Coordination of Care Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    
+
+    /**
+     *  Short Term and Long Term Goals with Time Frames
+     *    Validations
+     * @param array $config
+     * @return bool
+     */
+    public function validate_s_l_time_frames($config = array())
+    {
+        if ($config['check']) {
+            if ($config['other_field'] === false) {
+                if (!($config['select_value']) || !$config['select_met'] || !$config['date']) {
+                    $this->validation->set_message("{$config['name_callback']}", $config['msg'] . " Week, Met and Date is  Required");
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                if (!($config['select_value']) || !$config['select_met'] || !$config['date'] || !$config['other_field']) {
+                    $this->validation->set_message("{$config['name_callback']}", $config['msg'] . " Field, Week, Met and Date is  Required");
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+    }
+
+    public function validate_check($item = array())
+    {
+        if ($item['value'] == "0") {
+            $this->validation->set_message("{$item['name_callback']}", 'Check at least one value in ' . $item['msg']);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function validate_other($item = array())
+    {
+        if ($item['value_other']) {
+            if (!$item['value_other_desc'] || $item['value_other_desc'] === "") {
+                $this->validation->set_message("{$item['name_callback']}", $item['msg'] . "Description Required");
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+
+}

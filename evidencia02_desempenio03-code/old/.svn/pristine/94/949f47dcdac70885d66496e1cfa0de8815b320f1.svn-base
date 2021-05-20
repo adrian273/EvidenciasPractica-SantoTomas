@@ -1,0 +1,70 @@
+<?php
+
+class Outside_cert extends MY_Controller {
+
+	function Outside_cert () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/outside_cert");
+		
+	}
+
+	function index () {
+		
+		if ($this->getAgencyType() == 'C') {
+			$this->tpl->assign('agency_list', $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false));
+		} else {
+			$this->tpl->assign('agency_list', $this->agencycontractormdl->get($this->getAgencyId(), false, 'agency_id'));
+
+		}
+
+		$this->tpl->assign("items_per_page", 300);
+		$this->tpl->assign("noedit", true);
+	    
+	    $this->tpl->assign(array("no_grid_buttons" => true));
+	    
+	    $this->tpl->assign_include("filter_tpl", "task/outside_cert_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+
+	function grid () {
+		$data = array();
+		if ($this->input->post('agency_id')) {
+			$data = $this->visitlogmdl->visits_outside_cert($this->input->post('agency_id'), $this->getAgencyType(), '2017-12-31');
+		}
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=link", "Cert. From"));		
+	    $head->append($this->xml->Element("column", "width=*", "Cert. To"));
+	    $head->append($this->xml->Element("column", "width=*", "Visit Date"));
+	    $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+
+	    if ($this->getAgencyType() == 'C') {
+	    	$head->append($this->xml->Element("column", "width=*", "Agency Name"));
+	    } else {
+	    	$head->append($this->xml->Element("column", "width=*", "Contractor Name"));
+	    }
+
+
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($data as $visit) {
+			$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+			
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->episode_start_date)) ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->episode_end_date)) ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time)) ));
+			$cell->append($this->xml->Element("cell", null, $visit->pat_last_name . " ". $visit->pat_first_name));
+			$cell->append($this->xml->Element("cell", null, $visit->agency_name));
+
+			
+			$document->append($cell);
+		}
+	}
+	
+ }

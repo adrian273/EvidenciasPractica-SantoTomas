@@ -1,0 +1,754 @@
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Primary Diagnosis / Therapy Diagnosis</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td height="10">
+    	Primary Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Therapy Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>
+  <tr>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="primary_diag" rows="3" cols="50" wrap="auto">{$primary_diag}</textarea>*}
+    	<input name="primary_diag" type="text" value="{$primary_diag}" size="27" maxlength="50">
+    </td>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="secondary_diag" rows="3" cols="50" wrap="auto">{$secondary_diag}</textarea>*}
+    	<input name="secondary_diag" type="text" value="{$secondary_diag}" size="27" maxlength="50">
+    </td>
+  </tr>
+  <tr>
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>	
+  <tr>
+    <td align="left" valign="top" colspan="2">
+    	<input type="text" id="primary_diag_date" name="primary_diag_date" value="{$primary_diag_date|date_format:"%m-%d-%Y":"":true}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('primary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+		<td align="left" valign="top" colspan="2">
+    	<input type="text" id="secondary_diag_date" name="secondary_diag_date" value="{$secondary_diag_date|date_format:"%m-%d-%Y":"":true}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('secondary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+  </tr>
+	{*
+  <tr>
+    <td colspan="4" class="subtitle">Vital Signs</td>
+  </tr> 
+		
+			
+  <tr>
+    <td colspan="4" height="10">		
+			<table border="0" width="100%" cellpadding="1" cellspacing="2"> 
+    		<tr>
+    			<td class="" width="10%" nowrap>Blood Pressure</td>
+    			<td class="" width="10%" nowrap>Temperature</td>
+    			<td class="" width="10%" nowrap>Respiration</td>
+					<td class="" width="10%" nowrap>Pulse</td>
+					<td class="" width="60%" nowrap></td>
+    		</tr>
+				<tr>
+    			<td>
+						<input name="blood_pressure" type="text" value="{$blood_pressure}"  size="10" maxlength="10"/>
+					</td>
+    			<td>
+						<input name="temperature" type="text" value="{$temperature}"  size="10" maxlength="10"/>
+					</td>
+					<td>
+						<input name="respiration" type="text" value="{$respiration}"  size="10" maxlength="10"/>
+					</td>
+					<td>
+						<input name="pulse" type="text" value="{$pulse}"  size="10" maxlength="10"/>
+					</td>
+					<td>&nbsp;
+						
+					</td>
+    		</tr>
+				
+			</table>	
+		</td>
+  </tr> 
+	*}
+  <tr>
+		
+    <td colspan="4" class="subtitle">Treatment</td>
+		<input type="hidden" name="treatment_id" id="treatment_id" value="0">
+  </tr> 
+  <tr>
+	<td colspan="2">
+		<label><input name="treat_evaluation" class="treat" type="checkbox" value="1"  {if $treat_evaluation}checked{/if} >
+		Evaluation</label>
+	</td>
+	<td colspan="2">
+		<label><input name="treat_fine" class="treat" type="checkbox" value="1" {if $treat_fine}checked{/if}>
+	Fine Motor Training</label></td>
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="treat_adl_training" class="treat" type="checkbox" value="1" {if $treat_adl_training}checked{/if}>
+	ADL Training</label></td>
+	<td colspan="2">
+		<label><input name="treat_neuro" class="treat" type="checkbox" value="1" {if $treat_neuro}checked{/if}>
+	Neuro Development Treatment</label></td>
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="treat_transfer" class="treat" type="checkbox" value="1" {if $treat_transfer}checked{/if}>
+	Transfer Training</label></td>
+	<td colspan="2">
+		<label><input name="treat_sensory" class="treat" type="checkbox" value="1" {if $treat_sensory}checked{/if}>
+	Sensory Treatment</label></td>
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="treat_muscle" class="treat" type="checkbox" value="1" {if $treat_muscle}checked{/if}>
+		Muscle Re-Education</label>
+	</td>
+	<td colspan="2">
+		<label><input name="treat_ortho" class="treat" type="checkbox" value="1" {if $treat_ortho}checked{/if}>
+	Orthodics / Splinting</label></td>
+  </tr>
+  <tr>
+	<td colspan="2">
+		{* <input name="treat_establish" type="checkbox" value="1" {if $treat_establish}checked{/if}> *}
+		<label><input name="treat_establish_hep" class="treat" type="checkbox" value="1" {if $treat_establish_hep}checked{/if}>
+	Establish HEP</label></td>
+		<td colspan="2">
+			<label><input name="treat_upgrade_hep" class="treat" type="checkbox" value="1" {if $treat_upgrade_hep}checked{/if}>
+			Upgrade HEP</label>
+		</td>
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="treat_home" class="treat" type="checkbox" value="1" {if $treat_home}checked{/if}>
+		Home Program Adaptive Equipment</label>
+	</td>
+	<td colspan="2">
+		<label><input name="treat_perceptual" class="treat" type="checkbox" value="1" {if $treat_perceptual}checked{/if}>
+		Perceptual Motor Training</label>
+	</td>
+  </tr>
+	<tr>
+		<td colspan="2">
+			<label><input name="treat_other" class="treat" type="checkbox" value="1" {if $treat_other}checked{/if}>
+	Other:</label> <input name="treat_other_desc" class="treat" type="text" value="{$treat_other_desc}">
+	</td>
+		<td colspan="2"></td>
+	</tr>
+  <tr>
+    <td colspan="4">
+		<table border="0" width="100%" cellpadding="1" cellspacing="2"> 
+    		<tr>
+    			<td class="subtitle" width="33%" nowrap>Pain Assessment</td>
+    			<td class="subtitle" width="33%" nowrap>System Assessment</td>
+    			<td class="subtitle" width="33%" nowrap>Functional Impairment</td>
+					<input type="hidden" name="functional_impairment" id="functional_impairment" value="0">
+    		</tr>
+			<tr>
+			<td>
+    			{html_radios options=$tab_87_list checked=$tab_75_pain_assessment id='tab_75_pain_assessment' name='tab_75_pain_assessment'}<br/><br/>
+				Location:<input name="pain_location" type="text" value="{$pain_location}" size="20" maxlength="25"><br/>
+				Current Pain Control:<input name="pain_control" type="text" value="{$pain_control}" size="20" maxlength="40"><br/>
+			</td>
+		    <td>
+		    	<div style="display: inline">						
+			    	{*BP: <input name="system_BP_left" type="text" value="{$system_BP_left}" size="3" maxlength="3">
+			    		<input name="system_BP_rigth" type="text" value="{$system_BP_rigth}" size="2" maxlength="2">*}
+			    	BP: <input name="BP" type="text" value="{$bp}" size="7" maxlength="7"> {*<input name="system_BP_left_right" type="radio" value="right" {if $system_BP_left_right eq 'right'}checked{/if}>Right <input name="system_BP_left_right" type="radio" value="left" {if $system_BP_left_right eq 'left'}checked{/if}>Left *}
+			    		
+	
+			    </div>
+		    	<div style="margin-left: 20px; display: inline">
+		    		{html_radios options=$tab_62_list name='tab_062_right_left' selected=$tab_062_right_left}
+    		  	</div>
+		    	
+		    	<div>
+                            <label><input name="system_sitt_lyin_stand" type="radio" value="1" {if $system_sitt_lyin_stand eq 1}checked{/if}>Sitting</label>
+                            <label><input name="system_sitt_lyin_stand" type="radio" value="2" {if $system_sitt_lyin_stand eq 2}checked{/if}>Lying</label>
+                            <label><input name="system_sitt_lyin_stand" type="radio" value="3" {if $system_sitt_lyin_stand eq 3}checked{/if}>Standing</label><br/>
+			</div>
+				
+				<div style="display: inline">
+                	HR: <input name="system_hr" type="text" value="{$system_hr}" size="3" maxlength="3">
+				</div>
+		    	<div style="margin-left: 20px; display: inline">
+		    		o2 Sat: <input name="system_o2_sat" type="text" value="{$system_o2_sat}" size="5" maxlength="5">
+				</div>
+				<div>
+					Skin:<br>
+					<input name="system_skin" type="text" value="{$system_skin}" size="20" maxlength="27">
+				</div>
+			</td>
+   <!--  
+  `system_BP_rigth` tinyint(1) default NULL,
+  `system_BP_left` tinyint(1) default NULL,
+  `system_sitting` tinyint(1) default NULL,
+  `system_lying` tinyint(1) default NULL,
+  `system_standing` tinyint(1) NOT NULL,
+-->
+
+ 		    <td>
+		  		<label><input name="funct_dyspnea" class="funct" type="checkbox" value="1" {if $funct_dyspnea}checked{/if}>Dyspnea on exertion</label><br/>
+		  		<label><input name="funct_diff_walking" class="funct" type="checkbox" value="1" {if $funct_diff_walking}checked{/if}>Difficulty walking</label><br/>
+		  		<label><input name="funct_diff_transfer" class="funct" type="checkbox" value="1" {if $funct_diff_transfer}checked{/if}>Difficulty transfer</label><br/>
+		  		<label><input name="funct_diff_dressing" class="funct" type="checkbox" value="1" {if $funct_diff_dressing}checked{/if}>Difficulty dressing / undressing</label><br/>
+		  		<label><input name="funct_other" class="funct" type="checkbox" value="1" {if $funct_other}checked{/if}>Other:</label>
+				<input name="funct_other_desc" type="text" value="{$funct_other_desc}" maxlength="30" size="20">
+		    </td>
+  		</tr>
+  		</table>
+ 	</td>
+  </tr>
+  <tr>
+	<td colspan="4">
+		<label><input name="objective_findings" id="objective_findings" type="checkbox" value="1" {if $objective_findings}checked{/if}>Objective
+		Subjective Findings:</label>
+	</td>
+  </tr>
+  <tr>
+	<td colspan="4">
+		<!-- <textarea name="subjective_findings" cols="80" rows="6">{$subjective_findings}</textarea> -->
+		<textarea id="subjective_findings" name="subjective_findings" cols="80" rows="6" onkeyup="chars_limit_notice('subjective_findings', 630)" maxlength="630">{$subjective_findings}</textarea>
+		{assign var="subjective_findings_length" value=$subjective_findings|count_characters:true}
+		{assign var="subjective_findings_left" value="`$subjective_findings_length-630`"}
+		<div style="font-size:9px;{if $subjective_findings_left gt 0}display:none;{/if}" id="subjective_findings_note">
+			<label id="subjective_findings_chars_left">{$subjective_findings_left|abs}</label>characters left.
+		</div>
+	</td>
+  </tr>
+  <tr>
+	<td colspan="4">
+		<label><input name="treatment" type="checkbox" value="1" {if $treatment}checked{/if}>Treatment Provided</label>
+		<label><input name="plan_of_care" type="checkbox" value="1" {if $plan_of_care}checked{/if}>Plan of Care:</label>
+	</td>
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle">Plan</td>
+  </tr>	
+  <tr>
+	<td colspan="4">
+		<!-- <textarea name="plan" cols="80" rows="6">{$plan}</textarea> -->
+		<textarea id="plan" name="plan" cols="80" rows="6" onkeyup="chars_limit_notice('plan', 813)" maxlength="813">{$plan}</textarea>
+		{assign var="plan_length" value=$plan|count_characters:true}
+		{assign var="plan_left" value="`$plan_length-813`"}
+		<div style="font-size:9px;{if $plan_left gt 0}display:none;{/if}" id="plan_note">
+			<label id="plan_chars_left">{$plan_left|abs}</label>characters left.
+		</div>
+	</td>
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle">Home Bound Status</td>
+		<input type="hidden" id="home_bound" name="home_bound" value="0">
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="hobo_consid_taxing" class="hobo" type="checkbox" value="1" {if $hobo_consid_taxing}checked{/if}>
+	Considerable & taxing effort to leave home</label>
+	</td>
+	<td colspan="2">
+		<label><input name="hobo_requires" class="hobo" type="checkbox" value="1" {if $hobo_requires}checked{/if}>
+	Requires assistance to ambulate</label>
+	</td>
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="hobo_residual" class="hobo" type="checkbox" value="1" {if $hobo_residual}checked{/if}>
+	Residual weakness</label>
+	</td>
+	<td colspan="2">
+		<label><input name="hobo_dependent" class="hobo" type="checkbox" value="1" {if $hobo_dependent}checked{/if}>
+	Dependent upon adaptive / assistive device</label>
+	</td>
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="hobo_confusion" class="hobo" type="checkbox" value="1" {if $hobo_confusion}checked{/if}>
+	Confusion, unable to go out alone</label>
+	</td>
+	<td colspan="2"><label><input name="hobo_other" class="hobo" type="checkbox" value="1" {if $hobo_other}checked{/if}>
+	Other:</label> <!-- <input name="hobo_other_desc" type="text" value="{$hobo_other_desc}" maxlength="35"> -->
+			<input name="hobo_other_desc" id="hobo_other_desc" type="text" value="{$hobo_other_desc}" size="20" maxlength="35" onkeyup="chars_limit_notice('hobo_other_desc', 35)" >
+			{assign var="hobo_other_desc_length" value=$hobo_other_desc|count_characters:true}
+			{assign var="hobo_other_desc_left" value="`$hobo_other_desc_length-35`"}
+			<span style="font-size:9px;{if $hobo_other_desc_left gt 0}display:none;{/if}" id="hobo_other_desc_note">
+				<label id="hobo_other_desc_chars_left">{$hobo_other_desc_left|abs}</label>characters left.
+			</span>
+	</td>
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle">Coordination of Care</td>
+		<input type="hidden" name="coordination_of_care" id="coordination_of_care" value="0">
+  </tr>
+  <tr>
+	  <td colspan="4">
+    	<div style="display: inline">
+	  		<label><input name="coord_md" id="coord_md" class="coord" type="checkbox" value="1" {if $coord_md}checked{/if}>MD</label>
+		</div>
+    	<div style="margin-left: 20px; display: inline">
+			<label><input name="coord_rn" class="coord" type="checkbox" value="1" {if $coord_rn}checked{/if}>RN</label>
+		</div>
+    	<div style="margin-left: 20px; display: inline">
+			<label><input name="coord_lvn" class="coord" type="checkbox" value="1" {if $coord_lvn}checked{/if}>LVN</label>
+		</div>
+    	<div style="margin-left: 20px; display: inline">
+			<label><input name="coord_aide" class="coord" type="checkbox" value="1" {if $coord_aide}checked{/if}>Aide</label>
+	    </div>
+    	<div style="margin-left: 20px; display: inline">
+	  		<label><input name="coord_pt" class="coord" type="checkbox" value="1" {if $coord_pt}checked{/if}>PT</label>
+		</div>
+	   	<div style="margin-left: 20px; display: inline">
+			<label><input name="coord_ot" class="coord" type="checkbox" value="1" {if $coord_ot}checked{/if}>OT</label>
+    	</div>
+    	<div style="margin-left: 20px; display: inline">
+			<label><input name="coord_st" class="coord" type="checkbox" value="1" {if $coord_st}checked{/if}>ST</label>
+		</div>
+    	<div style="margin-left: 20px; display: inline">
+			<label><input name="coord_msw" class="coord" type="checkbox" value="1" {if $coord_msw}checked{/if}>MSW</label>
+	    </div>
+    	<div style="margin-left: 20px; display: inline">
+	  		<label><input name="coord_ptCG" class="coord" type="checkbox" value="1" {if $coord_ptCG}checked{/if}>Pt/CG</label>
+		</div>
+	</td>
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle">D/C Planning/Plan</td>
+		<input type="hidden" id="dc_planning_plan" name="dc_planning_plan" value="0">
+  </tr>
+  <tr>
+	<td colspan="2">
+		<label><input name="dc_plan_continue" class="dc_plan" type="checkbox" value="1" {if $dc_plan_continue}checked{/if}>
+	Continue to progress towards goals</label>
+	</td>
+	<td colspan="2">
+		<label><input name="dc_plan_five_days_notif" class="dc_plan" type="checkbox" value="1" {if $dc_plan_five_days_notif}checked{/if}>
+	5-days notification of discharge given</label>
+	</td>
+  </tr>
+  <tr>
+	<td colspan="4"><label><input name="dc_plan_other" class="dc_plan" type="checkbox" value="1" {if $dc_plan_other}checked{/if}>
+	Other:</label> <!-- <input name="dc_plan_desc" type="text" value="{$dc_plan_desc}" size="90" maxlength="90"> -->
+			<input name="dc_plan_desc" id="dc_plan_desc" type="text" value="{$dc_plan_desc}" size="70" maxlength="90" onkeyup="chars_limit_notice('dc_plan_desc', 90)" >
+			{assign var="dc_plan_desc_length" value=$dc_plan_desc|count_characters:true}
+			{assign var="dc_plan_desc_left" value="`$dc_plan_desc_length-90`"}
+			<span style="font-size:9px;{if $dc_plan_desc_left gt 0}display:none;{/if}" id="dc_plan_desc_note">
+				<label id="dc_plan_desc_chars_left">{$dc_plan_desc_left|abs}</label>characters left.
+			</span>
+	</td>
+  </tr>
+
+
+  	<tr>
+	<td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+		Therapy Supervisory Communication Report    </td>
+	</tr> 
+	<tr>
+		<td colspan="4" height="10"></td>
+	</tr> 
+
+	<tr id="create-therapy-sup-report" {if $show_therapy_sup_report == 'yes'} style="display:none;"{/if}>
+		<td colspan="4" height="10">To create a Therapy Supervisory report <a href="javascript:void(0)" onclick="$('#therapy-sup-report').show();$('#create-therapy-sup-report').hide();$('#cancel-therapy-sup-report').show();setCheck('ther_na', false);">Click here</a></td>
+	</tr> 
+	<tr id="cancel-therapy-sup-report" {if $show_therapy_sup_report == 'no'} style="display:none;"{/if}>
+		<td colspan="4" height="10"><a href="javascript:void(0)" onclick="$('#therapy-sup-report').hide();$('#create-therapy-sup-report').show();$('#cancel-therapy-sup-report').hide();Funtherapy();setCheck('ther_na', true);">Click here</a> to Cancel Supervisory Report</td>
+	</tr> 		
+	<tr id="therapy-sup-report" {if $show_therapy_sup_report == 'no'} style="display:none;"{/if}>
+		<td colspan="4">
+			<table width="100%" border="0">  
+				<tr>
+				<td colspan="4" height="10">
+					{html_checkbox name='ther_na' values='1' id='ther_na' checked=$ther_na onclick="Funtherapy()"} N/A    </td>
+			</tr> 
+			
+				<tr>
+					<td colspan="4" height="10">
+						Name of Therapist being Evaluated:
+						{html_options options=$ther_name_list selected=$ther_name name='ther_name' id='ther_name' onchange="ther_na_check(this,'selecbox')"}	    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+				</tr> 
+				<tr>
+					<td colspan="4" height="20"></td>
+				</tr>
+			
+			<tr>
+			<td colspan="4" height="10">
+				<table width="100%" border="0">
+				 <tr>
+						<td width="50%" valign="top">
+						<table width="100%" border="0">
+							<tr>
+								<td colspan="4" height="10">
+									Assess the Following Areas of Care:	    </td>
+							</tr> 
+							<tr>
+								<td colspan="4" height="10">
+									<div style="width: 350px; float: left">Implemented Plan of Care?</div>
+									<div style="float: left">
+									
+									<label><input name="ther_implem_plan" value="-1" {if $ther_implem_plan eq '-1'}checked="checked"{/if} id="ther_implem_plan" onchange="ther_na_check(this,'radio')" type="radio">No</label>
+									<label><input name="ther_implem_plan" value="1" {if $ther_implem_plan eq '1'}checked="checked"{/if} id="ther_implem_plan" onchange="ther_na_check(this,'radio')" type="radio">Yes</label>
+
+									{* html_radios options=$logic_list checked=$ther_implem_plan name='ther_implem_plan' id='ther_implem_plan' onchange="ther_na_check(this,'radio')" *}</div>
+									</td>
+							</tr> 
+							<tr>
+								<td colspan="4" height="10">
+									<div style="width: 350px; float: left">Followed Plan of Care?</div>
+									<div style="float: left">
+										<label><input name="ther_follow_plan" value="-1" {if $ther_follow_plan eq '-1'}checked="checked"{/if} id="ther_follow_plan" onchange="ther_na_check(this,'radio')" type="radio">No</label>
+										<label><input name="ther_follow_plan" value="1" {if $ther_follow_plan eq '1'}checked="checked"{/if} id="ther_follow_plan" onchange="ther_na_check(this,'radio')" type="radio">Yes</label>
+										{* html_radios options=$logic_list checked=$ther_follow_plan name='ther_follow_plan' id='ther_follow_plan' onchange="ther_na_check(this,'radio')" *}
+									</div>	    
+		
+								</td>
+							</tr> 
+							<tr>
+								<td colspan="4" height="10">
+									<div style="width: 350px; float: left">Demonstrated good rapport with patient/family?</div>
+									<div style="float: left">
+										<label><input name="ther_raport_pat_fam" value="-1" {if $ther_raport_pat_fam eq '-1'}checked="checked"{/if} id="ther_raport_pat_fam" onchange="ther_na_check(this,'radio')" type="radio">No</label>
+										<label><input name="ther_raport_pat_fam" value="1" {if $ther_raport_pat_fam eq '1'}checked="checked"{/if} id="ther_raport_pat_fam" onchange="ther_na_check(this,'radio')" type="radio">Yes</label>
+										{* html_radios options=$logic_list checked=$ther_raport_pat_fam name='ther_raport_pat_fam' id='ther_raport_pat_fam' onchange="ther_na_check(this,'radio')" *}
+									</div>	    
+		
+								</td>
+							</tr>
+						</table></td>
+						<td width="50%" valign="top">
+							<table width="100%" border="0">
+								<tr>
+								<td colspan="4" height="10">
+									Evaluation of Plan of Care	    </td>
+								</tr> 
+								<tr>
+									<td colspan="4">
+										<textarea name="ther_eval_plan" id="ther_eval_plan" cols="40" rows="3" onchange="ther_na_check(this,'textarea')">{$ther_eval_plan}</textarea>	    </td>
+								</tr> 
+							</table>
+						</td>
+				 </tr>          
+					<tr>				
+							<td colspan="2">
+								<table width="100%" border="0">
+									<tr>
+									<td colspan="4" height="10">
+										Supervisor Notes	    </td>
+									</tr> 
+									<tr>
+										<td colspan="4">
+											<textarea name="ther_notes" id="ther_notes" cols="40" rows="3">{$ther_notes}</textarea>	    </td>
+									</tr> 
+								</table>
+							</td>
+					</tr> 
+				 </table></td>
+				</tr>
+				
+			</table>
+		</td>
+	</tr> 
+
+
+
+   <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Supervising Therapist</td>
+  </tr>
+  <tr>
+    <td colspan="2"> {html_options options=$ther_supervisor_list selected=$ther_supervisor name='ther_supervisor'}</td>
+	<td colspan="2"> 
+		<input type="hidden" name="supervisor_signed" value="{$supervisor_signed}">
+	    {if $supervisor_signed eq 1} 
+	    	ELECTRONICALLY SIGNED
+	    {/if}	
+    </td>
+  </tr>   
+
+{*
+  <tr>
+      <td colspan="4" class="subtitle" id="anchor_pt_signature"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Signature</td>    
+    </tr> 
+    <tr>
+      <td>
+        <input class="btn" value="Patient Signature" onclick="capture_pt_signature({$visit_log_id})" type="button">
+      </td>
+      <td align="center">
+        {if $signature != ""}
+          <img src="{$base_url}upload/signatures/{$signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+      </td>
+    </tr>
+  <tr>
+*}
+
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Addendum</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+  	<td colspan="4">
+		<textarea name="addendum" cols="60" rows="5" wrap="auto">{$addendum}</textarea>
+		<br />  	</td>
+  </tr>		
+
+</table> 
+
+<script>
+var dhxWins;
+function uploadScannedDocument ( visit_log_id ) {literal}{{/literal}
+ 
+  dhxWins = new dhtmlXWindows();
+  dhxWins.enableAutoViewport(false);
+  dhxWins.attachViewportTo("vp_container");
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+  
+  var w1 = dhxWins.createWindow("w1", 10, 10, 450, 150);
+  w1.setText('Upload Scanned OT Progress Note document');
+  w1.button("park").hide();
+  w1.button("minmax1").hide();
+    w1.denyResize(); // deny resizing
+    w1.denyMove(); 
+    dhxWins.window('w1').center();
+    dhxWins.window('w1').setModal(true);
+  w1.attachURL("{$index_url}task/otpn/upload_document/" + visit_log_id);
+  
+  pos = dhxWins.window('w1').getPosition();
+  dhxWins.window('w1').setPosition(pos[0], 60);
+
+{literal}}{/literal}
+
+function removeScannedDocument(visit_log_id) {literal}{{/literal}
+  dhxWins = new dhtmlXWindows();
+  dhxWins.enableAutoViewport(false);
+  dhxWins.attachViewportTo("vp_container");
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+  var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+  w1.setText('Remove Scanned OT Progress Note visit document');
+  w1.button("park").hide();
+  w1.button("minmax1").hide();
+  w1.denyResize(); // deny resizing
+  w1.denyMove(); 
+  dhxWins.window('w1').center();
+  dhxWins.window('w1').setModal(true);
+  w1.attachURL("{$index_url}task/otpn/pre_remove_document/" + visit_log_id);
+
+  pos = dhxWins.window('w1').getPosition();
+  dhxWins.window('w1').setPosition(pos[0], 60);
+{literal}}{/literal}
+
+function SupvisorSignature(){literal}{{/literal}
+    dhxWins = new dhtmlXWindows();
+    dhxWins.enableAutoViewport(false);
+    dhxWins.attachViewportTo("vp_container");
+    dhxWins.setImagePath("{$base_url}style/window/imgs/");
+    
+    var w1 = dhxWins.createWindow("w1", 10, 10, 500, 150);
+    w1.setText("Supervisor Password");
+    w1.button("park").hide();
+    w1.button("minmax1").hide();
+    w1.denyResize(); // deny resizing
+    w1.denyMove(); 
+    dhxWins.window('w1').setModal(true);
+    dhxWins.window('w1').center();
+    w1.attachURL("{$index_url}/task/otpn/supervisor_electronic_pass/{$visit_log_id}");
+    
+    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+        
+        w1.hide();
+        w1.setModal(false);
+        
+    {literal}}{/literal});
+{literal}}{/literal}
+
+function capture_pt_signature(visit_log_id) {literal}{{/literal}
+  //alert(visit_log_id);
+  //alert(grid.getCheckedRows(0));
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+  
+  var w2 = dhxWins.createWindow("w2", 10, 10, 750, 500);
+  w2.setText("Capture Patient Digital Signature");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove(); 
+  w2.button("close")._doOnClick = function() {literal}{{/literal}   
+    w2.close();
+  {literal}}{/literal}  
+  
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}/task/otpn/capture_pt_signature/" + visit_log_id);
+{literal}}{/literal}
+</script>
+
+<script>
+{literal}
+function Funtherapy() {
+    //switchDisplay('therapy');
+    setValue('ther_eval_plan', '');
+    setValue('ther_notes', '');
+	///selectOption('ther_supervisor', '');
+    selectOption('ther_name', '');
+    setCheck('ther_implem_plan', false);
+    setCheck('ther_follow_plan', false);
+    setCheck('ther_raport_pat_fam', false);
+}
+function ther_na_check(obj, type){
+	switch(type){
+		case 'selectbox': 
+			if(obj.options[obj.selectedIndex].value != "")
+				document.getElementById('ther_na').checked = false;
+			break;
+		case 'radio':	
+			var radioLength = obj.length;
+			if(radioLength == undefined)
+				if(obj.checked){
+					document.getElementById('ther_na').checked = false;
+					break;
+				}	
+				else{
+					break;
+				}
+					
+				for(var i = 0; i < radioLength; i++) {
+					if(obj[i].checked) {
+						document.getElementById('ther_na').checked = false;
+						break;
+					}
+				}
+				break;
+		default:
+			if(obj.value != "")
+				document.getElementById('ther_na').checked = false;
+			break;
+	}
+}
+
+if (document.tform.ther_na && document.tform.ther_na.checked==true)
+{
+   Funtherapy();
+}
+
+{/literal}
+
+{if $warn_no_otev_eval eq true}
+	{literal}
+	function warn_no_otev_eval(){
+		var x = "No previous Evaluation";
+		$('<div>' + x + '</div>').dialog({
+				title: "Warning!",
+				resizable: false,
+				buttons: {													
+						Cancel: function() {
+								$(this).dialog("close");
+								//return false;
+						}
+				}
+		});
+	}	
+	warn_no_otev_eval();
+	{/literal}
+{/if}
+
+{literal}
+function chars_limit_notice(field, limit){
+	if(!field || !limit)
+	return;
+	
+	if(document.getElementById(field).value.length >= limit){
+		document.getElementById(field+'_note').style.display='none';
+	}else{
+		document.getElementById(field+'_chars_left').innerHTML = limit - document.getElementById(field).value.length;
+		document.getElementById(field+'_note').style.display='';
+	} 
+}
+{/literal}
+
+{literal}
+
+	$(document).ready(function() {
+		validate_checkbox('coordination_of_care', 'coord');
+		validate_checkbox('treatment_id', 'treat');
+		validate_checkbox('functional_impairment','funct');
+		validate_checkbox('home_bound','hobo');
+		validate_checkbox('dc_planning_plan','dc_plan')
+		validate_objective_findings();
+	})
+
+	$('.coord').change(function() {
+		validate_checkbox('coordination_of_care', 'coord');
+	});
+
+	$('.treat').change(function() {
+		validate_checkbox('treatment_id', 'treat');
+	});
+
+	$('.funct').change(function() {
+		validate_checkbox('functional_impairment','funct');
+	});
+
+	$('.hobo').change(function() {
+			validate_checkbox('home_bound','hobo');
+	});
+
+	$('.dc_plan').change(function() {
+			validate_checkbox('dc_planning_plan','dc_plan');
+	});
+
+	$('#objective_findings').change(function() {
+			validate_objective_findings();
+	});
+
+	
+	
+	function validate_checkbox(name_id,name_class) {
+		$("#"+name_id).val(0);
+		$("."+name_class).each(function() {
+			if(this.checked) {
+				$("#"+name_id).val(1);
+			} else {
+					$("#"+name_id).val();
+			}
+		});
+	}
+
+	function validate_objective_findings() {
+		if($("#objective_findings").is(':checked')) {
+			$("#subjective_findings").attr('disabled', false);
+		} else {
+			$("#subjective_findings").attr('disabled', true);
+		}
+	}
+
+{/literal}
+
+
+</script>

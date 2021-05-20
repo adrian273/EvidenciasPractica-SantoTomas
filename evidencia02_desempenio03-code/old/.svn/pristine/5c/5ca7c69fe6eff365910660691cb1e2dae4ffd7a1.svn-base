@@ -1,0 +1,26 @@
+<?
+
+ class PlanCare extends MY_Controller {
+
+	function PlanCare () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/plancare");
+		
+	}
+
+	function index ( $patient_id, $cms485_id=null ) {
+		$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		if ($contractor->provides_altern_therapy == 'Y') {
+			$this->tpl->assign("therapy_type", 'S');
+		}
+
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("patient_id", $patient_id);
+		$this->tpl->assign("cms485_id", $cms485_id);
+		$this->tpl->assign_include("dynamic_tpl", "patient/stbase2");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+ }

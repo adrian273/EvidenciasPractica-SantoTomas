@@ -1,0 +1,542 @@
+<script>
+	{literal}
+	if (!window.jQuery.ui) {
+		{/literal}
+			document.write('<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />');
+			document.write('<script src="{$base_url}style/jquery-ui.1.7.2.min.js"><\/script>');
+		{literal}
+	}
+	{/literal}
+</script>
+<link href="{$base_url}style/dropmenu.css" rel="stylesheet" type="text/css">
+
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center"> 
+  {if !$no_commit_form}<form id="tform" name="tform" method="POST" action="">{/if}
+  	<input type="hidden" id="fecha_help">
+  	<input type="hidden" name="visit_log_id" value="{$visit_log_id}">
+  	<input type="hidden" id="visit_status_id" name="visit_status_id" value="{$visit_status_id}">
+  <tr>
+    <td colspan="2" height="20px">
+    
+		{if $task_page}
+		<div style="float: right">
+			{section name=page_loop loop=$task_page start=0}
+				<div id="btnpag{$smarty.section.page_loop.iteration}" onclick="hidePages({$task_page}); switchDisplay('pag{$smarty.section.page_loop.iteration}'); this.className = 'div_page_tab div_page_tab_selected'" class="div_page_tab">Page {$smarty.section.page_loop.iteration}</div>
+			{/section}
+		</div>
+		{/if}
+    	
+    </td>
+  </tr>
+  
+  <tr bgcolor="#BFDFFF">
+    <td valign="bottom" nowrap class="title" colspan="2">
+    	<div style="float: left">
+    		<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$form_title}
+    	</div>
+    	<div style="float: left; padding-left: 20px">
+			<table border="0" width="50%" cellpadding="0" cellspacing="0"> 
+			  <tr>
+			  	<td class="ftitle" style="width: 25%" nowrap>Patient:</td>
+			    <td style="width: 25%" nowrap>&nbsp;&nbsp;{$patient->first_name} {$patient->last_name}</td>
+			  	<td class="ftitle" style="width: 25%" nowrap>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certification:</td>
+			    <td style="width: 25%" nowrap>&nbsp;&nbsp;{$episode_start_date|date_format:"%m-%d-%Y":"":true}  to {$episode_end_date|date_format:"%m-%d-%Y":"":true}</td>
+			  </tr>
+			</table>
+    	</div>
+    	{if !$hide_top_right}
+    	<div style="float: right; font-size: 10px; with: 240px; display: inline">
+	    	<span style="float: right">
+	    		<a href="javascript:tform.action='{$index_url}{$resource_path}/pdf/{$visit_log_id}';document.tform.submit()">print <img src="{$image_url}pdf.gif" style="vertical-align: bottom" border="0"></a> | 
+	    		<a href="javascript:void(0)" onclick="document.getElementById('form_div').scrollTop = 0">top</a> | 
+	    		<a href="javascript:void(0)" onclick="document.getElementById('form_div').scrollTop = document.getElementById('form_div').scrollHeight">bottom</a>
+	    	</span>
+			<span style="float: right; width: 70px">
+				{if $visit_status_id != 6}
+					<div id="sample_attach_menu_parent">&nbsp;Actions <img align="bottom" src="{$image_url}drop_selector.gif"></div>
+					<div id="sample_attach_menu_child">
+						{if $visit_status_id == 1 OR $visit_status_id == 2}
+							<a class="sample_attach" href="javascript:modalForm('Copy From Previous', 'previous', {$visit_log_id})">Copy From Previous</a>
+							<a class="sample_attach" href="javascript:modalForm('Copy From Template', 'template', {$visit_log_id})">Copy From Template</a>
+						{/if}
+						<a class="sample_attach" href="javascript:modalForm('Create Template', 'createtemplate', {$visit_log_id})">Create as Template</a>
+					</div>
+				{/if}
+			</span>
+    	</div>
+    	{/if}
+    </td>
+  </tr>
+  
+  <tr> 
+    <td valign="top" colspan="2" id="form_td">
+	  <div id="form_div" style="overflow: auto; height: 100%">
+	  
+		  <div class="error tbl_msg" style='margin: 5px;{if !$error_string}display: none;{/if}'>{$error_string}</div>
+		  
+		  {include file=$dynamic_form}
+		  	{ if $visit_type_id != 200 & $visit_type_id != 103 & $visit_type_id != 101 }
+			  	{if $visit_status_id == 4 || $visit_status_id == 5}
+			  	  	{if $show_cm_comments}
+					<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+					  <tr>
+					    <td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Case Manager Comments</td>
+					  </tr> 
+					  <tr>
+					    <td height="10"></td>
+					  </tr>
+					  <tr>
+					    <td><i>{$comments|nl2br}</i></td>
+					  </tr>
+					</table> 
+					{/if}
+				{/if}
+					
+				{if $can_write_agency_cm_comments}
+				  	<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+					  <tr>
+					    <td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency Comments</td>
+					  </tr> 
+					  <tr>
+					    <td height="10"></td>
+					  </tr>
+					  <tr>
+					    <td>
+					    	<textarea name="agency_cm_comments" cols="60" rows="5" wrap="auto">{$agency_cm_comments}</textarea>
+					    </td>
+					  </tr>
+					</table> 
+				{elseif $agency_cm_comments neq ''}
+				  	<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+					  <tr>
+					    <td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency Comments XX</td>
+					  </tr> 
+					  <tr>
+					    <td height="10"></td>
+					  </tr>
+					  <tr>
+				    	<td>
+				    		<i>{$agency_cm_comments|nl2br}</i>
+				    		<input type="hidden" name="agency_cm_comments" value="{$agency_cm_comments}">
+				    	</td>
+					  </tr>
+					</table> 
+			  	{/if}
+
+			  	{if $show_user_comments}
+					<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+					  <tr>
+					    <td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User Comments<i>(This field is not printed)</i></td>
+					  </tr> 
+					  <tr>
+					    <td height="10"></td>
+					  </tr>
+					  <tr>
+					    <td>
+					    	<textarea name="user_comments" cols="60" rows="5" wrap="auto">{$user_comments}</textarea>
+					    </td>
+					  </tr>
+					</table>
+				{/if}
+			{/if}
+		  
+	  </div>
+    </td>
+  </tr>
+  <tr> 
+    <td height="30px">
+  		{if $visit_status_ids == 6}
+  			<input type="submit" class="btn" value="{$grl_save}" onclick="tform.action='{$index_url}{$resource_path}/index/{$visit_log_id}{if $window eq 'nw'}/task/nw{/if}';setValue('visit_status_id', 2)">
+  		{/if}
+  		
+  		{if $visit_status_id == 4 && $return_from_approved == true}
+  			<input type="button" class="btn" value="{$grl_return}" onclick="document.location = '{$index_url}{$resource_path}/returnFromApproved/{$visit_log_id}'">
+  		{/if}
+  		
+  		{if $visit_status_id == 1 OR $visit_status_id == 2 OR $visit_status_id == 5 OR $visit_status_id == 6}
+  			<!--<input type="submit" class="btn" value="{$grl_save}" onclick="tform.action='{$index_url}{$resource_path}/index/{$visit_log_id}{if $window eq 'nw'}/task/nw{/if}';setValue('visit_status_id', 2)"> -->
+				<input type="submit" class="btn" value="{$grl_save}" onclick="tform.action='{$index_url}{$resource_path}/index/{$visit_log_id}{if $window eq 'nw'}/task/nw{/if}';setValue('visit_status_id', 2)">
+  			{if $upload_document_name || $upload_document_name2}
+  				<input type="button" class="btn" value="{$grl_subt_app}" onclick="setValue('visit_status_id', 3); tform.submit()">
+  			{elseif $sent_to_approve_date != ''}
+  				<input type="button" class="btn" value="{$grl_subt_app}" onclick="{if $validatationVisit}validationVisit(this, 1){else}submitForm(1){/if}">
+  			{else}
+	  			<input type="button" class="btn" value="{$grl_subt_app}" onclick="{if $validatationVisit}validationVisit(this){else}checkEpass(){/if}">
+	  		{/if}
+  		{/if}
+  		
+  		{if $reactive_enable}
+  			<input type="button" class="btn" value="{$grl_reactivate}" onclick="document.location = '{$index_url}task/task/reactivate/{$visit_log_id}{if $window eq 'nw'}/nw{/if}'">
+  		{/if}
+
+  		
+		{$smarty.capture.addition_button}
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+		<input type="button" class="btn" value="Print" onclick="tform.action='{$index_url}{$resource_path}/pdf/{$visit_log_id}';document.tform.submit()">  		
+
+  		{if $cancel_action}
+				{if $window eq 'nw'}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();">
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">*}
+				{else}
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">
+				{/if}
+  		{else}
+				{if $window eq 'nw'}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();">
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/task'">*}
+				{else}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/task'">
+				{/if}
+  		{/if}
+
+			
+    </td>
+    <td>
+    	{if $task_form_updated}
+    		<span class="tbl_msg_ok">Form {$grl_upd_msg}</span>
+			{else}	
+				<span class="tbl_msg_ok" style="display:none;"></span>
+    	{/if}
+    	{if $task_elimination_enable}
+    	<input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister({$visit_log_id})" style="float: right">
+		{/if}
+    </td>
+  </tr>
+  {if !$no_commit_form}</form>{/if}
+</table> 
+
+		{if $visit_status_id != 6}
+		<script type="text/javascript">
+		at_attach("sample_attach_menu_parent", "sample_attach_menu_child", "hover", "y", "pointer");
+		</script>
+		{/if}
+
+<script language="JavaScript" type="text/javascript">
+
+{if $task_form_updated}
+	setTimeout(function()
+		{literal} { {/literal}
+		$('.tbl_msg_ok').fadeOut();
+		{literal} } {/literal}
+	, 6000);	
+{/if}
+
+	function deleteRegister ( record_id ) {literal}{{/literal}
+
+		if (confirm('Are you sure to delete this task?')) document.location = "{$index_url}task/task/delete/" + record_id+"{if $window eq 'nw'}/nw{/if}";
+	  
+	{literal}}{/literal}
+	
+	function hidePages ( num_pages ) {literal}{{/literal}
+
+		for(i=1; i <= num_pages; i++) {literal}{{/literal}
+			switchDisplay2('pag' + i, 'none'); 
+			setClass('btnpag' + i, 'div_page_tab'); 
+		{literal}}{/literal}
+		
+		document.getElementById('form_div').scrollTop = 0;
+	  
+	{literal}}{/literal}
+	
+	{if $task_page}
+		setClass('btnpag1', 'div_page_tab  div_page_tab_selected'); 
+	{/if}
+    var dhxWins;
+    	
+    function modalForm ( title, faction, visit_log_id ) {literal}{{/literal}
+ 
+     	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 250, 150);
+		w1.setText(title);
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').center();
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}task/taskaction/" + faction + "/" + visit_log_id);
+		
+		pos = dhxWins.window('w1').getPosition();
+		dhxWins.window('w1').setPosition(pos[0], 60);
+
+    {literal}}{/literal}
+    
+    function cancelModal () {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+    
+    document.getElementById('form_div').style.height = getWindowHeight() - 80 + "px";
+    document.body.style.overflow = 'hidden';
+    //document.getElementById('form_div').scrollTop = document.getElementById('form_div').scrollHeight
+    
+    function checkEpass(){literal}{{/literal}
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 200);
+		w1.setText("Enter your Electronic Password");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}/task/task/modalCheckEpassword/{$visit_log_id}");
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    
+
+    {literal}}{/literal}
+    
+    function submitForm(just_submit){literal}{{/literal}
+		if (!just_submit) {literal}{{/literal}
+			dhxWins.window('w1').close();	
+		{literal}}{/literal}
+	    tform.action='{$index_url}{$resource_path}/index/{$visit_log_id}{if $window eq 'nw'}/task/nw{/if}';
+	    setValue('visit_status_id', 3);
+		tform.submit();
+		
+    {literal}}{/literal};
+		
+	{literal}
+		function autoSave(){
+			{/literal}
+			tform.action='{$index_url}{$resource_path}/index/{$visit_log_id}';
+			{literal}
+			var params = $('form#tform').serialize();
+			var url = $('form#tform').attr('action');
+			$.ajax({
+				type: "POST",
+				dataType: 'json',
+				url: url,
+				data: params,
+				success: function(data){
+					if(data=='1'){
+						$('.tbl_msg_ok').html("Form auto saved").fadeIn(function(){ $(this).fadeOut(5000);});
+					}
+				},	
+				error: function (data, status, e)
+				{
+				}
+			});
+		}
+	{/literal}
+	
+	{if $visit_status_id == 1 || $visit_status_id == 2}
+		{if !$no_commit_form}
+		setInterval('autoSave()',1000*60*2);
+		// autoSave();
+		{/if}
+	{/if}
+
+	{if $window eq 'nw'}		
+		{literal}
+		$(window).unload(function() {
+			window.opener.loadGrid();
+		});		
+		{/literal}
+	{/if}
+
+	function open_popup (url, WD, HT) {literal}{{/literal}
+		window.open(url);
+		/*	if(!WD)
+				WD = 400;
+			if(!HT)
+				HT = 200
+				
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, WD, HT);
+			w2.setText("Previous Evaluation");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL(url);
+			    	*/
+  {literal}}{/literal}
+
+  {literal}
+  function validationVisit(btn, no_epass){
+  	if ($(btn).val()=='Validating...') {
+  		return;
+  	}
+
+  	var btn_value = $(btn).val();
+  	$(btn).val('Validating...');  	
+  	{/literal}var url = '{$index_url}{$resource_path}/validation_visit/{$visit_log_id}';{literal}
+  	var params = $('form#tform').serialize();
+	$.ajax({
+		type: "POST",
+		dataType: 'json',
+		url: url,
+		data: params,
+		success: function(data){
+			if(data.validation_success=='1' || data.validation_success=='2' ){
+				$('.validation_error').dialog('close');
+				$('#msg_status_validation').html('');
+				$(btn).val(btn_value);
+				if (no_epass) {
+					setValue('visit_status_id', 3);
+					{/literal}tform.action='{$index_url}{$resource_path}/index/{$visit_log_id}{if $window eq 'nw'}/task/nw{/if}';{literal}
+					tform.submit();
+				} else {
+					{/literal}
+					$('#msg_status_validation').html("");
+					{literal}
+					autoSave();
+					checkEpass();
+				}
+			}
+			 else {
+				$(btn).val(btn_value);
+				$('.validation_error').dialog('close');
+				$('#msg_status_validation').html('')
+				if (data.msg){
+					{/literal}
+					//$('#msg_status_validation').html("<img src='{$image_url}stop.png'>");
+					{literal}
+					// $('.error.tbl_msg').html(data.msg).show();
+					// $('html, body').animate({
+					//     scrollTop: $('.error.tbl_msg').offset().top
+					// }, 400);
+
+					var x = `<font style='color: red;'>${data.msg}</font>`;
+
+					$('<div class="validation_error">' + x + '</div>').dialog({
+							width: '30%',
+							title: "Validation Error!",
+							resizable: true,
+							buttons: {								
+									"close": function() {
+											$(this).dialog("close");
+									}
+							}
+					});
+					autoSave();
+				}
+			}
+		},	
+		error: function (data, status, e)
+		{
+			$(btn).val(btn_value);
+		}
+	});
+  }
+  {/literal}
+
+	 {literal}
+  function saveValidation(btn){
+  	if ($(btn).val()=='Saving...') {
+  		return;
+  	}
+
+  	var btn_value = $(btn).val();
+  	$(btn).val('Saving...');  	
+  	{/literal}var url = '{$index_url}{$resource_path}/validation_visit/{$visit_log_id}';{literal}
+  	var params = $('form#tform').serialize();
+	$.ajax({
+		type: "POST",
+		dataType: 'json',
+		url: url,
+		data: params,
+		success: function(data){
+			if(data.validation_success=='1'){
+				$('.validation_error').dialog('close');
+				$(btn).val(btn_value);
+					{/literal}
+					$('#msg_status_validation').html("<b> Ready to submit for approval </b><img src='{$image_url}ok.png'> ").css('color', 'green');
+					{literal}
+					document.getElementById('form_div').scrollTop = 0
+					autoSave();
+			}
+			else if (data.validation_success == '2') {
+				$('.validation_error').dialog('close');
+				$(btn).val(btn_value);
+					{/literal}
+					$('#msg_status_validation').html("<b> Form Save </b><img src='{$image_url}ok.png'> ").css('color', 'green');
+					{literal}
+					document.getElementById('form_div').scrollTop = 0
+					autoSave();
+			} 
+			else {
+				$(btn).val(btn_value);
+				$('.validation_error').dialog('close');
+				if (data.msg){
+					{/literal}
+					$('#msg_status_validation').html("");
+					{literal}
+					// $('.error.tbl_msg').html(data.msg).show();
+					// $('html, body').animate({
+					//     scrollTop: $('.error.tbl_msg').offset().top
+					// }, 400);
+
+					var x = `<font style='color: red;'>${data.msg}</font>`;
+
+					$('<div class="validation_error">' + x + '</div>').dialog({
+							width: '30%',
+							title: "Validation Error!",
+							resizable: true,
+							buttons: {								
+									"close": function() {
+											$(this).dialog("close");
+									}
+							}
+					});
+					autoSave();
+				}
+			}
+		},	
+		error: function (data, status, e)
+		{
+			$(btn).val(btn_value);
+		}
+	});
+  }
+  {/literal}
+
+  	{if $schedule_conflicted}
+	  	function confirm_shcedule_overlap ( ) {literal}{{/literal}
+	 
+	     	dhxWins = new dhtmlXWindows();
+	    	dhxWins.enableAutoViewport(false);
+	    	dhxWins.attachViewportTo("vp_container");
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w1 = dhxWins.createWindow("w1", 10, 10, 350, 150);
+			w1.setText("WARNING - Visits Conflicted");
+			w1.button("park").hide();
+			w1.button("minmax1").hide();
+		    w1.denyResize(); // deny resizing
+		    w1.denyMove(); 
+		    dhxWins.window('w1').center();
+		    dhxWins.window('w1').setModal(true);
+			w1.attachURL("{$index_url}{$resource_path}/confirm_shcedule_overlap/{$visit_log_id}?msg={$schedule_conflicted_msg}&conflicted_visited_time_in={$conflicted_visited_time_in}&conflicted_visited_time_out={$conflicted_visited_time_out}&conflicted_visit_date_time={$conflicted_visit_date_time}&conflicted_visited_date={$conflicted_visited_date}&conflicted_mileage={$conflicted_mileage}");
+			
+			pos = dhxWins.window('w1').getPosition();
+			dhxWins.window('w1').setPosition(pos[0], 60);
+
+	    {literal}}{/literal}
+
+	    confirm_shcedule_overlap();
+  	{/if}
+</script>

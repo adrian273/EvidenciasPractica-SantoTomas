@@ -1,0 +1,51 @@
+<?
+class ContractorNotesMdl extends Model {
+
+	var $contractor_note_id;
+	var $contractor_id;
+	var $agency_id;
+	var $note_date;
+	var $note;
+	var $us1_user_id1;
+	
+	function ContractorNotesMdl () {
+		
+		parent::Model();
+		
+	}
+
+	function getContractorNotes( $contractor_id, $agency_id ) {
+        return $this->db->query("
+            select  * from contractor_notes
+            left join us1_user on us1_user.user_id = us1_user_id1 
+            where contractor_id = $contractor_id 
+            and agency_id = $agency_id
+            order by note_date asc;
+        ")->result();
+    }
+
+    function insert () {
+        $this->db->insert("contractor_notes", $this);
+        $contractor_note_id = $this->db->insert_id();
+        return $contractor_note_id;
+
+    }
+
+    function getByid($id){
+        $this->db->where("contractor_note_id", $id);
+        $query = $this->db->get('contractor_notes');
+        return $query->row();
+    }
+
+    function update ( $contractor_note_id, $note ) {
+        $this->db->set("note", $note);
+        $this->db->where("contractor_note_id", $contractor_note_id);
+        $this->db->update("contractor_notes");
+    }
+
+    function delete ( $contractor_note_id ) {
+        $this->db->delete("contractor_notes", array("contractor_note_id" => $contractor_note_id));
+    }
+
+
+}

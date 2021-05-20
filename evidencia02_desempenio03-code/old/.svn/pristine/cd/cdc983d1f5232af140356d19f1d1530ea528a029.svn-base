@@ -1,0 +1,3302 @@
+<?
+
+ class Referral extends MY_Controller {
+	
+	function Referral () {
+		
+		parent::MY_Controller();
+//		$this->output->enable_profiler();
+		$this->tpl->assign("resource_path", "patient/referral");
+		
+		$this->tpl->assign('marital_list', $this->parametermdl->getByType(1));
+		$this->tpl->assign('prim_lang_list', $this->parametermdl->getByType(3));
+		$this->tpl->assign('ethnicity_list', $this->parametermdl->getByType(4));
+		$this->tpl->assign('disc_from_list', $this->parametermdl->getByType(91));
+		$this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($this->getAgencyId()));		
+	}
+	
+	function confirmSOC ( $patient_id ) {
+		
+		$this->index($patient_id, null, true);
+		
+	}
+	
+  
+	/*function index ( $patient_id, $episode_id=null, $confirm_soc_date=false ) {
+    $this->tpl->assign('patient_id', $patient_id);
+		$this->tpl->assign('episode_id', $episode_id);
+		$this->tpl->assign('confirm_soc_date', $confirm_soc_date);
+		
+    $this->tpl->assign("tab_page", true);
+		$this->tpl->assign_include("dynamic_tpl", "patient/referral_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }*/
+	function index ( $patient_id, $episode_id=null, $create_new_soc=null ) {
+		$this->load->model('uploaddocumentsmdl');
+		
+		$contractor = array();
+		$pat_contractor = $this->patientcontractormdl->get($patient_id);
+		if(sizeof($pat_contractor) > 0){
+			$pat_contractor = $pat_contractor[0];
+			if(isset($pat_contractor->contractor_id) ANd $pat_contractor->contractor_id != "")
+			$contractor=$this->agencymdl->getByAgencyId($pat_contractor->contractor_id);
+			$this->tpl->assign('contractor', $contractor);
+		} else {			
+			$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			$this->tpl->assign('contractor', $contractor);
+		}
+		
+		$usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+
+		$this->tpl->assign('entity_id', $patient_id);
+		$this->tpl->assign('record_id', $episode_id);
+		$this->tpl->assign('episode_id', $episode_id);
+		if ($create_new_soc == "Y"){
+			$this->tpl->assign('record_id', $episode_id."/".$create_new_soc);
+			$this->tpl->assign("sn_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 16, false));
+			$this->tpl->assign("pt_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 17, false));
+			$this->tpl->assign("cm_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 18, false));
+			
+		}
+		$this->tpl->assign('create_new_soc', $create_new_soc);
+		$this->tpl->assign('faction', 'index');
+		
+		if ($create_new_soc == "Y"){			
+			$this->tpl->assign('additional_buttons', array('Cancel' => "parent.document.location = '".$this->config->config["index_url"] . "patient/patient/treatmentarea/" . $patient_id . "/" . $episode_id . "/b2" ."'"));
+		}else{
+			$this->tpl->assign('additional_buttons', array('Print Agency Intake' => 'printIntake()'));
+		}
+
+    	$patient = $this->patientmdl->getById($patient_id);
+    	$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+    	$haveDocuments = count($this->uploaddocumentsmdl->get($patient_id)) > 0 ? true : false;
+		$this->tpl->assign('haveDocuments', $haveDocuments);
+
+		$this->tpl->assign('physician_list', $this->usagymdl->getPhysiciansByAgency($patient->agency_id));
+	 	$this->tpl->assign('not_physician_list', $this->usagymdl->getNotPhysiciansByAgency($patient->agency_id)); 	 	   
+		$this->tpl->assign('clinician_list', $this->usagymdl->getCliniciansByAgency($patient->agency_id));
+   		$this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($patient->agency_id));		
+    
+    	// if (!is_null($episode_id) && $episode_id != '') {
+    	if ($episode_id) {
+	    	$episode = $this->episodemdl->getById($episode_id);
+			$soc = $this->socmdl->getById(@$episode->soc_id);
+    	} else {
+    		$soc = $this->socmdl->getCurrent($patient_id);
+    	}
+    	$this->assignObject($soc);
+    	// echo "<pre>";print_r($soc);echo "</pre>";exit();
+		$this->tpl->assign('referral_date', standard_date(mysql_to_unix($soc->referral_date_time))); // referral datetime convertion
+		$this->tpl->assign('referral_time', standard_date(mysql_to_unix($soc->referral_date_time), 'USA_TIME')); // referral datetime convertion
+		
+		$this->tpl->assign('referral_status_list', array (
+			'Pending' => 'Pending',
+			'Accepted' => 'Accepted',
+			'Accepted Partially' => 'Accepted Partially',
+			'Returned' => 'Returned',
+			'Cancel' => 'Cancel',
+		));
+
+	    if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+	      // 
+	    }else if ($this->getAgencyType() == 'C') {
+        $this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+                
+  			$this->tpl->assign('prim_doctor_office', $this->agencymdl->getByAgencyId($soc->prim_doctor_office_id));
+  			$this->tpl->assign('second_doctor_office', $this->agencymdl->getByAgencyId($soc->second_doctor_office_id));
+        
+  			//$this->tpl->assign("prim_doctor", 	$this->usagymdl->getByUsAgyId($soc->prim_doctor_user_id));
+  			//$this->tpl->assign("second_doctor", $this->usagymdl->getByUsAgyId($soc->second_doctor_user_id));
+  			$this->tpl->assign("doctor_display", true);
+      	}
+		
+		$this->tpl->assign("diagnosis", $patient->diagnosis);
+
+		//		
+		//		$this->tpl->assign('prim_doctor_user_id', $patient->prim_doctor_user_id);
+		//		$this->tpl->assign('second_doctor_user_id', $patient->second_doctor_user_id);
+
+    	// counting episode of the soc
+		//if (count($this->episodemdl->getBySocId($soc->soc_id)) && $patient->tab_013_status > 2 && $this->getAgencyType() != 'C') {
+		//if (count($this->episodemdl->getBySocId($soc->soc_id)) && $patient->tab_013_status > 2 && ($this->getAgencyType() != 'C' || ($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C') )) {
+		/*if (count($this->episodemdl->getBySocId($soc->soc_id)) && ($this->getAgencyType() != 'C' || ($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C') )) {*/
+
+		if (count($this->episodemdl->getBySocId($soc->soc_id))
+				&& ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3) )
+			) {
+			$this->tpl->assign('new_referral_enable', true);
+		}
+
+		if ($create_new_soc == "Y"){
+			$this->tpl->assign('new_referral_enable', false);
+			$this->tpl->assign('estimated_soc_date', "");
+		}
+	    if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+	    
+	    }else{
+	      if ($this->getAgencyType() == 'C') {
+	  			$this->tpl->assign('lock_soc', 1);
+	  		}
+
+			// if (!$this->hasPermission(2)) {
+			if ($this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3)) {
+				// Have permission to change the SOC date
+	  			$this->tpl->assign('change_soc_date', true);
+			}
+	    }
+	  			
+		$rules = array ('referral_date' => 'required',
+						'referral_time' => 'valid_time',
+						//'prim_doctor_user_id' => 'required',
+						// 'prim_doctor_office_id' => 'required'
+            );
+		$fields = array ('referral_date' => 'Referral Date',
+						'referral_time' => 'Referral Time',
+						//'prim_doctor_user_id' => 'Primary Physician',
+						// 'prim_doctor_office_id' => 'Referring Physician'
+            );
+    
+    	if ($contractor->provides_altern_therapy != "Y") {
+    		$rules['prim_doctor_office_id'] = 'required';
+    		$fields['prim_doctor_office_id'] = 'Referring Physician';
+		}
+
+		// $agency_type = $this->agencymdl->getByAgencyId($this->getAgencyId())->agency_type;
+		
+		if ($create_new_soc == "Y"){ // checking new soc date greater than last episode
+			$rules['estimated_soc_date'] = 'required|callback_newCheckSOCDate';
+			// $rules['estimated_soc_date'] = 'required|callback_checkSOCDate';
+			$fields['estimated_soc_date'] = 'Estimated Soc Date';
+		}else if (count($this->episodemdl->getCurrentByPatientId($patient_id)) && (is_null($soc->lock_soc) || $soc->lock_soc == 0)) { // checking soc date greater than last soc date
+			// $rules['estimated_soc_date'] = 'required|callback_checkSOCDate';
+			$rules['estimated_soc_date'] = 'required';
+			$fields['estimated_soc_date'] = 'Estimated Soc Date';
+		}
+		
+    
+	    if($this->input->post('has_insu_medicare')==1){      
+	      $rules['insu_medicare_hic_number'] = 'required';
+	      $fields['insu_medicare_hic_number'] = 'HIC Number';
+	    }
+	    if($this->input->post('has_insu_medicaid')==1){
+	       /*array('field' => 'insu_medicaid_id',
+	             'label' => 'Medicaid Id',
+	             'rules' => 'required')*/
+	      $fields['insu_medicaid_id'] = 'Medicaid Id';
+	      $rules['insu_medicaid_id'] = 'required';
+	      
+	      $fields['insu_medicaid_auth_from_date'] = 'Medicaid Authorization From date';
+	      $rules['insu_medicaid_auth_from_date'] = 'required';
+	      
+	      $fields['insu_medicaid_auth_to_date'] = 'Medicaid Authorization To date';
+	      $rules['insu_medicaid_auth_to_date'] = 'required';
+	    }
+	    
+	    if($this->input->post('has_insu_other')==1){
+	      $fields['insu_other_id'] = 'Other Id';
+	      $rules['insu_other_id'] = 'required';
+	      
+	      $fields['insu_other_auth_from_date'] = 'Other Authorization From Date';
+	      $rules['insu_other_auth_from_date'] = 'required';
+	      
+	      $fields['insu_other_auth_to_date'] = 'Other Authorization To Date';
+	      $rules['insu_other_auth_to_date'] = 'required';
+	    }
+	    
+	    if( in_array($this->input->post('referral_status'), array('Accepted Partially','Returned','Cancel')) ){      
+			$rules['status_notes'] = 'required';
+			$fields['status_notes'] = 'Status Notes';
+		}
+
+    	//print_r($rules);exit;
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == TRUE) {
+			$soc_id = 0;
+			if ($create_new_soc == "Y") {
+				$this->socmdl->insert($patient_id);
+				$soc_id = $this->socmdl->soc_id;
+				$this->assignPostData($this->socmdl);
+				$this->socmdl->soc_id = $soc_id;
+				$this->socmdl->lock_soc = null;
+			}else{
+				$this->assignPostData($this->socmdl);				
+				$soc_id = $this->input->post('soc_id');
+			}
+
+			$this->socmdl->patient_id = $patient_id;
+			
+			$referral_time_hour = ((int) ($this->input->post('referral_time_Hour') == 12 ? 0 : $this->input->post('referral_time_Hour')) + ($this->input->post('referral_time_Meridian') == 'am' ? 0 : 12));
+			$visit_date_time = standard_date(human_to_unix($this->input->post('referral_date')), 'MYSQL_NOTIME') . " " . $referral_time_hour . ":" . $this->input->post('referral_time_Minute');
+
+			if($this->input->post('f2f_date')){
+				$this->socmdl->f2f_date  = standard_date(human_to_unix($this->input->post('f2f_date')), 'MYSQL_NOTIME');
+			}
+			$this->socmdl->referral_date_time  = $visit_date_time;
+			$this->socmdl->current_soc = 1;
+			// $this->socmdl->prim_doctor_user_id = $soc->prim_doctor_user_id;
+			// $this->socmdl->second_doctor_user_id = $soc->second_doctor_user_id;
+			$this->socmdl->update($soc_id);
+
+			$this->patientmdl->updateFlex($patient_id, 'diagnosis', $this->input->post('diagnosis'));
+			$this->tpl->assign("diagnosis", $this->input->post('diagnosis'));
+			
+			if ($create_new_soc == "Y") {
+				$soc = $this->socmdl->getById($soc_id);
+				$team = $this->teammdl->getAll($patient_id);
+			
+				if (array_key_exists($soc->clinician_user_id, $team) == FALSE && $soc->clinician_user_id) {
+					// assigning clinician to team
+					$this->teammdl->user_id = $soc->clinician_user_id;
+					$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+					$this->teammdl->insert($patient_id);
+				}
+
+				if ($this->input->post('case_manager_user_id')) {					
+					$team = $this->teammdl->get($patient_id, null, null, null, $this->input->post('case_manager_user_id'));
+					if (count($team)) {
+						$this->teammdl->delete($team[0]->ppr_id);
+					}
+
+					// assigning CM to team
+					$this->teammdl->user_id = $this->input->post('case_manager_user_id');
+					$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+					$this->teammdl->insert($patient_id);
+
+					// assigning CM permission to team user
+					$this->teammdl->cleanPatientApprover($patient_id, 3);
+					$this->teammdl->assignPatientApprover($this->teammdl->ppr_id, 3);
+					
+				}
+				
+				// SN Approver
+				if (!is_null($this->input->post('sn_user_id')) && $this->input->post('sn_user_id') != $this->input->post('case_manager_user_id')) {
+					$team = $this->teammdl->get($patient_id, null, null, null, $this->input->post('sn_user_id'));
+					if (count($team)) {
+						$this->teammdl->delete($team[0]->ppr_id);
+					}
+					// assigning SN APP to team
+					$this->teammdl->user_id = $this->input->post('sn_user_id');
+					$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+					$this->teammdl->insert($patient_id);
+					
+					// assigning SN APP permission to team user
+					$this->teammdl->cleanPatientApprover($patient_id, 1);
+					$this->teammdl->assignPatientApprover($this->teammdl->ppr_id, 1);
+				}
+				
+				// PT Approver
+				if (!is_null($this->input->post('pt_user_id')) && $this->input->post('pt_user_id') != $this->input->post('case_manager_user_id')) {
+					$team = $this->teammdl->get($patient_id, null, null, null, $this->input->post('pt_user_id'));
+					if (count($team)) {
+						$this->teammdl->delete($team[0]->ppr_id);
+					}
+					// assigning PT APP to team
+					$this->teammdl->user_id = $this->input->post('pt_user_id');
+					$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+					$this->teammdl->insert($patient_id);
+					
+					// assigning PT APP permission to team user
+					$this->teammdl->cleanPatientApprover($patient_id, 2);
+					$this->teammdl->assignPatientApprover($this->teammdl->ppr_id, 2);
+				}
+
+				// creating episode
+				/*$this->docdoctorordermdl->order_date = date('Y-m-d');
+				$this->docdoctorordermdl->doc_doctor_order_type_id = 1;
+				//$this->docdoctorordermdl->doctor_office_id = $soc->prim_doctor_user_id;
+				$this->docdoctorordermdl->doctor_office_id = $soc->prim_doctor_office_id;
+				$this->docdoctorordermdl->order_by_user_id = $this->getUsAgyId();
+				$this->docdoctorordermdl->insert($patient_id);
+				
+				$this->episodemdl->insert($soc_id, $soc->estimated_soc_date, $this->docdoctorordermdl->doc_doctor_order_id);*/
+				$this->episodemdl->insert($soc_id, $soc->estimated_soc_date);
+				$episode = $this->episodemdl->getById($this->episodemdl->cms485_id);
+
+				// creating Start of Care visit to patient
+				if ($this->input->post('begin_treatment') == 1 && $this->input->post('clinician_user_id')) {
+					$this->visitlogmdl->visit_type_id = 300;
+					$this->visitlogmdl->cms485_id = $this->episodemdl->cms485_id;
+					$this->visitlogmdl->visit_user_id = $soc->clinician_user_id;
+					$this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+					$this->visitlogmdl->visit_date_time = $episode->episode_start_date . " 08:00";
+					
+					$visittype = $this->visittypemdl->getById($this->visitlogmdl->visit_type_id);
+					
+					$this->visitlogmdl->insert($visittype->billable_yn);
+					
+					$this->app->updateEpisodeVisitNumber($this->visitlogmdl->cms485_id); // reordering visit number
+					
+				}
+				
+				// sending internal messahe to clinician
+				$emailtext = $this->emailtextmdl->get(2);
+				$this->messagemdl->user_from = $this->getUsAgyId();
+				$this->messagemdl->msg_subject = $emailtext->email_subject;
+				$this->messagemdl->msg_text = $emailtext->email_subject;
+				$this->messagemdl->insert();
+				// get all active team members
+				$team = $this->teammdl->getAll($patient_id, null, true, array(), 'I');
+				// sending internal messahe to all active team members
+				foreach ($team as $team_user_id => $user_name) {
+					$this->usermessagemdl->insert($this->messagemdl->msg_id, $team_user_id, 0);
+				}
+				
+				// if ($soc->clinician_user_id) {
+				// 	$this->usermessagemdl->insert($this->messagemdl->msg_id, $soc->clinician_user_id, 0);
+				// }
+				
+				// locking soc
+				$this->socmdl->updateLock($soc_id);	
+
+				// updating patient status
+				$this->patientmdl->updateStatus($patient_id, 2);
+
+				$create_new_soc = null;
+				$this->patientmdl->updateDoctorOffice($patient_id, $this->input->post('prim_doctor_office_id'), $this->input->post('second_doctor_office_id'));
+				
+				$this->tpl->assign('success_string', "New Soc has been created");
+
+				echo "<script>parent.document.location = '" . $this->config->config["index_url"] . "patient/patient/treatmentarea/" . $patient_id ."'</script>";
+				exit();
+				
+			}else{
+				$this->tpl->assign('success_string', "Referral Intake" . $this->lang->line('grl_upd_msg'));				
+				$this->patientmdl->updateDoctorOffice($patient_id, $this->input->post('prim_doctor_office_id'), $this->input->post('second_doctor_office_id'));
+			}
+			
+			$soc = $this->socmdl->getById($soc_id);			
+			$this->assignObject($soc);
+
+			//$this->patientmdl->updateDoctors($patient_id, $this->input->post('prim_doctor_user_id'), $this->input->post('second_doctor_user_id'));
+			
+
+			/*if ($confirm_soc_date===true) {
+				redirect('patient/referral/confirmsocdate/' . $patient_id);
+			}*/
+			
+			
+		}
+		
+		$this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+		
+		if ($soc->lock_soc == 1) {
+			
+			$this->tpl->assign('case_manager', $this->usagymdl->getByUsAgyId($soc->case_manager_user_id));
+			$this->tpl->assign('clinician',    $this->usagymdl->getByUsAgyId($soc->clinician_user_id));
+			//$this->tpl->assign('additional_buttons', array('Print Contractor Referral'=>'selectContractor();'));
+			
+		}
+		
+    	//$this->tpl->assign('referral_date_display_only', true);
+		//$this->tpl->assign('referral_date_time_display_only', true);
+		
+		$this->tpl->assign('referral_time_ut', mysql_to_unix($soc->referral_date_time));
+	    if(!$soc->referral_date_time){
+	      	$this->tpl->assign('referral_date', standard_date(mysql_to_unix(date("Y-m-d h:i:s a")), 'USA_DATE'));
+	      	$this->tpl->assign('referral_time_only', standard_date(mysql_to_unix(date("Y-m-d h:i:s a")), 'USA_TIME_C'));
+	  		$this->tpl->assign('referral_time_Hour', date("h"));
+	  		$this->tpl->assign('referral_time_Minute', date("i"));
+	  		$this->tpl->assign('referral_time_Meridian', date("a"));  		
+	    }else{
+	      	$this->tpl->assign('referral_time_only', standard_date(mysql_to_unix($soc->referral_date_time), 'USA_TIME_C'));
+	  		$this->tpl->assign('referral_time_Hour', date("h",mysql_to_unix($soc->referral_date_time)));
+	  		$this->tpl->assign('referral_time_Minute', date("i",mysql_to_unix($soc->referral_date_time)));
+	  		$this->tpl->assign('referral_time_Meridian', date("a",mysql_to_unix($soc->referral_date_time)));		
+	    }
+    
+		$this->tpl->assign("tab_page", true);
+		
+		if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3)) {			
+	      	// allow to edit the patuent info
+		}else{
+			$this->tpl->assign('no_commit_form', TRUE);
+		}
+
+	    /*if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+	      // allow to edit the patuent info
+	    }else{
+	      $this->tpl->assign('no_commit_form', !$this->hasPatientAccess($patient_id) || $this->getAgencyType() == 'C'); 
+	  		if (!$this->hasPatientAccess($patient_id) && (!$this->hasPermission(4) || !$this->hasPermission(5))) $this->tpl->assign('no_commit_form', true);
+	    }*/
+	    
+	    if ($create_new_soc == "Y") {
+	    	$this->lang->language['grl_save'] = 'Confirm New SOC';
+	  		$this->tpl->assign('form_title', 'Add New Admission for Patient');  			    	
+	    } else {
+	    	// Lock the soc date when there is 2 or more SOCs
+	    	$soc_list = $this->socmdl->getByPatient($patient_id);
+			if (count($soc_list) >= 2 ) {
+				// $this->tpl->assign('lock_soc', 1);	
+			}
+	    }
+	    
+	    if ($contractor->provides_altern_therapy == 'Y' OR in_array($patient->pat_tab111_product_id, array(2, 3, 4)) OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4))) {
+			$this->tpl->assign("therapy_type",  'S');
+	    }
+
+		$this->tpl->assign_include("dynamic_tpl", "patient/referral_base");
+		$this->tpl->assign_include("dynamic_form", "patient/referral_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function new_soc_special($patient_id) {
+		$patient = $this->patientmdl->getById($patient_id); 
+		$soc = $this->socmdl->getCurrent($patient_id);
+
+		$rules = array (
+			'episode_start_date' 	=> 'required|callback_newCheckSOCDateSpecial',
+			'episode_end_date' 	=> 'required'
+		);	
+		$fields = array (
+			'episode_start_date' 	=> 'Certification From Date',
+			'episode_end_date' 	=> 'Certification Thru Date'
+		);		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		$this->tpl->assign("patient_id", $patient_id);	
+		$this->tpl->assign("soc_id", $soc->soc_id);	
+		
+		if ($this->validation->run() == FALSE) {			
+			$this->tpl->assign_include("dynamic_tpl", "patient/new_soc_special");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {			
+			$episode = $this->episodemdl->getCurrent($soc->soc_id);
+			$this->db->trans_start();
+
+			$soc_id = 0;
+			$this->socmdl->insert($patient_id);
+			$soc_id = $this->socmdl->soc_id;
+			$this->assignPostData($this->socmdl, $soc);
+			$this->socmdl->soc_id = $soc_id;
+			$this->socmdl->lock_soc = null;
+			$this->socmdl->estimated_soc_date = standard_date(human_to_unix($this->input->post('episode_start_date')), 'MYSQL');
+		
+			$this->socmdl->patient_id = $patient_id;
+			$this->socmdl->current_soc = 1;
+			$this->socmdl->update($soc_id);
+
+			$soc = $this->socmdl->getById($soc_id);
+			$team = $this->teammdl->getAll($patient_id);			
+			$send_to_clinician = false;
+			if (array_key_exists($soc->clinician_user_id, $team) == FALSE && $soc->clinician_user_id) {
+				// assigning clinician to team
+				$this->teammdl->user_id = $soc->clinician_user_id;
+				$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+				$this->teammdl->insert($patient_id);
+				$send_to_clinician = true;
+			}
+
+			// episode create
+			$estimated_soc_end_date = standard_date(human_to_unix($this->input->post('episode_end_date')), 'MYSQL');;
+			$this->episodemdl->insert($soc_id, $soc->estimated_soc_date, $episode->doc_doctor_order_id, $episode->doctor_office_id, $estimated_soc_end_date );
+			$episode = $this->episodemdl->getById($this->episodemdl->cms485_id);
+
+			$emailtext = $this->emailtextmdl->get(2);
+			$this->messagemdl->user_from = $this->getUsAgyId();
+			$this->messagemdl->msg_subject = $emailtext->email_subject;
+			$this->messagemdl->msg_text = $emailtext->email_subject;
+			$this->messagemdl->insert();
+			// sending internal messahe to all active team members
+			$team = $this->teammdl->getAll($patient_id, null, true, array(), 'I');
+			foreach ($team as $team_user_id => $user_name) {
+				$this->usermessagemdl->insert($this->messagemdl->msg_id, $team_user_id, 0);
+			}
+			// sending internal messahe to clinician
+			if ($send_to_clinician AND $soc->clinician_user_id) {
+				$this->usermessagemdl->insert($this->messagemdl->msg_id, $soc->clinician_user_id, 0);
+			}
+			
+			// locking soc
+			$this->socmdl->updateLock($soc_id);	
+
+			// updating patient status
+			$this->patientmdl->updateStatus($patient_id, 2);
+			
+			$this->db->trans_complete();
+
+			if($this->db->trans_status() === TRUE){
+				$config =& get_config();
+				echo 'New SOC has been created successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.parent.location.href=\''.$config["index_url"].'patient/patient/treatmentarea/'.$patient_id.'\';
+					}, 2000);
+				</script>';
+			} else {
+				exit('Operation Failed!');
+			}
+
+		}	
+	}
+  
+  	function therapy($patient_id, $episode_id=null){
+
+	    $patient = $this->patientmdl->getById($patient_id);    
+	    $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+	    
+	    if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3) ) {
+			// can edit/save
+		}else{
+	  		// $this->tpl->assign('no_commit_form', true);
+		    $this->tpl->assign("no_grid_buttons", true);
+	    	// $this->tpl->assign('noedit', true);
+		}
+
+
+	    $this->tpl->assign('add_sufix', 'Therapy Referral');
+	    $this->tpl->assign("resource_edit", 'referral_edit');    
+	    $this->tpl->assign("resource_grid", "referral_grid");
+	    $this->tpl->assign("resource_add", "referral_add");
+	    $this->tpl->assign("resource_delete", "referral_delete");
+	    $this->tpl->assign('entity_id', $patient_id."/".$episode_id);
+		//$this->tpl->assign('contractor_id', $contractor_id);
+		$this->tpl->assign('episode_id', $episode_id);
+	    $this->tpl->assign("patient_id", $patient_id);
+
+	    $this->tpl->assign_include("filter_tpl", "patient/team/referral_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "patient/team/referral_gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  	}
+
+	function referral_grid($patient_id, $episode_id=null){
+	    $patient = $this->patientmdl->getById($patient_id);    
+	    $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+	    
+	    $soc = $this->socmdl->getCurrent($patient_id);
+
+	    $pat_contractors = $this->patientcontractormdl->get($patient_id);
+	    $contractor = array();
+		if(sizeof($pat_contractors) > 0){
+			$pat_contractor = $pat_contractors[0];
+			if(isset($pat_contractor->contractor_id) ANd $pat_contractor->contractor_id != "")
+			$contractor=$this->agencymdl->getByAgencyId($pat_contractor->contractor_id);			
+		} else {			
+			$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		}
+    
+	    //echo $soc->soc_id;
+	    // LOAD MODELS
+		$this->load->model('soccontractormdl');
+		$this->load->model('soccontractorhistorymdl');
+    
+    	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		//$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Therapy Referral Date / Time"));
+		$head->append($this->xml->Element("column", "width=*;align=center", "Disciplines"));
+		$head->append($this->xml->Element("column", "width=*", "Referring Physician"));
+    	$head->append($this->xml->Element("column", "width=*", "Contractor Name"));
+		$head->append($this->xml->Element("column", "width=*", "Referral Notes"));
+		
+		$head->append($this->xml->Element("column", "width=*", "Referred by"));
+		// $head->append($this->xml->Element("column", "width=*", "History"));
+		
+    	//$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//if ($this->input->post('agency_type') == 'A')
+			$data = $this->soccontractormdl->getBySocId($soc->soc_id);
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+		foreach ($data as $ref) {			
+      		//print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $ref->soc_contractor_id);
+			//$cell->append($this->xml->Element("cell", null, $ref->pat_first_name.' '.$ref->pat_last_name));			
+      		$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($ref->referral_date_time), 'USA_DATE_TIME')));
+
+      		$disciplines_selected = array();
+			if ($contractor->provides_altern_therapy == "Y") {
+				if (@$ref->dis_aqu==1){
+				  $disciplines_selected[] = 'AQ';
+				}
+				if (@$ref->dis_beh==1){
+				  $disciplines_selected[] = 'BE';
+				}
+				if (@$ref->dis_mas==1){
+				  $disciplines_selected[] = 'MA';
+				}
+				if (@$ref->dis_mus==1){
+				  $disciplines_selected[] = 'MU';
+				}
+				if (@$ref->dis_rec==1){
+				  $disciplines_selected[] = 'RE';
+				}
+				if (@$ref->dis_hbr==1){
+				  $disciplines_selected[] = 'THBR';
+				}
+				if (@$ref->dis_art==1){
+				  $disciplines_selected[] = 'ART';
+				}
+			} else{
+				if (@$ref->dis_sn==1){
+				  $disciplines_selected[] = 'SN';
+				}
+				if (@$ref->dis_pt==1){
+				  $disciplines_selected[] = 'PT';
+				}
+				if (@$ref->dis_ot==1){
+				  $disciplines_selected[] = 'OT';
+				}
+				if (@$ref->dis_st==1){
+				  $disciplines_selected[] = 'ST';
+				}
+				if (@$ref->dis_msgw==1){
+				  $disciplines_selected[] = 'MSGW';
+				}
+			}
+			$cell->append($this->xml->Element("cell", null, implode("; ", $disciplines_selected)));
+			
+			$cell->append($this->xml->Element("cell", null, $ref->prim_doctor_name));
+			$cell->append($this->xml->Element("cell", null, $ref->contractor_name));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ref->referral_notes)));
+			//$cell->append($this->xml->Element("cell", null, $ref->diagnosis_info));
+      		$cell->append($this->xml->Element("cell", null, $ref->referred_by));
+      	
+      		if ($this->soccontractorhistorymdl->getCount($ref->soc_contractor_id) > 1) {
+      			$cell->append($this->xml->Element("cell", null, "History^javascript:referralHistory(" . $ref->soc_contractor_id .")"));				
+      		} else {
+      			$cell->append($this->xml->Element("cell", null, null));
+      		}
+
+
+  		    /*if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C') ) {
+				$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteReferral(" . $ref->soc_contractor_id . ",".$patient_id.")"));				
+			}else{*/
+				// $cell->append($this->xml->Element("cell", null, null));
+			/*}*/
+
+      
+			$document->append($cell);
+			
+		}
+  }
+
+  function history($soc_contractor_id, $patient_id, $episode_id=null){  		
+	    $this->tpl->assign("no_grid_buttons", true);
+
+
+	    $this->tpl->assign("resource_edit", 'history_view');    
+	    $this->tpl->assign("resource_grid", "history_grid");
+	    $this->tpl->assign('entity_id', $soc_contractor_id."/".$patient_id."/".$episode_id);
+		$this->tpl->assign('soc_contractor_id', $soc_contractor_id);
+		$this->tpl->assign('episode_id', $episode_id);
+	    $this->tpl->assign("patient_id", $patient_id);
+	    $this->tpl->assign('additional_buttons', array('Back' => 'history.go(-1)'));
+
+	    $this->tpl->assign("list_title", "History Referral");
+	    $this->tpl->assign_include("filter_tpl", "patient/team/referral_history_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);	
+  }
+  
+  function history_grid($soc_contractor_id, $patient_id, $episode_id=null){
+  	
+  		
+  		// $patient = $this->patientmdl->getById($patient_id);    
+	    // $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+	    
+	    // $soc = $this->socmdl->getCurrent($patient_id);
+    
+	    // LOAD MODELS
+		$this->load->model('soccontractormdl');
+		$this->load->model('soccontractorhistorymdl');
+    
+    	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		//$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Modify Date/ Time"));
+		$head->append($this->xml->Element("column", "width=*", "Therapy Referral Date / Time"));
+		$head->append($this->xml->Element("column", "width=*", "Referring Physician"));
+    	$head->append($this->xml->Element("column", "width=*", "Contractor Name"));
+		$head->append($this->xml->Element("column", "width=*", "Referral Notes"));
+		
+		$head->append($this->xml->Element("column", "width=*", "Referred by"));
+		// $head->append($this->xml->Element("column", "width=*", "History"));
+		
+    	//$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+    	// $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->soccontractorhistorymdl->getHistories($soc_contractor_id) as $ref) {			
+      		$cell = $this->xml->Element("row", "id=" . $ref->history_id);
+			//$cell->append($this->xml->Element("cell", null, $ref->pat_first_name.' '.$ref->pat_last_name));			
+      		$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($ref->modify_datetime), 'USA_DATE_TIME')));
+      		$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($ref->referral_date_time), 'USA_DATE_TIME')));
+			$cell->append($this->xml->Element("cell", null, $ref->prim_doctor_name));
+			$cell->append($this->xml->Element("cell", null, $ref->contractor_name));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ref->referral_notes)));
+			$cell->append($this->xml->Element("cell", null, $ref->referred_by));
+      
+			$document->append($cell);
+			
+		}
+  }
+
+  function history_view($history_id, $soc_contractor_id, $patient_id, $episode_id=null){
+    //echo "{$patient_id}, {$episode_id}, {$soc_contractor_id}";
+    //$contractor_id = $this->getAgencyId();
+    // LOAD MODELS
+	$this->load->model('soccontractormdl');
+	$this->load->model('soccontractorhistorymdl');
+
+	$this->tpl->assign('entity_id', $history_id);
+	$this->tpl->assign('record_id', $soc_contractor_id."/".$patient_id."/".$episode_id);
+		//$this->tpl->assign('episode_id', $episode_id);
+	$this->tpl->assign('faction', 'history_view');
+	$this->tpl->assign('form_title', 'Therapy Referral');
+	// $this->tpl->assign('additional_buttons', array('Print Referral'=>"location.href='{$this->config->config['index_url']}patient/contractor/referral_pdf/{$soc_contractor_id}/{$episode_id}';",'Cancel' => 'history.go(-1)'));
+	$this->tpl->assign('additional_buttons', array('Cancel' => 'history.go(-1)'));
+
+// var_dump($patient_id);exit();
+	$patient = $this->patientmdl->getById($patient_id);
+	$this->tpl->assign('patient_name', $patient->first_name . " " . $patient->last_name);
+	$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+	$this->tpl->assign('physician_list', $this->usagymdl->getPhysiciansByAgency($patient->agency_id));
+	$this->tpl->assign('not_physician_list', $this->usagymdl->getNotPhysiciansByAgency($patient->agency_id));    
+	$this->tpl->assign('clinician_list', $this->usagymdl->getCliniciansByAgency($patient->agency_id));
+	$this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($patient->agency_id));		
+
+
+	$contractorsoc = $this->soccontractorhistorymdl->getById($history_id);
+	$contractor_name = $this->agencycontractormdl->getContractorNameById($contractorsoc->agency_contractor_id);
+	$soc = $this->socmdl->getById($contractorsoc->soc_id);
+	$episode = $this->episodemdl->getCurrent($soc->soc_id);
+	$modify_user_info = $this->usagymdl->getByUsAgyId($contractorsoc->modify_user_id);
+
+  	$this->tpl->assign('soc_id', $contractorsoc->soc_id);
+  	$this->tpl->assign('episode_start_date', $episode->episode_start_date);
+  	$this->tpl->assign('episode_end_date', $episode->episode_end_date);
+
+	$this->tpl->assign('contractor_name', $contractor_name);
+	$this->tpl->assign('modify_user_info', $modify_user_info);
+    //$soccontractor = $this->soccontractormdl->getById(@$episode->soc_id);
+
+	$this->assignObject($contractorsoc);
+
+	$this->tpl->assign('referral_date', standard_date(mysql_to_unix($contractorsoc->referral_date_time))); // referral datetime convertion
+	$this->tpl->assign('referral_time', standard_date(mysql_to_unix($contractorsoc->referral_date_time), 'USA_TIME')); // referral datetime convertion
+
+	$this->tpl->assign('modify_date', standard_date(mysql_to_unix($contractorsoc->modify_datetime))); // referral datetime convertion
+	$this->tpl->assign('modify_time', standard_date(mysql_to_unix($contractorsoc->modify_datetime), 'USA_TIME_C')); // referral datetime convertion
+	
+	if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+      // 
+	}else if ($this->getAgencyType() == 'C') {
+		$this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+		//$this->tpl->assign("prim_doctor", 	$this->usagymdl->getByUsAgyId($soc->prim_doctor_user_id));
+		//$this->tpl->assign("second_doctor", $this->usagymdl->getByUsAgyId($soc->second_doctor_user_id));
+		$this->tpl->assign("doctor_display", true);
+	}
+
+	if ($this->getUserProfileId()==3){
+		$this->tpl->assign("edit_contractor_notes", true);  			
+	}
+	
+	$this->tpl->assign('prim_doctor_office', $this->agencymdl->getByAgencyId($contractorsoc->prim_doctor_office_id));
+	$this->tpl->assign('second_doctor_office', $this->agencymdl->getByAgencyId($contractorsoc->second_doctor_office_id));
+	
+	$agency_type = $this->agencymdl->getByAgencyId($this->getAgencyId())->agency_type;
+		
+	
+	$this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+	
+	if ($contractorsoc->lock_soc == 1) {
+		
+		$this->tpl->assign('case_manager', $this->usagymdl->getByUsAgyId($contractorsoc->case_manager_user_id));
+		$this->tpl->assign('clinician',    $this->usagymdl->getByUsAgyId($contractorsoc->clinician_user_id));
+		//$this->tpl->assign('additional_buttons', array('Print Contractor Referral'=>'selectContractor();'));
+		
+	}
+	
+	$this->tpl->assign('referral_time_ut', mysql_to_unix($contractorsoc->referral_date_time));
+	$this->tpl->assign('referral_date_display_only', true);
+	$this->tpl->assign('referral_date_time_display_only', true);
+	
+	$this->tpl->assign('referral_time_ut', mysql_to_unix($contractorsoc->referral_date_time));
+	
+	$this->tpl->assign('referral_time_only', standard_date(mysql_to_unix($contractorsoc->referral_date_time), 'USA_TIME_C'));
+	$this->tpl->assign('referral_time_Hour', date("h",mysql_to_unix($contractorsoc->referral_date_time)));
+	$this->tpl->assign('referral_time_Minute', date("i",mysql_to_unix($contractorsoc->referral_date_time)));
+	$this->tpl->assign('referral_time_Meridian', date("a",mysql_to_unix($contractorsoc->referral_date_time)));		
+
+	$this->tpl->assign("tab_page", true);
+	
+	$this->tpl->assign('no_commit_form', true);
+
+	
+
+	$patient = $this->patientmdl->getById($patient_id);
+	if(@$patient->tab_014_living_arr){
+		$tab_014_living_arr = $this->parametermdl->get(14,@$patient->tab_014_living_arr);
+		$tab_014_living_arr = $tab_014_living_arr->tab_description;
+		$this->tpl->assign("patient_living_arr", $tab_014_living_arr);		
+	}
+	$this->tpl->assign("patient_caregiver_name", @$patient->caregiver_name);		
+	$this->tpl->assign("patient_caregiver_phone", @$patient->caregiver_phone);		
+	
+	$this->tpl->assign("form_title", "Therapy Referral History Record");		
+
+	$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+	$this->tpl->assign_include("dynamic_form", "patient/team/referral_history_form");
+	$this->tpl->view("parts/ibase", $this->lang->language);
+
+  }
+
+  function referral_add($patient_id, $episode_id=null){
+    // LOAD MODELS
+  	$this->load->model('soccontractormdl');
+  	$this->load->model('soccontractorhistorymdl');
+
+  	$this->tpl->assign('entity_id', $patient_id);
+	$this->tpl->assign('record_id', $episode_id);
+		//$this->tpl->assign('contractor_id', $contractor_id);
+  	$this->tpl->assign('faction', 'referral_add');
+  	$this->tpl->assign('form_title', 'Therapy Referral');
+
+  	$this->tpl->assign('additional_buttons', array('Cancel' => 'history.go(-1)'));
+
+  	$patient = $this->patientmdl->getById($patient_id);
+  	$this->tpl->assign('patient_name', $patient->first_name . " " . $patient->last_name);
+  	$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+  	$this->tpl->assign('physician_list', $this->usagymdl->getPhysiciansByAgency($patient->agency_id));
+  	$this->tpl->assign('not_physician_list', $this->usagymdl->getNotPhysiciansByAgency($patient->agency_id));    
+  	$this->tpl->assign('clinician_list', $this->usagymdl->getCliniciansByAgency($patient->agency_id));
+  	$this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($patient->agency_id));		
+
+  	$contractor = array();
+  	$pat_contractors = $this->patientcontractormdl->get($patient_id);
+	if(sizeof($pat_contractors) > 0){
+		$pat_contractor = $pat_contractors[0];
+		if(isset($pat_contractor->contractor_id) ANd $pat_contractor->contractor_id != "")
+		$contractor=$this->agencymdl->getByAgencyId($pat_contractor->contractor_id);
+		$this->tpl->assign('contractor', $contractor);
+	} else {			
+		$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$this->tpl->assign('contractor', $contractor);
+	}
+
+  	$contractors = array();
+  	$patContractorIds = array();
+  	foreach ($pat_contractors as $contractor) {      
+  		$contractors[$contractor->agency_contractor_id] = $contractor->agency_name;
+  		$patContractorIds[$contractor->agency_contractor_id] = $contractor->pat_contractor_id;
+  	}    
+  	$teamContractors = $contractors;
+  	
+  	// Display Contractors associated to the agency all time
+  	// if (empty($contractors)) {
+  		$this->load->model('agencycontractormdl');
+  		// Find by Patient agency
+  		$contractors = $this->agencycontractormdl->get($patient->agency_id, false);
+  		// Find by loged in user agency id
+  		// $contractors = $this->agencycontractormdl->get($this->getAgencyId(), false);
+  	// }  	
+  	$this->tpl->assign("contractor_list", $contractors);
+
+
+  	$soc = $this->socmdl->getCurrent($patient_id);
+  	$episode = $this->episodemdl->getCurrent($soc->soc_id);
+  	$this->tpl->assign('soc_id', $soc->soc_id);
+  	$this->tpl->assign('episode_start_date', $episode->episode_start_date);
+  	$this->tpl->assign('episode_end_date', $episode->episode_end_date);
+
+  	$this->assignObject($soc);
+
+  	$timeint = mktime(date("H")+2, date("i"),date("s"),date("m"),date("d"),date("Y"));
+	$this->tpl->assign('referral_date', standard_date(mysql_to_unix(date("Y-m-d h:i:s a",$timeint)))); // referral datetime convertion
+	$this->tpl->assign('referral_time', standard_date(mysql_to_unix(date("Y-m-d h:i:s a",$timeint)), 'USA_TIME')); // referral datetime convertion
+	
+	if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+  // 
+	}else if ($this->getAgencyType() == 'C') {
+		$this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+
+	  //$this->tpl->assign("prim_doctor", 	$this->usagymdl->getByUsAgyId($soc->prim_doctor_user_id));
+	  //$this->tpl->assign("second_doctor", $this->usagymdl->getByUsAgyId($soc->second_doctor_user_id));
+		$this->tpl->assign("doctor_display", true);
+	}
+
+	if ($this->getUserProfileId()==3){
+		$this->tpl->assign("edit_contractor_notes", true);  			
+	}
+
+		
+	$this->tpl->assign('prim_doctor_office', $this->agencymdl->getByAgencyId($soc->prim_doctor_office_id));
+	$this->tpl->assign('second_doctor_office', $this->agencymdl->getByAgencyId($soc->second_doctor_office_id));
+
+	//		
+	//		$this->tpl->assign('prim_doctor_user_id', $patient->prim_doctor_user_id);
+	//		$this->tpl->assign('second_doctor_user_id', $patient->second_doctor_user_id);
+
+    // counting episode of the soc
+		//if (count($this->episodemdl->getBySocId($soc->soc_id)) && $patient->tab_013_status > 2 && $this->getAgencyType() != 'C') {
+	/*if (count($this->episodemdl->getBySocId($soc->soc_id)) && $patient->tab_013_status > 2 && 
+		( $this->getAgencyType() != 'C' || ($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C') )) {
+*/
+
+	if (count($this->episodemdl->getBySocId($soc->soc_id)) 
+		&& ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3)  )) {
+		$this->tpl->assign('new_referral_enable', true);
+	}
+
+	if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+
+	}else{
+		if ($this->getAgencyType() == 'C') {
+			$this->tpl->assign('lock_soc', 1);
+		}
+
+		// if (!$this->hasPermission(2)) {
+		if ($this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3)) {
+			// Have permission to change the SOC date
+  			$this->tpl->assign('change_soc_date', true);
+		}		  		
+	}
+
+	$rules = array ('referral_date' => 'required',
+		'prim_diagnosis' => 'required',
+		'agency_contractor_id' => 'required',
+		'soc_id' => 'required',
+		'referral_time' => 'valid_time',
+		//'prim_doctor_user_id' => 'required',
+		);
+	$fields = array ('referral_date' => 'Referral Date',
+		'prim_diagnosis' => 'Primary Diagnosis',
+		'agency_contractor_id' => 'Contractor',
+		'soc_id' => 'SOC',
+		'referral_time' => 'Referral Time',
+		//'prim_doctor_user_id' => 'Primary Physician',
+		);
+
+	if ($contractor->provides_altern_therapy != 'Y') {
+		$fields['prim_doctor_office_id'] = 'required';
+		$rules['prim_doctor_office_id'] = 'Referring Physician';
+	}
+
+	$agency_type = $this->agencymdl->getByAgencyId($this->getAgencyId())->agency_type;
+	
+	
+	if (count($this->episodemdl->getCurrentByPatientId($patient_id)) && (is_null($soc->lock_soc) || $soc->lock_soc == 0)) { // checking soc date greater than last episode
+		@$rules['estimated_soc_date'] .= 'callback_checkSOCDate';
+	}
+	
+
+	if($this->input->post('has_insu_medicare')==1){      
+		$rules['insu_medicare_hic_number'] = 'required';
+		$fields['insu_medicare_hic_number'] = 'HIC Number';
+	}
+	if($this->input->post('has_insu_medicaid')==1){
+       /*array('field' => 'insu_medicaid_id',
+             'label' => 'Medicaid Id',
+             'rules' => 'required')*/
+		$fields['insu_medicaid_id'] = 'Medicaid Id';
+		$rules['insu_medicaid_id'] = 'required';
+
+		$fields['insu_medicaid_auth_from_date'] = 'Medicaid Authorization From date';
+		$rules['insu_medicaid_auth_from_date'] = 'required';
+
+		$fields['insu_medicaid_auth_to_date'] = 'Medicaid Authorization To date';
+		$rules['insu_medicaid_auth_to_date'] = 'required';
+	}
+
+	if($this->input->post('has_insu_other')==1){
+		$fields['insu_other_id'] = 'Other Id';
+		$rules['insu_other_id'] = 'required';
+
+		$fields['insu_other_auth_from_date'] = 'Other Authorization From Date';
+		$rules['insu_other_auth_from_date'] = 'required';
+
+		$fields['insu_other_auth_to_date'] = 'Other Authorization To Date';
+		$rules['insu_other_auth_to_date'] = 'required';
+	}
+
+	    	//print_r($rules);exit;
+	$this->validation->set_rules($rules);
+	$this->validation->set_fields($fields);
+
+	if ($this->validation->run() == TRUE) {
+
+		$this->assignPostData($this->soccontractormdl);
+
+		$referral_time_hour = ((int) ($this->input->post('referral_time_Hour') == 12 ? 0 : $this->input->post('referral_time_Hour')) + ($this->input->post('referral_time_Meridian') == 'am' ? 0 : 12));
+		$visit_date_time = standard_date(human_to_unix($this->input->post('referral_date')), 'MYSQL_NOTIME') . " " . $referral_time_hour . ":" . $this->input->post('referral_time_Minute');
+
+
+      	//$agency_contractor_id = $this->patientcontractormdl->getAgencyContractorId($patient_id, $contractor_id);
+		
+		// Fixing of date format from example 2015-08-10 1:20 to 2015-08-10 01:20
+		$visit_date_time = date("Y-m-d H:i",strtotime($visit_date_time));
+		
+		$this->soccontractormdl->agency_contractor_id  = $this->input->post('agency_contractor_id');
+		$this->soccontractormdl->referral_date_time  = $visit_date_time;
+		if (!$this->isValidDate($this->soccontractormdl->referral_date_time)) {
+			$this->soccontractormdl->referral_date_time = $soc->referral_date_time;
+		}
+		$this->soccontractormdl->current_soc = 1;
+		$this->soccontractormdl->create_user_id = $this->getUsAgyId();
+		//			$this->soccontractormdl->prim_doctor_user_id = $soc->prim_doctor_user_id;
+		//			$this->soccontractormdl->second_doctor_user_id = $soc->second_doctor_user_id;
+		$this->soccontractormdl->agency_referral_date = standard_date(human_to_unix($this->input->post('referral_date')), 'MYSQL_NOTIME');
+        
+        $agency_referral_hour = ((int) ($this->input->post('hour') == 12 ? 0 : $this->input->post('hour')) + ($this->input->post('meridian') == 'am' ? 0 : 12));
+
+        $agency_referral_time = $agency_referral_hour . ":" . $this->input->post('minute');
+        
+        $this->soccontractormdl->agency_referral_time = $agency_referral_time;
+		$soc_contractor_id = $this->soccontractormdl->insert($soc->soc_id);
+
+		// INsert into history table
+		$this->assignPostData($this->soccontractorhistorymdl);
+		$this->soccontractorhistorymdl->referral_date_time = $this->soccontractormdl->referral_date_time;
+		
+		$this->soccontractorhistorymdl->current_soc = 1;
+		$this->soccontractorhistorymdl->create_user_id = $this->soccontractormdl->create_user_id;
+		$this->soccontractorhistorymdl->modify_user_id = $this->soccontractormdl->create_user_id;
+		$this->soccontractorhistorymdl->modify_datetime = date("Y-m-d H:i:s");
+		$this->soccontractorhistorymdl->insert($soc_contractor_id);	
+		// INsert into history table FInished
+
+	      // send internal email to all the user of the Contractor with profile=Company
+		$emailtext = $this->emailtextmdl->get(8);
+		$this->messagemdl->user_from = $this->getUsAgyId();
+		$this->messagemdl->msg_subject = str_replace('{patient_name}', $patient->first_name . " " . $patient->last_name, $emailtext->email_subject);
+		$this->messagemdl->msg_text = str_replace('{patient_name}', $patient->first_name . " " . $patient->last_name, $emailtext->email_content);
+		$this->messagemdl->insert();
+
+		$this->load->library('email');
+
+		$contractor_id = $this->agencycontractormdl->getContractorId($this->input->post('agency_contractor_id'));	
+				
+		// Add the selected contractor to the patient team contractor list if not in the team yet.
+		if (!isset($teamContractors[$this->input->post('agency_contractor_id')])) {
+			$this->patientcontractormdl->agency_contractor_id = $this->input->post('agency_contractor_id');
+			$this->patientcontractormdl->agency_contractor_status = 'A';
+	  		$this->patientcontractormdl->company_patient_status = '2';				
+	  		$this->patientcontractormdl->assigned_by = $this->getAgencyId();
+	  		$this->patientcontractormdl->create_user_id = $this->getUsAgyId();
+	  		$this->patientcontractormdl->create_date = date("Y-m-d H:i:s");
+	  		$this->patientcontractormdl->insert($patient_id);
+		} else {
+			// Update patient contractor status to "current"
+			$this->patientcontractormdl->updateFlex($patContractorIds[$this->input->post('agency_contractor_id')], 'company_patient_status', 2 );
+		}
+		
+		// Get conctractor users with profile=Company only to send internal email
+		$CompanyUsers = $this->usagymdl->getByAgencyId($contractor_id, null, null, 3);						
+		$usAgyInfo = $this->usagymdl->getByUsAgyId($this->messagemdl->user_from);
+		$userFromInfo = $this->usermdl->getById($usAgyInfo->user_id);
+		foreach($CompanyUsers as $user){
+			$this->usermessagemdl->insert($this->messagemdl->msg_id, $user->us_agy_id, 0);
+
+			// Send Internal email to personal email if user has enabled this to his account settings
+			if ( $user->internal_email_to_mailbox == 1 AND $this->validation->valid_email($user->email) ) {
+
+				$this->email->from('noreply@homehealthsoft.com', $userFromInfo->last_name.' '.$userFromInfo->first_name.' (HHS)');
+				$this->email->to($user->email);
+				$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+				$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            // $this->email->set_mailtype("html"); 
+	              	
+
+				$this->email->message($body);    
+				/** 
+				* Send ayyachment if have, Disabled it becasue we dont have 
+				* any attachment on this automated internal email  
+				*/
+				/*if ($this->messagemdl->msg_attachment != "") {						
+					$this->email->attach(FCPATH.'/datastore/attachment/'.$this->messagemdl->msg_attachment);
+				}*/
+				$this->email->send();
+				//$this->email->print_debugger();
+				$this->email->clear();
+			}			
+		}
+
+		//$this->patientmdl->updateDoctorOffice($patient_id, $this->input->post('prim_doctor_office_id'), $this->input->post('second_doctor_office_id'));
+
+		$this->tpl->assign('success_string', "Therapy Referral" . $this->lang->line('grl_add_msg'));
+		redirect('patient/referral/therapy/' . $patient_id."/". $episode_id);
+	}
+
+	$this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+
+	if ($soc->lock_soc == 1) {
+
+		$this->tpl->assign('case_manager', $this->usagymdl->getByUsAgyId($soc->case_manager_user_id));
+		$this->tpl->assign('clinician',    $this->usagymdl->getByUsAgyId($soc->clinician_user_id));
+				//$this->tpl->assign('additional_buttons', array('Print Contractor Referral'=>'selectContractor();'));
+
+	}
+
+	$this->tpl->assign('referral_time_ut', mysql_to_unix(date("Y-m-d h:i:s a",$timeint)));
+	$this->tpl->assign('referral_date_display_only', true);
+	$this->tpl->assign('referral_date_time_display_only', true);
+
+	if(!$soc->referral_date_time){
+		// $this->tpl->assign('referral_date', standard_date(mysql_to_unix(date("Y-m-d h:i:s a")), 'USA_DATE'));
+		// $this->tpl->assign('referral_time_only', standard_date(mysql_to_unix(date("Y-m-d h:i:s a")), 'USA_TIME_C'));
+		$this->tpl->assign('referral_time_only', date("h:i:s A",$timeint));
+		$this->tpl->assign('referral_time_Hour', date("h",$timeint));
+		$this->tpl->assign('referral_time_Minute', date("i"));
+		$this->tpl->assign('referral_time_Meridian', date("a",$timeint));  
+	}else{		
+		// $this->tpl->assign('referral_time_only', standard_date(mysql_to_unix(date("Y-m-d h:i:s a")), 'USA_TIME_C'));
+		$this->tpl->assign('referral_time_only', date("h:i:s A",$timeint));
+		$this->tpl->assign('referral_time_Hour', date("h",$timeint));
+		$this->tpl->assign('referral_time_Minute', date("i"));
+		$this->tpl->assign('referral_time_Meridian', date("a",$timeint));  
+
+		/*$this->tpl->assign('referral_time_Hour', date("h",mysql_to_unix(date("Y-m-d h:i:s a"))));
+		$this->tpl->assign('referral_time_Minute', date("i",mysql_to_unix(date("Y-m-d h:i:s a"))));
+		$this->tpl->assign('referral_time_Meridian', date("a",mysql_to_unix(date("Y-m-d h:i:s a"))));	*/	
+	}
+
+	$this->tpl->assign("tab_page", true);
+
+	if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3) ) {
+		// can edit/save
+	}else{
+  		$this->tpl->assign('no_commit_form', true);
+	}
+
+
+	/*if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+	      // allow to edit the patuent info
+	}else{
+		$this->tpl->assign('no_commit_form', !$this->hasPatientAccess($patient_id) || $this->getAgencyType() == 'C'); 
+		if (!$this->hasPatientAccess($patient_id) && (!$this->hasPermission(4) || !$this->hasPermission(5))) $this->tpl->assign('no_commit_form', true);
+	}*/
+
+	$this->lang->language['grl_save'] = 'Send Electronic Referral';
+
+	$patient = $this->patientmdl->getById($patient_id);
+	if(@$patient->tab_014_living_arr){
+		$tab_014_living_arr = $this->parametermdl->get(14,@$patient->tab_014_living_arr);
+		$tab_014_living_arr = $tab_014_living_arr->tab_description;
+		$this->tpl->assign("patient_living_arr", $tab_014_living_arr);		
+	}
+	$this->tpl->assign("patient_caregiver_name", @$patient->caregiver_name);		
+	$this->tpl->assign("patient_caregiver_phone", @$patient->caregiver_phone);		
+
+	$this->tpl->assign('hours_list', array(
+		'00'=> '00','01'=>'01', '02'=>'02', '03'=>'03', '04'=>'04', '05'=>'05', '06'=>'06', 
+		'07'=>'07', '08'=>'08', '09'=>'09', '10'=>'10', '11'=>'11', '12'=>'12'
+	));
+	$this->tpl->assign('minutes_list', array(
+		'00'=>'00', '05'=>'05', '10'=>'10', '15'=>'15', '20'=>'20', '25'=>'25', '30'=>'30',
+		'35'=>'35', '40'=>'40', '45'=>'45', '50'=> '50', '55'=>'55'
+	));
+	$this->tpl->assign('type_time', array('am'=>'AM','pm'=>'PM'));
+	$this->tpl->assign_include("dynamic_tpl", "patient/team/referral_base");
+	$this->tpl->assign_include("dynamic_form", "patient/team/referral_form");
+	$this->tpl->view("parts/ibase", $this->lang->language);
+
+}
+
+
+function referral_edit($soc_contractor_id, $patient_id, $episode_id=null){
+    //echo "{$patient_id}, {$episode_id}, {$soc_contractor_id}";
+    //$contractor_id = $this->getAgencyId();
+    // LOAD MODELS
+	$this->load->model('soccontractormdl');
+	$this->load->model('soccontractorhistorymdl');
+
+	$this->tpl->assign('entity_id', $soc_contractor_id);
+	$this->tpl->assign('record_id', $patient_id."/".$episode_id);
+		//$this->tpl->assign('episode_id', $episode_id);
+	$this->tpl->assign('faction', 'referral_edit');
+	$this->tpl->assign('form_title', 'Therapy Referral');
+	$this->tpl->assign('additional_buttons', array('Print Referral'=>"location.href='{$this->config->config['index_url']}patient/contractor/referral_pdf/{$soc_contractor_id}/{$episode_id}';",'Cancel' => 'history.go(-1)'));
+
+
+	$patient = $this->patientmdl->getById($patient_id);
+	$this->tpl->assign('patient_name', $patient->first_name . " " . $patient->last_name);
+	$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+	$pat_contractors = $this->patientcontractormdl->get($patient_id);
+	$contractor = array();
+	if(sizeof($pat_contractors) > 0){
+		$pat_contractor = $pat_contractors[0];
+		if(isset($pat_contractor->contractor_id) ANd $pat_contractor->contractor_id != "")
+		$contractor=$this->agencymdl->getByAgencyId($pat_contractor->contractor_id);
+		$this->tpl->assign('contractor', $contractor);
+	} else {			
+		$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$this->tpl->assign('contractor', $contractor);
+	}
+
+	$this->tpl->assign('physician_list', $this->usagymdl->getPhysiciansByAgency($patient->agency_id));
+	$this->tpl->assign('not_physician_list', $this->usagymdl->getNotPhysiciansByAgency($patient->agency_id));    
+	$this->tpl->assign('clinician_list', $this->usagymdl->getCliniciansByAgency($patient->agency_id));
+	$this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($patient->agency_id));		
+
+
+	$contractorsoc = $this->soccontractormdl->getById($soc_contractor_id);
+	$contractor_name = $this->agencycontractormdl->getContractorNameById($contractorsoc->agency_contractor_id);
+	$soc = $this->socmdl->getById($contractorsoc->soc_id);
+
+	$episode = $this->episodemdl->getCurrent($soc->soc_id);
+  	$this->tpl->assign('soc_id', $contractorsoc->soc_id);
+  	$this->tpl->assign('episode_start_date', $episode->episode_start_date);
+  	$this->tpl->assign('episode_end_date', $episode->episode_end_date);
+
+	$this->tpl->assign('contractor_name', $contractor_name);
+    //$soccontractor = $this->soccontractormdl->getById(@$episode->soc_id);
+
+	$this->assignObject($contractorsoc);
+
+	$this->tpl->assign('referral_date', standard_date(mysql_to_unix($contractorsoc->referral_date_time))); // referral datetime convertion
+	$this->tpl->assign('referral_time', standard_date(mysql_to_unix($contractorsoc->referral_date_time), 'USA_TIME')); // referral datetime convertion
+	
+	if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+      // 
+	}else if ($this->getAgencyType() == 'C') {
+		$this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+		//$this->tpl->assign("prim_doctor", 	$this->usagymdl->getByUsAgyId($soc->prim_doctor_user_id));
+		//$this->tpl->assign("second_doctor", $this->usagymdl->getByUsAgyId($soc->second_doctor_user_id));
+		$this->tpl->assign("doctor_display", true);
+	}
+
+	if ($this->getUserProfileId()==3){
+		$this->tpl->assign("edit_contractor_notes", true);  			
+	}
+
+	
+	$this->tpl->assign('prim_doctor_office', $this->agencymdl->getByAgencyId($contractorsoc->prim_doctor_office_id));
+	$this->tpl->assign('second_doctor_office', $this->agencymdl->getByAgencyId($contractorsoc->second_doctor_office_id));
+	//		
+	//		$this->tpl->assign('prim_doctor_user_id', $patient->prim_doctor_user_id);
+	//		$this->tpl->assign('second_doctor_user_id', $patient->second_doctor_user_id);
+
+	// counting episode of the soc
+	//if (count($this->episodemdl->getBySocId($soc->soc_id)) && $patient->tab_013_status > 2 && $this->getAgencyType() != 'C') {
+	/*if (count($this->episodemdl->getBySocId($contractorsoc->soc_id)) && $patient->tab_013_status > 2 && ($this->getAgencyType() != 'C' || ($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C') )) {
+*/
+// insert into soc_contractor_referral_history table if the data is not exist here but exists in soc_contractor_referral table
+		if($this->soccontractorhistorymdl->getHistoriesCount($soc_contractor_id) == 0 ){
+			$this->soccontractorhistorymdl->insert($soc_contractor_id, $contractorsoc);
+		}
+
+	if (count($this->episodemdl->getBySocId($contractorsoc->soc_id)) && $patient->tab_013_status > 2 && 
+		( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3)  )) {
+		$this->tpl->assign('new_referral_enable', true);
+	}
+
+	if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+
+	}else{
+		if ($this->getAgencyType() == 'C') {
+			$this->tpl->assign('lock_soc', 1);
+		}
+
+		// if (!$this->hasPermission(2)) {
+		if ($this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3)) {
+			// Have permission to change the SOC date
+  			$this->tpl->assign('change_soc_date', true);
+		}		
+	}
+
+	$rules = array ('referral_date' => 'required',
+		'prim_diagnosis' => 'required',
+		'agency_contractor_id' => 'required',
+		'soc_id' => 'required',
+		'referral_time' => 'valid_time',
+		//'prim_doctor_user_id' => 'required',
+		);
+	$fields = array ('referral_date' => 'Referral Date',
+		'prim_diagnosis' => 'Primary Diagnosis',
+		'agency_contractor_id' => 'Contractor',
+		'soc_id' => 'SOC',
+		'referral_time' => 'Referral Time',
+		//'prim_doctor_user_id' => 'Primary Physician',
+		);
+
+	if ($contractor->provides_altern_therapy != 'Y') {
+		$fields['prim_doctor_office_id'] = 'required';
+		$rules['prim_doctor_office_id'] = 'Referring Physician';
+	}
+
+	$agency_type = $this->agencymdl->getByAgencyId($this->getAgencyId())->agency_type;
+		
+	
+	if (count($this->episodemdl->getCurrentByPatientId($patient_id)) && (is_null($contractorsoc->lock_soc) || $contractorsoc->lock_soc == 0)) { // checking soc date greater than last episode
+		@$rules['estimated_soc_date'] .= 'callback_checkSOCDate';
+	}
+	
+
+	if($this->input->post('has_insu_medicare')==1){      
+		$rules['insu_medicare_hic_number'] = 'required';
+		$fields['insu_medicare_hic_number'] = 'HIC Number';
+	}
+	if($this->input->post('has_insu_medicaid')==1){
+
+		$fields['insu_medicaid_id'] = 'Medicaid Id';
+		$rules['insu_medicaid_id'] = 'required';
+
+		$fields['insu_medicaid_auth_from_date'] = 'Medicaid Authorization From date';
+		$rules['insu_medicaid_auth_from_date'] = 'required';
+
+		$fields['insu_medicaid_auth_to_date'] = 'Medicaid Authorization To date';
+		$rules['insu_medicaid_auth_to_date'] = 'required';
+	}
+
+	if($this->input->post('has_insu_other')==1){
+		$fields['insu_other_id'] = 'Other Id';
+		$rules['insu_other_id'] = 'required';
+
+		$fields['insu_other_auth_from_date'] = 'Other Authorization From Date';
+		$rules['insu_other_auth_from_date'] = 'required';
+
+		$fields['insu_other_auth_to_date'] = 'Other Authorization To Date';
+		$rules['insu_other_auth_to_date'] = 'required';
+	}
+
+	//print_r($rules);exit;
+	$this->validation->set_rules($rules);
+	$this->validation->set_fields($fields);
+		
+	if ($this->validation->run() == TRUE) {
+
+		$this->assignPostData($this->soccontractormdl);
+				
+		$referral_time_hour = ((int) ($this->input->post('referral_time_Hour') == 12 ? 0 : $this->input->post('referral_time_Hour')) + ($this->input->post('referral_time_Meridian') == 'am' ? 0 : 12));
+		$visit_date_time = standard_date(human_to_unix($this->input->post('referral_date')), 'MYSQL_NOTIME') . " " . $referral_time_hour . ":" . $this->input->post('referral_time_Minute');
+		
+		// Fixing of date format from example 2015-08-10 1:20 to 2015-08-10 01:20
+		$visit_date_time = date("Y-m-d H:i",strtotime($visit_date_time));
+
+		$this->soccontractormdl->referral_date_time  = $visit_date_time;
+		if (!$this->isValidDate($this->soccontractormdl->referral_date_time)) {				
+			$this->soccontractormdl->referral_date_time = $soc->referral_date_time;
+		}
+		$this->soccontractormdl->current_soc = 1;
+		$this->soccontractormdl->create_user_id = $contractorsoc->create_user_id;
+		$this->soccontractormdl->modify_user_id = $this->getUsAgyId();
+		//			$this->soccontractormdl->prim_doctor_user_id = $soc->prim_doctor_user_id;
+		//			$this->soccontractormdl->second_doctor_user_id = $soc->second_doctor_user_id;
+		$this->soccontractormdl->agency_referral_date = standard_date(human_to_unix($this->input->post('referral_date')), 'MYSQL_NOTIME');
+        
+        $agency_referral_hour = ((int) ($this->input->post('hour') == 12 ? 0 : $this->input->post('hour')) + ($this->input->post('meridian') == 'am' ? 0 : 12));
+
+        $agency_referral_time = $agency_referral_hour . ":" . $this->input->post('minute');
+        
+        $this->soccontractormdl->agency_referral_time = $agency_referral_time;
+		$this->soccontractormdl->update($soc_contractor_id);
+		
+
+		// fetch latest Therapy Referral info
+		$newContractorsoc = (array)$this->soccontractormdl->getById($soc_contractor_id);
+		unset($newContractorsoc['modify_user_id']);
+		unset($newContractorsoc['modify_datetime']);
+		$prevContractorSoc = (array)$contractorsoc;
+		unset($prevContractorSoc['modify_user_id']);
+		unset($prevContractorSoc['modify_datetime']);
+		
+		// check is there any changes saved, If changes detect save the record
+		$result = array_diff_assoc($newContractorsoc, $prevContractorSoc);
+		if (!empty($result)) {			
+			$this->assignPostData($this->soccontractorhistorymdl);
+			$this->soccontractorhistorymdl->referral_date_time = $this->soccontractormdl->referral_date_time;
+			
+			$this->soccontractorhistorymdl->current_soc = 1;
+			$this->soccontractorhistorymdl->create_user_id = $this->soccontractormdl->create_user_id;
+			$this->soccontractorhistorymdl->modify_user_id = $this->soccontractormdl->modify_user_id;
+			$this->soccontractorhistorymdl->insert($soc_contractor_id);			
+		}
+		
+
+  		// send internal email to all the user of the Contractor with profile=Company
+		$emailtext = $this->emailtextmdl->get(9);
+		$this->messagemdl->user_from = $this->getUsAgyId();
+		$this->messagemdl->msg_subject = str_replace('{patient_name}', $patient->first_name . " " . $patient->last_name, $emailtext->email_subject);
+		$this->messagemdl->msg_text = str_replace('{patient_name}', $patient->first_name . " " . $patient->last_name, $emailtext->email_content);
+		$this->messagemdl->insert();
+
+		$contractor_id = $this->agencycontractormdl->getContractorId($this->input->post('agency_contractor_id'));
+
+		$this->load->library('email');
+		// Get conctractor users with profile=Company only to send internal email
+		$CompanyUsers = $this->usagymdl->getByAgencyId($contractor_id, null, null, 3);						
+		$usAgyInfo = $this->usagymdl->getByUsAgyId($this->messagemdl->user_from);
+		$userFromInfo = $this->usermdl->getById($usAgyInfo->user_id);
+		foreach($CompanyUsers as $user){
+			$this->usermessagemdl->insert($this->messagemdl->msg_id, $user->us_agy_id, 0);
+
+			// Send Internal email to personal email if user has enabled this to his account settings
+			if ( $user->internal_email_to_mailbox == 1 AND $this->validation->valid_email($user->email) ) {
+
+				$this->email->from('noreply@homehealthsoft.com', $userFromInfo->last_name.' '.$userFromInfo->first_name.' (HHS)');
+				$this->email->to($user->email);
+				$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+				$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            // $this->email->set_mailtype("html"); 
+
+				$this->email->message($body);    
+				/** 
+				* Send ayyachment if have, Disabled it becasue we dont have 
+				* any attachment on this automated internal email  
+				*/
+				/*if ($this->messagemdl->msg_attachment != "") {						
+					$this->email->attach(FCPATH.'/datastore/attachment/'.$this->messagemdl->msg_attachment);
+				}*/
+				$this->email->send();
+				//$this->email->print_debugger();
+				$this->email->clear();
+			}			
+		}
+		
+
+		//$this->patientmdl->updateDoctorOffice($patient_id, $this->input->post('prim_doctor_office_id'), $this->input->post('second_doctor_office_id'));
+
+		$this->tpl->assign('success_string', "Therapy Referral" . $this->lang->line('grl_upd_msg'));
+		redirect('patient/referral/therapy/' . $patient_id."/". $episode_id);
+		/*$this->contractor_referral($patient_id,$episode_id);
+		exit;      */
+	}
+	
+	$this->tpl->assign('doctor_office_list', $this->agencydoctorofficemdl->get($patient->agency_id, null, false));
+	
+	if ($contractorsoc->lock_soc == 1) {
+		
+		$this->tpl->assign('case_manager', $this->usagymdl->getByUsAgyId($contractorsoc->case_manager_user_id));
+		$this->tpl->assign('clinician',    $this->usagymdl->getByUsAgyId($contractorsoc->clinician_user_id));
+		//$this->tpl->assign('additional_buttons', array('Print Contractor Referral'=>'selectContractor();'));
+		
+	}
+	
+	$this->tpl->assign('referral_time_ut', mysql_to_unix($contractorsoc->referral_date_time));
+	$this->tpl->assign('referral_date_display_only', true);
+	$this->tpl->assign('referral_date_time_display_only', true);
+	
+	$this->tpl->assign('referral_time_ut', mysql_to_unix($contractorsoc->referral_date_time));
+	if(!$contractorsoc->referral_date_time){
+		$timeint = mktime(date("H")+2, date("i"),date("s"),date("m"),date("d"),date("Y"));
+		
+		$this->tpl->assign('referral_date', standard_date(mysql_to_unix(date("Y-m-d h:i:s a",$timeint)), 'USA_DATE'));
+		$this->tpl->assign('referral_time_only', standard_date(mysql_to_unix(date("Y-m-d h:i:s a",$timeint)), 'USA_TIME_C'));
+		$this->tpl->assign('referral_time_Hour', date("h",$timeint));
+		$this->tpl->assign('referral_time_Minute', date("i"));
+		$this->tpl->assign('referral_time_Meridian', date("a",$timeint));  		
+	}else{
+		$this->tpl->assign('referral_time_only', standard_date(mysql_to_unix($contractorsoc->referral_date_time), 'USA_TIME_C'));
+		$this->tpl->assign('referral_time_Hour', date("h",mysql_to_unix($contractorsoc->referral_date_time)));
+		$this->tpl->assign('referral_time_Minute', date("i",mysql_to_unix($contractorsoc->referral_date_time)));
+		$this->tpl->assign('referral_time_Meridian', date("a",mysql_to_unix($contractorsoc->referral_date_time)));		
+	}
+
+
+	$this->tpl->assign("tab_page", true);
+	
+    if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3) ) {
+		// can edit/save
+	}else{
+  		$this->tpl->assign('no_commit_form', true);
+	}
+
+	/*if($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'){
+      // allow to edit the patuent info
+	}else{
+		$this->tpl->assign('no_commit_form', !$this->hasPatientAccess($patient_id) || $this->getAgencyType() == 'C'); 
+		if (!$this->hasPatientAccess($patient_id) && (!$this->hasPermission(4) || !$this->hasPermission(5))) $this->tpl->assign('no_commit_form', true);
+	}*/
+
+	$patient = $this->patientmdl->getById($patient_id);
+	if(@$patient->tab_014_living_arr){
+		$tab_014_living_arr = $this->parametermdl->get(14,@$patient->tab_014_living_arr);
+		$tab_014_living_arr = $tab_014_living_arr->tab_description;
+		$this->tpl->assign("patient_living_arr", $tab_014_living_arr);		
+	}
+	$this->tpl->assign("patient_caregiver_name", @$patient->caregiver_name);		
+	$this->tpl->assign("patient_caregiver_phone", @$patient->caregiver_phone);		
+$this->tpl->assign('hours_list', array(
+			'00'=> '00','01'=>'01', '02'=>'02', '03'=>'03', '04'=>'04', '05'=>'05', '06'=>'06', 
+			'07'=>'07', '08'=>'08', '09'=>'09', '10'=>'10', '11'=>'11', '12'=>'12'
+	));
+	$this->tpl->assign('minutes_list', array(
+			'00'=>'00', '05'=>'05', '10'=>'10', '15'=>'15', '20'=>'20', '25'=>'25', '30'=>'30',
+			'35'=>'35', '40'=>'40', '45'=>'45', '50'=> '50', '55'=>'55'
+	));
+		$this->tpl->assign('type_time', array('am'=>'AM','pm'=>'PM'));
+
+		// agency_referral_time
+		$this->tpl->assign('agency_referral_hr', date("h",mysql_to_unix($contractorsoc->agency_referral_date.$contractorsoc->agency_referral_time)));
+		$this->tpl->assign('agency_referral_min', date("i",mysql_to_unix($contractorsoc->agency_referral_date.$contractorsoc->agency_referral_time)));
+		$this->tpl->assign('agency_referral_mer', date("a",mysql_to_unix($contractorsoc->agency_referral_date.$contractorsoc->agency_referral_time)));
+	$this->tpl->assign_include("dynamic_tpl", "patient/team/referral_base");
+	$this->tpl->assign_include("dynamic_form", "patient/team/referral_form");
+	$this->tpl->view("parts/ibase", $this->lang->language);
+
+}
+
+  function referral_delete($soc_contractor_id, $patient_id){
+    $contractor_id = $this->getAgencyId();
+    // LOAD MODELS
+		$this->load->model('soccontractormdl');
+    
+    $agency_contractor_id = $this->patientcontractormdl->getAgencyContractorId($patient_id, $contractor_id);
+    
+    $document = $this->xml->Document();
+		$contractorsoc = $this->soccontractormdl->getById($soc_contractor_id);    		
+    if($contractorsoc != null){
+        if($contractorsoc->agency_contractor_id == $agency_contractor_id){
+          $this->soccontractormdl->delete($soc_contractor_id);
+          $document->append($this->xml->Element('js', 'script=loadGrid()', null));      
+        }else{
+          $document->append($this->xml->Element('alert', null, "You can not delete this therapy referral!"));
+          //$document->append($this->xml->Element('alert', null, "{$contractorsoc->agency_contractor_id} == {$agency_contractor_id}"));
+          return;			
+        }
+    }else {			
+			$document->append($this->xml->Element('alert', null, "Contractor referral not found!"));
+			return;			
+		}
+  }
+  
+  	function doctorInfo($doctorID){
+		$doctorInfo = $this->agencymdl->getByAgencyId($doctorID);
+
+		echo "<label class='doct-address'>{$doctorInfo->address}</label><br>".
+	        ( ( @$doctorInfo->address2 != "" ) ? @$doctorInfo->address2."<br>" : "").
+	        "{$doctorInfo->city}, {$doctorInfo->state_name_short}. {$doctorInfo->zip}<br>".
+	        "Phone: <label class='doct-phone'>{$doctorInfo->phone_primary}</label><br>".
+	        "Fax: <label class='doct-fax'>{$doctorInfo->fax}</label><br>";
+	}
+	
+
+  
+	function checkSOCDate ( $estimated_soc_date ) {
+		
+		$soc = $this->socmdl->getById($this->input->post('soc_id'));
+		$last_episode = $this->episodemdl->getCurrentByPatientId($soc->patient_id);
+		if (mysql_to_unix($last_episode->estimated_soc_date) >= human_to_unix($estimated_soc_date)) {
+			$this->validation->set_message('checkSOCDate', "The estimaded SOC Date must be greater than " . standard_date(mysql_to_unix($last_episode->estimated_soc_date)));
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+		
+	}
+
+	function newCheckSOCDate ( $estimated_soc_date ) {
+		$soc = $this->socmdl->getById($this->input->post('soc_id'));
+		$last_episode = $this->episodemdl->getCurrentByPatientId($soc->patient_id);
+		if (human_to_unix($estimated_soc_date) > mysql_to_unix($last_episode->episode_start_date)) {
+			return TRUE;
+		} else {
+			$this->validation->set_message('newCheckSOCDate', "New SOC Date Must be Greater than the current Certification From-Date " . standard_date(mysql_to_unix($last_episode->episode_start_date)));
+			return FALSE;
+		}
+		
+	}
+
+	function newCheckSOCDateSpecial ( $estimated_soc_date ) {
+		$soc = $this->socmdl->getById($this->input->post('soc_id'));
+		$last_episode = $this->episodemdl->getCurrentByPatientId($soc->patient_id);
+		if (human_to_unix($estimated_soc_date) > mysql_to_unix($last_episode->episode_end_date)) {
+			return TRUE;
+		} else {
+			$this->validation->set_message('newCheckSOCDateSpecial', "New SOC Date Must be Greater than the current Certification Thur-Date " . standard_date(mysql_to_unix($last_episode->episode_end_date)));
+			return FALSE;
+		}
+		
+	}
+
+	function checkStatus ( $referral_status ) {
+		if ($referral_status == 'Cancel') {
+			if ($this->getAgencyType() != 'A') {
+				$this->validation->set_message('checkStatus', 'You can\'t change status to "Cancel"!');
+				return false;
+			}
+		}
+
+		return true;		
+	}
+
+/*	function confirmsocdate ( $patient_id ) {
+		
+		$this->tpl->assign('faction', 'confirmsocdate');
+		$this->validation->set_rules(array('case_manager_user_id' => 'required'));
+		
+		if ($this->validation->run() == FALSE || $this->uri->segment(3) != 'confirmsocdate') {
+
+			$soc = $this->socmdl->getCurrent($patient_id);
+			$this->tpl->assign('__estimated_soc_date', $soc->estimated_soc_date);
+			
+			$start_date = strtotime("+ 0 day", mysql_to_unix($soc->estimated_soc_date));
+			$end_date   = strtotime("+ 59 day", mysql_to_unix($soc->estimated_soc_date));
+			
+			$this->tpl->assign("sn_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 16, false));
+			$this->tpl->assign("pt_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 17, false));
+			$this->tpl->assign("cm_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 18, false));
+			
+			
+			$this->tpl->assign('start_date', standard_date($start_date));
+			$this->tpl->assign('end_date',   standard_date($end_date));
+
+			$this->tpl->assign('entity_id', $patient_id);
+			$this->tpl->assign('clinician_user_id', $soc->clinician_user_id);
+			//$this->tpl->assign(array("tab_page" => true, "cancelbtn" => true));
+			$this->tpl->assign(array("tab_page" => true));
+      
+		    $this->tpl->assign('additional_buttons', array('Cancel' => "document.location = '{$this->config->config['index_url']}patient/referral/index/{$patient_id}';"));
+      
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+			$this->tpl->assign_include("dynamic_form", "patient/conf_socdate_form");
+			$this->lang->language['grl_save'] = 'Confirm';
+			$this->tpl->assign('soc_id', $soc->soc_id);
+
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+
+			$agency_type = $this->agencymdl->getByAgencyId($this->getAgencyId())->agency_type;
+			
+			if ($this->input->post('clinician_user_id')) {
+				$this->socmdl->updateClinician($this->input->post('soc_id'), $this->input->post('clinician_user_id'));
+			}
+			
+			$soc = $this->socmdl->getById($this->input->post('soc_id'));
+			
+			$team = $this->teammdl->getAll($patient_id);
+			
+			if (array_key_exists($soc->clinician_user_id, $team) == FALSE && $soc->clinician_user_id) {
+				// assigning clinician to team
+				$this->teammdl->user_id = $soc->clinician_user_id;
+				$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+				$this->teammdl->insert($patient_id);
+			}
+			
+			$team = $this->teammdl->get($patient_id, null, null, null, $this->input->post('case_manager_user_id'));
+			if (count($team)) {
+				$this->teammdl->delete($team[0]->ppr_id);
+			}
+			// assigning CM to team
+			$this->teammdl->user_id = $this->input->post('case_manager_user_id');
+			$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+			$this->teammdl->insert($patient_id);
+			
+			// assigning CM permission to team user
+			$this->teammdl->cleanPatientApprover($patient_id, 3);
+			$this->teammdl->assignPatientApprover($this->teammdl->ppr_id, 3);
+			
+			
+			// SN Approver
+			if (!is_null($this->input->post('sn_user_id')) && $this->input->post('sn_user_id') != $this->input->post('case_manager_user_id')) {
+				$team = $this->teammdl->get($patient_id, null, null, null, $this->input->post('sn_user_id'));
+				if (count($team)) {
+					$this->teammdl->delete($team[0]->ppr_id);
+				}
+				// assigning SN APP to team
+				$this->teammdl->user_id = $this->input->post('sn_user_id');
+				$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+				$this->teammdl->insert($patient_id);
+				
+				// assigning SN APP permission to team user
+				$this->teammdl->cleanPatientApprover($patient_id, 1);
+				$this->teammdl->assignPatientApprover($this->teammdl->ppr_id, 1);
+			}
+			
+			
+			// PT Approver
+			if (!is_null($this->input->post('pt_user_id')) && $this->input->post('pt_user_id') != $this->input->post('case_manager_user_id')) {
+				$team = $this->teammdl->get($patient_id, null, null, null, $this->input->post('pt_user_id'));
+				if (count($team)) {
+					$this->teammdl->delete($team[0]->ppr_id);
+				}
+				// assigning PT APP to team
+				$this->teammdl->user_id = $this->input->post('pt_user_id');
+				$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+				$this->teammdl->insert($patient_id);
+				
+				// assigning PT APP permission to team user
+				$this->teammdl->cleanPatientApprover($patient_id, 2);
+				$this->teammdl->assignPatientApprover($this->teammdl->ppr_id, 2);
+			}
+			
+			// creating episode
+			$this->docdoctorordermdl->order_date = date('Y-m-d');
+			$this->docdoctorordermdl->doc_doctor_order_type_id = 1;
+			//$this->docdoctorordermdl->doctor_office_id = $soc->prim_doctor_user_id;
+			$this->docdoctorordermdl->doctor_office_id = $soc->prim_doctor_office_id;
+			$this->docdoctorordermdl->order_by_user_id = $this->getUsAgyId();
+			$this->docdoctorordermdl->insert($patient_id);
+			
+			$this->episodemdl->insert($this->input->post('soc_id'), $this->input->post('estimated_soc_date'), $this->docdoctorordermdl->doc_doctor_order_id);
+			$episode = $this->episodemdl->getById($this->episodemdl->cms485_id);
+			
+			// creating Start of Care visit to patient
+			if ($this->input->post('begin_treatment') == 1 && $this->input->post('clinician_user_id')) {
+				$this->visitlogmdl->visit_type_id = 300;
+				$this->visitlogmdl->cms485_id = $this->episodemdl->cms485_id;
+				$this->visitlogmdl->visit_user_id = $soc->clinician_user_id;
+				$this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+				$this->visitlogmdl->visit_date_time = $episode->episode_start_date . " 08:00";
+				
+				$visittype = $this->visittypemdl->getById($this->visitlogmdl->visit_type_id);
+				
+				$this->visitlogmdl->insert($visittype->billable_yn);
+				
+				$this->app->updateEpisodeVisitNumber($this->visitlogmdl->cms485_id); // reordering visit number
+				
+			}
+			
+			// sending internal messahe to clinician
+			$emailtext = $this->emailtextmdl->get(2);
+			$this->messagemdl->user_from = $this->getUsAgyId();
+			$this->messagemdl->msg_subject = $emailtext->email_subject;
+			$this->messagemdl->msg_text = $emailtext->email_subject;
+			$this->messagemdl->insert();
+			if ($soc->clinician_user_id) {
+				$this->usermessagemdl->insert($this->messagemdl->msg_id, $soc->clinician_user_id, 0);
+			}
+					
+			// locking soc
+			$this->socmdl->updateLock($this->input->post('soc_id'));
+			
+			// updating patient status
+			$this->patientmdl->updateStatus($patient_id, 2);
+			
+			echo "<SCRIPT>parent.document.location = '" . $this->config->config['index_url'] . "patient/mypatient/edit/" . $patient_id . "';</SCRIPT>";
+			
+		}
+		
+	}
+	*/
+	
+	function validatechangesocdate ( $soc_id, $cms485_id=null ) {
+		
+		$soc		     = $this->socmdl->getById($soc_id);
+		$start_date = null;
+		$end_date = null;
+
+		if ($this->input->post('estimated_soc_end_date')) {
+			$start_date = standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME');
+			$end_date = standard_date(human_to_unix($this->input->post('estimated_soc_end_date')), 'MYSQL_NOTIME');
+			if (strtotime($start_date) >= strtotime($end_date)) {
+				$this->validation->set_message('validatechangesocdate', 'SOC END DATE should be greater then start date');
+				return FALSE;
+			}
+		} else {
+			$patient 	 = $this->patientmdl->getById($soc->patient_id);
+			$loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			$usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+
+			if ($loggedInAgency->provides_altern_therapy == 'Y' OR in_array($patient->pat_tab111_product_id, array(2, 3, 4)) OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4))){
+				$start_date = standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME');
+				$end_date = standard_date(strtotime("+ 364 day", mysql_to_unix($start_date)), 'MYSQL_NOTIME');
+			} else {
+				return TRUE;
+				
+				// $start_date = standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME');
+				// $end_date = standard_date(strtotime("+ 59 day", mysql_to_unix($start_date)), 'MYSQL_NOTIME');
+			}
+
+
+		}
+		
+		// $socLimitDates = $this->socmdl->getSocLimitDates($soc_id, $soc->estimated_soc_date, standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME'));
+		// $overflowVisits = $this->visitlogmdl->getOverflowVisits($soc_id, $socLimitDates->soc_start_date, $socLimitDates->soc_end_date);
+
+		// overflow visits declared as global so that they are accesible to function changeSocDate() after confirmation
+		global $overflowVisits;
+		$overflowVisits = $this->visitlogmdl->getOverflowVisits($soc_id, $start_date, $end_date, $cms485_id);
+
+		if (count($overflowVisits)) {
+			if ($this->input->post('confirm-overflow') == 'Confirm') {
+				return TRUE;
+			} else {
+				$aux = array();
+				foreach ($overflowVisits as $visit) {
+					array_push($aux, standard_date(mysql_to_unix($visit->visit_date_time), 'USA_DATE'));
+				}
+				unset($GLOBALS['overflowVisits']);
+				$this->tpl->assign('confirm_overflow', true);
+				$this->validation->set_message('validatechangesocdate', 'SOC Date NOT Modified. The following visits will exist OUTSIDE the certification period upon confirmation: <br>' . implode('<br>', $aux));
+				return FALSE;
+			}
+		} else {
+			unset($GLOBALS['overflowVisits']);
+			return TRUE;
+		}
+		
+	}
+	
+	function changeSocDate ( $soc_id, $cms485_id = null ) {
+
+		$soc		     = $this->socmdl->getById($soc_id);		
+		$patient 	 = $this->patientmdl->getById($soc->patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		// if (!$this->hasPermission(2)) {
+		if ($this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3)) {
+			// Have permission to change the SOC date
+		} else {
+			echo "Haven't permission to change the SOC date!";
+			return;			
+		}
+		
+		
+		$this->assignObject($soc);
+		$this->tpl->assign('cms485_id', $cms485_id);
+
+		if ($cms485_id) {
+			$episode = $this->episodemdl->getById($cms485_id);
+		} else {
+			$episode = $this->episodemdl->getCurrent($soc->soc_id);
+		}
+
+		$loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+		
+		if ($loggedInAgency->provides_altern_therapy == 'Y' OR in_array($patient->pat_tab111_product_id, array(2, 3, 4)) OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4))) {
+			$this->tpl->assign("therapy_type",  'S');
+			$this->tpl->assign("estimated_soc_end_date",  $episode->episode_end_date);
+
+			$this->validation->set_rules(array ('estimated_soc_date' => 'required',
+												'estimated_soc_end_date' => 'required',
+												'soc_id' => 'callback_validatechangesocdate['.$cms485_id.']',
+											));
+		} else {
+			$this->validation->set_rules(array ('estimated_soc_date' => 'required',
+												'soc_id' => 'callback_validatechangesocdate['.$cms485_id.']'));
+		}
+
+		
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign_include("dynamic_tpl", "patient/change_soc_date_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			// $socLimitDates = $this->socmdl->getSocLimitDates($soc_id, $soc->estimated_soc_date, standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME'));
+			
+			$this->socmdl->updateDate($soc_id, $this->input->post('estimated_soc_date'));
+			if ($loggedInAgency->provides_altern_therapy == 'Y' OR in_array($patient->pat_tab111_product_id, array(2, 3, 4)) OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4))) {
+				$this->episodemdl->updateFlex($episode->cms485_id, 'episode_start_date', standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME'));
+				$this->episodemdl->updateFlex($episode->cms485_id, 'episode_end_date', standard_date(human_to_unix($this->input->post('estimated_soc_end_date')), 'MYSQL_NOTIME'));
+			} else {
+				// $start_date = standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME');
+				// $end_date   = standard_date(strtotime("+ 59 day", mysql_to_unix($start_date)), 'MYSQL_NOTIME');
+
+				$this->episodemdl->updateEpisodesDates($soc->soc_id, $soc->estimated_soc_date, standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME'), 59);
+				// $this->episodemdl->updateEpisodesDates($soc->soc_id, $soc->estimated_soc_date, standard_date(human_to_unix($this->input->post('estimated_soc_date')), 'MYSQL_NOTIME'));
+			}
+
+			// delete overflow visits if have any after confirmation
+			// The following visits will exist OUTSIDE the certification period instead of delete
+			// global $overflowVisits;
+			// if (is_array($overflowVisits) AND !empty($overflowVisits)) {
+			// 	foreach ($overflowVisits as $visit) {
+			// 		if (in_array($visit->visit_status_id, array(1,2))) {
+			// 			// will be deleted which are in status 'Schedule' or 'In Progress'
+			// 			$this->visitlogmdl->delete($visit->visit_log_id);
+			// 		}
+			// 	}
+			// 	unset($GLOBALS['overflowVisits']);
+			// }
+			
+			echo "<SCRIPT>parent.document.location = '" . $this->config->config["index_url"] . "patient/patient/treatmentarea/" . $soc->patient_id . "'</SCRIPT>";
+			
+		}
+		
+	}
+
+  function selectContractor( $patient_id, $episode_id ) {
+    $contractors = array();
+    
+    foreach ($this->patientcontractormdl->get($patient_id) as $contractor) {
+  			$contractors[$contractor->contractor_id] = $contractor->agency_name;
+  		}
+      
+      $this->tpl->assign("patient_id", $patient_id);
+      $this->tpl->assign("episode_id", $episode_id);
+      $this->tpl->assign("contractor_list", $contractors);
+      $this->tpl->assign_include("dynamic_tpl", "patient/referral_print_select_contractor");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+
+function agency_inkate_pdf($patient_id, $episode_id=null){      
+      $this->load->model('soccontractormdl');
+
+		// if (!is_null($episode_id) && $episode_id != '') {
+		if (!$episode_id) {
+			$episode = $this->episodemdl->getById($episode_id);
+			$soc = $this->socmdl->getById(@$episode->soc_id);
+		} else {
+			$soc = $this->socmdl->getCurrent($patient_id);
+		}
+
+		$patient = $this->patientmdl->getById($patient_id);
+		$insurance = $this->patientinsurancemdl->getPrimaryInsurance($patient_id);
+		$pat_contractor = $this->patientcontractormdl->get($patient_id);
+      
+      $contractor = array();
+      if(sizeof($pat_contractor) > 0){
+        $pat_contractor = $pat_contractor[0];
+        if(isset($pat_contractor->contractor_id) ANd $pat_contractor->contractor_id != "")
+        $contractor=$this->agencymdl->getByAgencyId($pat_contractor->contractor_id);
+      } else {
+      	$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+      }
+      
+      
+       $agency=$this->agencymdl->getByAgencyId($patient->agency_id);
+      
+      // primary doctor office
+      $prim_doctor_office = array();
+      if(isset($soc->prim_doctor_office_id) AND $soc->prim_doctor_office_id > 0){
+        $prim_doctor_office = $this->agencymdl->getByAgencyId($soc->prim_doctor_office_id);
+      }
+      // second doctor office
+			$second_doctor_office =  array();
+      if(isset($soc->second_doctor_office_id) AND $soc->second_doctor_office_id > 0){
+        $second_doctor_office =  $this->agencymdl->getByAgencyId($soc->second_doctor_office_id);
+      }
+
+      /*if($patient->prim_doctor_user_id)
+          $prim_doctor=$this->usagymdl->getByUsAgyId($patient->prim_doctor_user_id);
+      else
+          $prim_doctor=array();
+
+      if($patient->second_doctor_user_id)
+          $second_doctor=$this->usagymdl->getByUsAgyId($patient->second_doctor_user_id);
+      else
+          $second_doctor=array();*/
+
+      $referral=$this->referralmdl->getByReferralId($soc->referral_id);      
+      $cms485=$this->episodemdl->getBySocId($soc->soc_id);/**/
+      $cms485 = $cms485[0];
+      $prim_diag = $this->episodeicdmdl->getByPso($cms485->cms485_id, 1);
+      $sec_diag = $this->episodeicdmdl->getByPso($cms485->cms485_id, 3);
+      if(count($prim_diag) > 0)
+      $prim_diag = $prim_diag[0];
+      if(count($sec_diag) > 0)
+      $sec_diag = $sec_diag[0];
+      
+      // $referral_name_list = $this->usagymdl->getReferralNameByAgency($patient->agency_id));
+
+      $patientinsurance=$this->patientinsurancemdl->get($patient_id);
+
+      /////////////////////////////////////////////////
+
+      $path_ticket = realpath("style/images/icon_enable_negro.gif");
+      //$__FONT['PDF']['SIZE'] = 8.5;
+      $__FONT['PDF']['SIZE'] = 10.5;
+      //$__FONT['PDF']['FORM_MEDIUM'] = 10;
+      $__FONT['PDF']['FORM_MEDIUM'] = 12;
+      //$__FONT['PDF']['FORM_SMALL'] = 9;
+      $__FONT['PDF']['FORM_SMALL'] = 11;
+      $__FONT['PDF']['FORM_SMALL2'] = 11;
+      //$__FONT['PDF']['FORM_SMALL2'] = 9;
+      //$__FONT['PDF']['FORM_SMALL3'] = 6.5;
+      $__FONT['PDF']['FORM_SMALL3'] = 8.5;
+      //$__FONT['PDF']['FORM_SMALL4'] = 9.5;
+      $__FONT['PDF']['FORM_SMALL4'] = 11.5;
+      //$__FONT['PDF']['FORM_Arial8'] = 9.5;
+      $__FONT['PDF']['FORM_Arial8'] = 11.5;
+      
+      $this->load->library('fpdf');
+      define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+
+      $cero_x = 21;
+      $cero_y = 32;
+      $this->fpdf->Open();
+      $pdf = $this->fpdf;
+
+      $this->fpdf->AddPage();
+
+      $x_factor = 0;  
+      $y_factor = 0;  
+      // TO
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      //set font color to blue
+      //$this->fpdf->SetTextColor( 00, 00, 256 );
+      if(isset($agency) AND sizeof($agency) > 0){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), "TO:"); // agency name
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $x_factor = 20;        
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$agency->agency_name);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$agency->address);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$agency->city.", ".@$agency->state_name_short.". ".@$agency->zip);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone: ".@$agency->phone_primary);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ".@$agency->fax);
+      }
+      
+      if(isset($referral) AND sizeof($referral) > 0){
+        // FROM
+        $x_factor = 400;  
+        $y_factor = 0;  
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+        //set font color to blue
+        //$this->fpdf->SetTextColor( 00, 00, 256 );
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), "FROM:"); // agency name
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+          
+        $x_factor += 35;      
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$referral->referral_name);
+        $y_factor += 12;
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$referral->address);
+        $y_factor += 12;
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$referral->city.", ".@$referral->state_name_short.". ".@$referral->zip );
+        $y_factor += 12;
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone: ".@$referral->phone_primary);
+        $y_factor += 12;
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ".@$referral->fax);
+      }
+      
+      $x_factor = 200;
+      $y_factor += 32;            
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"AGENCY REFERRAL / INTAKE");
+      $y_factor += 12;            
+      
+      $this->fpdf->SetDrawColor(130,100);
+      
+      $this->fpdf->Rect($cero_x-5,$cero_y+$y_factor, 577-$cero_x+5, 680);
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Forst  Row  
+      $x_factor = 0;      
+      $y_factor += 12;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Certification Period:");
+      
+      $x_factor += 80 + 15;    
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y",strtotime(@$cms485->episode_start_date))." - ".date("m/d/Y",strtotime(@$cms485->episode_end_date)));
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-10-2 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      
+      $x_factor = 255;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.5), 8.4, 8.4);
+      // if (@$patient->medicare_id){
+      if (isset($insurance->tab_108_prim_sec) AND $insurance->tab_108_prim_sec==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Medicare");
+      
+      $x_factor += 45+5;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.5), 8.4, 8.4);
+      // if (@$patient->medicaid_id){
+      if (isset($insurance->tab_108_prim_sec) AND $insurance->tab_108_prim_sec==2){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Medicaid");
+      
+      
+      $x_factor += 45+5;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.5), 8.4, 8.4);
+      // if (@$patient->managed_care_id){
+      if (isset($insurance->tab_108_prim_sec) AND $insurance->tab_108_prim_sec==3){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Other/HMO ");
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));
+      // Second  Row
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Disciplines needed: ");
+      $x_factor += 90+15;     
+      $disciplines_selected = array();
+      if ($contractor->provides_altern_therapy == "Y") {
+        if (@$soc->dis_aqu==1){
+          $disciplines_selected['dis_aqu'] = 'AQ';
+        }
+        if (@$soc->dis_beh==1){
+          $disciplines_selected['dis_beh'] = 'BE';
+        }
+        if (@$soc->dis_mas==1){
+          $disciplines_selected['dis_mas'] = 'MA';
+        }
+        if (@$soc->dis_mus==1){
+          $disciplines_selected['dis_mus'] = 'MU';
+        }
+        if (@$soc->dis_rec==1){
+          $disciplines_selected['dis_rec'] = 'RE';
+        }
+        if (@$soc->dis_hbr==1){
+          $disciplines_selected['dis_hbr'] = 'THBR';
+        }
+        if (@$soc->dis_art==1){
+          $disciplines_selected['dis_art'] = 'ART';
+        }
+      } else{
+        if (@$soc->dis_sn==1){
+          $disciplines_selected['dis_sn'] = 'SN';
+        }
+        if (@$soc->dis_pt==1){
+          $disciplines_selected['dis_pt'] = 'PT';
+        }
+        if (@$soc->dis_ot==1){
+          $disciplines_selected['dis_ot'] = 'OT';
+        }
+        if (@$soc->dis_st==1){
+          $disciplines_selected['dis_st'] = 'ST';
+        }
+        if (@$soc->dis_msgw==1){
+          $disciplines_selected['dis_msgw'] = 'MSGW';
+        }
+      }
+
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      foreach ($disciplines_selected as $key => $value) {
+        $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.7), 8.4, 8.4);
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+        $x_factor += 15;            
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), $value);
+        
+        $x_factor += 25;                    
+      }
+
+      /*$this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.7), 8.4, 8.4);
+      if (@$soc->dis_pt==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"PT");
+      
+      $x_factor += 25;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.7), 8.4, 8.4);
+      if (@$soc->dis_ot==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"OT");
+      
+      
+      $x_factor += 25;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.7), 8.4, 8.4);
+      if (@$soc->dis_st==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"ST");
+      */
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-10-2 ), ( $cero_x + 250 ), ($cero_y+$y_factor+24+5+2 ));
+      
+      $x_factor = 255;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"insurance ID: ");
+      $x_factor += 70;            
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), @$insurance->ins_id);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $y_factor += 12;
+      $x_factor = 255;            
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Medicaid ID: ");
+      // $x_factor += 70;            
+      // $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->medicaid_id);
+      // $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $y_factor += 12;
+      $x_factor = 255;            
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Other/HMO Id: ");
+      $x_factor += 70;            
+      // $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->managed_care_id);      
+      $y_factor += 7;
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Line(( $cero_x + 250) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));     
+      // Third  Row
+      $this->fpdf->Line(( $cero_x -5 ) , ($cero_y+$y_factor-25 ), ( 271), ($cero_y+$y_factor - 25 ));   
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-25 ),"Client Name: ");
+      $x_factor += 70;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-25 ),@$patient->first_name." ".@$patient->last_name);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-10-2 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      
+      $x_factor = 255;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date of Birth: ");
+      $x_factor += 55+15;            
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y",strtotime(@$patient->date_birth)));
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x + 250 ) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // Fourth  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),"Client Address: ");
+      $x_factor += 70+15;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),@$patient->address);
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),@$patient->address2);
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),$patient->city.", ".@$patient->state_name_short.". ".@$patient->zip1);
+      $y_factor += 12+12;
+      $x_factor = 0;                  
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),"Home Phone: ");
+      $x_factor += 70;             
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ), @$patient->phone_home);
+      
+      $y_factor += 12;
+      $x_factor = 0;                  
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),"Cell Phone: ");
+      $x_factor += 70;             
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ), @$patient->phone_cell);
+      
+
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      //$this->fpdf->Line(( $cero_x -5 ) , ($cero_y+$y_factor ), ( $cero_x + 245 ), ($cero_y+$y_factor ));
+      $x_factor = 0;               
+      $y_factor -= 12+12;      
+      /*$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"MAPSCO: ");
+      $x_factor += 40+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), @$patient->mapsco);*/
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-40-4-12 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+6 ));
+      
+      $x_factor = 255;               
+      $y_factor -= 25;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Living Arrangements:");
+      $x_factor += 90+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      
+      if(@$patient->tab_014_living_arr){
+        $tab_014_living_arr = $this->parametermdl->get(14,@$patient->tab_014_living_arr);
+        $tab_014_living_arr = $tab_014_living_arr->tab_description;
+        
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),$tab_014_living_arr);
+      }
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $x_factor = 255;               
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Primary Caregiver:");
+      $x_factor += 90+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->caregiver_name);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $x_factor = 255;               
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone:");
+      $x_factor += 40+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->caregiver_phone);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);      
+      $y_factor += 12;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      // 5th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Primary Diagnosis ");
+      $x_factor += 180;                  
+      
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date O/E");
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      if(@$prim_diag->icd9_name){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_diag->icd9_name);
+      }
+      $x_factor = 180;       
+      if(@$prim_diag->icd_date){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y", strtotime(@$prim_diag->icd_date)));
+      }
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-20-4 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+4 ));
+      
+      $x_factor = 255;               
+      $y_factor -= 10;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Secondary Diagnosis");
+      $x_factor += 180;              
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date O/E");
+      $x_factor = 255;                  
+      $y_factor += 12;
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      if(@$sec_diag->icd9_name){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$sec_diag->icd9_name);
+      }
+      $x_factor += 180;       
+      if(@$sec_diag->icd_date){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y", strtotime(@$sec_diag->icd_date)));
+      }
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 6th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Homebound Status per RN: ");
+      $x_factor += 130;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->homebound_st);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      // 7th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Precautions / Contraindications:  ");
+      $x_factor += 130+20;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), @$soc->precautions_contra);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 8th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Recent Hospitalizations	* If applicable ");
+      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Discharge date:");
+      $x_factor += 65+10;   
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);      
+      if(@$soc->date_disch_from_hospital){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), date("m/d/Y",strtotime(@$soc->date_disch_from_hospital)) );      
+      }
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $x_factor += 58;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Length of stay:");    
+      $x_factor += 60+10;       
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->length_stay);      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-20-4   ), ( $cero_x + 250 ), ($cero_y+$y_factor+5 ));
+      
+      
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 9th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Weight bearing status:");
+      $x_factor += 90+15;       
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->weigth_bearing_sts);      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-20 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      $x_factor = 255;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"DNR Orders / Advance Directives: ");
+      $x_factor += 135+25;       
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->dnr_orders);      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      
+      // 10th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Primary Physician");
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->first_name.' '.@$prim_doctor->last_name);      
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->agency_name);      
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->address);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->address);
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->address2);      
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->address2);      
+      
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->city.", ".@$prim_doctor->state_name_short.". ".@$prim_doctor->zip_code); 
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->city.", ".@$prim_doctor_office->state_name_short.". ".@$prim_doctor_office->zip); 
+      $y_factor += 12;             
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone:");      
+      $x_factor += 35;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->phone_work);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->phone_primary);
+      $y_factor += 12;                   
+      $x_factor = 0;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ");      
+      $x_factor += 20;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->fax); 
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->fax); 
+
+      /*$y_factor += 12;                   
+      $x_factor = 0;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"UPIN: ");      
+      $x_factor += 30;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->upin); 
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->upin); 
+      */
+      $y_factor += 12;                   
+      $x_factor = 0;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"NPI: ");      
+      $x_factor += 25;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->npi); 
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor_office->npi); 
+      
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-90-12-12 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      $x_factor = 255;                  
+      $y_factor -= 84+12;
+      // $y_factor -= 84;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Secondary Physician");
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->first_name." ".@$second_doctor->last_name);      
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->agency_name);      
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->address);    
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->address);    
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->address2);          
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->address2);          
+      $y_factor += 12;       
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->city.", ".@$second_doctor->state_name_short.". ".@$second_doctor->zip_code);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->city.", ".@$second_doctor_office->state_name_short.". ".@$second_doctor_office->zip);
+      $y_factor += 12;             
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone:");      
+      $x_factor += 35;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->phone_work);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->phone_primary);
+      $x_factor -= 35;                   
+      $y_factor += 12;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ");      
+      $x_factor += 20;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->fax);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->fax);
+
+      /*$x_factor -= 20;                   
+      $y_factor += 12;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"UPIN: ");      
+      $x_factor += 30;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->upin); 
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->upin); 
+      */
+      // $x_factor -= 30;                   
+      $x_factor -= 20;                   
+      $y_factor += 12;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"NPI: ");      
+      $x_factor += 25;                   
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->npi); 
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor_office->npi); 
+   
+   
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+
+      // 10th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Diagnosis Information and Physician Instructions: ");
+      $y_factor += 12;
+      $this->fpdf->SetXY($cero_x + $x_factor, $cero_y+$y_factor-8 );
+      $this->fpdf->MultiCell(540, 12, @$soc->diagnosis_info);
+      
+      $y_factor += ceil(strlen(@$soc->diagnosis_info)/110)*10;
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      // 11th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date of Referral	: ");
+      $x_factor += 70+15;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y",strtotime(@$pat_contractor->create_date)));
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y",strtotime(@$soc->referral_date_time)));
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-12 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      $x_factor = 255;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Person making the referral: ");
+      $x_factor += 110+20;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      //$this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$pat_contractor->person_referral);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$createUser->complete_name);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 12th  Row            
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Referral Notes: ");
+      //$x_factor += 75;                  
+      $y_factor += 5;
+      $this->fpdf->SetXY($cero_x + $x_factor, $cero_y+$y_factor );
+      $this->fpdf->MultiCell(540, 10, @$soc->referral_notes);
+
+      $y_factor += ceil(strlen(@$soc->referral_notes)/100)*10;
+      $y_factor += 7;
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));
+      
+      // 13th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Comments: ");
+      //$x_factor += 75;                  
+      $y_factor += 5;
+      $this->fpdf->SetXY($cero_x + $x_factor, $cero_y+$y_factor );
+      $this->fpdf->MultiCell(540, 10, @$patient->comments);
+      
+      //Certification Period:  04/09/2012 - 06/09/2012
+      $this->fpdf->Output('Agency REFERRAL / INTAKE '.$patient_id.'.pdf','D');
+      
+    }
+
+  function pdf_old($patient_id) {
+
+
+        $data = array();
+
+        $soc = $this->socmdl->getCurrent($patient_id);
+        $patient = $this->patientmdl->getById($patient_id);
+       $agency=$this->agencymdl->getByAgencyId($patient->agency_id);
+
+        if($patient->prim_doctor_user_id)
+            $prim_doctor=$this->usagymdl->getByUsAgyId($patient->prim_doctor_user_id);
+        else
+            $prim_doctor="";
+
+        if($patient->second_doctor_user_id)
+            $second_doctor=$this->usagymdl->getByUsAgyId($patient->second_doctor_user_id);
+        else
+            $second_doctor="";
+
+      
+        
+        $referral=$this->referralmdl->getByReferralId($soc->referral_id);
+        $cms485=$this->episodemdl->getBySocId($soc->soc_id);
+        $patientinsurance=$this->patientinsurancemdl->get($patient_id);
+ 
+
+
+        $data['agency_name']=$agency !=""?$agency->agency_name:"";
+        $data['agency_address']=$agency!=""?$agency->address:"";
+        $data['agency_phone']=$agency!=""?$agency->phone_primary:"";
+        $data['agency_fax']=$agency!=""?$agency->fax:"";
+        $data['agency_zip']=$agency!=""?$agency->zip:"";
+        $data['agency_city']=$agency!=""?$agency->city:"";
+        $data['agency_state']=$agency!=""?$agency->state_id:"";
+        $data['agency_web_address']=$agency!=""?$agency->web_address:"";
+
+
+        $data['estimated_soc_date']=$soc->estimated_soc_date;
+        $data['referral_date_time']= standard_date(mysql_to_unix($soc->referral_date_time));
+        $data['diagnosis_info']=$soc->diagnosis_info;
+        $data['referral_notes']=$soc->referral_notes;
+        $data['date_disch_from_hospital']=$soc->date_disch_from_hospital;
+
+        $data['dis_pt']=$soc->dis_pt==1?"checked":'';
+        $data['dis_ot']=$soc->dis_ot==1?"checked":'';
+        $data['dis_st']=$soc->dis_st==1?"checked":'';
+       
+ 
+
+           $data['referral_name']= isset ($referral)?@$referral->referral_name:"";
+           $data['referral_email']= isset ($referral)?@$referral->email:"";
+
+
+        $data['first_name']=$patient->first_name;
+        $data['last_name']=$patient->last_name;
+        $data['address']=$patient->address;
+        $data['city']=$patient->city;
+        $data['state_id']=$patient->state_id;
+        $data['zip1']=$patient->zip1;
+        $data['mapsco']=$patient->mapsco;
+        $data['phone_cell']=$patient->phone_cell;
+        $data['phone_home']=$patient->phone_home;
+        $data['medical_rec_nbr']=$patient->medical_rec_nbr;
+        $data['date_birth']=$patient->date_birth;
+
+        $data['tab_014_living_arr']=$patient->tab_014_living_arr;
+        $data['caregiver_name']=$patient->caregiver_name;
+        $data['caregiver_phone']=$patient->caregiver_phone;
+
+        $data['prim_doctor_name']=$prim_doctor !=""?$prim_doctor->first_name.' '.$prim_doctor->last_name:"";
+        $data['prim_doctor_address']=$prim_doctor!=""?$prim_doctor->address:"";
+        $data['prim_doctor_phone']=$prim_doctor!=""?$prim_doctor->phone_cell:"";
+        $data['prim_doctor_fax']=$prim_doctor!=""?$prim_doctor->fax:"";
+
+        $data['second_doctor_name']=$second_doctor!=""?$second_doctor->first_name.' '.$second_doctor->last_name:"";
+        $data['second_doctor_address']=$second_doctor!=""?$second_doctor->address:"";
+        $data['second_doctor_phone']=$second_doctor!=""?$second_doctor->phone_cell:"";
+        $data['second_doctor_fax']=$second_doctor!=""?$second_doctor->fax:"";
+
+        $data['medicare_id']=$patientinsurance!=""?$patientinsurance->medicare_id:"";
+
+
+
+
+
+        $content = $this->load->view('patient/print_note',$data,true); //view
+
+        require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');
+        try {
+            $html2pdf = new HTML2PDF('P','A4','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+
+            $html2pdf->setDefaultFont('Arial');
+            $html2pdf->writeHTML($content);
+            $html2pdf->Output('soc '.$patient_id.'.pdf', 'D');
+        }
+        catch(HTML2PDF_exception $e) {
+            echo $e;
+            exit;
+        }
+
+    }
+    
+    function pdf($patient_id){
+      $soc = $this->socmdl->getCurrent($patient_id);      
+      $patient = $this->patientmdl->getById($patient_id);
+      //$episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $pat_contractor = $this->patientcontractormdl->get($patient_id);
+      $insurance = $this->patientinsurancemdl->getPrimaryInsurance($patient_id);
+
+      $contractor = array();
+      if(sizeof($pat_contractor) > 0){
+        $pat_contractor = $pat_contractor[0];
+        if(isset($pat_contractor->contractor_id) ANd $pat_contractor->contractor_id != "")
+        $contractor=$this->agencymdl->getByAgencyId($pat_contractor->contractor_id);
+      }
+      
+      
+           $agency=$this->agencymdl->getByAgencyId($patient->agency_id);
+      
+      if($patient->prim_doctor_user_id)
+          $prim_doctor=$this->usagymdl->getByUsAgyId($patient->prim_doctor_user_id);
+      else
+          $prim_doctor=array();
+
+      if($patient->second_doctor_user_id)
+          $second_doctor=$this->usagymdl->getByUsAgyId($patient->second_doctor_user_id);
+      else
+          $second_doctor=array();
+
+      $referral=$this->referralmdl->getByReferralId($soc->referral_id);      
+      $cms485=$this->episodemdl->getBySocId($soc->soc_id);
+      $cms485 = $cms485[0];
+      $prim_diag = $this->episodeicdmdl->getByPso($cms485->cms485_id, 1);
+      $sec_diag = $this->episodeicdmdl->getByPso($cms485->cms485_id, 3);
+      if(count($prim_diag) > 0)
+      $prim_diag = $prim_diag[0];
+      if(count($sec_diag) > 0)
+      $sec_diag = $sec_diag[0];
+      
+      $patientinsurance=$this->patientinsurancemdl->get($patient_id);
+      
+      $path_ticket = realpath("style/images/icon_enable_negro.gif");
+      //$__FONT['PDF']['SIZE'] = 8.5;
+      $__FONT['PDF']['SIZE'] = 10.5;
+      //$__FONT['PDF']['FORM_MEDIUM'] = 10;
+      $__FONT['PDF']['FORM_MEDIUM'] = 12;
+      //$__FONT['PDF']['FORM_SMALL'] = 9;
+      $__FONT['PDF']['FORM_SMALL'] = 11;
+      $__FONT['PDF']['FORM_SMALL2'] = 11;
+      //$__FONT['PDF']['FORM_SMALL2'] = 9;
+      //$__FONT['PDF']['FORM_SMALL3'] = 6.5;
+      $__FONT['PDF']['FORM_SMALL3'] = 8.5;
+      //$__FONT['PDF']['FORM_SMALL4'] = 9.5;
+      $__FONT['PDF']['FORM_SMALL4'] = 11.5;
+      //$__FONT['PDF']['FORM_Arial8'] = 9.5;
+      $__FONT['PDF']['FORM_Arial8'] = 11.5;
+      
+      $this->load->library('fpdf');
+      define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+
+      $cero_x = 21;
+      $cero_y = 32;
+      $this->fpdf->Open();
+      $pdf = $this->fpdf;
+
+      $this->fpdf->AddPage();
+
+      $x_factor = 0;  
+      $y_factor = 0;  
+
+/*      
+      // TO
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      //set font color to blue
+      //$this->fpdf->SetTextColor( 00, 00, 256 );
+      if(isset($contractor) AND sizeof($contractor) > 0){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), "TO:"); // agency name
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $x_factor = 20;        
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$contractor->agency_name);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$contractor->address);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$contractor->city.", ".@$contractor->state_name_short.". ".@$contractor->zip);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone: ".@$contractor->phone_primary);
+        $y_factor += 12;  
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ".@$contractor->fax);
+      }
+      
+      // FROM
+      $x_factor = 400;  
+      $y_factor = 0;  
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      //set font color to blue
+      //$this->fpdf->SetTextColor( 00, 00, 256 );
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), "FROM:"); // agency name
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        
+      $x_factor += 35;      
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$agency->agency_name);
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$agency->address);
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$agency->city.", ".@$agency->state_name_short.". ".@$agency->zip );
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone: ".@$agency->phone_primary);
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ".@$agency->fax);
+*/      
+      $x_factor = 200;
+      $y_factor += 30;            
+
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"THERAPY REFERRAL FORM");
+      $y_factor += 12;            
+      
+      $this->fpdf->SetDrawColor(130,100);
+      
+      $this->fpdf->Rect($cero_x-5,$cero_y+$y_factor, 577-$cero_x+5, 680);
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Forst  Row  
+      $x_factor = 0;      
+      $y_factor += 12;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Certification Period:");
+      
+      $x_factor += 80 + 15;    
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y",strtotime(@$cms485->episode_start_date))." - ".date("m/d/Y",strtotime(@$cms485->episode_end_date)));
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-10-2 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      
+      $x_factor = 255;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.5), 8.4, 8.4);
+      // if (@$patient->medicare_id){
+      if (isset($insurance->tab_108_prim_sec) AND $insurance->tab_108_prim_sec==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Medicare");
+      
+      $x_factor += 45+5;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.5), 8.4, 8.4);
+      // if (@$patient->medicaid_id){
+      if (isset($insurance->tab_108_prim_sec) AND $insurance->tab_108_prim_sec==2){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Medicaid");
+      
+      
+      $x_factor += 45+5;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.5), 8.4, 8.4);
+      // if (@$patient->managed_care_id){
+      if (isset($insurance->tab_108_prim_sec) AND $insurance->tab_108_prim_sec==3){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Other/HMO ");
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));
+      // Second  Row
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Disciplines needed: ");
+      $x_factor += 90+15;                  
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.7), 8.4, 8.4);
+      if (@$soc->dis_pt==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"PT");
+      
+      $x_factor += 25;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.7), 8.4, 8.4);
+      if (@$soc->dis_ot==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"OT");
+      
+      
+      $x_factor += 25;            
+      $this->fpdf->Rect(( $cero_x + $x_factor),($cero_y + $y_factor - 7.7), 8.4, 8.4);
+      if (@$soc->dis_st==1){
+        $this->fpdf->Image( $path_ticket, ( $cero_x + $x_factor+ 1 ),($cero_y + $y_factor- 8 + 1),6);
+      }
+      
+      $x_factor += 15;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"ST");
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-10-2 ), ( $cero_x + 250 ), ($cero_y+$y_factor+24+5+2 ));
+      
+      $x_factor = 255;            
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Medicare ID: ");
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"insurance ID: ");
+      $x_factor += 70;            
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->medicare_id);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$insurance->ins_id);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $y_factor += 12;
+      $x_factor = 255;            
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Medicaid ID: ");
+      $x_factor += 70;            
+      // $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->medicaid_id);
+      // $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $y_factor += 12;
+      $x_factor = 255;            
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Other/HMO Id: ");
+      // $x_factor += 70;            
+      // $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      // $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->managed_care_id);      
+      $y_factor += 7;
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Line(( $cero_x + 250) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));     
+      // Third  Row
+      $this->fpdf->Line(( $cero_x -5 ) , ($cero_y+$y_factor-25 ), ( 271), ($cero_y+$y_factor - 25 ));   
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-25 ),"Client Name: ");
+      $x_factor += 70;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-25 ),@$patient->first_name." ".@$patient->last_name);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-10-2 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      
+      $x_factor = 255;            
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date of Birth: ");
+      $x_factor += 55+15;            
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y",strtotime(@$patient->date_birth)));
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x + 250 ) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // Fourth  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),"Client Address: ");
+      $x_factor += 70+15;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),@$patient->address);
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),@$patient->address2);
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),$patient->city.", ".@$patient->state_name_short.". ".@$patient->zip1);
+      $y_factor += 12+12;
+      $x_factor = 0;                  
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ),"Phone: ");
+      $x_factor += 40;             
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor-30 ), @$patient->phone_home);
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      //$this->fpdf->Line(( $cero_x -5 ) , ($cero_y+$y_factor ), ( $cero_x + 245 ), ($cero_y+$y_factor ));
+      $x_factor = 0;               
+      $y_factor -= 12+12;      
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"MAPSCO: ");
+      $x_factor += 40+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), @$patient->mapsco);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-40-4 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+6 ));
+      
+      $x_factor = 255;               
+      $y_factor -= 25;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Living Arrangements:");
+      $x_factor += 90+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      
+      if(@$patient->tab_014_living_arr){
+        $tab_014_living_arr = $this->parametermdl->get(14,@$patient->tab_014_living_arr);
+        $tab_014_living_arr = $tab_014_living_arr->tab_description;
+        
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),$tab_014_living_arr);
+      }
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $x_factor = 255;               
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Primary Caregiver:");
+      $x_factor += 90+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->caregiver_name);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $x_factor = 255;               
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone:");
+      $x_factor += 40+15;               
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$patient->caregiver_phone);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);      
+      $y_factor += 12;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      // 5th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Primary Diagnosis ");
+      $x_factor += 180;                  
+      
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date O/E");
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      if(@$prim_diag->icd9_name){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_diag->icd9_name);
+      }
+      $x_factor = 180;       
+      if(@$prim_diag->icd_date){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y", strtotime(@$prim_diag->icd_date)));
+      }
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-20-4 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+4 ));
+      
+      $x_factor = 255;               
+      $y_factor -= 10;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Secondary Diagnosis");
+      $x_factor += 180;              
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date O/E");
+      $x_factor = 255;                  
+      $y_factor += 12;
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      if(@$sec_diag->icd9_name){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$sec_diag->icd9_name);
+      }
+      $x_factor += 180;       
+      if(@$sec_diag->icd_date){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y", strtotime(@$sec_diag->icd_date)));
+      }
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 6th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Homebound Status per RN: ");
+      $x_factor += 130;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->homebound_st);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      // 7th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Precautions / Contraindications:  ");
+      $x_factor += 130+20;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), @$soc->precautions_contra);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 8th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Recent Hospitalizations	* If applicable ");
+      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Discharge date:");
+      $x_factor += 65+10;   
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);      
+      if(@$soc->date_disch_from_hospital){
+        $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ), date("m/d/Y",strtotime(@$soc->date_disch_from_hospital)) );      
+      }
+      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      $x_factor += 58;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Length of stay:");    
+      $x_factor += 60+10;       
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->length_stay);      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-20-4   ), ( $cero_x + 250 ), ($cero_y+$y_factor+5 ));
+      
+      
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 9th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Weight bearing status:");
+      $x_factor += 90+15;       
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->weigth_bearing_sts);      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-20 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      $x_factor = 255;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"DNR Orders / Advance Directives: ");
+      $x_factor += 135+25;       
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$soc->dnr_orders);      
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      
+      // 10th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Primary Physician");
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->first_name.' '.@$prim_doctor->last_name);      
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->address);
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->address2);      
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->city.", ".@$prim_doctor->state_name_short.". ".@$prim_doctor->zip_code); 
+      $y_factor += 12;             
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone:");      
+      $x_factor += 35;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->phone_work);
+      $y_factor += 12;                   
+      $x_factor = 0;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ");      
+      $x_factor += 20;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->fax); 
+
+      $y_factor += 12;                   
+      $x_factor = 0;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"UPIN: ");      
+      $x_factor += 30;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->upin); 
+      
+      $y_factor += 12;                   
+      $x_factor = 0;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"NPI: ");      
+      $x_factor += 25;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$prim_doctor->npi); 
+      
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-90-12-12 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      $x_factor = 255;                  
+      $y_factor -= 84+12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Secondary Physician");
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->first_name." ".@$second_doctor->last_name);      
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->address);      
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->address2);      
+      $y_factor += 12;       
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->city.", ".@$second_doctor->state_name_short.". ".@$second_doctor->zip_code);
+      $y_factor += 12;             
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Phone:");      
+      $x_factor += 35;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->phone_work);
+      $x_factor -= 35;                   
+      $y_factor += 12;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Fax: ");      
+      $x_factor += 20;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->fax);
+
+      $x_factor -= 20;                   
+      $y_factor += 12;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"UPIN: ");      
+      $x_factor += 30;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->upin); 
+      
+      $x_factor -= 30;                   
+      $y_factor += 12;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"NPI: ");      
+      $x_factor += 25;                   
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$second_doctor->npi); 
+   
+   
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+
+      // 10th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Diagnosis Information and Physician Instructions: ");
+      $y_factor += 12;
+      $this->fpdf->SetXY($cero_x + $x_factor, $cero_y+$y_factor-8 );
+      $this->fpdf->MultiCell(540, 12, @$soc->diagnosis_info);
+      
+      $y_factor += ceil(strlen(@$soc->diagnosis_info)/110)*10;
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      // 11th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Date of Referral	: ");
+      $x_factor += 70+15;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),date("m/d/Y",strtotime(@$pat_contractor->create_date)));
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      
+      // Devider
+      $this->fpdf->Line(( $cero_x +250 ) , ($cero_y+$y_factor-12 ), ( $cero_x + 250 ), ($cero_y+$y_factor+5+2 ));
+      $x_factor = 255;                  
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Person making the referral: ");
+      $x_factor += 110+20;                  
+      $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),@$pat_contractor->person_referral);
+      $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+      $y_factor += 7;
+      
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));  
+      
+      // 12th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Referral Notes: ");
+      //$x_factor += 75;                  
+      $y_factor += 5;
+      $this->fpdf->SetXY($cero_x + $x_factor, $cero_y+$y_factor );
+      $this->fpdf->MultiCell(540, 10, @$soc->referral_notes);
+      
+      $y_factor += ceil(strlen(@$soc->referral_notes)/100)*10;
+      $y_factor += 7;
+      $this->fpdf->Line(( $cero_x - 5) , ($cero_y+$y_factor ), ( 577), ($cero_y+$y_factor ));
+      
+      // 13th  Row      
+      $x_factor = 0;                  
+      $y_factor += 12;
+      $this->fpdf->Text(( $cero_x + $x_factor),( $cero_y+$y_factor ),"Comments: ");
+      //$x_factor += 75;                  
+      $y_factor += 5;
+      $this->fpdf->SetXY($cero_x + $x_factor, $cero_y+$y_factor );
+      $this->fpdf->MultiCell(540, 10, @$patient->comments);
+      
+      //Certification Period:  04/09/2012 - 06/09/2012
+      $this->fpdf->Output('soc '.$patient_id.'.pdf','D');
+    }
+	
+
+	function xml_entities($text, $charset = 'UTF-8'){
+	    // First we encode html characters that are also invalid in xml
+	    $text = htmlentities($text, ENT_COMPAT, $charset, false);
+	    
+	    // Note: &apos; is useless in UTF-8 or in UTF-16
+	    $arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+	    
+	    // Building the regex string to exclude all strings with xml special char
+	    $arr_xml_special_char_regex = "(?";
+	    foreach($arr_xml_special_char as $key => $value){
+	        $arr_xml_special_char_regex .= "(?!$value)";
+	    }
+	    $arr_xml_special_char_regex .= ")";
+	    
+	    // Scan the array for &something_not_xml; syntax
+	    $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+	    
+	    // Replace the &something_not_xml; with &amp;something_not_xml;
+	    $replacement = '&amp;${1}';
+	    return preg_replace($pattern, $replacement, $text);
+	  }
+ }

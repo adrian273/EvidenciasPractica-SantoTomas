@@ -1,0 +1,66 @@
+
+<form name="edit_event_form" id="edit_event_form" method="POST" onsubmit="return false">
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="6"> 
+		<tr>
+			<td class="ftitle">Doctor Status:</td>
+		
+			<td>
+				<span style="padding:5px; background-color:{$visit_tab_status_color}">{$tab_description}</span>
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">Ordered By:</td>
+			<td>
+				{$visit_user_id_name}
+			</td>
+		</tr>
+		<tr>
+		    <td class="ftitle" >Order Type *</td>
+		    <td>
+		      {html_options options=$order_type_list name='order_type_id' selected=$order_type_id" style='width: 165px'}
+		    </td>
+	  	</tr>
+		<tr>
+			<td class="ftitle">Order Date: *</td>
+			<td>
+				<input type="text" id="visit_date_time" name="visit_date_time" value="{$visit_date_time|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+      			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_time'), document.getElementById('fecha_help'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle" nowrap valign="top">Order Description: *</td>
+			<td nowrap>
+				<textarea name="do_description" id="do_description" style="width: 100%;" rows="6">{$do_description}</textarea>
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">Physician Name: *</td>
+			<td>
+				{html_options options=$physician_list id='phys_user_id' name='phys_user_id' selected=$phys_user_id}
+			</td>
+		</tr>
+		<tr>
+			<td nowrap height="100%" colspan="2" valign="bottom">
+			  	<div style="float: left">
+				  	{if $task_can_save}
+				  		<input type="button" class="btn" value="{$grl_save}" onclick="ajax('{$index_url}{$resource_path}/editEvent', ajaxParseAction, 'edit_event_form');">
+				  	{/if}
+				  	<input type="button" class="btn" value="{$grl_close}" onclick="tt_HideInit()">
+					{if $open_new_window eq 1}
+				  		<input type="button" class="btn" value="Open Document" onclick="window.open('{$index_url}patient/calendar/opendocument/{$visit_log_id}/nw','_blank');">
+					{else}
+						<input type="button" class="btn" value="Open Document" onclick="document.location='{$index_url}patient/calendar/opendocument/{$visit_log_id}'">
+					{/if}
+				    <input type="hidden" name="visit_log_id" value="{$visit_log_id}">
+				    <input type="hidden" name="visit_date__" value="{$visit_date_time|date_format}">
+				</div>
+				<div style="float: right">
+					{if $task_elimination_enable}
+						<input type="button" class="btn" value="{$grl_delete}" onclick="if (confirm('Are you sure to delete this Doctor Order?'))ajax('{$index_url}{$resource_path}/delete/{$visit_log_id}', ajaxParseAction);">
+					{/if}	 
+				</div>     	
+				<div style="clear:both;"></div>
+			</td>
+		</tr>			
+	</table>
+</form>

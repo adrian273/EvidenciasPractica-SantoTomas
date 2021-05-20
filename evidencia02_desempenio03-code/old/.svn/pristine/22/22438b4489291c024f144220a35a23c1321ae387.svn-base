@@ -1,0 +1,179 @@
+<?
+
+ class EpisodeIcd extends MY_Controller {
+
+	function EpisodeIcd () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/episodeicd");
+		
+	}
+	
+	function grid ( $cms485_id ) {
+		
+		if (!is_null($this->input->post('icd_to_delete'))) {
+			$this->episodeicdmdl->delete($this->input->post('icd_to_delete'));
+		}
+		
+		$eo_list = $this->parametermdl->getByType(19);
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "sort=na;width=15;align=center", "Icd Code"));
+		$head->append($this->xml->Element("column", "width=*;sort=na", "Icd Name"));
+		$head->append($this->xml->Element("column", "width=15;sort=na",  "Type"));
+		$head->append($this->xml->Element("column", "width=10;align=center;sort=na", "Date"));
+		$head->append($this->xml->Element("column", "width=10;align=center;sort=na", "OE"));
+		if ($this->hasPermission(6)) {
+			$head->append($this->xml->Element("column", "width=6;align=center;type=link;sort=na", "Actions"));
+			$head->append($this->xml->Element("column", "width=6;align=center;type=link;sort=na", "#cspan"));
+		}
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$sequence = $this->getIcdSequence($cms485_id) - 1;
+		
+		foreach ($this->episodeicdmdl->get($cms485_id) as $icd) {
+			
+			$cell = $this->xml->Element("row", "locked=true;id=" . $icd->cms_485_icd_id);
+			$cell->append($this->xml->Element("userdata", "name=icd_type", $icd->tab_073_pso));
+			$cell->append($this->xml->Element("cell", null, $icd->icd9_code));
+			$cell->append($this->xml->Element("cell", null, (!is_null($icd->icd9_name) ? $icd->icd9_name : "N/A")));
+			$cell->append($this->xml->Element("cell", null, $icd->tab_description));
+			$cell->append($this->xml->Element("cell", null, (!is_null($icd->icd_date) ? standard_date(mysql_to_unix($icd->icd_date)) : null)));
+			$cell->append($this->xml->Element("cell", null, (!is_null($icd->tab_019_on_exa) ? $eo_list[$icd->tab_019_on_exa] : null)));
+			$cell->append($this->xml->Element("cell", null, "Edit^javascript:editIcd(" . $icd->cms_485_icd_id . ")"));
+			
+			if (($sequence >= 3 && $icd->tab_073_pso == 3) || ($sequence == 1 && $icd->tab_073_pso == 1) || ($sequence == 2 && $icd->tab_073_pso == 2)) {
+				$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteIcd(" . $icd->cms_485_icd_id . ")"));
+			}
+			
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function modalAdd ( $cms485_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("faction", 'modalAdd');
+		$icd_type = $this->getIcdType($cms485_id);
+		
+		$this->tpl->assign('oe_list', $this->parametermdl->getByType(19));
+		
+		if ($icd_type[0] != 2) {
+			$this->validation->set_rules(array('icd9_id' => 'required'));
+		}
+		
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign("icd9_type", $icd_type[1]);
+			$this->tpl->assign("icd9_type_id", $icd_type[0]);
+			$this->tpl->assign_include("dynamic_tpl", "patient/cms485/icd_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->episodeicdmdl);
+			$this->episodeicdmdl->tab_073_pso = $icd_type[0];
+			$this->episodeicdmdl->sequence = $this->getIcdSequence($cms485_id);
+			if ($this->episodeicdmdl->icd9_id == NULL) {
+				$this->episodeicdmdl->icd_date = NULL;
+			}
+			$this->episodeicdmdl->insert($cms485_id);
+			
+			echo "<SCRIPT>parent.loadGrid();parent.cancelModal()</SCRIPT>";
+			
+		}
+		
+	}
+	
+	function modalEdit ( $cms_485_icd_id ) {
+
+		$cms_icd = $this->episodeicdmdl->getById($cms_485_icd_id);
+		$icd_type = $this->getIcdType($cms_icd->cms485_id);
+		
+		$this->tpl->assign("entity_id", $cms_485_icd_id);
+		$this->tpl->assign("faction", 'modalEdit');
+		$this->assignObject($cms_icd);		
+		
+		$this->tpl->assign('oe_list', $this->parametermdl->getByType(19));
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "patient/cms485/icd_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->episodeicdmdl);
+			if ($this->episodeicdmdl->icd9_id == NULL) {
+				$this->episodeicdmdl->icd_date = NULL;
+			}
+			$this->episodeicdmdl->update($cms_485_icd_id);
+			
+			echo "<SCRIPT>parent.loadGrid();parent.cancelModal()</SCRIPT>";
+			
+		}
+		
+	}
+	
+	function icdReorder ( $cms_485_icd_ids ) {
+		
+		$cms_485_icd_ids = explode(",", $cms_485_icd_ids);
+		
+		foreach ($cms_485_icd_ids as $sequence => $cms_485_icd_id) {
+			
+			$this->episodeicdmdl->updateSequence($cms_485_icd_id, $sequence);
+			
+		}
+		
+		$document = $this->xml->Document();
+		
+	}
+	
+	function getIcdType ( $cms485_id ) {
+		
+		$icds = $this->episodeicdmdl->get($cms485_id);
+		
+		switch (count($icds)) {
+			case 0:
+				return array(1, "Principal");
+				break;
+				
+			case 1:
+				return array(2, "Surgical");
+				break;
+		
+			default:
+				return array(3, "Other");
+				break;
+		}
+		
+	}
+	
+	function getIcdSequence ( $cms485_id ) {
+		
+		$icds = $this->episodeicdmdl->get($cms485_id);
+		
+		return count($icds) + 1;
+		
+	}
+	
+	function suggest ( $keyword ) {
+		
+		$this->xml->root_name = "results";
+		$document = $this->xml->Document();
+		
+		foreach ($this->icdmdl->suggest($keyword) as $icd) {
+			
+			$document->append($this->xml->Element("rs", "id=" . $icd->icd9_id . ";info=" . $icd->icd9_name, $icd->icd9_code));
+		
+		}
+		
+	}
+	
+ }

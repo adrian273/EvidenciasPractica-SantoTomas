@@ -1,0 +1,173 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td>
+    	From 
+    	<input type="text" id="visit_date_ini" name="visit_date_ini" value="{$visit_date_ini}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+		til
+    	<input type="text" id="visit_date_fin" name="visit_date_fin" value="{$visit_date_fin}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+    	&nbsp;
+		<select name="search_type" onchange="changeFilter(this.value)">
+			<option>- Select Filter -</option>
+			<option value="1" {if $search_type eq 1}selected="selected"{/if}>Patient Name</option>
+			<option value="2" {if $search_type eq 2}selected="selected"{/if}>Approver</option>
+			<option value="3" {if $search_type eq 3}selected="selected"{/if}>Visit/Task Name</option>
+			<option value="4" {if $search_type eq 4}selected="selected"{/if}>Clinician</option>
+		</select> &nbsp;
+		
+		<input type="text" name="keyword" id="fd1" value="{$keyword}" style="width: 150px">
+		
+
+		{html_options first_option='All Events' 
+		options=$visit_type_list id="fd2" 
+		selected=$visit_type_id
+		style="display:none;width: 150px" name='visit_type_id' onchange="loadGrid()"}
+	
+		{html_options first_option='All Clinician' options=$clinician_list id="fd3" selected=$clinician_id 
+		style="display:none;width: 150px" name='clinician_id' onchange="loadGrid()"}
+		
+		<input type="submit" value="Search">
+		
+    </td>   
+  </tr>
+  
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	{if $search_type eq 3}
+		changeFilter(3)
+		{else}
+		{if $search_type eq 4}
+			changeFilter(4)
+		{/if}
+	{/if}
+	
+	function editRegister ( id ) {literal}{{/literal}
+			
+		if (id > 0){literal}{{/literal}
+			{if $open_new_window eq 1}
+				
+				window.open("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id +"/nw", "_blank");
+				
+			{else}
+				document.location = "{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id;
+			{/if}
+		}
+	  
+	{literal}}{/literal}
+
+{literal}
+
+      /*window.onload = loadCalendarSelector;
+            
+      function loadCalendarSelector() {
+		    mCal = new dhtmlxCalendarObject("date_filter");  
+		    mCal.setSkin('dhx_blue');  
+		    mCal.setDateFormat('%m-%d-%Y');
+		    mCal.setOnClickHandler(loadGrid);
+		    mCal.draw();
+       }
+       */
+       function changeFilter ( filter_type ) {
+       
+       		switchDisplay2('fd1', 'none');
+       		switchDisplay2('fd2', 'none'); 
+       		switchDisplay2('fd3', 'none'); 
+       		// setValue('fd1', '');
+       		// setValue('fd2', ''); 
+			// setValue('fd3', ''); 
+       		if (filter_type <= 2) {
+       			switchDisplay2('fd1', '');
+       			setValue('fd1', '');
+       			setValue('fd2', ''); 
+       		} else if (filter_type == 3) {
+       			switchDisplay2('fd2', '');
+       			setValue('fd3', ''); 
+       		} 
+			else if (filter_type == 4) {
+				switchDisplay2('fd3', '');
+				setValue('fd2', ''); 
+			}
+			else {
+       			switchDisplay2('fd1', '');
+       			setValue('fd1', '');
+       			setValue('fd2', ''); 
+       		}
+       
+       }
+       
+{/literal}
+
+    var dhxWins;
+    
+    function afterload () {literal}{{/literal}
+    
+    	setValue('load_pending_status', 0);
+    
+    {literal}}{/literal}
+    	
+    function modalMissedForm ( visit_log_id ) {literal}{{/literal}
+ 
+     	dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 300, 300);
+		w1.setText("Missed Visit Form");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').center();
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}task/task/missed/" + visit_log_id);
+    	
+    {literal}}{/literal}
+    
+    function missedRow ( visit_log_id ) {literal}{{/literal}
+ 
+     	grid.cells(visit_log_id, 4).setValue('Missed Visit');
+		grid.cells(visit_log_id, 6).setValue('');
+		//grid.setRowStyle(visit_log_id, 'bgred');
+		grid.setCellTextStyle(visit_log_id, 4, 'color: red');
+    	
+    {literal}}{/literal}
+    
+    
+    function reassignTasks () {literal}{{/literal}
+ 
+ 		if (grid.getCheckedRows(0)) {literal}{{/literal}
+ 
+	     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 300, 300);
+			w2.setText("Missed Visit Form");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+		    w2.denyResize(); // deny resizing
+		    w2.denyMove(); 
+		    dhxWins.window('w2').center();
+		    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}task/oapproval/reassign/" + grid.getCheckedRows(0));
+			
+		{literal}}{/literal}
+    	
+    {literal}}{/literal}
+    
+    {literal}
+	$("[name='co_sign_only']").click(function(){
+	    var group = "input:checkbox[name='"+$(this).attr("name")+"']";
+	    // console.log($(this).is(":checked"));
+	    if($(this).is(":checked")){
+	    	$(group).attr('checked', '');
+	    	$(this).attr('checked', 'checked');
+	    }
+	    loadGrid();
+	});
+    {/literal}
+
+</script>

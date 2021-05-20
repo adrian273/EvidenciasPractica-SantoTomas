@@ -1,0 +1,145 @@
+<?php
+include("visitform.php");
+
+class event extends VisitForm{
+	
+	var $rules = array(
+						// "visit_date_time"		 => "required",
+				   		"tab106_event_type" => "required",
+				   	);
+
+	var $fields = array(
+						// "visit_date_time"			=> "Event Date",
+				   		"tab106_event_type"	=> "Event Type",
+							 );
+							 
+	function event()
+	{
+		parent :: VisitForm();
+		$this->load->model('vteventsmdl');
+		$this->tpl->assign("resource_path", "task/event");
+
+		$this->loggedinUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+	}
+
+	function index($visit_log_id, $action = 'task', $window = 'self') {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = @$row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+		
+		if ($this->input->post('action_required') === "YES" ) {
+				$this->rules['action_date'] = 'required';
+				$this->fields['action_date'] = "Action Req Date";
+		} else {
+				if ($this->input->post('action_date')) {
+					$this->rules['action_required'] = 'required';
+					$this->fields['action_required'] = "Action Required";
+				}
+		}
+
+		$this->validation->set_rules($this->rules);
+		$this->validation->set_fields($this->fields);
+
+		// Events can only be modified by the user that created the Event.
+		if ($visitlog->visit_user_id == $this->getUsAgyId()) {	
+			if ($this->validation->run() == TRUE) {
+				//$this->updateFormEdition($visit_log_id);
+				//$this->assignPostData($this->vteventsmdl);
+
+	            $this->vteventsmdl->updateFlex($visit_log_id, 'modified_by_user_id', $this->getUsAgyId());
+	            $this->vteventsmdl->updateFlex($visit_log_id, 'tab106_event_type', $this->input->post('tab106_event_type'));
+	            $this->vteventsmdl->updateFlex($visit_log_id, 'event_comment', $this->input->post('event_comment'));
+	            //$this->vteventsmdl->updateFlex($visit_log_id, 'visibility', $this->input->post('visibility'));
+							$this->vteventsmdl->updateFlex($visit_log_id, 'action_required', $this->input->post('action_required'));
+							$this->vteventsmdl->updateFlex($visit_log_id, 'action_date', standard_date(human_to_unix($this->input->post('action_date')), 'MYSQL_NOTIME') );
+							$this->vteventsmdl->updateFlex($visit_log_id, 'action_date_complete',standard_date(human_to_unix($this->input->post('action_date_complete')), 'MYSQL_NOTIME'));
+							$this->vteventsmdl->updateFlex($visit_log_id, 'event_status',  $this->input->post('event_status'));
+				// $this->formRedirection($visit_log_id);
+
+				if ($this->session->userdata('task_return')) {
+					header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+					return;
+				}
+
+				header("Location: " . $this->config->config["index_url"] . "task/task");
+				exit();
+			}
+		}
+
+		$this->assignObject($visitlog);
+		$event = $this->vteventsmdl->get($visit_log_id);		
+		// When "Event Visibility"=Private, only the user from the contractor or agency that created the Event can see the event 
+		if ($event->visibility == 'private' AND $this->loggedinUser->agency_id != $event->agency_id) {
+			exit("You don't have permission to view this event.");
+		}
+
+		// When "Event Visibility"=Private Admins, only user with profile Company can see the event 
+      	if ($event->visibility == 'private-admins' AND $this->loggedinUser->profile_id != 3) {
+      		exit("You don't have permission to view this event.");
+      	}
+
+		if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+			$this->tpl->assign('creator', TRUE);		
+		}
+		
+		$this->assignObject($event);				
+		$creator = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		$this->tpl->assign('creator_name', $creator->first_name." ".$creator->last_name);		
+		$this->tpl->assign('creation_time', date("h:i a", strtotime($event->create_datetime)));		
+		$this->tpl->assign('creation_date', date("m/d/Y", strtotime($event->create_datetime)));		
+		
+		$patient = $this->getPatientInfo($visit_log_id);
+
+		$this->tpl->assign('type_list', $this->parametermdl->getByType(106));		
+		
+		$visibility_list = array('public'=>'Public', 'private'=>'Private');
+
+      	// if ($this->getAgencyType() == 'C' AND $this->getUserProfileId() == 3) {
+        	$visibility_list['private-admins'] = 'Admin';
+      	// }
+		$this->tpl->assign('visibility_list', $visibility_list);		
+		
+		if ($this->session->userdata('task_return')) {
+			$this->tpl->assign('cancel_action', $this->config->config["index_url"] . $this->session->userdata('task_return'));
+		}
+
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/event");
+		$this->setfbase($visit_log_id, $action);
+
+		$this->tpl->assign_include("dynamic_tpl", "task/documents/fbaseEvent");
+		
+		// Events can only be deleted or modified by the user that created the Event.
+		if (!$visitlog->visit_user_id == $this->getUsAgyId()) {			
+			$this->tpl->assign('cancelbtn', true);
+			$this->tpl->assign('no_commit_form', true);			
+		}
+
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function delete ( $visit_log_id, $window='self'  ) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		
+		// Events can only be deleted  by the user that created the Event.
+	    if(!$visitlog->visit_user_id == $this->getUsAgyId()) {	
+			$this->visitlogmdl->delete($visit_log_id);
+		}
+			
+	    if($window=='nw'){
+	      echo "<SCRIPT>window.close();</SCRIPT>";
+	    }else{
+	      	if ($this->session->userdata('task_return')) {
+	  			header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+	  			return;
+	  		}
+	  		$this->index();
+	    }
+	}
+
+}
+?>

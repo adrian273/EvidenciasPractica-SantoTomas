@@ -1,0 +1,77 @@
+<?
+
+ class TicketResponseMdl extends Model {
+
+	var $response_id;
+	var $ticket_id;
+	var $response_user_id;
+	var $response_content;
+	var $response_datetime;
+
+	function TicketResponseMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getByTicketId ( $ticket_id ) {
+		
+		$this->db->join('us1_user', 'user_id = response_user_id', 'LEFT');
+		
+		$this->db->where('ticket_id', $ticket_id);
+		$this->db->order_by('response_datetime');
+		
+		$query = $this->db->get('tic_response');
+		return $query->result();
+		
+	}
+     function getEmail($ticket_id){
+         $sql = "SELECT user_email FROM `tic_ticket` JOIN `us_agy` ON `tic_ticket`.`ticket_us_agy_id` = `us_agy`.`us_agy_id` WHERE `tic_ticket`.`ticket_id` = '".$ticket_id."'";
+         $query = $this->db->query($sql);
+         return $query->result();
+     }
+    
+	function getLastActivity ( $ticket_id ) {
+		
+		$this->db->limit(1);
+		
+		$this->db->where('ticket_id', $ticket_id);
+		$this->db->order_by('response_datetime', 'DESC');
+		
+		$query = $this->db->get('tic_response');
+		return $query->row();
+		
+	}
+	
+	function insert ( $ticket_id, $response_user_id ) {
+		
+		$this->ticket_id = $ticket_id;
+		$this->response_user_id = $response_user_id;
+		
+		$this->db->insert('tic_response', $this);
+		
+	}
+
+	function updateStatus($ticket_id, $status){
+		$this->db->where('ticket_id', $ticket_id);
+		$this->db->set('tab_089_ticket_status_id', $status);
+		$this->db->update('tic_ticket');
+		
+	}
+
+	function updateSendOn($ticket_id) {
+		$send_on_date = date("Y-m-d H:i:s");
+		$this->db->where('ticket_id', $ticket_id);
+		$this->db->set('ticket_datetime', $send_on_date);
+		$this->db->update('tic_ticket');
+	}
+	
+	function delete ( $response_id ) {
+		
+		$this->db->where('response_id', $response_id);
+		
+		$this->db->delete('tic_response');
+		
+	}
+
+ }

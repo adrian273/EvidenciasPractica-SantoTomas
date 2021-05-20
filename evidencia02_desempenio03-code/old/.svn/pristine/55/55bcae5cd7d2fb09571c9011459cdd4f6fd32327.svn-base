@@ -1,0 +1,352 @@
+{literal}
+<style type="text/css">
+	.error{
+		border: 1px solid red;
+	}
+	table.custom-grid-table{
+	}
+	table.custom-grid-table th{
+		border-color: #FDFDFD #93AFBA #93AFBA #FDFDFD;
+		background-color: transparent;
+		font-family: Tahoma;
+		font-size: 11px;
+		font-weight: bold;
+		color: #055A78;
+		vertical-align: top;
+		text-align: left;
+		margin: 0;
+		padding: 5px 0px 5px 10px;
+	}	
+
+	.grid-header{ background-image: url('style/grid/imgs/skin_light_header.png'); }
+	.odd_light{ background-color: #E5F2F8; }
+
+	table.custom-grid-table tr td{
+		font-family: Tahoma;
+		font-size: 11px;
+		padding: 5px 0px 5px 10px;
+		vertical-align: middle;
+		height: 25px;
+		border-bottom: 1px solid #c2d5dc;
+		border-width: 0px 0px 1px 0px;
+	}
+</style>
+{/literal}
+<script src="{$base_url}style/jquery-2.1.4.min.js" type="text/javascript"></script>
+<script language="JavaScript" type="text/javascript">
+	var invoices = [];
+</script>
+<form id="gform" method="POST" action="">
+<table border="0" {if $invoices|count gt 0}height="100%"{/if} width="100%" cellpadding="4" cellspacing="0" align="center"> 
+ 
+  <tr> 
+    <td valign="top" nowrap class="title" colspan="3">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> Receive Payment
+    </td>
+  </tr>
+  <tr id="gfilter">
+   
+    <input type="hidden" id="fecha_help">
+    <td colspan="3" height="40">
+		<b>Check Amount $</b> <input type="text" name="amount_received" value="{$amount_received}" size="10" {if $amount_received != ""}readonly="readonly"{/if}>
+		&nbsp;&nbsp;&nbsp;<b>Check Nbr </b> <input type="text" name="check_nbr" value="{$check_nbr}" size="15" {if $amount_received != ""}readonly="readonly"{/if}>
+		{if $invoices|count gt 0}
+		&nbsp;&nbsp;&nbsp;<b>Amount to Apply $</b> <input type="text" name="amount_applied" value="{$amount_applied}" size="10" readonly="readonly">
+		{/if}
+		&nbsp;&nbsp;&nbsp;<b>Date</b> <input type="text" id="payment_date" name="payment_date" value="{$payment_date|date_format}" {if $amount_received != ""}readonly="readonly"{/if} size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('payment_date'),document.getElementById('fecha_help'));return false;" >
+			&nbsp;&nbsp;&nbsp;
+		
+		{if $invoices|count eq 0}
+			<input type="submit" class="btn" value="Submit">
+		{/if}
+		{if $invoices|count gt 0}
+		&nbsp;<input type="button" class="btn" value="Confirm Apply Payment" onclick="confirm_apply();">
+		{/if}		
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+    </td>
+   
+  </tr>
+  <tr>
+  	<td align="center" colspan="3">
+  		<div id="err_msg"></div>
+  	</td>
+  </tr>
+  {if $invoices|count gt 0}
+  <tr> 
+    <td colspan="3" height="100%">
+		<div id="grid_area" style="height: 99%; width: 100%; border: 1px solid #c2d5dc;">
+			
+			<table class="custom-grid-table" cellspacing="1" cellpadding="0" width="100%">
+				<tr class="grid-header">
+						<th colspan="7" style="text-align: center; font-size: 13px;">Agency Name: {$agency_name}</th>
+				</tr>
+				<tr class="grid-header">
+						<th width="30"><input type="checkbox" id="chk_all" name="invoice_id[]"></th>
+						<th>Invoice#</th>
+						<th>Invoice Date</th>
+						<th>Invoice Due Date</th>
+						<th>Bill Amount</th>
+						<th>Balance </th>
+						<th>Amount to apply</th>
+				</tr>
+				
+				{foreach from=$invoices key=index item=invoice}
+				<tr class="{cycle values='odd_light,ev_light'}">
+					<th><input type="checkbox" class="chk_invoice" id="chk_{$invoice.invoice_id}" name="invoice_id[]" value="{$invoice.invoice_id}" {if $invoice.amount_to_apply > 0} checked="checked"{/if}></th>
+					<td>{$invoice.invoice_no}</td>
+					<td>{$invoice.invoice_date}</td>
+					<td>{$invoice.invoice_due_date}</td>
+					<td>$ {$invoice.bill_amount}</td>
+					<td>$ <span id="balance_{$invoice.invoice_id}" style="color: red;">{$invoice.balance}</span></td>
+					<td>$ <input type="text" class="amount_to_apply" id="amount_to_apply_{$invoice.invoice_id}" name="amount_to_apply[]" value="{$invoice.amount_to_apply}" size="6" {if $invoice.amount_to_apply neq ""}{else}disabled="disabled"{/if}>
+						<script type="text/javascript">
+							invoices.push('{$invoice.invoice_id}');
+						</script>
+					</td>
+				</tr>
+				{/foreach}				
+			</table>
+
+		</div>
+    </td>
+  </tr>
+  
+  <tr height="30"> 
+    <td nowrap width="30%" style="padding-top: 5px" valign="bottom">
+    	<div id="recinfoArea" style="float: left; line-height: 25px; margin-right: 10px; "></div>
+		<input type="button" class="btn" value="Confirm Apply Payment" onclick="confirm_apply();">
+		
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+		<div style="clear: both;"></div>
+    </td>
+    <td nowrap align="center" nowrap width="40%">
+    	<span class="tbl_msg_ok" style="height: 25px; display: none;"></span>
+    </td>
+    <td nowrap width="30%" align="right" valign="bottom">
+		<div id="grid_paginal"></div>
+    </td>
+  </tr>
+  
+  {/if}
+
+</table> 
+</form>
+{if $invoices|count gt 0}
+<script language="JavaScript" type="text/javascript">
+	{literal}
+	var amount_received = 0.00;
+	var amount_applied = getTotalAmountApplied();
+	$(function(){
+		amount_received = parseFloat($('input[name="amount_received"]').val());
+		invoices.forEach(function(invoice_id){			
+			if ($("#chk_"+invoice_id).get(0).checked) {
+				amount_applied += parseFloat($('#amount_to_apply_'+invoice_id).val());
+				// do nothing
+			} else {
+				$('#amount_to_apply_'+invoice_id).attr('disabled','disabled');
+			}
+		});
+
+		// M2200 change event
+        $(document).on('change','.chk_invoice', function(){
+        	console.log(this.checked);
+        	var invoice_id = $(this).val();
+            if (this.checked) {
+                $('#amount_to_apply_'+invoice_id).removeAttr('disabled');
+                if ((amount_received - amount_applied) > 0) {
+                	if(parseFloat($('#balance_'+invoice_id).text()) <= (amount_received - amount_applied)){
+                		$('#amount_to_apply_'+invoice_id).val(parseFloat($('#balance_'+invoice_id).text()));
+                		amount_applied = getTotalAmountApplied();
+                		$('input[name="amount_applied"]').val(amount_applied);
+                		$('input[name="amount_applied"]').trigger("change");
+                	} else {
+                		$('#amount_to_apply_'+invoice_id).val((amount_received - amount_applied));
+                		amount_applied = getTotalAmountApplied();
+                		$('input[name="amount_applied"]').val(amount_applied);
+                		$('input[name="amount_applied"]').trigger("change");
+                	}
+
+                }
+            } else {
+            	$('#amount_to_apply_'+invoice_id).val('');           
+                $('#amount_to_apply_'+invoice_id).attr('disabled','disabled');   
+                amount_applied = getTotalAmountApplied();
+                $('input[name="amount_applied"]').val(amount_applied);       
+                $('input[name="amount_applied"]').trigger("change");
+            }
+        });
+
+        $(document).on('change', '.amount_to_apply', function() {
+        	if ($(this).val()=='') {        		
+	        	amount_applied = getTotalAmountApplied();
+	            $('input[name="amount_applied"]').val(amount_applied);       
+	            $('input[name="amount_applied"]').trigger("change");	            
+        	} else {        		
+	        	var invoice_id = $(this).attr("id");
+	        	invoice_id = invoice_id.replace("amount_to_apply_","");
+	        	var amount = parseFloat($(this).val());
+	        	var balance = parseFloat($('#balance_'+invoice_id).text());
+
+	        	if (amount > balance) {
+	        		$(this).val(balance);
+	        	} else {	        		
+		        	amount_applied = getTotalAmountApplied();
+		        	$('input[name="amount_applied"]').val(amount_applied); 
+		            $('input[name="amount_applied"]').trigger("change");
+	        	}
+        	}        	        	
+        });
+
+        $(document).on('change', 'input[name="amount_applied"]', function(){
+        	var amount_applied = parseFloat($(this).val());
+        	if (amount_applied > amount_received) {
+        		// alert("Amount Applied can't be exceed Amount Received!");
+        		$('input[name="amount_applied"]').addClass("error");
+        		$('#err_msg').html('<font color="red">WARNING: Amount to apply is different than check amount</font>');
+        	} else if (amount_applied < amount_received){
+        		// alert("Amount Applied can't be less then Amount Received!");
+        		$('input[name="amount_applied"]').addClass("error");
+        		$('#err_msg').html('<font color="red">WARNING: Amount to apply is different than check amount</font>');
+        	} else {
+        		$('input[name="amount_applied"]').removeClass("error");
+        		$('#err_msg').html('');
+        	}
+        });
+        $(document).on('change', 'input[name="amount_received"]', function(){
+        	amount_received = parseFloat($('input[name="amount_received"]').val());
+        	var amount_applied = parseFloat($('input[name="amount_applied"]').val());
+        	if (amount_applied > amount_received) {
+        		// alert("Amount Applied can't be exceed Amount Received!");
+        		$('input[name="amount_applied"]').addClass("error");
+        		$('#err_msg').html('<font color="red">WARNING: Amount to apply is different than check amount</font>');
+        	}else if (amount_applied < amount_received) {
+        		// alert("Amount Applied can't be exceed Amount Received!");
+        		$('input[name="amount_applied"]').addClass("error");
+        		$('#err_msg').html('<font color="red">WARNING: Amount to apply is different than check amount</font>');
+        	} else {
+        		$('input[name="amount_applied"]').removeClass("error");
+        	}
+        });
+        $(document).on('change', '#chk_all', function(){
+        	if (this.checked) {
+        		$('.chk_invoice').each(function(index){
+        			if (!$(this).is(':checked')) {
+        				$(this).prop('checked', true);
+        				$(this).trigger("change");
+        			}
+        		});
+        	} else {
+        		$('.chk_invoice').each(function(index){
+        			console.log($(this).checked);
+        			if ($(this).is(':checked')) {
+        				$(this).prop('checked', false);
+        				$(this).trigger("change");;
+        			}
+        		});
+        	}
+        });
+	});
+	
+	function getTotalAmountApplied(){
+		var total = 0.00;
+		$('.amount_to_apply').each(function(index){
+			if ($(this).val() != "") {				
+				total += parseFloat($(this).val());   
+				// console.log(total);
+			}
+		});
+		// console.log("total:"+total.toString());
+		return total;
+	}
+
+	function confirm_apply(){
+		var params = $('form#gform').serialize();
+		var amount_applied = parseFloat($('input[name="amount_applied"]').val());
+		amount_received = parseFloat($('input[name="amount_received"]').val());
+    	/*if (amount_applied != amount_received) {
+    		alert("Amount Applied should be equal Amount Received!");
+			return false;    		
+    	}*/ 
+
+    	$('input[value="Confirm Apply Payment"]').val("Processing...")
+		
+
+		{/literal}var url = "{$index_url}{$resource_path}/post_receive_payment/"+{$agency_contractor_id}{literal};
+		$.ajax({
+			type: "POST",
+			dataType: 'json',
+			url: url,
+			data: params,
+			success: function(data){
+				$('input[value="Processing..."]').val("Confirm Apply Payment");
+				if (data.error != "") {
+					alert(data.error);
+				} else {
+					$('.tbl_msg_ok').html("Payment has been applied to selected invoices successfully.").fadeIn(function(){
+						// $(this).fadeOut(5000);
+						{/literal}
+						location.href = "{$index_url}{$resource_path}/co_invoices/{$agency_contractor_id}";
+						{literal}
+					});
+				}
+				
+			},	
+			error: function (data, status, e)
+			{
+				$('input[value="Processing..."]').val("Confirm Apply Payment");
+				alert("An error occured. Please check your internet connection.");
+			}
+		});
+	}
+	{/literal}
+
+	// document.body.style.overflow = 'hidden';
+	/*var grid;
+
+	function loadGrid () {literal}{{/literal}
+	
+		if (document.getElementById("grid_paginal").innerHTML != "") {literal}{{/literal}
+		
+			grid.clearAll();
+			grid.updateFromXMl("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform');
+			
+		{literal}}{/literal} else {literal}{{/literal}
+	
+			document.getElementById("grid_paginal").innerHTML = "";
+			document.getElementById("grid_area").innerHTML = "";
+			
+		    grid = new dhtmlXGridObject("grid_area");
+	    	grid.setImagePath("{$base_url}style/grid/imgs/")
+	    	grid.iconImagePath = "{$base_url}style/grid/imgs/";
+	    	grid.setSkin("light");
+	    	grid.enablePaging({ if ! isset( $paginate ) }true{else}{$paginate}{/if},{ if ! isset( $items_per_page ) }30{else}{$items_per_page}{/if}, 5, "grid_paginal",true,"recinfoArea");	    	
+	    	{if !$noedit}grid.setOnRowSelectHandler(editRegister);{/if}
+	    	{if $checkHandler}
+	    		grid.setOnCheckHandler(checkRegister);
+	    	{/if}
+	    	
+	    	grid.enableSmartXMLParsing(true);
+	    	
+	    	grid.kidsXmlFile = "{$index_url}{$resource_path}/child";
+    		grid.loadXMLPost("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform', afterload);
+	    	grid.setSizes();
+    	
+    	{literal}}{/literal}
+    	
+	{literal}}{/literal}
+	
+	function deleteRegister () {literal}{{/literal}
+
+		
+	{literal}}{/literal}
+	*/
+	// loadGrid();
+	
+</script>
+{/if}

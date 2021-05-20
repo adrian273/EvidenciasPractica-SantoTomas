@@ -1,0 +1,1561 @@
+<?
+
+ class BillingReady extends MY_Controller {
+
+	function BillingReady () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "contractor/billingready");
+
+	}
+	
+  
+  function index($from_date=null, $to_date=null){
+    $success_string = $this->session->userdata('invoice_created_success_string');
+    
+    if($success_string){      
+      $this->tpl->assign("gmessage", $success_string);
+      $this->session->unset_userdata('invoice_created_success_string');      
+    }
+    
+    $this->tpl->assign("no_grid_buttons", true);
+    $this->tpl->assign("resource_edit", 'createinvoice');    
+    $this->tpl->assign("resource_grid", "agencies_grid");
+    $this->tpl->assign("from_date", $from_date);
+    $this->tpl->assign("to_date", $to_date);
+
+    if($from_date)
+    {
+      $data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+  		$total_balance = 0.00;
+  		$from_date = null;
+  		$to_date = null;
+      if($this->input->post('visit_date_ini')){
+        $from_date = $this->input->post('visit_date_ini');
+      }
+      if($this->input->post('visit_date_fin') ){
+        $to_date = $this->input->post('visit_date_fin');
+      }
+      
+      $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+  		foreach ($data as $agency) {	
+        $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency->agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);      
+        if(is_null($total_final_rate))
+        $total_final_rate = 0.00;      
+        $total_balance += $total_final_rate;      
+  		}
+      
+      $this->tpl->assign("total_balance", '$'.$total_balance.'');
+    }
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billingready/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billingready/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function total_bill_balance($from_date=null, $to_date=null){
+    $document = $this->xml->Document();
+    
+    $data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+		$total_balance = 0.00;		
+    if($this->input->post('visit_date_ini')){
+      $from_date = $this->input->post('visit_date_ini');
+    }
+    if($this->input->post('visit_date_fin') ){
+      $to_date = $this->input->post('visit_date_fin');
+    }
+    
+    $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		foreach ($data as $agency) {	
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency->agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);      
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;      
+      $total_balance += $total_final_rate;      
+		}
+    //echo "$".$total_balance."";exit;
+    
+    $total_balance = number_format($total_balance, 2);  
+    
+    $document->append($this->xml->Element('js', 'script=updateTotalBalance(\'$'.$total_balance.'\')', null));
+  }
+  
+	function agencies_grid ($from_date=null, $to_date=null) {		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Agency Name"));
+		$head->append($this->xml->Element("column", "width=*", "Amount ready to Bill"));
+		$head->append($this->xml->Element("column", "width=25;align=left;type=link", "Actions"));		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//if ($this->input->post('agency_type') == 'A')
+			$data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+    $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		foreach ($data as $agency) {	
+      $visits = $this->visitlogmdl->getBillableVisits($agency->agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+//      echo $agency->agency_contractor_id;
+        
+      if(count($visits) ==0 )
+        continue;
+        
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency->agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      
+      if(is_null($total_final_rate) OR $total_final_rate==0)
+      $total_final_rate = 0.00;
+      $total_final_rate = number_format($total_final_rate, 2);  
+      
+			$cell = $this->xml->Element("row", "id=" . $agency->agency_contractor_id);
+			$cell->append($this->xml->Element("cell", null, $agency->agency_name));
+			$cell->append($this->xml->Element("cell", null, '$'.$total_final_rate));			
+      $cell->append($this->xml->Element("cell", null, "Create Invoice^javascript:createInvoice(" . $agency->agency_contractor_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+    
+	}
+	function agency_bill_balance($agency_contractor_id, $from_date=null, $to_date=null){
+    $document = $this->xml->Document();
+    
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);		
+    $total_final_rate = 0.00;		
+    if($this->getAgencyId() == $data->contractor_id){
+      $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;
+    }
+    $total_final_rate = number_format($total_final_rate, 2);  
+     
+    
+    $document->append($this->xml->Element('js', 'script=updateBillableBalance(\'$'.$total_final_rate.'\')', null));
+  }
+  
+  function createinvoice ( $agency_contractor_id, $from_date=null, $to_date=null ) {
+		/*
+    $visitlog = $this->visitlogmdl->getById(359);
+    print_r($visitlog->patient_id);
+    exit;
+    */
+    $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+    $this->tpl->assign("no_grid_buttons", true);
+    $this->tpl->assign('noedit', true);
+    $this->tpl->assign('enable_paging', true);
+    
+    $this->tpl->assign("resource_grid", "visits_grid/".$agency_contractor_id."/".$from_date."/".$to_date);
+    /*$this->tpl->assign('additional_buttons', array('Create Invoice'=>'getInvoiceDueDate()', 'Print Draft Invoice'=>'setValue(\'record_ids\', grid.getCheckedRows(0));document.print_form.submit();', 'Cancel' => 'window.location.href=\''.$this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date.'\''));*/
+    $this->tpl->assign('additional_buttons', array(
+      'Create Invoice'=>'getInvoiceDueDate()', 
+      // 'Create Invoice By Patient'=>'getInvoiceDueDate(2)', 
+      'Create Invoices By Discipline'=>'getInvoiceDueDate(1)', 
+      'Add Visit to Existing Invoice'=>'addToInvoice('.$agency_contractor_id.')', 
+      'Recalc'=>'reCalcVisitRates(this)', 
+      'Back' => 'window.location.href=\''.$this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date.'\'')
+    );
+    
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);		
+    if($this->getAgencyId() == $data->contractor_id){
+      $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = '0.00';
+      
+      $this->tpl->assign('total_final_rate', $total_final_rate);
+      $this->tpl->assign('agency_name', $data->agency_name);
+      $this->tpl->assign('from_date', $from_date);
+      $this->tpl->assign('to_date', $to_date);
+    }
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billingready/visits_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billingready/visits_gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    
+	}
+  
+  function visits_grid($agency_contractor_id, $from_date=null, $to_date=null){
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+
+    $us_agy_id = $this->getUsAgyId();
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+    // $head->append($this->xml->Element("column", "width=3;align=center",  ""));
+		$head->append($this->xml->Element("column", "width=20;align=center",  "Confirmed"));
+    $head->append($this->xml->Element("column", "width=10;type=ro", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=*", "Type of Visit"));
+		$head->append($this->xml->Element("column", "width=*", "Clinician"));
+    if ($contractor_info->provides_altern_therapy == 'Y' OR $usAgy->user_tab111_product_id == 2) {
+      $head->append($this->xml->Element("column", "width=7", "Units"));
+    }
+    $head->append($this->xml->Element("column", "width=7", "Visit Rate"));
+		$head->append($this->xml->Element("column", "width=*", "Visit Status"));
+    
+    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+
+    
+		//$head->append($this->xml->Element("column", "width=5;align=left;type=link", "Actions"));		
+		//$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//if ($this->input->post('agency_type') == 'A')
+			$data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+    if($this->getAgencyId() == $data->contractor_id){
+      $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+      foreach($patients as $patient){
+        
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, $patient->patient_id, $contractor_info->provides_altern_therapy);
+        /*if($patient->complete_name == '2 2')
+        echo $patient->patient_id;*/
+        if(count($visits) ==0 )
+          continue;
+        
+        // echo $this->db->last_query(); exit();
+        $cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+
+        $all_checked = true;
+        foreach ($visits as $visit) {
+          if ($visit->co_billing_confirmed != 1){
+            $all_checked = false;
+            break;
+          }
+        }
+
+        // $cell->append($this->xml->Element("cell", 'type=ch', "1"));
+        if ($all_checked) {
+          $cell->append($this->xml->Element("cell", "colspan=*;aligh=center", '<![CDATA[<img src="'.$this->config->config['base_url'].'style/grid/imgs/item_chk1.gif" onclick="ptAllConfirm('.$patient->patient_id.', 0)" id="pt-chk-'.$patient->patient_id.'"> <b>Patient: <font color="#0000FF">'.$patient->complete_name.' </font></b>]]>'));    
+        } else {
+          $cell->append($this->xml->Element("cell", "colspan=*;aligh=center", '<![CDATA[<img src="'.$this->config->config['base_url'].'style/grid/imgs/item_chk0.gif" onclick="ptAllConfirm('.$patient->patient_id.', 1)" id="pt-chk-'.$patient->patient_id.'"> <b>Patient: <font color="#0000FF">'.$patient->complete_name.' </font></b>]]>'));		
+        }
+        $document->append($cell);
+                
+        foreach ($visits as $visit) {
+          $units = '';
+          $visit_rate = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units);
+          
+          $visit->co_final_rate = number_format($visit_rate, 2);  
+
+          
+          /*if($visit->billable_YN == 0)
+    			$cell = $this->xml->Element("row", "id=-" . $visit->visit_log_id);
+          else
+          $cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);*/
+
+          $cell = $this->xml->Element("row");
+       
+          // $cell->append($this->xml->Element("cell", null, null));
+          if ($visit->co_billing_deleted ==1) {
+            $cell->append($this->xml->Element("cell", null, ""));
+          } else if ($visit->co_billing_confirmed == 1) {
+            //$cell->append($this->xml->Element("cell", null, "1"));
+    				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/grid/imgs/item_chk1.gif' onclick='changeConfirm(" . $visit->visit_log_id . ", 0, this)' class='active vt-pt-".$patient->patient_id."' data-vt-id='".$visit->visit_log_id."'>")));
+    			} else {
+            //$cell->append($this->xml->Element("cell", null, "0"));
+    				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/grid/imgs/item_chk0.gif' onclick='changeConfirm(" . $visit->visit_log_id . ", 1, this)' class='vt-pt-".$patient->patient_id."' data-vt-id='".$visit->visit_log_id."'>")));
+    			}
+          
+    			//$cell->append($this->xml->Element("cell", null, $visit->visit_log_id."::".$visit->patient_id."::".$patient->patient_id."::".standard_date(mysql_to_unix($visit->visited_date), 'VIS_LIST')));
+          if($visit->billable_YN == 0)
+    			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date)).' (Non Billable)'));
+          else
+    			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date))));
+          
+    			$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+    			$cell->append($this->xml->Element("cell", null, $visit->clinician));
+          if ($contractor_info->provides_altern_therapy == 'Y' OR $usAgy->user_tab111_product_id == 2) {
+    			 $cell->append($this->xml->Element("cell", null, $units));			
+          }
+          $cell->append($this->xml->Element("cell", null, '$'.$visit->co_final_rate));      
+    			$cell->append($this->xml->Element("cell", null, $visit->tab_description));			
+        
+          if($visit->billable_YN == 0)
+          $cell->append($this->xml->Element("cell", null, ""));
+          else if($visit->co_billing_deleted == 1)
+          $cell->append($this->xml->Element("cell", null, ""));
+          else          
+          $cell->append($this->xml->Element("cell", null, "Edit Rate^javascript:editVisit(" . $visit->visit_log_id . ")"));
+
+          if ($visit->co_billing_deleted == 1) {
+            $cell->append($this->xml->Element("cell", null, "Restore^javascript:restoreVisit(" . $visit->visit_log_id . ")"));
+          } else {
+            $cell->append($this->xml->Element("cell", null, "Remove^javascript:removeVisit(" . $visit->visit_log_id . ")"));
+          }
+            
+    			$document->append($cell);
+    			
+    		}
+      }
+      
+  		
+		}
+    
+  }
+
+  function reCalcVisitRates($agency_contractor_id, $from_date=null, $to_date=null) {
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+
+    $us_agy_id = $this->getUsAgyId();
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+    $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, null, $contractor_info->provides_altern_therapy);
+
+    foreach ($visits as $visit) {
+      $this->visitlogmdl->calculateBillingRate($visit->visit_log_id);
+    }
+    
+    $this->xml->Document();
+  }
+  
+  function changeConfirm ( $visit_log_id, $estatus ) {
+		
+		$this->visitlogmdl->updateFlex($visit_log_id, 'co_billing_confirmed', $estatus);
+    
+		$this->xml->Document();
+		
+	}
+
+  function removeVisit ( $visit_log_id) {
+    
+    $this->visitlogmdl->updateFlex($visit_log_id, 'co_billing_deleted', 1);
+    
+    $this->xml->Document();
+    
+  }
+
+  function restoreVisit ( $visit_log_id) {
+		
+		$this->visitlogmdl->updateFlex($visit_log_id, 'co_billing_deleted', 0);
+    
+		$this->xml->Document();
+		
+	}
+	
+	function batchChangeStatus ( $estatus, $agency_contractor_id, $from_date=null, $to_date=null) {
+
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+    if($this->getAgencyId() == $data->contractor_id){
+      $contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+      $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+      foreach($patients as $patient){        
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, $patient->patient_id, $contractor->provides_altern_therapy);
+        
+        if(count($visits) ==0 )
+          continue;
+                
+        foreach ($visits as $visit) {			      
+          $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_billing_confirmed', $estatus);          
+          $this->xml->Document();      			
+    		}
+      }
+    	
+		}
+    
+		
+	}
+	
+
+  
+  function edit_visit_rate ( $visit_log_id ) {
+		
+    $visitlog = $this->visitlogmdl->getById($visit_log_id);
+    $patient = $this->patientmdl->getById($visitlog->patient_id);
+    
+    if(!$visitlog){
+      echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";exit;
+    }
+    
+    $this->tpl->assign("visit_log_id", $visit_log_id);
+    $this->tpl->assign("patient", $patient);
+		
+		//$this->validation->set_rules($rules);
+		$co_sp_final_rate = null;
+    if (isset($patient->is_a_group_pt) AND $patient->is_a_group_pt == 1) {
+      $this->tpl->assign('edit_co_sp_final_rate', TRUE);  
+      $edit_co_sp_final_rate = true;
+      $co_sp_final_rate = $visitlog->co_sp_final_rate;
+      if (is_null($co_sp_final_rate)) {
+        $co_sp_final_rate = $visitlog->co_final_rate;
+      }
+      
+      $this->validation->set_rules(array (
+            'co_sp_final_rate'   => 'required'
+            ));
+    
+    } else {
+
+      $this->validation->set_rules(array (
+            'co_final_rate'   => 'required'
+            ));
+    
+    }
+
+		if ($this->validation->run() == FALSE) {
+			$this->assignObject($visitlog);
+
+      $this->tpl->assign_include("dynamic_tpl", "contractor/billingready/edit_rate_form");			
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+      if ($edit_co_sp_final_rate) {
+        $new_co_sp_final_rate = (float)$this->input->post('co_sp_final_rate'); 
+        
+        $this->visitlogmdl->updateFlex($visit_log_id, 'co_sp_final_rate', $new_co_sp_final_rate);
+        
+      } else {
+        $co_final_rate = (float)$this->input->post('co_final_rate');
+        //$this->assignPostData($this->visitlogmdl);      
+  			$this->visitlogmdl->updateFlex($visit_log_id, 'co_final_rate', $co_final_rate);
+      }
+			
+      $this->visitlogmdl->updateFlex($visit_log_id, 'co_billing_confirmed', 1);
+    
+      
+			//echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+			
+		}
+	}
+  
+  function pre_ask_invoice_due_date_bydiscipline($agency_contractor_id, $from_date=null, $to_date=null){
+    $total_final_rate = 0.00;
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+    
+    if ($contractor->provides_altern_therapy != 'Y') {
+      $this->ask_invoice_due_date_bydiscipline($agency_contractor_id, $from_date, $to_date);
+      return;
+    }
+
+    if($this->getAgencyId() == $data->contractor_id){
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;
+    }
+
+    if ($total_final_rate > 0) {
+      $this->ask_invoice_due_date_bydiscipline($agency_contractor_id, $from_date, $to_date);
+    } else {
+      $config =& get_config();
+
+      $this->tpl->assign('popupmessage', "This invoice is for <b>$0.00 amount</b>. Do you still want to process it?" );
+      $this->tpl->assign('continue_url', $config["index_url"] . "contractor/billingready/ask_invoice_due_date_bydiscipline/".$agency_contractor_id."/".$from_date."/".$to_date."/?confirm_zero_amt=1" );
+      $this->tpl->assign('cancel_action', 'parent.dhxWins.unload()'); 
+
+      $this->tpl->assign('button1_text', "Confirm" );                
+      $this->tpl->assign('button2_text', "Cancel" );                
+      $this->tpl->assign('popuptitle', "Warning" );                
+      $this->tpl->assign_include("dynamic_tpl", "parts/intermediate_page_to_confirm");
+      $this->tpl->view("parts/ibase", $this->lang->language);      
+      return false;
+    }
+  }
+
+  function ask_invoice_due_date_bydiscipline($agency_contractor_id, $from_date=null, $to_date=null){
+
+    $this->load->model('companyinvoicemdl');
+    $total_final_rate = 0.00;
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+    $agency = $this->agencymdl->getByAgencyId($data->agency_id);
+    
+    if($this->getAgencyId() == $data->contractor_id){
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;
+      
+      $this->tpl->assign('total_final_rate', $total_final_rate);
+      $this->tpl->assign('agency_name', $data->agency_name);      
+    }
+
+    // we can’t send the invoice with $0
+    if($total_final_rate > 0){
+
+      if($data->invoice_terms != 1 AND $data->invoice_due_days > 0) {
+        $invoice_due_date = date('Y-m-d', strtotime(' + ' . $data->invoice_due_days . ' days'));
+        $this->tpl->assign('invoice_due_days', $data->invoice_due_days); 
+      } else {
+        $invoice_due_date = date('Y-m-d');
+        $this->tpl->assign('invoice_due_days', 0); 
+      }
+
+      $invoice_due_date = date('m-d-Y', strtotime($invoice_due_date));
+      $this->tpl->assign('invoice_due_date', $invoice_due_date); 
+      $this->tpl->assign('invoice_date', date('m-d-Y')); 
+      
+
+      $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+      $this->tpl->assign("from_date", $from_date);
+      $this->tpl->assign("to_date", $to_date);
+      $this->tpl->assign("action", 'ask_invoice_due_date_bydiscipline');
+      
+      $this->validation->set_rules(array ('invoice_due_date'    => 'required'));
+      if ($this->validation->run() == FALSE) {
+        $this->tpl->assign_include("dynamic_tpl", "contractor/billingready/askinvoiceduedate_form");      
+        $this->tpl->view("parts/ibase", $this->lang->language);
+        
+      } else {
+        
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+        // Visit Discipline/Types
+        $map_visit_type_ids_array = array(
+          // 'SN' => array(22), 
+          'PT' => array(10, 12), 
+          'OT' => array(40, 42), 
+          'ST' => array(60, 62), 
+          'AQU' => array(113), 
+          'BEH' => array(114), 
+          'MAS' => array(115), 
+          'MUS' => array(116), 
+          'REC' => array(117), 
+          'HBR' => array(118), 
+          'ART' => array(119), 
+          // 'MV' => array(320), 
+          // 'DO' => array(200, 201), 
+          // 'EV' => array(400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410), 
+          // 'CN' => array(350),
+        );
+        $visits_by_types = array(
+          // 'SN' => array(), 
+          'PT' => array(), 
+          'OT' => array(), 
+          'ST' => array(), 
+          'AQU' => array(), 
+          'BEH' => array(), 
+          'MAS' => array(), 
+          'MUS' => array(), 
+          'REC' => array(), 
+          'HBR' => array(), 
+          'ART' => array(), 
+          // 'MV' => array(), 
+          // 'DO' => array(), 
+          // 'EV' => array(), 
+          // 'CN' => array(),
+        );
+        
+        $patients = array();
+        $have_private_patients = FALSE;
+
+        foreach ($visits as $visit) {   
+          if($visit->co_billing_confirmed==1){
+              $patients[$visit->patient_id] = $visit->patient_id;
+
+              if ($visit->gov_program == 'PRIVATE') {
+                $have_private_patients = TRUE;
+              }
+
+              $visit_type_id = $visit->visit_type_id;
+              // find visit user discipline for missed visit to group into user's discipline 
+              if ($visit->visit_type_id == 320) {
+                $user = $this->usagymdl->getByUsAgyId($visit->visit_user_id);
+                $visit_type_id = $user->default_visit_type;              
+              }
+              foreach ($map_visit_type_ids_array as $key => $value) {
+                if (in_array($visit_type_id, $value)) {
+                  $visits_by_types[$key][] = $visit;
+                }
+              }
+          }
+        }
+
+        if (count($patients) > 1 AND $agency->send_invoice_to_patient == 1 AND $have_private_patients) {
+          exit('<font color="red">Error: Only one patient can be selected for this invoice</font>');
+        }
+
+        $c = 1;
+        $time = time();
+        $invoice_no_str = substr($time, 1);        
+        $invoice_no_str = $invoice_no_str.$c;
+
+        
+        $invoice_date = date("Y-m-d");
+        if ($this->input->post('invoice_date') != '') {
+          $invoice_date = standard_date(human_to_unix($this->input->post('invoice_date')), 'MYSQL_NOTIME');
+        }
+        $invoice_due_date = standard_date(human_to_unix($this->input->post('invoice_due_date')), 'MYSQL_NOTIME');
+
+        $invoices = array();
+        // Create invoice for each visit type discipline
+        foreach ($visits_by_types as $key => $rows) {
+          $agency_setting = $this->agencysettingsmdl->get($data->contractor_id);
+          if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+            $invoice_no_str = $agency_setting->invoice_seq_nbr;
+          }
+
+           // Invoice shouldn't be createf for multple private patients. Sp create invoice for each private patient.
+          $private_patient_visits = array();
+          $class_patient_visits = array();
+          $other_patient_visits = array();
+          foreach ($rows as $visit) {
+            if ($visit->gov_program == 'PRIVATE' OR $visit->gov_program == 'PRIVATE Agency') {
+              $private_patient_visits[$visit->patient_id][] = $visit;              
+            }else if ($visit->gov_program == 'CLASS') {
+              // $date = new DateTime($visit->visit_date_time);
+              // $class_patient_visits[$visit->patient_id][$date->format('Y-m')][] = $visit;
+              $other_patient_visits[$visit->patient_id][] = $visit;
+            } else {
+              // $other_patient_visits[$visit->patient_id][] = $visit;
+              $other_patient_visits[] = $visit;
+            }
+          }
+
+          // Create Invoice for PRIVATE/PRIVATE Agency patients
+          if (count($private_patient_visits) > 0) {
+            foreach ($private_patient_visits as $patient_id => $visits) {             
+              $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($visits);            
+              // we can’t send the invoice with $0
+              if ($invoice_bill_amount <= 0) {
+                continue;
+              }
+
+              // Create invoice now for this type of visit discipline
+              $invoice_no = $invoice_no_str;   
+
+              $this->assignPostData($this->companyinvoicemdl);      
+              $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+              $this->companyinvoicemdl->invoice_no = $invoice_no;
+              $this->companyinvoicemdl->invoice_date = $invoice_date;
+              $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+              $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+              $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+              $this->companyinvoicemdl->invoice_status = 'NP';
+              $this->companyinvoicemdl->agency_paid_status = 'NP';
+              $this->companyinvoicemdl->invoice_id = NULL;
+              $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+              if($invoice_id > 0){
+                $invoice_no_str++;
+
+                $invoices[] = $invoice_no;
+                foreach ($visits as $visit) {
+                  $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+                }
+              }
+            }
+          }
+
+          // Create Invoice for CLASS patients
+          if (count($class_patient_visits) > 0) {
+            foreach ($class_patient_visits as $patient_id => $months) {             
+              foreach ($months as $visits) {
+                $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($visits);            
+                // we can’t send the invoice with $0
+                if ($invoice_bill_amount <= 0) {
+                  continue;
+                }
+
+                // Create invoice now for this type of visit discipline
+                $invoice_no = $invoice_no_str;    
+
+                $this->assignPostData($this->companyinvoicemdl);      
+                $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+                $this->companyinvoicemdl->invoice_no = $invoice_no;
+                $this->companyinvoicemdl->invoice_date = $invoice_date;
+                $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+                $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+                $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+                $this->companyinvoicemdl->invoice_status = 'NP';
+                $this->companyinvoicemdl->agency_paid_status = 'NP';
+                $this->companyinvoicemdl->invoice_id = NULL;
+                $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+                if($invoice_id > 0){
+                  $invoice_no_str++;
+                  $invoices[] = $invoice_no;
+                  foreach ($visits as $visit) {
+                    $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+                  }
+                }
+              }
+            }
+          }
+
+          // create invoices for non PRIVATE/PRIVATE Agency patients
+          if (count($other_patient_visits) > 0) {
+            $visits = $other_patient_visits;
+            // foreach ($other_patient_visits as $patient_id => $visits) {
+              $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($visits);            
+              // we can’t send the invoice with $0
+              if ($invoice_bill_amount <= 0) {
+                continue;
+              }
+
+              // Create invoice now for this type of visit discipline
+              $invoice_no = $invoice_no_str;
+
+              $this->assignPostData($this->companyinvoicemdl);      
+              $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+              $this->companyinvoicemdl->invoice_no = $invoice_no;
+              $this->companyinvoicemdl->invoice_date = $invoice_date;
+              $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+              $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+              $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+              $this->companyinvoicemdl->invoice_status = 'NP';
+              $this->companyinvoicemdl->agency_paid_status = 'NP';
+              $this->companyinvoicemdl->invoice_id = NULL;
+              $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+              if($invoice_id > 0){
+                $invoice_no_str++;
+
+                $invoices[] = $invoice_no;
+                foreach ($visits as $visit) {
+                  $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+                }
+              }
+            // }
+            
+
+          }
+
+          if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+            $this->agencysettingsmdl->updateFlex($agency_setting->agency_id, 'invoice_seq_nbr', $invoice_no_str);
+          }
+
+        }
+        
+        if (count($invoices) > 0) {
+          $this->session->set_userdata('invoice_created_success_string', "Invoices #: ".implode(', ', $invoices)." has been created for Agency ".$data->agency_name);
+            
+          $return_url = $this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date;
+          
+          
+          echo "<SCRIPT>parent.location.href = '".$return_url."';parent.dhxWins.unload()</SCRIPT>";
+        } else {
+          $this->session->set_userdata('invoice_created_success_string', "<font color='red'>Invoice will not be created as no visits have been confirmed.</font>");
+          
+          $return_url = $this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date;
+          
+          
+          echo "<SCRIPT>parent.location.href = '".$return_url."';parent.dhxWins.unload()</SCRIPT>";
+        }
+
+      }
+    } else {
+      echo "<font color='red'>we can’t send the invoice with $0</font>";
+      exit();
+    }
+  }
+
+  function pre_ask_invoice_due_date($agency_contractor_id, $from_date=null, $to_date=null){
+    $total_final_rate = 0.00;
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $agency = $this->agencymdl->getByAgencyId($data->agency_id);
+    $contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+    
+    if ($contractor->provides_altern_therapy != 'Y') {
+      $this->ask_invoice_due_date($agency_contractor_id, $from_date, $to_date);
+      return;
+    }
+
+    if($this->getAgencyId() == $data->contractor_id){
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;
+    }
+
+    if ($total_final_rate > 0) {
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+        // Visit Discipline/Types
+        $map_visit_type_ids_array = array(
+          // 'SN' => array(22), 
+          'PT' => array(10, 12), 
+          'OT' => array(40, 42), 
+          'ST' => array(60, 62), 
+          'AQU' => array(113), 
+          'BEH' => array(114), 
+          'MAS' => array(115), 
+          'MUS' => array(116), 
+          'REC' => array(117), 
+          'HBR' => array(118), 
+          'ART' => array(119), 
+          // 'MV' => array(320), 
+          // 'DO' => array(200, 201), 
+          // 'EV' => array(400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410), 
+          // 'CN' => array(350),
+        );
+        $visits_by_types = array(
+          // 'SN' => array(), 
+          'PT' => array(), 
+          'OT' => array(), 
+          'ST' => array(), 
+          'AQU' => array(), 
+          'BEH' => array(), 
+          'MAS' => array(), 
+          'MUS' => array(), 
+          'REC' => array(), 
+          'HBR' => array(), 
+          'ART' => array(), 
+          // 'MV' => array(), 
+          // 'DO' => array(), 
+          // 'EV' => array(), 
+          // 'CN' => array(),
+        );
+        
+        $patients = array();
+        $have_private_patients = FALSE;
+
+        foreach ($visits as $visit) {   
+          if($visit->co_billing_confirmed==1){
+              if ($visit->gov_program == 'PRIVATE') {
+                $have_private_patients = TRUE;
+              }
+
+              $visit_type_id = $visit->visit_type_id;
+              // find visit user discipline for missed visit to group into user's discipline 
+              if ($visit->visit_type_id == 320) {
+                $user = $this->usagymdl->getByUsAgyId($visit->visit_user_id);
+                $visit_type_id = $user->default_visit_type;              
+              }
+              foreach ($map_visit_type_ids_array as $key => $value) {
+                if (!isset($patients[$visit->patient_id]['visits_by_types'])) {
+                  $patients[$visit->patient_id]['visits_by_types'] = array();
+                }
+
+                if (in_array($visit_type_id, $value)) {
+                  $patients[$visit->patient_id]['visits_by_types'][$key][] = $visit->visit_log_id;
+                  $patients[$visit->patient_id]['disciplineCount'] = count($patients[$visit->patient_id]['visits_by_types']);
+                }
+              }
+          }
+        }
+
+        $disciplineCount = 0;
+        foreach ($patients as $patient_id => $visits_by_types) {
+          if ($patients[$patient_id]['disciplineCount'] > 1) {
+            $disciplineCount = $patients[$patient_id]['disciplineCount'];
+            break;
+          }
+        }
+
+        // if (count($patients) > 1 AND $agency->send_invoice_to_patient == 1 AND $have_private_patients) {
+        //   exit('<font color="red">Error: Only one patient can be selected for this invoice</font>');
+        // }
+
+        if ($disciplineCount > 1) {
+          $config =& get_config();
+
+          $this->tpl->assign('popupmessage', 'Warning: One or more patients contain multiple disciplines. Use button \"Create Invoices by Discipline\' to process one invoice for patients with multiple disciplines or CANCEL to go BACK to process the invoice for a single discipline' );
+          $this->tpl->assign('continue_url', $config["index_url"] . "contractor/billingready/ask_invoice_due_date_bydiscipline/".$agency_contractor_id."/".$from_date."/".$to_date."/?confirm_multi_discipline=1" );
+          $this->tpl->assign('cancel_action', 'parent.dhxWins.unload()'); 
+
+          $this->tpl->assign('button1_text', '"Create Invoices by Discipline"' );                
+          $this->tpl->assign('button2_text', "Cancel" );                
+          $this->tpl->assign('popuptitle', "Warning" );                
+          $this->tpl->assign_include("dynamic_tpl", "parts/intermediate_page_to_confirm");
+          $this->tpl->view("parts/ibase", $this->lang->language);      
+          return false;
+        } else {
+          $this->ask_invoice_due_date($agency_contractor_id, $from_date, $to_date);
+        }
+    } else {
+      $config =& get_config();
+
+      $this->tpl->assign('popupmessage', "This invoice is for <b>$0.00 amount</b>. Do you still want to process it?" );
+      $this->tpl->assign('continue_url', $config["index_url"] . "contractor/billingready/ask_invoice_due_date/".$agency_contractor_id."/".$from_date."/".$to_date."/?confirm_zero_amt=1" );
+      $this->tpl->assign('cancel_action', 'parent.dhxWins.unload()'); 
+
+      $this->tpl->assign('button1_text', "Confirm" );                
+      $this->tpl->assign('button2_text', "Cancel" );                
+      $this->tpl->assign('popuptitle', "Warning" );                
+      $this->tpl->assign_include("dynamic_tpl", "parts/intermediate_page_to_confirm");
+      $this->tpl->view("parts/ibase", $this->lang->language);      
+      return false;
+    }
+  }
+
+  function ask_invoice_due_date($agency_contractor_id, $from_date=null, $to_date=null){
+    // set URL Params into GET
+    parse_str($_SERVER['QUERY_STRING'], $_GET); 
+
+    $this->load->model('companyinvoicemdl');
+    
+    $total_final_rate = 0.00;
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+    $agency = $this->agencymdl->getByAgencyId($data->agency_id);
+    
+    if($data->invoice_terms != 1 AND $data->invoice_due_days > 0) {
+      $invoice_due_date = date('Y-m-d', strtotime(' + ' . $data->invoice_due_days . ' days'));
+      $this->tpl->assign('invoice_due_days', $data->invoice_due_days); 
+    } else {
+      $invoice_due_date = date('Y-m-d');
+      $this->tpl->assign('invoice_due_days', 0); 
+    }
+    if($this->getAgencyId() == $data->contractor_id){
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;
+      
+      $this->tpl->assign('total_final_rate', $total_final_rate);
+      $this->tpl->assign('agency_name', $data->agency_name);     
+    }
+
+    $invoice_due_date = date('m-d-Y', strtotime($invoice_due_date));
+    $this->tpl->assign('invoice_due_date', $invoice_due_date); 
+    $this->tpl->assign('invoice_date', date('m-d-Y')); 
+    
+    $can_create_invoice = false;
+    if($total_final_rate > 0) {
+      $can_create_invoice = true;
+    } else if ($this->input->get('confirm_zero_amt') == 1) {
+      // we can’t send the invoice with $0 untill confirmation
+      $can_create_invoice = true;
+      $this->tpl->assign('confirm_zero_amt', 1); 
+    } else {
+      echo "<font color='red'>we can’t send the invoice with $0</font>";
+      exit();
+    }
+     
+    
+    if($can_create_invoice){
+      $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+      $this->tpl->assign("from_date", $from_date);
+      $this->tpl->assign("to_date", $to_date);
+      $this->tpl->assign("action", 'ask_invoice_due_date');
+      $this->validation->set_rules(array ('invoice_due_date'    => 'required'));
+      
+      if ($this->validation->run() == FALSE) {        
+        $this->tpl->assign_include("dynamic_tpl", "contractor/billingready/askinvoiceduedate_form");      
+        $this->tpl->view("parts/ibase", $this->lang->language);
+        
+      } else {
+        if ($this->input->post('invoice_by_patient') == 1) {
+          return $this->ask_invoice_due_date_by_patient($agency_contractor_id, $from_date, $to_date);
+        } 
+
+
+        $invoice_due_date = (float)$this->input->post('invoice_due_date');
+        $time = time();
+        $invoice_no_str = substr($time, 1);
+        $c = 1;
+        $invoice_no_str = $invoice_no_str.$c;
+
+        $agency_setting = $this->agencysettingsmdl->get($data->contractor_id);
+        if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+          $invoice_no_str = $agency_setting->invoice_seq_nbr;
+        }
+
+        $invoice_date = date("Y-m-d");
+        if ($this->input->post('invoice_date') != '') {
+          $invoice_date = standard_date(human_to_unix($this->input->post('invoice_date')), 'MYSQL_NOTIME');
+        }
+        $invoice_due_date = standard_date(human_to_unix($this->input->post('invoice_due_date')), 'MYSQL_NOTIME');
+        $no_of_visits = 0;
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+        
+          // Invoice shouldn't be created for CLASS. For other create a single invoice for all patients selected
+          $all_patient_visits = array();
+          $class_patient_visits = array();
+          
+          $patients = array();
+          $have_private_patients = FALSE;
+
+          foreach ($visits as $visit) {
+            if($visit->co_billing_confirmed==1){
+              
+              $patients[$visit->patient_id] = $visit->patient_id;
+              
+              if ($visit->gov_program == 'CLASS') {
+                $all_patient_visits[] = $visit;
+                // $date = new DateTime($visit->visit_date_time);
+                // $class_patient_visits[$visit->patient_id][$date->format('Y-m')][] = $visit;
+              } else if ($visit->gov_program == 'PRIVATE') {
+                $have_private_patients = TRUE;
+                $all_patient_visits[] = $visit;
+                // $date = new DateTime($visit->visit_date_time);
+                // $class_patient_visits[$visit->patient_id][$date->format('Y-m')][] = $visit;
+              } else {
+                // create one invoice for other patients
+                $all_patient_visits[] = $visit;
+              }
+            }
+          }
+
+          if (count($patients) > 1 AND $agency->send_invoice_to_patient == 1 AND $have_private_patients) {
+            exit('<font color="red">Error: Only one patient can be selected for this invoice</font>');
+          }
+
+          $invoices = array();          
+          
+          // create invoices for all selected patients
+          if (count($all_patient_visits) > 0) {
+            $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($all_patient_visits);            
+            // Create invoice now for this type of visit discipline
+            $invoice_no = $invoice_no_str;
+
+            $this->assignPostData($this->companyinvoicemdl);      
+            $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+            $this->companyinvoicemdl->invoice_no = $invoice_no;
+            $this->companyinvoicemdl->invoice_date = $invoice_date;
+            $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+            $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+            $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+            $this->companyinvoicemdl->invoice_status = 'NP';
+            $this->companyinvoicemdl->agency_paid_status = 'NP';
+            $this->companyinvoicemdl->invoice_id = NULL;
+            $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+            if($invoice_id > 0){
+              $invoice_no_str++;
+              $invoices[] = $invoice_no;
+              foreach ($all_patient_visits as $visit) {
+                $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+              }
+            }
+
+          }
+
+          // Create Invoice for CLASS patients
+          if (count($class_patient_visits) > 0) {
+            foreach ($class_patient_visits as $patient_id => $months) {             
+              foreach ($months as $visits) {
+                $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($visits);            
+                // Create invoice now for this type of visit discipline            
+                $invoice_no = $invoice_no_str;
+
+                $this->assignPostData($this->companyinvoicemdl);      
+                $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+                $this->companyinvoicemdl->invoice_no = $invoice_no;
+                $this->companyinvoicemdl->invoice_date = $invoice_date;
+                $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+                $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+                $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+                $this->companyinvoicemdl->invoice_status = 'NP';
+                $this->companyinvoicemdl->agency_paid_status = 'NP';
+                $this->companyinvoicemdl->invoice_id = NULL;
+                $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+                if($invoice_id > 0){
+                  $invoice_no_str++;
+                  $invoices[] = $invoice_no;
+                  foreach ($visits as $visit) {
+                    $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+                  }
+                }
+              }
+            }
+          }
+          
+          if (count($invoices) > 0) { 
+            if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+              $this->agencysettingsmdl->updateFlex($agency_setting->agency_id, 'invoice_seq_nbr', $invoice_no_str);
+            }
+
+            $this->session->set_userdata('invoice_created_success_string', "Invoice number: ".implode(",", $invoices)." has been created for Agency ".$data->agency_name);
+            
+            $return_url = $this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date;
+            
+            
+            echo "<SCRIPT>parent.location.href = '".$return_url."';parent.dhxWins.unload()</SCRIPT>";
+            
+          }else{
+            $this->session->set_userdata('invoice_created_success_string', "<font color='red'>Invoice will not be created as no visits have been confirmed.</font>");
+            
+            $return_url = $this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date;
+            
+            
+            echo "<SCRIPT>parent.location.href = '".$return_url."';parent.dhxWins.unload()</SCRIPT>";
+          }   
+      }      
+    } 
+  }
+
+  function pre_ask_invoice_due_date_by_patient($agency_contractor_id, $from_date=null, $to_date=null){
+    $total_final_rate = 0.00;
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+    
+    if ($contractor->provides_altern_therapy != 'Y') {
+      $this->ask_invoice_due_date_by_patient($agency_contractor_id, $from_date, $to_date);
+      return;
+    }
+
+    if($this->getAgencyId() == $data->contractor_id){
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;
+    }
+
+    if ($total_final_rate > 0) {
+      $this->ask_invoice_due_date_by_patient($agency_contractor_id, $from_date, $to_date);
+    } else {
+      $config =& get_config();
+
+      $this->tpl->assign('popupmessage', "This invoice is for <b>$0.00 amount</b>. Do you still want to process it?" );
+      $this->tpl->assign('continue_url', $config["index_url"] . "contractor/billingready/ask_invoice_due_date_by_patient/".$agency_contractor_id."/".$from_date."/".$to_date."/?confirm_zero_amt=1" );
+      $this->tpl->assign('cancel_action', 'parent.dhxWins.unload()'); 
+
+      $this->tpl->assign('button1_text', "Confirm" );                
+      $this->tpl->assign('button2_text', "Cancel" );                
+      $this->tpl->assign('popuptitle', "Warning" );                
+      $this->tpl->assign_include("dynamic_tpl", "parts/intermediate_page_to_confirm");
+      $this->tpl->view("parts/ibase", $this->lang->language);      
+      return false;
+    }
+  }
+
+  function ask_invoice_due_date_by_patient($agency_contractor_id, $from_date=null, $to_date=null){
+
+    $this->load->model('companyinvoicemdl');
+    
+    $total_final_rate = 0.00;
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+	  
+  	if($data->invoice_terms != 1 AND $data->invoice_due_days > 0) {
+  		$invoice_due_date = date('Y-m-d', strtotime(' + ' . $data->invoice_due_days . ' days'));
+      $this->tpl->assign('invoice_due_days', $data->invoice_due_days); 
+  	} else {
+  		$invoice_due_date = date('Y-m-d');
+      $this->tpl->assign('invoice_due_days', 0); 
+  	}
+    if($this->getAgencyId() == $data->contractor_id){
+      $total_final_rate = $this->visitlogmdl->getBillableTotalFinalRate($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+      if(is_null($total_final_rate))
+      $total_final_rate = 0.00;
+      
+      $this->tpl->assign('total_final_rate', $total_final_rate);
+      $this->tpl->assign('agency_name', $data->agency_name);     
+    }
+
+  	$invoice_due_date = date('m-d-Y', strtotime($invoice_due_date));
+    $this->tpl->assign('invoice_due_date', $invoice_due_date); 
+    $this->tpl->assign('invoice_date', date('m-d-Y')); 
+  	
+    
+    if($total_final_rate > 0){
+      $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+      $this->tpl->assign("from_date", $from_date);
+      $this->tpl->assign("to_date", $to_date);
+      $this->tpl->assign("action", 'ask_invoice_due_date_by_patient');
+      $this->validation->set_rules(array ('invoice_due_date'  	=> 'required'));
+  		
+  		if ($this->validation->run() == FALSE) {  			
+        $this->tpl->assign_include("dynamic_tpl", "contractor/billingready/askinvoiceduedate_form");			
+  			$this->tpl->view("parts/ibase", $this->lang->language);
+  			
+  		} else {
+      
+        $invoice_due_date = (float)$this->input->post('invoice_due_date');
+        $time = time();
+        $invoice_no_str = substr($time, 1);
+        $c = 1;
+        $invoice_no_str = $invoice_no_str.$c;
+
+        $agency_setting = $this->agencysettingsmdl->get($data->contractor_id);
+        if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+          $invoice_no_str = $agency_setting->invoice_seq_nbr;
+        }
+
+        $invoice_date = date("Y-m-d");
+        if ($this->input->post('invoice_date') != '') {
+          $invoice_date = standard_date(human_to_unix($this->input->post('invoice_date')), 'MYSQL_NOTIME');
+        }
+        $invoice_due_date = standard_date(human_to_unix($this->input->post('invoice_due_date')), 'MYSQL_NOTIME');
+        $no_of_visits = 0;
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, null, $contractor->provides_altern_therapy);
+        
+          // Invoice shouldn't be createf for multple private patients. Sp create invoice for each private patient.
+          $private_patient_visits = array();
+          $class_patient_visits = array();
+          $other_patient_visits = array();
+          foreach ($visits as $visit) {
+            if($visit->co_billing_confirmed==1){
+                if ($visit->gov_program == 'PRIVATE' OR $visit->gov_program == 'PRIVATE Agency') {
+                  $private_patient_visits[$visit->patient_id][] = $visit;              
+                }else if ($visit->gov_program == 'CLASS') {
+                  // $date = new DateTime($visit->visit_date_time);
+                  // $class_patient_visits[$visit->patient_id][$date->format('Y-m')][] = $visit;
+                  $other_patient_visits[$visit->patient_id][] = $visit;
+                } else {
+                  $other_patient_visits[$visit->patient_id][] = $visit;
+                }
+            }
+          }
+
+          $invoices = array();          
+          // Create Invoice for PRIVATE/PRIVATE Agency patients
+          if (count($private_patient_visits) > 0) {
+            foreach ($private_patient_visits as $patient_id => $visits) {             
+              $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($visits);  
+              // we can’t send the invoice with $0
+              if ($invoice_bill_amount <= 0) {
+                continue;
+              }
+              // Create invoice now for this type of visit discipline            
+              $invoice_no = $invoice_no_str;
+
+              $this->assignPostData($this->companyinvoicemdl);      
+              $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+              $this->companyinvoicemdl->invoice_no = $invoice_no;
+              $this->companyinvoicemdl->invoice_date = $invoice_date;
+              $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+              $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+              $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+              $this->companyinvoicemdl->invoice_status = 'NP';
+              $this->companyinvoicemdl->agency_paid_status = 'NP';
+              $this->companyinvoicemdl->invoice_id = NULL;
+              $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+              if($invoice_id > 0){
+                $invoice_no_str++;
+                $invoices[] = $invoice_no;
+                foreach ($visits as $visit) {
+                  $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+                }
+              }
+            }
+          }
+
+          // Create Invoice for CLASS patients
+          if (count($class_patient_visits) > 0) {
+            foreach ($class_patient_visits as $patient_id => $months) {             
+              foreach ($months as $visits) {
+                $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($visits); 
+                // we can’t send the invoice with $0
+                if ($invoice_bill_amount <= 0) {
+                  continue;
+                }
+
+                // Create invoice now for this type of visit discipline            
+                $invoice_no = $invoice_no_str;
+
+                $this->assignPostData($this->companyinvoicemdl);      
+                $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+                $this->companyinvoicemdl->invoice_no = $invoice_no;
+                $this->companyinvoicemdl->invoice_date = $invoice_date;
+                $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+                $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+                $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+                $this->companyinvoicemdl->invoice_status = 'NP';
+                $this->companyinvoicemdl->agency_paid_status = 'NP';
+                $this->companyinvoicemdl->invoice_id = NULL;
+                $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+                if($invoice_id > 0){
+                  $invoice_no_str++;
+                  $invoices[] = $invoice_no;
+                  foreach ($visits as $visit) {
+                    $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+                  }
+                }
+              }
+            }
+          }
+
+          // create invoices for non PRIVATE/PRIVATE Agency patients
+          if (count($other_patient_visits) > 0) {
+            foreach ($other_patient_visits as $patient_id => $visits) {     
+              $invoice_bill_amount = $this->visitlogmdl->getVisitsBillAmount($visits);            
+              // we can’t send the invoice with $0
+              if ($invoice_bill_amount <= 0) {
+                continue;
+              }
+
+              // Create invoice now for this type of visit discipline
+              $invoice_no = $invoice_no_str;
+
+              $this->assignPostData($this->companyinvoicemdl);      
+              $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+              $this->companyinvoicemdl->invoice_no = $invoice_no;
+              $this->companyinvoicemdl->invoice_date = $invoice_date;
+              $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+              $this->companyinvoicemdl->invoice_amount = $invoice_bill_amount;
+              $this->companyinvoicemdl->agency_balance = $invoice_bill_amount;
+              $this->companyinvoicemdl->invoice_status = 'NP';
+              $this->companyinvoicemdl->agency_paid_status = 'NP';
+              $this->companyinvoicemdl->invoice_id = NULL;
+              $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+
+              if($invoice_id > 0){
+                $invoice_no_str++;
+                $invoices[] = $invoice_no;
+                foreach ($visits as $visit) {
+                  $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', $invoice_id);
+                }
+              }
+            }
+
+          }
+          
+          if (count($invoices) > 0) { 
+            if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+              $this->agencysettingsmdl->updateFlex($agency_setting->agency_id, 'invoice_seq_nbr', $invoice_no_str);
+            }
+
+            $this->session->set_userdata('invoice_created_success_string', "Invoice number: ".implode(",", $invoices)." has been created for Agency ".$data->agency_name);
+            
+            $return_url = $this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date;
+            
+            
+      			echo "<SCRIPT>parent.location.href = '".$return_url."';parent.dhxWins.unload()</SCRIPT>";
+            
+          }else{
+            $this->session->set_userdata('invoice_created_success_string', "<font color='red'>Invoice will not be created as no visits have been confirmed.</font>");
+            
+            $return_url = $this->config->site_url().'/contractor/billingready/index/'.$from_date.'/'.$to_date;
+            
+            
+      			echo "<SCRIPT>parent.location.href = '".$return_url."';parent.dhxWins.unload()</SCRIPT>";
+          }        
+  		}      
+    } else {
+      echo "<font color='red'>we can’t send the invoice with $0</font>";
+      exit();
+    }
+  }
+
+  public function add_visit_to_invoice($agency_contractor_id){
+    if (!is_null($this->input->post('record_ids'))) {  
+      $tab_32_assess_type_lsit = $this->parametermdl->getByType(32);    
+      $visit_date_ini = $this->input->post('visit_date_ini');
+      $visit_date_fin = $this->input->post('visit_date_fin');
+      $record_ids = $this->input->post('record_ids');
+      $records = explode(",", $record_ids);
+      
+      $this->load->model('companyinvoicemdl');
+      $invoice = $this->companyinvoicemdl->getByInvoiceNo($agency_contractor_id, trim($this->input->post('invoice_no')));
+
+      if (empty($invoice)) {
+        echo "-1"; exit();
+      } else if($invoice->is_special) {
+        echo "-2"; exit();
+      } else {
+        // check visit already is in invoices or not
+        foreach ($records as $key => $visit_log_id) {
+          $visitlog = $this->visitlogmdl->getById($visit_log_id);
+          if ($visitlog->co_invoice_id) {
+            echo "-3";
+            exit();
+          }
+        }
+
+        $this->db->trans_start();
+
+        // add new visits to the invoice
+        foreach ($records as $key => $visit_log_id) {
+          $this->visitlogmdl->updateFlex($visit_log_id, 'co_invoice_id', $invoice->invoice_id);
+        }
+
+        // Calculate new invoice amount and update
+        $this->load->model('invoiceotherchargesmdl');
+        $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+        $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);
+        $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice->invoice_id);
+        if($total_final_rate != $invoice->invoice_amount AND round(abs($total_final_rate - $invoice->invoice_amount), 2) >0 ){
+          $this->companyinvoicemdl->updateFlex($invoice->invoice_id, 'invoice_amount', $total_final_rate);          
+        }
+
+        $this->db->trans_complete();
+
+        if($this->db->trans_status() === TRUE){
+          echo "1"; exit();
+        } else {
+          echo "0"; exit();
+        }
+      }
+        
+    } else {
+      $this->tpl->assign("no_grid_buttons", true);
+      $this->tpl->assign('noedit', true);
+      $this->tpl->assign('enable_paging', true);
+      $this->tpl->assign("resource_grid", 'add_visit_to_invoice_grid/'.$agency_contractor_id);
+      $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+
+      $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id); 
+      $this->tpl->assign("agency_name", $data->agency_name);
+      
+      $this->tpl->assign_include("filter_tpl", "contractor/billingready/addtoinvoice_filter");
+      $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+  }
+
+  public function add_visit_to_invoice_grid($agency_contractor_id, $from_date=null, $to_date=null){
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+
+    $this->xml->root_name = "rows";
+    $document = $this->xml->Document();
+    $head = $this->xml->Element("head");
+    $head->append($this->xml->Element("column", "width=5;type=ch", " "));
+    $head->append($this->xml->Element("column", "width=11;type=ro",  "Confirmed"));
+    $head->append($this->xml->Element("column", "width=*;type=ro", "Visit Date"));
+    $head->append($this->xml->Element("column", "width=*;type=ro", "Patient"));
+    $head->append($this->xml->Element("column", "width=*", "Type of Visit"));
+    $head->append($this->xml->Element("column", "width=*", "Clinician"));
+    if ($contractor_info->provides_altern_therapy == 'Y') {
+      $head->append($this->xml->Element("column", "width=7", "Units"));
+    }
+    $head->append($this->xml->Element("column", "width=7", "Visit Rate"));
+    $head->append($this->xml->Element("column", "width=*", "Visit Status"));
+
+    // $head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));
+    // $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+
+    $document->append($head);
+
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+
+    if($this->getAgencyId() == $data->contractor_id){
+      $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+      foreach($patients as $patient){
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, $patient->patient_id, $contractor_info->provides_altern_therapy);
+        if(count($visits) ==0 )
+          continue;
+
+        // $cell = $this->xml->Element("row", "");
+        // $cell->append($this->xml->Element("cell", null, null));
+        // $cell->append($this->xml->Element("cell", null, ""));
+        // $cell->append($this->xml->Element("cell", "colspan=5;aligh=center", '<![CDATA[<b>Pt: <font color="#0000FF">'.$patient->complete_name.' </font></b>]]>'));    
+        // $document->append($cell);
+
+        foreach ($visits as $visit) {
+          $units = 0;
+          $visit_rate = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units);
+          $visit->co_final_rate = number_format($visit_rate, 2);  
+          
+
+          $cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+          $cell->append($this->xml->Element("cell", null, "0"));
+
+          if ($visit->co_billing_deleted ==1) {
+            $cell->append($this->xml->Element("cell", null, ""));
+          } else if ($visit->co_billing_confirmed == 1) {
+            $cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/images/drop-yes.gif'>")));
+          } else {
+            $cell->append($this->xml->Element("cell", null,  ''));
+          }
+
+          if($visit->billable_YN == 0)
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date)).' (Non Billable)'));
+          else
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date))));
+
+          $cell->append($this->xml->Element("cell", null, $patient->complete_name));
+          $cell->append($this->xml->Element("cell", null, $visit->visit_description));
+          $cell->append($this->xml->Element("cell", null, $visit->clinician));
+          if ($contractor_info->provides_altern_therapy == 'Y') {
+            $cell->append($this->xml->Element("cell", null, $units));     
+          }
+          $cell->append($this->xml->Element("cell", null, '$'.$visit->co_final_rate));      
+          $cell->append($this->xml->Element("cell", null, $visit->tab_description));      
+          
+          $document->append($cell);
+
+        }
+
+      }
+    }      
+  }
+
+  function print_draft_invoice($agency_contractor_id, $from_date=null, $to_date=null){
+    /*$record_ids = array();
+    if (!is_null($this->input->post('record_ids'))) {
+      $recordids = $this->input->post('record_ids');
+      $record_ids = explode(",", $recordids);    
+    }*/
+    //$this->load->model('agencycontractormdl');  
+    $data = array();
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+    if($this->getAgencyId() == $data->contractor_id){
+      $data->contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+      
+      $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+      $total_amount = 0;
+      foreach($patients as $key=>$patient){
+        
+        
+        $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, $from_date, $to_date, $patient->patient_id, $data->contractor_info->provides_altern_therapy);
+        
+        
+        $p_amount = 0;
+        foreach ($visits as $key2=>$visit) {
+          if($visit->co_billing_confirmed != 1){
+            unset($visits[$key2]);
+            continue;
+          }
+          if(!$visit->co_final_rate)
+            $visit->co_final_rate = 0.00;  
+           
+          $visit->co_final_rate = number_format($visit->co_final_rate, 2);  
+          
+          $total_amount += $visit->co_final_rate;
+          $p_amount += $visit->co_final_rate;
+          
+          if(in_array($visit->visit_program, array('ptev','stev','otev'))){
+            $visit_type_mdl = $visit->visit_program.'mdl';
+            $this->load->model($visit_type_mdl);
+            $this->load->model('parametermdl');
+            $visit_eval = $this->$visit_type_mdl->get($visit->visit_log_id);
+            $tab_32_list = $this->parametermdl->getByType(32);
+            
+            switch($visit->visit_program){
+              case 'ptev':
+              case 'stev':                
+                $visit->assessment_type = @$tab_32_list[$visit_eval->tab_32_assess_type];
+                break;
+              case 'otev':
+                $visit->assessment_type = @$tab_32_list[$visit_eval->tab_92_assess_type];
+                break;  
+            }
+          }
+          
+          $visits[$key2] = $visit;
+    		}
+        $patient->visits = $visits;          
+        $patient->amount = $p_amount;
+        $patients[$key] = $patient;
+      }
+      
+  		$data->patients = $patients;
+  		$data->total_amount = $total_amount;
+		}
+    
+    //print_r($data);exit;
+    
+    $content = $this->load->view('contractor/billingready/print_draft_invoice',$data,true);
+    //echo $content;exit;
+    
+    // convert in PDF
+    require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+    try
+    {
+        $html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+        //$html2pdf = new HTML2PDF('P', 'A4', 'en');
+//        $html2pdf->setModeDebug();
+        //$html2pdf->pdf->SetDisplayMode('fullpage');
+        $html2pdf->setTestTdInOnePage(false);
+        $html2pdf->setDefaultFont('Arial');
+        $html2pdf->writeHTML($content);
+        $html2pdf->Output('draft_invoice.pdf', 'D');        
+    }
+    catch(HTML2PDF_exception $e) {
+        echo $e;
+        exit;
+    }    
+  }  
+ }

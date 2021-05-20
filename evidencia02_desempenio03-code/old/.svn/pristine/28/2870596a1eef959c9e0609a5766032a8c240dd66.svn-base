@@ -1,0 +1,70 @@
+<?
+
+ class AgencyTemplateMdl extends Model {
+
+	var $template_id;
+	var $agency_id;
+	var $tab_103_template_type;
+	var $template_name;
+	var $template_text;
+	
+	function AgencyTemplateMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $template_id ) {
+	
+		$this->db->where("template_id", $template_id);
+		
+		$this->db->join('tab_parameters', 'agy_agency_template.tab_103_template_type = tab_parameters.tab_value AND tab_parameters.tab_type = 103', 'LEFT');
+	
+		$query = $this->db->get('agy_agency_template');
+		return $query->row();			
+	
+	}
+
+	function getByType ( $agency_id, $type ) {
+	
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("tab_103_template_type", $type);
+		
+		$this->db->order_by('template_name');
+	
+		$query = $this->db->get('agy_agency_template');
+		return $query->result();			
+	
+	}
+	
+	function insert ($agency_id ) {
+		
+		$this->agency_id = $agency_id;
+		$this->template_text = str_replace("'", "", $this->template_text);
+		
+		$this->db->insert('agy_agency_template', $this);
+		$this->template_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $template_id, $agency_id ) {
+		
+		$this->template_id = $template_id;
+		$this->agency_id = $agency_id;
+		$this->template_text = str_replace("'", "", $this->template_text);
+		
+		$this->db->where('template_id', $template_id);
+		
+		$this->db->update('agy_agency_template', $this);
+		
+	}
+	
+	function delete ( $template_id ) {
+		
+		$this->db->where('template_id', $template_id);
+		
+		$this->db->delete('agy_agency_template'); 
+		
+	}
+	
+ }

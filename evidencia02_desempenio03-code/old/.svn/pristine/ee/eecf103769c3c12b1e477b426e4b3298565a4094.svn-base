@@ -1,0 +1,218 @@
+<?
+
+ class Documents extends MY_Controller {
+
+	var $rules;
+
+	function Documents () {
+		
+		parent::MY_Controller();
+		$this->load->model('uploaddocumentsmdl');
+		$this->tpl->assign("resource_path", "patient/documents");
+		
+		$this->tpl->assign('documents_type_list', $this->parametermdl->getByType(104));
+		
+		$this->rules = array (
+								// 'patient_id'			=> 'required',
+							  	'document_type'		=> 'required',							  							  
+							  	// 'document'		=> 'required',							  							  
+							  );
+		$this->fileds = array (
+								// 'patient_id'			=> 'Patient',
+							  	'document_type'		=> 'Document Type',							  							  
+							  	// 'document'		=> 'Document',							  							  
+							  );
+	}
+
+	function index($patient_id){	    
+	    //$this->tpl->assign("no_grid_buttons", true);
+	    $this->tpl->assign('noedit', true);
+	    $this->tpl->assign('add_sufix', 'Document');
+	    // $this->tpl->assign("resource_edit", 'documents_edit');    
+	    // $this->tpl->assign("resource_grid", "documents_grid");
+	    // $this->tpl->assign("resource_add", "documents_add");
+	    // $this->tpl->assign("resource_delete", "documents_delete");
+	    
+    	$this->tpl->assign('entity_id', $patient_id);
+		//$this->tpl->assign('contractor_id', $contractor_id);
+		// $this->tpl->assign('episode_id', $episode_id);
+    
+    	$this->tpl->assign("patient_id", $patient_id);
+    
+    	$this->tpl->assign_include("filter_tpl", "patient/documents/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    	
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+		
+	function grid ($patient_id) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		// $head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=20",  "Type of Document"));
+		$head->append($this->xml->Element("column", "width=20",  "Upload Date"));
+		$head->append($this->xml->Element("column", "width=*", "Notes"));
+		$head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actions"));		
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->uploaddocumentsmdl->get($patient_id, $this->input->post('keyword'), $this->input->post('document_type')) as $doc) {
+			
+			$cell = $this->xml->Element("row", "id=" . $doc->document_id);
+			// $cell->append($this->xml->Element("cell", null, $document->document_id));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($doc->tab_description) ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($doc->upload_date), 'MYSQL_NOTIME')));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($doc->notes)));
+			$cell->append($this->xml->Element("cell", null, "View Attachment^".$this->config->config['base_url']."datastore/upload-documents/".$doc->document."^_blank"));
+			$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteDocument(" . $doc->document_id . ",".$patient_id.")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add ($patient_id) {
+		
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('entity_id', $patient_id);
+		$this->tpl->assign("patient_id", $patient_id);
+						
+		$this->validation->set_rules($this->rules);
+		$this->validation->set_fields($this->fileds);
+		
+		if ($this->validation->run() == FALSE OR ( isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 ) ) {
+			// var_dump($_FILES['document']['error']);
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0) {
+				# code...
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please select Document";
+				$this->tpl->assign("error_string", $error_string);
+			}
+
+			$this->tpl->assign("form_title", "Upload Document");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/documents/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else if($_FILES['document']['error']==0){
+			$fname = microtime().'_'.basename($_FILES['document']['name']);
+			$fname = str_replace(" ","_",$fname);
+			$fname = str_replace("%","_",$fname);
+			$fname = str_replace("#","",$fname);
+			$fname = str_replace("&","",$fname);
+			// $fname = microtime()."_".$fname;
+			if(move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/datastore/upload-documents/'.$fname)) {
+				$document = $fname;
+				$this->assignPostData($this->uploaddocumentsmdl);			
+				$this->uploaddocumentsmdl->create_user_id = $this->getUsAgyId();
+				$this->uploaddocumentsmdl->insert( $patient_id, $document );
+				
+				$this->tpl->assign('success_string', "Document has been uploaded");
+				redirect('patient/documents/index/' . $patient_id);
+			}else{
+				exit("Document Upload Failed!");
+			}
+		}
+
+	
+	}
+	
+	/*function edit ( $document_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $document_id);
+		
+		$this->assignObject($this->uploaddocumentsmdl->getById($document_id));
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Edit Documents Source");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/documents/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->uploaddocumentsmdl);
+			// $this->uploaddocumentsmdl->update($document_id, is_null($this->input->post('facility_id')) ? $this->getAgencyId() : null);
+			$this->uploaddocumentsmdl->update($document_id, $this->getAgencyId() );
+			
+			$this->tpl->assign('gmessage', $this->uploaddocumentsmdl->documents_name . $this->lang->line('grl_upd_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}*/
+	
+	function delete ( $document_id, $patient_id ) {
+		
+		$document = $this->uploaddocumentsmdl->getById($document_id);
+		
+		if ($patient_id == $document->patient_id) {			
+			$this->uploaddocumentsmdl->delete($document_id);
+			
+			$this->tpl->assign('gmessage', $document->document . $this->lang->line('grl_del_msg'));
+			// $this->index();
+			redirect('patient/documents/index/' . $document->patient_id);
+		}else{
+			exit('not deleted');
+		}
+		
+	}
+
+	function document_delete($document_id, $patient_id){
+		$document = $this->uploaddocumentsmdl->getById($document_id);
+		$xmlDocument = $this->xml->Document();
+		
+		if ($patient_id == @$document->patient_id) {			
+			$this->uploaddocumentsmdl->delete($document_id);
+			@unlink(FCPATH."datastore/upload-documents/".$document->document);
+			$xmlDocument->append($this->xml->Element('js', 'script=loadGrid()', null));  			
+		}else{
+			$xmlDocument->append($this->xml->Element('alert', null, "You can not delete this document!"));
+		}
+	}
+
+  function xml_entities($text, $charset = 'Windows-1252'){
+    //return $text;    
+    // Debug and Test
+    // $text = "test &amp; &trade; &amp;trade; abc &reg; &amp;reg; &#45;";
+    
+    // First we encode html characters that are also invalid in xml
+    //$text = htmlentities($text, ENT_COMPAT, $charset, false);
+    $text = htmlentities($text, ENT_QUOTES);
+    $text=str_replace("'","",$text);
+    $text=str_replace('"',"",$text);
+    
+    return $text;
+    
+    // XML character entity array from Wiki
+    // Note: &apos; is useless in UTF-8 or in UTF-16
+    $arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+    
+    // Building the regex string to exclude all strings with xml special char
+    $arr_xml_special_char_regex = "(?";
+    foreach($arr_xml_special_char as $key => $value){
+        $arr_xml_special_char_regex .= "(?!$value)";
+    }
+    $arr_xml_special_char_regex .= ")";
+    
+    // Scan the array for &something_not_xml; syntax
+    $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+    
+    // Replace the &something_not_xml; with &amp;something_not_xml;
+    $replacement = '&amp;${1}';
+    return preg_replace($pattern, $replacement, $text);
+  }
+
+	
+
+ }

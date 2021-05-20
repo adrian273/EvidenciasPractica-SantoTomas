@@ -1,0 +1,496 @@
+{literal}
+<style type="text/css">
+    
+    
+  	/* For general iPad layouts */
+  	::-webkit-scrollbar {
+    	-webkit-appearance: none;
+    	width: 7px;
+    }
+    ::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background-color: rgba(0,0,0,.5);
+        -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
+    }
+
+</style>
+{/literal}
+
+<table border="0" cellpadding="0" cellspacing="0" width="100%" height="100%">
+  <form name="gform">
+	<tr>
+	  <td height="10" class="dhtmlxToolbar_dhx_blue">
+			<div id="toolbarObj" style="float: left"></div>
+			<!--
+			<div style="float: right">
+				{html_options first_option='All Events' options=$visit_type_list selected=$visit_type_id name='visit_type_id' onchange="reloadCalendar(this.value)"}
+			</div>
+			-->
+			<div style="float: left">
+				<label><input type="checkbox" id="visit_type_id" name="visit_type_id" value="400" onchange="reloadCellEvents()"> Events Only</label>
+				{*
+				{html_options first_option='All Events' options=$visit_type_list selected=$visit_type_id name='visit_type_id' onchange="reloadCalendar(this.value)"}
+				*}
+			</div>
+	  </td>
+	</tr>
+	
+	<tr>
+	  <td height="10">
+	
+		<table border="0" cellpadding="1" cellspacing="1" width="100%" bgcolor="#d9e4f1">
+			<tr>
+				<td height="10" width="30px" nowrap style="height: 10px; background-color: #d9e4f1"><center>Week</center></td>
+				<td height="10" class="day_cell" style="height: 10px; background-color: #d9e4f1"><center>Sunday</center></td>
+				<td height="10" class="day_cell" style="height: 10px; background-color: #d9e4f1"><center>Monday</center></td>
+				<td height="10" class="day_cell" style="height: 10px; background-color: #d9e4f1"><center>Tuesday</center></td>
+				<td height="10" class="day_cell" style="height: 10px; background-color: #d9e4f1"><center>Wednesday</center></td>
+				<td height="10" class="day_cell" style="height: 10px; background-color: #d9e4f1"><center>Thursday</center></td>
+				<td height="10" class="day_cell" style="height: 10px; background-color: #d9e4f1"><center>Friday</center></td>
+				<td height="10" class="day_cell" style="height: 10px; background-color: #d9e4f1"><center>Saturday</center></td>
+			</tr>
+		</table>
+	
+	  </td>
+	</tr>
+	
+	<tr>
+	  <td height="99%">
+	
+			<div style="overflow: auto; height: 100%" id="cal_div" onscroll="if (tt_iState == 3) tt_HideInit()">
+			{$calendar_table}
+			</div>
+	
+	  </td>
+	</tr>
+  </form>
+</table>
+
+<div id="add_one_event" style="display: none">
+
+</div>
+
+<script language="JavaScript" type="text/javascript">
+
+	document.getElementById('cal_div').style.height = getWindowHeight() - 47 + "px";
+	
+</script>
+
+<script language="JavaScript" type="text/javascript">
+
+	function addMultiple () {literal}{{/literal}
+	
+	   var aux = new Array();
+	   pointer = 0;
+	   for (i=0; i< document.gform.elements.length; i++) 
+	      if (document.gform.elements[i].type == "checkbox" && document.gform.elements[i].name == 'cal_day' && document.gform.elements[i].checked) 
+	         aux[pointer++] = document.gform.elements[i].value;
+	
+		if (aux.length > 0) 
+	    	preAdd(aux.join(','));
+	    else
+	    	alert('You must check at least one day');
+	  
+	{literal}}{/literal}
+
+	function addPreVtEvents() {literal}{{/literal}
+	
+	   var aux = new Array();
+	   pointer = 0;
+	   for (i=0; i< document.gform.elements.length; i++) 
+	      if (document.gform.elements[i].type == "checkbox" && document.gform.elements[i].name == 'cal_day' && document.gform.elements[i].checked) 
+	         aux[pointer++] = document.gform.elements[i].value;
+	
+		if (aux.length > 0) 
+	    	addVtEvents(aux.join(','));
+	    else
+	    	alert('You must check at least one day');
+	  
+	{literal}}{/literal}
+	
+	function dayFree () {literal}{{/literal}
+	
+	   var aux = new Array();
+	   pointer = 0;
+	   for (i=0; i< document.gform.elements.length; i++) 
+	      if (document.gform.elements[i].type == "checkbox" && document.gform.elements[i].name == 'cal_day' && document.gform.elements[i].checked) 
+	         aux[pointer++] = document.gform.elements[i].value;
+	
+		if (aux.length > 0) {literal}{{/literal}
+	    	if(confirm('Are you sure to delete selected day events?')) document.location = "{$index_url}{$resource_path}/dayfree/{$patient_id}/{$cms_485}/" + aux.join(',');
+	    {literal}}{/literal} else {literal}{{/literal}
+	    	if(confirm('Are you sure to delete all scheduled events?')) document.location = "{$index_url}{$resource_path}/dayfree/{$patient_id}/{$cms_485}/all";
+	    {literal}}{/literal}
+	  
+	{literal}}{/literal}
+
+	function editEvent ( visit_log_id, visit_type_id, objeto ) {literal}{{/literal}
+		tt_Trigger = objeto;
+		var tip_title = 'Task/Visit Detail';
+		switch(visit_type_id){literal}{{/literal}
+			case 400: tip_title = 'Event Detail'; break;
+			case 200: tip_title = 'Doctor Detail'; break;
+		{literal}}{/literal}
+
+	    Tip("loading", BALLOON, true, ABOVE, true, STICKY, 1, BALLOONTITLE, tip_title, WIDTH, 320, BALLOONHEIGHT, 250);
+	    ajax("{$index_url}{$resource_path}/editEventForm/" + visit_log_id, ajaxParseXML);
+	    
+	{literal}}{/literal}
+	
+	{literal} 
+		
+		var custom = new tt_Extension();
+		custom.OnKill = function () {
+			gfPop.fHideCal(); 
+		}
+		
+	{/literal}
+	
+	function addEvent ( id, objeto ) {literal}{{/literal}
+	
+		tt_Trigger = objeto;
+	    Tip("loading", BALLOON, true, ABOVE, true, STICKY, 1, BALLOONTITLE, 'Add Visit, Doctor Order or Event', WIDTH, 320, BALLOONHEIGHT, 250);
+	    ajax("{$index_url}{$resource_path}/addEventForm/{$patient_id}/{$cms_485}/" + id, ajaxParseXML);
+	  
+	{literal}}{/literal}
+	
+	
+	function addEventToCalendar ( cell_text, tooltip_text, day_id, visit_log_id, visit_type_id, bcolor, fcolor) {literal}{{/literal}		
+		// console.log('called '+visit_log_id);
+		if (!document.getElementById('ctt_' + day_id)) return;
+		// console.log(', type '+visit_type_id);
+		url = "{$index_url}{$resource_path}/opendocument/" + visit_log_id;
+		{literal}
+			tooltip_text = tooltip_text.replace(/{br}/g,'<br>');
+			tooltip_text = tooltip_text.replace(/{a}/g,"<a href=" + url + ">Open</a>");
+		{/literal}
+		setInner('ctt_' + day_id, getInner('ctt_' + day_id) + "<div onmouseover='Tip(\""+ tooltip_text + "\", OFFSETX, 10)' class='div_event' style='min-width: 100px;background-color:"+bcolor+";color:"+fcolor+"' onclick='editEvent("+visit_log_id+", "+visit_type_id+", this)'>" +  cell_text + "</div>");
+	  
+	  	if (document.getElementById('ctt_' + day_id).offsetHeight > document.getElementById('cttt_' + day_id).offsetHeight) {literal}{{/literal}
+	  	
+	  		document.getElementById('ctt_' + day_id).className = 'div_ctt1';
+	  	
+	  		switchDisplay2('up_' + day_id, '');
+	  		switchDisplay2('dw_' + day_id, '');
+	  		
+	  	{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+	function resizeCell ( day_id ) {literal}{{/literal}
+  	
+  		switchDisplay2('up_' + day_id, 'none');
+  		switchDisplay2('dw_' + day_id, 'none');
+  		document.getElementById('ctt_' + day_id).className = 'div_ctt2';
+	  	
+	{literal}}{/literal}
+	
+	{foreach from=$cms_events item=cms_event name=events}
+		//addEventToCalendar('({$smarty.foreach.events.iteration}) {$cms_event->visit_date_time|date_format:"%I:%M %p"} {$cms_event->first_name} {$cms_event->last_name}, {$cms_event->visit_abbrev}', '{$cms_event->visit_description}', '{$cms_event->tab_description}', '{$cms_event->visit_date_time|date_format}', {$cms_event->visit_log_id}, '{if $cms_event->visit_status_id == 6}red{else}{$cms_event->cal_backcolor}{/if}', '{$cms_event->cal_forecolor}');
+	{/foreach}
+	
+	
+	function reloadCalendar ( visit_type_id ) {literal}{{/literal}
+	
+		document.location = "{$index_url}{$resource_path}/index/{$patient_id}/{$cms_485}/" + visit_type_id;
+	
+	  
+	{literal}}{/literal}
+	
+	function refreshVisitType ( us_agy_id ) {literal}{{/literal}
+  	
+  		ajaxComboBox('{$index_url}visittype/getVisitOptions/' + us_agy_id + '/{$cms_485}', null, 'visit_type_id');
+	  	
+	{literal}}{/literal}
+	
+	
+	function validate () {literal}{{/literal}
+	
+	    ajax("{$index_url}/patient/calendar/validate/{$cms_485}", ajaxParseAction);
+	    
+	{literal}}{/literal}
+	
+	
+	// toolbar setting
+	
+    var webBar = new dhtmlXToolbarObject("toolbarObj");
+    webBar.setIconsPath("{$base_url}style/images/");
+    {if $tab_102_prim_insura_type == 1} webBar.addButton("validate", 0, "Validate Calendar", "check.gif"); {/if}
+    webBar.addButton("new", 1, "Add Tasks/Visit", "appointment.png");
+    webBar.addButton("event", 2, "Add Events", "icon_maint.png");
+    {if $task_elimination_enable}
+    webBar.addButton("free", 3, "Delete Tasks/Visits", "delete_icon.gif");
+    {/if}
+	{if $can_freq_dur eq 1}
+		webBar.addButton('list_frecdur', 4, "Freq/Dur", "icon_db_status_off.png");
+	{/if}
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+
+	switch (eid)
+	{literal}{{/literal}
+	case 'new':
+	  addMultiple()
+	  break;
+	case 'event':
+	  addPreVtEvents()
+	  break;
+	case 'free':
+	  dayFree()
+	  break;
+	case 'validate':
+	  validate()
+	  break;
+	case 'list_frecdur':
+		list_frecdur()
+		break;
+	{literal}}{/literal}
+
+    {literal}}{/literal});
+    
+    function preAdd ( days ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-170, (getWindowHeight()/2) - 160, 300, 300);
+		w1.setText("Add Visits");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}{$resource_path}/preMultiAdd/{$patient_id}/{$cms_485}/" + days);
+    	
+    {literal}}{/literal}
+
+    function addVtEvents( days ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-170, (getWindowHeight()/2) - 160, 350, 320);
+		w1.setText("Add Events");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}{$resource_path}/addVtEvents/{$patient_id}/{$cms_485}/" + days);
+    	
+    {literal}}{/literal}
+    
+    function cancelModal () {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+    
+		function confirmMissedVisit ( visit_log_id ) {literal}{{/literal}
+ 
+     	if (confirm('Are you sure you want to make this a Missed Visit?')) {literal}{{/literal}
+				//window.open('{$index_url}task/task/missed/'+visit_log_id,'_blank');
+     		document.location = '{$index_url}task/task/missed/' + visit_log_id;
+     	{literal}}{/literal}
+    	
+    {literal}}{/literal}
+	
+	function updateCellEvents () {literal}{{/literal}	
+    
+    	ajax("{$index_url}{$resource_path}/updateCellEvents/{$cms_485}", ajaxParseAction);
+    
+    {literal}}{/literal}
+
+    updateCellEvents();
+
+    setInterval('reloadCellEvents()', 1000*60*2);
+    function checkEpass(){literal}{{/literal}
+    	if (document.getElementById('create_type_DO')!=null) {literal}{{/literal}
+    		if (document.getElementById('create_type_DO').checked && getValue('phys_user_id')=='') {literal}{{/literal}
+    			alert('Select Physician Name');
+    			return false;
+    		{literal}}{/literal}
+    	{literal}}{/literal}
+
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 200);
+		w1.setText("Enter your Electronic Password");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}/task/task/modalCheckEpassword/0");
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        w1.hide();
+			w1.setModal(false);
+	    {literal}}{/literal});
+    {literal}}{/literal}	
+
+    function submitForm(){literal}{{/literal}
+		dhxWins.window('w1').close();	
+	    setValue('submit_for_approval', 1);
+		// add_docorder_form.submit();
+		ajax('{$index_url}{$resource_path}/addEvent', ajaxParseAction, 'add_docorder_form');
+    {literal}}{/literal}
+    
+    function reloadCellEvents(){literal}{{/literal}
+    	if (document.getElementById('visit_type_id').checked) 
+    		setCookie("eventsOnly", "yes");
+    	else
+    		setCookie("eventsOnly", "no");
+    	
+    	updateCellEvents();
+    {literal}}{/literal}
+
+    function confirmLastEvaluationDate() {literal}{{/literal}
+    	if (confirm('Warning: 30 day re-eval is needed to add this visit!')) {literal}{{/literal}
+    		// resubmit the form to skip the last evaluation date validation
+    		setValue('confirm_last_ev_date', 1);
+    		ajax('{$index_url}{$resource_path}/addEvent', ajaxParseAction, 'add_visit_form');
+    	{literal}}{/literal}
+    {literal}}{/literal}
+
+    function setCookie(cname, cvalue, exdays) {literal}{{/literal}
+	    var d = new Date();
+	    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+	    var expires = "expires="+d.toUTCString();
+	    document.cookie = cname + "=" + cvalue + "; " + expires +"; path=/";
+    {literal}}{/literal}
+
+	function getCookie(cname) {literal}{{/literal}
+	    var name = cname + "=";
+	    var ca = document.cookie.split(';');
+	    for(var i=0; i<ca.length; i++) {literal}{{/literal}
+	        var c = ca[i];
+	        while (c.charAt(0)==' ') c = c.substring(1);
+	        if (c.indexOf(name) == 0) return c.substring(name.length,c.length);
+	    {literal}}{/literal}
+	    return "";
+	{literal}}{/literal}
+
+	if(getCookie("eventsOnly"))
+		document.getElementById('visit_type_id').checked = true;
+	else
+		document.getElementById('visit_type_id').checked = false;
+
+
+	function confirmSingleScheduleOverlap (  ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-170, (getWindowHeight()/2) - 160, 400, 200);
+		w1.setText("WARNING - Visits Conflicted");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}{$resource_path}/confirmSingleScheduleOverlap/");
+    	
+    {literal}}{/literal}
+
+    function shedule_overlap_confirm(msg)
+  	{literal} { {/literal}
+  		if(confirm(msg)) {literal} { {/literal} 
+  			$('#schedule_overlap_confirmed').val('1');
+  			ajax('{$index_url}{$resource_path}/editEvent', ajaxParseAction, 'edit_event_form');
+  		{literal} } {/literal}
+  	{literal} } {/literal}
+
+	  function refreshDisciplineList ( us_agy_id ) {literal}{{/literal}
+		if (us_agy_id == '') {literal} { {/literal}
+			$("#tr_disc_title").hide();
+		{literal} } {/literal}
+		else {literal} { {/literal}
+			$.ajax({literal} { {/literal} 
+				url: '{$index_url}patient/calendar/getSelectDiscipline/' + us_agy_id,
+				type: 'POST',
+				dataType: 'xml',
+				success: function (res) {literal} { {/literal}
+				//console.log(res)
+					$("#visit_user_disc").html('')
+					$(res).find('option').each(function() {literal} { {/literal} 
+						var $xml = $(this);
+						var value = $xml.attr('value');
+						var option = "<option class='user_discipline' value="+ value+">";
+						option += $xml.text();
+						option += "</option>";
+						//console.log(option)
+						$("#visit_user_disc").append(option);
+					{literal} } {/literal} )
+					
+					var discipline_option_second = $("#visit_user_disc option:eq(1)").val();
+					var discipline_option_first = $("#visit_user_disc option:first").val();
+					if(document.getElementsByClassName("user_discipline").length > 2) {literal} { {/literal}
+						if (discipline_option_first == "") {literal} { {/literal}
+							//$("#row_task_type").hide();
+							$("#visit_type_id").html('')
+						{literal} } {/literal}
+						$("#tr_disc_title").show();
+						//typeTaskType(discipline_option_first);
+					{literal} } {/literal} 
+					else {literal} { {/literal}
+						$("#tr_disc_title").hide();
+						typeTaskType(discipline_option_second);
+					{literal} } {/literal}
+					
+				{literal} } {/literal}
+			{literal} } {/literal});
+		{literal} } {/literal}
+	{literal}}{/literal}
+
+	function typeTaskType(dis_id) {literal} { {/literal}
+		//ajaxComboBox('{$index_url}visittype/getVisitOptionsByDisc/' + dis_id , null, 'visit_type_id');
+		if (dis_id !=  "") {literal} { {/literal}
+		//$("#row_task_type").show();
+		$.ajax({literal} { {/literal} 
+			url: '{$index_url}visittype/getVisitOptionsByDisc/' + dis_id,
+			type: 'POST',
+			dataType: 'xml',
+			success: function (res) {literal} { {/literal}
+				$("#visit_type_id").html('')
+				$(res).find('option').each(function() {literal} { {/literal} 
+					var $xml = $(this);
+					var value = $xml.attr('value');
+					var option = "<option value="+ value+">";
+					option += $xml.text();
+					option += "</option>";
+					$("#visit_type_id").append(option);
+				{literal} } {/literal} )
+			{literal} } {/literal}
+		{literal} } {/literal});
+		{literal} } {/literal}
+		/*else {literal} { {/literal}
+			$("#row_task_type").hide();
+		{literal} } {/literal}*/
+	{literal} } {/literal}
+
+	function list_frecdur( ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-320, (getWindowHeight()/2) - 160, 600, 320);
+		w1.setText("Frequency/Duration");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}{$resource_path}/listFrecDur/{$patient_id}/{$cms_485}/");
+    	
+    {literal}}{/literal}
+</script>

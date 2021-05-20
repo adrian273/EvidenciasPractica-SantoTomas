@@ -1,0 +1,266 @@
+<?php
+
+class VisitTemplate extends MY_Controller {
+	
+	function VisitTemplate () {
+		
+		parent::MY_Controller();	
+		$this->tpl->assign("resource_path", "template/visittemplate");	
+		$this->load->model('visittemplatesmdl');
+	}
+
+	function index(){
+	  	$this->tpl->assign(array("list_title", "Template Types"));
+	  	$this->tpl->assign("resource_grid", "template_type_grid");
+	  	$this->tpl->assign("resource_edit", "templates");
+	  	$this->tpl->assign("no_grid_buttons", true);
+	    
+	    
+	    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function template_type_grid () {		
+		
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		//$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Template type"));
+		$head->append($this->xml->Element("column", "width=15;align=center;type=link", "Action"));	
+		$head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$discipline_id = $this->usagymdl->getByUsAgyId($this->getUsAgyId())->discipline_id;
+
+		foreach ($this->visittypemdl->getByDisciplineId($discipline_id) as $visit_type_id => $visit_type_name) {
+			
+			$cell = $this->xml->Element("row", "id=" . $visit_type_id);
+			$cell->append($this->xml->Element("cell", null, $visit_type_name));
+			$cell->append($this->xml->Element("cell", null, "Select^" . $this->config->config['index_url'] . "template/visittemplate/templates/" . $visit_type_id ));
+			$document->append($cell);			
+		}
+	}
+
+	function templates($visit_type_id){
+		if ($this->session->flashdata('gmessage')) {
+	      $this->tpl->assign('gmessage',   $this->session->flashdata('gmessage'));
+	    }
+
+		$visittype = $this->visittypemdl->getById($visit_type_id);
+
+	  	$this->tpl->assign(array("list_title"=> $visittype->visit_description." Template List", "add_sufix" => "Template"));
+	  	$this->tpl->assign_include("filter_tpl", "template/visittemplate/gfilter");
+		// $this->tpl->assign("items_per_page", 300);
+		$this->tpl->assign("entity_id", $visit_type_id);
+		$this->tpl->assign("resource_grid", "template_grid");
+	    $this->tpl->assign("resource_add", 'template_add');
+	  	$this->tpl->assign("resource_edit", 'template_edit');    
+
+	  	$additional_buttons = array();
+		$additional_buttons['Back'] = 'window.location.href=\''.$this->config->site_url().'/template/visittemplate/index\'';
+		$this->tpl->assign('additional_buttons', $additional_buttons);
+	    
+	    
+	    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function template_grid ($visit_type_id) {		
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		//$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=70", "Template Name"));
+		$head->append($this->xml->Element("column", "width=15", "Template type"));
+		$head->append($this->xml->Element("column", "width=15;align=center;type=link", "Action"));		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->visittemplatesmdl->get($visit_type_id, $this->getUsAgyId(), null, $this->input->post('keyword')) as $template) {
+			
+			$cell = $this->xml->Element("row", "id=" . $template->visit_template_id);
+			$cell->append($this->xml->Element("cell", null, $template->tpl_name));
+			$cell->append($this->xml->Element("cell", null, $template->visit_description));
+			$cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "template/visittemplate/template_edit/" . $template->visit_type_id.'/'.$template->visit_template_id));
+			$document->append($cell);			
+		}
+
+	}
+
+	function template_add ( $visit_type_id ) {
+		$visittype = $this->visittypemdl->getById($visit_type_id);
+		$this->tpl->assign('visittype', $visittype);
+		$this->tpl->assign('visit_form', $visittype->visit_program.'_form');
+
+		if( !is_file(APPPATH.'views/task/documents/'.$visittype->visit_program.'_form.tpl') ){
+			show_404();
+			return;
+		}
+		
+		$this->tpl->assign('faction', 'template_add');
+		$this->tpl->assign('entity_id', $visit_type_id);		
+		$this->tpl->assign("resource_index", "templates");
+
+		$rules = array ('tpl_name'			=> 'required');
+		$fields = array ('tpl_name'			=> 'Template Name');
+						
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+
+		// load dependent data for visit types
+		// PTEV related data loading
+		$this->tpl->assign('tab_20_list', $this->parametermdl->getByType(20));
+		$this->tpl->assign('tab_27_list', $this->parametermdl->getByType(27));
+		$this->tpl->assign('tab_32_assess_type_lsit', $this->parametermdl->getByType(32));
+		$this->tpl->assign('tab_33_list', $this->parametermdl->getByType(33));
+		$this->tpl->assign('tab_48_list', $this->parametermdl->getByType(48));
+		$this->tpl->assign('tab_49_list', $this->parametermdl->getByType(49));
+		$this->tpl->assign('tab_62_list', $this->parametermdl->getByType(62));
+		$this->tpl->assign('tab_63_list', $this->parametermdl->getByType(63));
+		$this->tpl->assign('tab_64_list', $this->parametermdl->getByType(64));
+		$this->tpl->assign('tab_78_list', $this->parametermdl->getByType(78));
+		$this->tpl->assign('tab_79_list', $this->parametermdl->getByType(79));
+		$this->tpl->assign('tab_52_list', array (
+			1 => 1,
+			2 => 2
+		));
+		$this->tpl->assign('tab_87_list', $this->parametermdl->getByType(87));
+		$this->tpl->assign('tab_88_list', $this->parametermdl->getByType(88));
+		$this->tpl->assign('tab_90_list', $this->parametermdl->getByType(90));
+		$this->tpl->assign('tab_109_list', $this->parametermdl->getByType(109));
+		// End of PTEV related data loading
+
+		// PTPN related data loading
+		$this->tpl->assign('tab_024_list_values', array_keys($this->parametermdl->getByType(24)));
+		$this->tpl->assign('tab_024_list_options', $this->parametermdl->getByType(24));
+		$this->tpl->assign('tab_048_list_options', $this->parametermdl->getByType(48));
+		$this->tpl->assign('tab_075_pain_level_list', $this->parametermdl->getByType(75));
+		$this->tpl->assign("show_therapy_sup_report", "no");
+		// End of PTPN related data loading
+
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign("no_delete_form", true);
+			$this->tpl->assign("form_title", "Add Template");
+			$this->tpl->assign_include("dynamic_tpl", "template/visittemplate/fbase");
+			$this->tpl->assign_include("dynamic_form", "template/visittemplate/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$POST = $_POST;
+			unset($POST['tpl_name']);
+			unset($POST['visit_type_id']);
+			$visit_data = json_encode($POST);
+			
+			$this->visittemplatesmdl->agency_id = $this->getAgencyId();
+			$this->visittemplatesmdl->us_agy_id = $this->getUsAgyId();
+			$this->visittemplatesmdl->visit_type_id = $visit_type_id;
+			$this->visittemplatesmdl->tpl_name = $this->input->post('tpl_name');
+			$this->visittemplatesmdl->visit_data = $visit_data;
+			$this->visittemplatesmdl->insert();
+			
+			$this->session->set_flashdata('gmessage', $this->visittemplatesmdl->tpl_name . $this->lang->line('grl_add_msg'));
+
+			$config =& get_config();
+			header("Location: " . $this->config->config["index_url"] .'template/visittemplate/templates/'.$visit_type_id);
+
+		}
+		
+	}
+
+	function template_edit($visit_type_id, $id){
+		$visittype = $this->visittypemdl->getById($visit_type_id);
+		$visit_template = $this->visittemplatesmdl->getById($id, $this->getUsAgyId());
+		if (isset($visit_template->visit_data) AND $visit_template->visit_data != '') {
+			$visit_data = json_decode($visit_template->visit_data);
+			$this->assignObject($visit_data);
+		}
+
+		$this->tpl->assign('visittype', $visittype);
+		$this->tpl->assign('visit_form', $visittype->visit_program.'_form');
+		
+		$this->tpl->assign('faction', 'template_edit');
+		$this->tpl->assign('entity_id', $visit_type_id);		
+		$this->tpl->assign('record_id', $id);		
+		$this->tpl->assign("resource_index", "templates");
+
+		$rules = array ('tpl_name'			=> 'required');
+		$fields = array ('tpl_name'			=> 'Template Name');
+						
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+
+		// load dependent data for visit types
+		// PTEV related data loading
+		$this->tpl->assign('tab_20_list', $this->parametermdl->getByType(20));
+		$this->tpl->assign('tab_27_list', $this->parametermdl->getByType(27));
+		$this->tpl->assign('tab_32_assess_type_lsit', $this->parametermdl->getByType(32));
+		$this->tpl->assign('tab_33_list', $this->parametermdl->getByType(33));
+		$this->tpl->assign('tab_48_list', $this->parametermdl->getByType(48));
+		$this->tpl->assign('tab_49_list', $this->parametermdl->getByType(49));
+		$this->tpl->assign('tab_62_list', $this->parametermdl->getByType(62));
+		$this->tpl->assign('tab_63_list', $this->parametermdl->getByType(63));
+		$this->tpl->assign('tab_64_list', $this->parametermdl->getByType(64));
+		$this->tpl->assign('tab_78_list', $this->parametermdl->getByType(78));
+		$this->tpl->assign('tab_79_list', $this->parametermdl->getByType(79));
+		$this->tpl->assign('tab_52_list', array (
+			1 => 1,
+			2 => 2
+		));
+		$this->tpl->assign('tab_87_list', $this->parametermdl->getByType(87));
+		$this->tpl->assign('tab_88_list', $this->parametermdl->getByType(88));
+		$this->tpl->assign('tab_90_list', $this->parametermdl->getByType(90));
+		$this->tpl->assign('tab_109_list', $this->parametermdl->getByType(109));
+		// End of PTEV related data loading
+
+		// PTPN related data loading
+		$this->tpl->assign('tab_024_list_values', array_keys($this->parametermdl->getByType(24)));
+		$this->tpl->assign('tab_024_list_options', $this->parametermdl->getByType(24));
+		$this->tpl->assign('tab_048_list_options', $this->parametermdl->getByType(48));
+		$this->tpl->assign('tab_075_pain_level_list', $this->parametermdl->getByType(75));
+		$this->tpl->assign("show_therapy_sup_report", "no");
+		// End of PTPN related data loading
+
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign("tpl_name", $visit_template->tpl_name);
+
+			$this->tpl->assign("no_delete_form", true);
+			$this->tpl->assign("form_title", "Edit Template");
+			$this->tpl->assign_include("dynamic_tpl", "template/visittemplate/fbase");
+			$this->tpl->assign_include("dynamic_form", "template/visittemplate/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$POST = $_POST;
+			unset($POST['tpl_name']);
+			unset($POST['visit_type_id']);
+			$visit_data = json_encode($POST);
+			
+			$this->visittemplatesmdl->visit_template_id = $visit_template->visit_template_id;
+			$this->visittemplatesmdl->agency_id = $visit_template->agency_id;
+			$this->visittemplatesmdl->us_agy_id = $visit_template->us_agy_id;
+			$this->visittemplatesmdl->visit_type_id = $visit_type_id;
+			$this->visittemplatesmdl->tpl_name = $this->input->post('tpl_name');
+			$this->visittemplatesmdl->visit_data = $visit_data;
+			$this->visittemplatesmdl->update($id);
+			
+			$this->session->set_flashdata('gmessage', $this->visittemplatesmdl->tpl_name . $this->lang->line('grl_upd_msg'));
+
+			$config =& get_config();
+			header("Location: " . $this->config->config["index_url"] .'template/visittemplate/templates/'.$visit_type_id);
+
+		}
+	}
+	
+
+	
+}	

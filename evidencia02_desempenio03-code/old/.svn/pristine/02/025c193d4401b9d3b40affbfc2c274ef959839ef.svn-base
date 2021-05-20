@@ -1,0 +1,250 @@
+<?php
+
+ class Visitlog_task extends MY_Controller {
+ 	
+ 	function Visitlog_task () {
+ 		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/visitlog_task");
+		
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+ 		
+ 	}
+ 	
+ 	function index ( ) 
+ 	{
+ 		$agency_id = $this->getAgencyId();
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+ 		//
+ 		$this->tpl->assign_include("filter_tpl", "useragency/visitlog/task_gfilter");
+ 		$this->tpl->assign_include("script_tpl", "useragency/visitlog/task_script");
+ 		$this->tpl->assign('tab_013_status', 1);
+ 		$this->tpl->assign('afterload_func', 'grid_loaded()');
+ 		
+ 		// MODAL FILTER
+ 		// GET info para selects
+		$this->tpl->assign("status_list" , $this->mparams->get_pacient_status_list() );
+		$this->tpl->assign("visit_type_list" , $this->mparams->get_visit_type_list( true ) );
+		$this->tpl->assign("visit_status_list" , $this->mparams->get_visit_status_list( false ) );
+		$this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( $agency_id , false ) );
+		
+ 		
+ 		// if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+ 		
+		// $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+ 		
+ 	}
+ 	
+ 	function grid ( ) 
+ 	{
+ 		$agency_id = $this->getAgencyId();
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=12", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=*",  "Visit Type"));
+		$head->append($this->xml->Element("column", "width=10", "Visit Status"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Status"));
+		$head->append($this->xml->Element("column", "width=15", "Clinician"));
+		//$head->append($this->xml->Element("column", "width=10", "Discipline"));
+		$head->append($this->xml->Element("column", "width=10", "Case Manager"));
+    	$head->append($this->xml->Element("column", "width=6;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->visitlogmdl->report_001((is_null($agency_id) ? $this->getAgencyId()  : $agency_id)) as $task) 
+		{
+			//
+			$cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE'))));
+			$cell->append($this->xml->Element("cell", null, $task->visit_description));
+			$cell->append($this->xml->Element("cell", null, $task->tab_description));
+			$cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+			$cell->append($this->xml->Element("cell", null, @$this->parametermdl->get(13, $task->tab_013_status)->tab_description));
+			
+			$clinician = $this->mparams->get_name_user($task->user_id);
+			$cell->append($this->xml->Element("cell", null, @$clinician->first_name . " " . @$clinician->last_name." (".@$task->short_discipline.")"));
+
+			//$cell->append($this->xml->Element("cell", null, "discipline"));
+			
+			$case_manager = $this->usagymdl->getByUsAgyId($task->case_manager_user_id);
+			$cell->append($this->xml->Element("cell", null, @$case_manager->first_name . " " . @$case_manager->last_name));
+
+      		$cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "useragency/visitlog_task/edit/" . $task->visit_log_id));
+      
+			$document->append($cell);
+			
+		}
+ 		
+ 	}
+ 	
+ 	function modal_filter() 
+ 	{
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+						
+		$rules = array ('user_epass' 	=> 'required|callback_verify_epass');
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) 
+		{
+			//
+			$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/task_modal_filter");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			/* approve medication, save into pat_medical_approval		 */
+			$this->patientmedicationapprovalmdl->patient_id=$patient_id;
+			$this->patientmedicationapprovalmdl->approved_user_id=$this->getUserId();
+			$this->patientmedicationapprovalmdl->approve();
+			
+			echo "<script>parent.cancelModal();</script>";
+		}
+		
+	}
+ 	
+  function edit ( $visit_log_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $visit_log_id);
+		$this->tpl->assign('tab_83_list', $this->parametermdl->getByType(83));
+    
+    $visit_log = $this->visitlogmdl->getById($visit_log_id);    
+    if(empty($visit_log))
+    show_404();
+    
+    //print_r($visit_log);exit;
+		$this->assignObject($visit_log);
+    
+    $visit_type_approver = $this->teammdl->get($visit_log->patient_id, null, null, null, null, $visit_log->approver_type_id);
+    if(count($visit_type_approver) == 0){
+      $visit_type_approver = $this->teammdl->get($visit_log->patient_id, null, null, null, null, 3);
+    }
+    $approver_list = array();
+    foreach($visit_type_approver as $approver){
+      $approver_list[$approver->us_agy_id] = $approver->first_name ." ".$approver->last_name;
+    }
+    $this->tpl->assign('approver_list', $approver_list);
+    
+    //$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+    
+    $this->tpl->assign('approver_list', $approver_list);
+		
+    $this->tpl->assign('supervisor_list', $this->teammdl->getAll($visit_log->patient_id, array(2)));
+    $this->tpl->assign('agency_approv_user_list', $this->teammdl->getAll($visit_log->patient_id));
+    
+    //print_r($visit_log);exit;
+    $payroll_batch_id_list = array();
+    $payroll_batch = $this->payrollbatchmdl->get($visit_log->agency_id);
+    if(sizeof($payroll_batch) > 0){
+      foreach($payroll_batch as $payroll_batch_item)
+        $payroll_batch_id_list[] = $payroll_batch_item->payroll_batch_id;
+    }
+    
+    $this->tpl->assign('payroll_batch_id_list', $payroll_batch_id_list);
+    
+    $agency_id = is_null($visit_log->agency_id) ? $this->getAgencyId() : $visit_log->agency_id;
+    
+    $agency_name = $this->agencymdl->getByAgencyId((is_null($visit_log->agency_id) ? $this->getAgencyId()  : $visit_log->agency_id))->agency_name;
+    
+    $tbl_fields = $this->db->list_fields("vis_visit_log");    
+		
+    $fields = array ('visit_log_number' 	=> 'visit_log_number',
+						'visit_date_time'		  	=> 'visit_date_time',
+						'visit_status_id'		  	=> 'visit_status_id',
+						'visited_date'	  	=> 'visited_date',
+						'user_approver'	  	=> 'user_approver',
+						'sent_to_approve_date'	  	=> 'sent_to_approve_date',
+						'approve_date'	  	=> 'approve_date',
+						'superv_user_id'	  	=> 'superv_user_id',
+						'superv_approval_date'	  	=> 'superv_approval_date',
+						'agency_approv_user_id'	  	=> 'agency_approv_user_id',
+						'agency_approv_date'	  	=> 'agency_approv_date',
+						'agency_or_company'	  	=> 'agency_or_company',
+						'visit_amount'	  	=> 'visit_amount',
+						'mileage_amount'	  	=> 'mileage_amount',
+						'payroll_confirmed'	  	=> 'payroll_confirmed',
+						'payroll_status'	  	=> 'payroll_status',
+						'payroll_comments'	  	=> 'payroll_comments',
+						'payroll_batch_id'	  	=> 'payroll_batch_id'
+          );
+    
+    $hidden_fields = '';
+		foreach ($tbl_fields as $field) {		   
+      if($field == 'visit_log_id')
+      continue;
+      
+      if(isset($fields[$field]))
+      continue;
+      
+      $hidden_fields .= '<input type="hidden" name="'.$field.'" value="'.$visit_log->$field.'" />';		}
+   
+   $this->tpl->assign('hidden_fields', $hidden_fields); 
+  
+  $rules = array ('visit_log_number' 	=> 'required',
+          'visit_date_time'		  	=> 'required',
+          'visit_status_id'		  	=> 'required',
+          'visited_date'	  	=> 'required'/*,
+          'user_approver'	  	=> 'required',
+          'sent_to_approve_date'	  	=> 'required',
+          'approve_date'	  	=> 'required',
+          'superv_user_id'	  	=> 'required',
+          'superv_approval_date'	  	=> 'required',
+          'agency_approv_user_id'	  	=> 'required',
+          'agency_approv_date'	  	=> 'required',
+          'agency_or_company'	  	=> 'required',
+          'visit_amount'	  	=> 'required',
+          'mileage_amount'	  	=> 'required',
+          'payroll_confirmed'	  	=> 'required',
+          'payroll_status'	  	=> 'required',
+          'payroll_comments'	  	=> 'required',
+            'payroll_batch_id'	  	=> 'required'*/
+        );
+  
+        
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);		
+    
+		if ($this->validation->run() == FALSE) {
+      $this->tpl->assign('agency_id', $agency_id);
+    
+      $this->tpl->assign("cancel_url", "useragency/visitlog_base/index/");
+      
+			$this->tpl->assign("form_title", $agency_name." >> Edit Visit Log");
+			$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/visitlog/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->visitlogmdl);
+      
+			//$this->visitlogmdl->update($visit_log_id);
+			
+      $this->db->where('visit_log_id', $visit_log_id);
+      $this->db->update('vis_visit_log',$this->visitlogmdl);
+      
+			//$this->tpl->assign('gmessage', $this->visitlogmdl->agency_name . $this->lang->line('grl_upd_msg'));
+			$this->tpl->assign('gmessage', 'Visit log has been saved.');
+		
+      header("Location: " . $this->config->config["index_url"] . "useragency/visitlog_task/edit/" . $visit_log_id);
+      
+		}
+		
+	}
+
+  
+ }

@@ -1,0 +1,167 @@
+<?php
+
+ class DoctorOrderDocument extends MY_Controller {
+ 	
+	function DoctorOrderDocument () {
+		
+		parent::MY_Controller();
+		
+		if ($this->session->userdata('doctororder_return')) {
+			$this->tpl->assign('cancel_action', $this->session->userdata('doctororder_return'));
+			$this->tpl->assign('no_commit_form', true);
+		} else {
+			$this->tpl->assign('cancel_action', 'doctororder/front');
+		}
+		
+		$this->tpl->assign('tab_094_list_options', $this->parametermdl->getByType(94));
+		
+		$this->tpl->assign('electronic_sign_setup', $this->usagymdl->getByUsAgyId($this->getUsAgyId())->electronic_sign_setup);
+		
+	}
+	
+	function setfbase ( $doc_doctor_order_id ) {
+		
+		$doctor_order = $this->docdoctorordermdl->getById($doc_doctor_order_id);
+		$doctorOffice = $this->agencymdl->getByAgencyId($doctor_order->doctor_office_id);
+		
+		$this->tpl->assign("form_title", $doctor_order->doc_doctor_order_type_description);
+		
+		if ($doctor_order->doctor_office_id == $this->getAgencyId() || $doctorOffice->agency_status == 'Inact') {
+			
+			$this->tpl->assign_include("dynamic_tpl", "doctor_order/document/fbase_physician");
+			$this->tpl->assign("doctor_order_user_is_physician", true);
+			
+		} else {
+			
+			$this->tpl->assign_include("dynamic_tpl", "doctor_order/document/fbase");
+			$this->tpl->assign("doctor_order_user_is_clinician", true);
+			
+//			$physician = $this->usagymdl->getByUsAgyId($doctor_order->doctor_office_id);
+			
+//			if ($physician->electronic_sign_setup != 1) {
+//				$this->tpl->assign("allow_sign", true);
+//			}
+			
+		}
+		
+	}
+	
+	function add2printqueue ( $doc_doctor_order_id ) {
+			
+			/* Send to print queue */
+			$this->doprintqueuemdl->user_id						= $this->getUsAgyId();
+			$this->doprintqueuemdl->doc_doctor_order_id			= $doc_doctor_order_id;
+			$this->doprintqueuemdl->prt_do_print_queue_status		= "PE";
+			$this->doprintqueuemdl->creation_datetime				= standard_date(now(), 'MYSQL');	
+			$this->doprintqueuemdl->insert();
+	
+	}
+	
+	protected function updateEdition ( $doc_doctor_order_id ) {
+		
+		$doctor_order = $this->docdoctorordermdl->getById($doc_doctor_order_id);
+		
+		if ($this->input->post('tab_023_order_status') == 2) {
+			
+			$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'sent_date', date('Y-m-d'));
+			
+//			$physician = $this->usagymdl->getByUsAgyId($doctor_order->physician_id);
+			
+//			if ($physician->electronic_sign_setup != 1) {
+				$this->add2printqueue($doc_doctor_order_id);
+//			}
+			
+		}
+
+		if ($this->input->post('tab_023_order_status') == 3 && $this->input->post('signed_date')) {
+			
+			$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'signed_date', standard_date(human_to_unix($this->input->post('signed_date')), 'MYSQL'));
+//			$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'tab_023_order_status', 3);
+
+		}
+		
+	}
+	
+	function modalCheckEpasswordSent ( $doc_doctor_order_id ) {
+		
+		$this->tpl->assign("resource_path", "doctororder/doctororderdocument");
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+						
+		$rules = array ('user_epass' 	=> 'required|callback_verify_epass');
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "epass/modal_epass_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'electronic_signed', 1);
+			$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'electronic_date', standard_date(now(), 'MYSQL'));
+			
+			echo "<script>parent.sendDoctorOrder()</script>";
+		}
+		
+	}
+	
+	function modalCheckEpasswordSign ( $doc_doctor_order_id ) {
+		
+		$this->tpl->assign("resource_path", "doctororder/doctororderdocument");
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+		
+		$this->lang->language['grl_send'] = "Sign";
+						
+		$rules = array ('user_epass' 	=> 'required|callback_verify_epass');
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "epass/modal_epass_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$doctor_order = $this->docdoctorordermdl->getById($doc_doctor_order_id);
+			
+			if ($doctor_order->doctor_office_id == $this->getAgencyId()) {
+				$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'electronic_doctor_sign', 1);
+			}
+			
+			$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'signed_date', standard_date(now(), 'MYSQL'));
+			
+			echo "<script>parent.dhxWins.window('w1').close(); parent.signatureReturn()</script>";
+		}
+		
+	}
+	
+	function sign ( $doc_doctor_order_id ) {
+		
+		$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'tab_023_order_status', 3);
+		$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'signed_date', standard_date(time(), 'MYSQL'));
+		$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'physician_notes', $this->input->post('physician_notes'));
+		
+		$doctor_order = $this->docdoctorordermdl->getById($doc_doctor_order_id);
+		if ($doctor_order->doctor_office_id == $this->getAgencyId()) {
+			$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'electronic_doctor_sign', 1);
+		}
+		
+		$doctor_order = $this->docdoctorordermdl->getById($doc_doctor_order_id);
+		$this->add2printqueue($doc_doctor_order_id);
+		
+		redirect($this->session->userdata('doctororder_return'));
+		
+	}
+	
+	function reject ( $doc_doctor_order_id ) {
+		
+		$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'tab_023_order_status', 4);
+		$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'rejected_date', standard_date(time(), 'MYSQL'));
+		$this->docdoctorordermdl->updateFlex($doc_doctor_order_id, 'physician_notes', $this->input->post('physician_notes'));
+		
+		redirect($this->session->userdata('doctororder_return'));
+		
+	}
+ 	
+ }
+ 

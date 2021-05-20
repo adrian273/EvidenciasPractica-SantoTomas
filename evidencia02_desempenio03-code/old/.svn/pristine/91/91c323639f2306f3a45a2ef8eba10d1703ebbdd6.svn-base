@@ -1,0 +1,390 @@
+<?php
+
+ class Visitlog_task2 extends MY_Controller {
+ 	
+ 	function Visitlog_task2 () {
+ 		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "contractor/visitlog_task2");
+		
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+ 		
+ 	}
+ 	
+ 	function index ( ) 
+ 	{
+ 		$agency_id = $this->getAgencyId();
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+ 		
+ 		$this->tpl->assign('additional_buttons', array('Export to Excel' => 'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');'));
+
+ 		$this->tpl->assign_include("filter_tpl", "useragency/visitlog/task2_gfilter");
+ 		$this->tpl->assign_include("script_tpl", "useragency/visitlog/task2_script");
+ 		$this->tpl->assign('tab_013_status', 1);
+ 		$this->tpl->assign('afterload_func', 'grid_loaded()');
+ 		
+ 		// MODAL FILTER
+ 		// GET info para selects
+		$this->tpl->assign("status_list" , $this->mparams->get_pacient_status_list() );
+		$this->tpl->assign("visit_type_list" , $this->mparams->get_visit_type_list( true ) );
+		$this->tpl->assign("visit_status_list" , $this->mparams->get_visit_status_list( false ) );
+		$this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( $agency_id , "C" ) );
+		
+ 		
+ 		// if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+ 		
+		// $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/gbase2");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+ 		
+ 	}
+ 	
+ 	function grid ( ) 
+ 	{
+ 		$assesment_types_list = $this->parametermdl->getByType(32);
+
+ 		$agency_id = $this->getAgencyId(); 		
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=*",  "Visit Type"));
+		$head->append($this->xml->Element("column", "width=10",  "Send Date"));
+		$head->append($this->xml->Element("column", "width=15", "Visit Status"));
+		$head->append($this->xml->Element("column", "width=3", "P"));
+		$head->append($this->xml->Element("column", "width=8", "Invoice"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=8", "Patient Status"));
+		$head->append($this->xml->Element("column", "width=10", "Clinician"));
+		//$head->append($this->xml->Element("column", "width=10", "Discipline"));
+		$head->append($this->xml->Element("column", "width=10", "Agency Name"));
+    	// $head->append($this->xml->Element("column", "width=6;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		// foreach($this->visitlogmdl->report_001((is_null($agency_id) ? $this->getAgencyId()  : $agency_id), $this->getAgencyType()) as $task) 
+		foreach($this->visitlogmdl->report_001((is_null($agency_id) ? $this->getAgencyId()  : $agency_id), $this->getAgencyType()) as $task) 
+		{
+			$visit_task_name = "";
+			if ($task->visit_log_number) {
+				if($task->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($task->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$visit_task_name = "(" . $task->visit_log_number . ") " . $task->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type];
+					}else{
+						$visit_task_name = "(" . $task->visit_log_number . ") " . $task->visit_description;
+					}
+				}else{
+					$visit_task_name = "(" . $task->visit_log_number . ") " . $task->visit_description;	
+				}
+			} else {
+				if($task->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($task->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$visit_task_name = $task->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type];
+					}else{
+						$visit_task_name = $task->visit_description;					
+					}
+				}else{
+					$visit_task_name = $task->visit_description;
+				}          
+			}
+
+			$cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE'))));
+            if($task->visit_type_id == 104) {
+                $month = date("m",strtotime($task->visit_date_time));
+                $type_quar_rpt = "";
+                switch ($month) {
+                    case "01":
+                    case "02":
+                    case "03":
+                        $type_quar_rpt = "Q1";
+                        break;
+                    case "04":
+                    case "05":
+                    case "06":
+                        $type_quar_rpt = "Q2";
+                        break;
+                    case "07":
+                    case "08":
+                    case "09":
+                        $type_quar_rpt = "Q3";
+                        break;
+                    case "10":
+                    case "11":
+                    case "12":
+                        $type_quar_rpt = "Q4";
+                        break;
+                    default:
+                        break;
+                }
+                $cell->append($this->xml->Element("cell", null, $visit_task_name." ".$type_quar_rpt));
+            }
+            else {
+                $cell->append($this->xml->Element("cell", null, $visit_task_name));
+            }
+
+			if (is_null($task->sent_to_agency_date) OR $task->sent_to_agency_date == '0000-00-00 00:00:00') {
+				$cell->append($this->xml->Element("cell", null, null));
+			} else {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->sent_to_agency_date), 'USA_DATE')));	
+			}
+
+			$cell->append($this->xml->Element("cell", null, $task->tab_description));
+			
+			$payroll_value = "";
+			$billing_value = "";
+			if($task->payroll_batch_id > 0) {
+				$payroll_value = "P";
+			}	
+			if($task->co_invoice_id > 0) {
+				$billing_value = "B";				
+			}	
+			$invoice_number = "99999999999";
+			$process_date = "999March, 02, 2018";
+			$payroll_value_str = '<![CDATA[';
+			$payroll_value_str.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.standard_date(mysql_to_unix($task->payroll_batch_process_date, 'USA_DATE')).'\', OFFSETY, 18);">' . $payroll_value . '</a>&nbsp;';		
+			$payroll_value_str .= ']]>'; 
+			
+			/*$billing_value_str = '<![CDATA[';
+			$billing_value_str.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$task->co_invoice_no.'\', OFFSETY, 18);">' . $billing_value . '</a>&nbsp;';		
+			$billing_value_str .= ']]>';*/
+				
+			$cell->append($this->xml->Element("cell", null, $payroll_value_str));			
+			$cell->append($this->xml->Element("cell", null, $task->co_invoice_no));
+			$cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+			if ($this->getAgencyType() == 'C') {
+				$cell->append($this->xml->Element("cell", null, @$this->parametermdl->get(13, $task->company_patient_status)->tab_description));
+			} else {
+				$cell->append($this->xml->Element("cell", null, @$this->parametermdl->get(13, $task->tab_013_status)->tab_description));
+			}
+				
+			
+			$clinician = $this->mparams->get_name_user($task->user_id);
+			$cell->append($this->xml->Element("cell", null, @$clinician->first_name . " " . @$clinician->last_name));
+
+			//$cell->append($this->xml->Element("cell", null, "discipline"));
+			
+			$patient      = $this->patientmdl->getById($task->patient_id);
+	        $agency       = $this->agencymdl->getByAgencyId($patient->agency_id);
+	        
+	        // Agency name column
+	        $cell->append($this->xml->Element("cell", null, $agency->agency_name));
+
+			// $case_manager = $this->usagymdl->getByUsAgyId($task->case_manager_user_id);
+			// $cell->append($this->xml->Element("cell", null, @$case_manager->first_name . " " . @$case_manager->last_name));
+
+      		// $cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "contractor/visitlog_task2/edit/" . $task->visit_log_id));
+      		
+			$document->append($cell);
+			
+		}
+ 		
+ 	}
+ 	
+ 	function modal_filter() 
+ 	{
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+						
+		$rules = array ('user_epass' 	=> 'required|callback_verify_epass');
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) 
+		{
+			//
+			$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/task_modal_filter");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			/* approve medication, save into pat_medical_approval		 */
+			$this->patientmedicationapprovalmdl->patient_id=$patient_id;
+			$this->patientmedicationapprovalmdl->approved_user_id=$this->getUserId();
+			$this->patientmedicationapprovalmdl->approve();
+			
+			echo "<script>parent.cancelModal();</script>";
+		}
+		
+	}
+ 	
+  function edit ( $visit_log_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $visit_log_id);
+		$this->tpl->assign('tab_83_list', $this->parametermdl->getByType(83));
+    	
+    	$this->tpl->assign('no_commit_form', true);
+    $visit_log = $this->visitlogmdl->getById($visit_log_id);    
+    if(empty($visit_log))
+    show_404();
+    
+    //print_r($visit_log);exit;
+		$this->assignObject($visit_log);
+    
+    $visit_type_approver = $this->teammdl->get($visit_log->patient_id, null, null, null, null, $visit_log->approver_type_id);
+    if(count($visit_type_approver) == 0){
+      $visit_type_approver = $this->teammdl->get($visit_log->patient_id, null, null, null, null, 3);
+    }
+    $approver_list = array();
+    foreach($visit_type_approver as $approver){
+      $approver_list[$approver->us_agy_id] = $approver->first_name ." ".$approver->last_name;
+    }
+    $this->tpl->assign('approver_list', $approver_list);
+    
+    //$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+    
+    $this->tpl->assign('approver_list', $approver_list);
+		
+    $this->tpl->assign('supervisor_list', $this->teammdl->getAll($visit_log->patient_id, array(2)));
+    $this->tpl->assign('agency_approv_user_list', $this->teammdl->getAll($visit_log->patient_id));
+    
+    //print_r($visit_log);exit;
+    $payroll_batch_id_list = array();
+    $payroll_batch = $this->payrollbatchmdl->get($visit_log->agency_id);
+    if(sizeof($payroll_batch) > 0){
+      foreach($payroll_batch as $payroll_batch_item)
+        $payroll_batch_id_list[] = $payroll_batch_item->payroll_batch_id;
+    }
+    
+    $this->tpl->assign('payroll_batch_id_list', $payroll_batch_id_list);
+    
+    $agency_id = is_null($visit_log->agency_id) ? $this->getAgencyId() : $visit_log->agency_id;
+    
+    $agency_name = $this->agencymdl->getByAgencyId((is_null($visit_log->agency_id) ? $this->getAgencyId()  : $visit_log->agency_id))->agency_name;
+    
+    $tbl_fields = $this->db->list_fields("vis_visit_log");    
+		
+    $fields = array ('visit_log_number' 	=> 'visit_log_number',
+						'visit_date_time'		  	=> 'visit_date_time',
+						'visit_status_id'		  	=> 'visit_status_id',
+						'visited_date'	  	=> 'visited_date',
+						'user_approver'	  	=> 'user_approver',
+						'sent_to_approve_date'	  	=> 'sent_to_approve_date',
+						'approve_date'	  	=> 'approve_date',
+						'superv_user_id'	  	=> 'superv_user_id',
+						'superv_approval_date'	  	=> 'superv_approval_date',
+						'agency_approv_user_id'	  	=> 'agency_approv_user_id',
+						'agency_approv_date'	  	=> 'agency_approv_date',
+						'agency_or_company'	  	=> 'agency_or_company',
+						'visit_amount'	  	=> 'visit_amount',
+						'mileage_amount'	  	=> 'mileage_amount',
+						'payroll_confirmed'	  	=> 'payroll_confirmed',
+						'payroll_status'	  	=> 'payroll_status',
+						'payroll_comments'	  	=> 'payroll_comments',
+						'payroll_batch_id'	  	=> 'payroll_batch_id'
+          );
+    
+    $hidden_fields = '';
+		foreach ($tbl_fields as $field) {		   
+      		if($field == 'visit_log_id')
+      			continue;
+      
+      		if(isset($fields[$field]))
+      			continue;
+      
+      		$hidden_fields .= '<input type="hidden" name="'.$field.'" value="'.$visit_log->$field.'" />';		
+      	}
+   
+   $this->tpl->assign('hidden_fields', $hidden_fields); 
+  
+  	$rules = array ('visit_log_number' 	=> 'required',
+          'visit_date_time'		  	=> 'required',
+          'visit_status_id'		  	=> 'required',
+          'visited_date'	  	=> 'required'/*,
+          'user_approver'	  	=> 'required',
+          'sent_to_approve_date'	  	=> 'required',
+          'approve_date'	  	=> 'required',
+          'superv_user_id'	  	=> 'required',
+          'superv_approval_date'	  	=> 'required',
+          'agency_approv_user_id'	  	=> 'required',
+          'agency_approv_date'	  	=> 'required',
+          'agency_or_company'	  	=> 'required',
+          'visit_amount'	  	=> 'required',
+          'mileage_amount'	  	=> 'required',
+          'payroll_confirmed'	  	=> 'required',
+          'payroll_status'	  	=> 'required',
+          'payroll_comments'	  	=> 'required',
+            'payroll_batch_id'	  	=> 'required'*/
+    	);
+  
+        
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);		
+    
+	if ($this->validation->run() == FALSE) 
+		{
+     		$this->tpl->assign('agency_id', $agency_id);
+    
+      		$this->tpl->assign("cancel_url", "contractor/visitlog_task2/index/");
+      
+			$this->tpl->assign("form_title", $agency_name." >> Edit Visit Log");
+			$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/visitlog/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} 
+		else
+		{
+			
+			$this->assignPostData($this->visitlogmdl);
+      
+			//$this->visitlogmdl->update($visit_log_id);
+			
+      		$this->db->where('visit_log_id', $visit_log_id);
+      		$this->db->update('vis_visit_log',$this->visitlogmdl);
+      
+			//$this->tpl->assign('gmessage', $this->visitlogmdl->agency_name . $this->lang->line('grl_upd_msg'));
+			$this->tpl->assign('gmessage', 'Visit log has been saved.');
+		
+      		header("Location: " . $this->config->config["index_url"] . "contractor/visitlog_task2/edit/" . $visit_log_id);
+      
+		}
+		
+	}
+
+	function addToVisitType() {
+		$this->tpl->assign("resource_grid", "addToGrid");		
+		$this->tpl->assign("agency_type", $this->getAgencyType());
+		$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/visit_type_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function selectVisitType() {
+		$this->tpl->assign("resource_grid", "gridVisitType");
+		$this->tpl->assign_include("dynamic_tpl", "useragency/visitlog/add_visit_type");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}	
+
+	function gridVisitType() {
+		$this->load->model('visitlog/task/mparams');
+		//echo var_dump($this->mparams->get_visit_type_list( true ));
+		$getList = $this->mparams->get_visit_type_list( true );
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=45;type=ch", ""));
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$document->append($head);
+		foreach ($getList as $key => $vt) {
+			$cell = $this->xml->Element("row", "id=" . $key);
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $vt));
+			$document->append($cell);
+		}
+		
+	}
+  
+ }

@@ -1,0 +1,55 @@
+<?
+
+ class ParameterMdl extends Model {
+
+	var $tab_type;
+	var $tab_value;
+	var $tab_description;
+
+	function ParameterMdl () {
+
+		parent::Model();
+		
+	}
+
+	function getByType ( $tab_type, $order_by="tab_value" ) {
+
+		$this->db->where("tab_type", $tab_type);
+		$this->db->order_by($order_by, "ASC");
+		$query = $this->db->get('tab_parameters');
+		return $query->result2('tab_value', 'tab_description');			
+	
+	}
+	
+	function getByParameterType ( $tab_type ) {
+
+		$this->db->where("tab_type", $tab_type);
+		$query = $this->db->get('tab_parameters');
+		
+		return $query->result();		
+	
+	}
+	
+	function get ( $tab_type, $tab_value ) {
+
+		$this->db->where("tab_type", $tab_type);
+		$this->db->where("tab_value", $tab_value);
+		
+		$query = $this->db->get('tab_parameters');
+		return $query->row();			
+	
+	}
+	
+	function getColorLegends(){
+		$this->db->where("tab_type", 83);
+		$this->db->join('color_lengend_mycalendar','color_lengend_mycalendar.tab_083_visit_status = tab_parameters.tab_value');
+		$rows = $this->db->get('tab_parameters')->result();
+		foreach($rows as $key=>$value)
+		{
+			$array[$key]=$value;
+		}
+		
+		return $rows;
+	}
+	
+ }

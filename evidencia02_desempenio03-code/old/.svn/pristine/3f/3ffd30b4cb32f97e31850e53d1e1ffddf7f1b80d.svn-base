@@ -1,0 +1,70 @@
+<?
+
+ class AgencySettingMdl extends Model {
+
+	var $F3625_box15;
+	var $F3625_box16;
+	var $F3625_box17;
+	var $F3625_box18;
+	var $F3625_box19;
+	
+
+	
+
+	function AgencySettingMdl () {
+
+		parent::Model();
+		
+	}
+
+	function getByAgencyId($agency_id){
+
+		$this->db->where("agency_id", $agency_id);
+	
+		$query = $this->db->get('agy_agency_spe_discip');
+		return $query->result();
+
+	}
+
+	function getByAgencyDisciplineId($agency_id, $discipline_id){
+
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("discipline_id", $discipline_id);
+	
+		$query = $this->db->get('agy_agency_spe_discip');
+		return $query->row();
+
+	}
+
+	function insert_settings ( $agency_id,$discipline_id,$F3625_box15,$F3625_box16,$F3625_box17,$F3625_box18,$F3625_box19 ) {
+
+		// $this->db->insert("agy_agency", $this);
+
+		$this->agency_id = $agency_id;
+		$this->discipline_id = $discipline_id;
+		$this->F3625_box15 = $F3625_box15;
+		$this->F3625_box16 = $F3625_box16;	
+		$this->F3625_box17 = $F3625_box17;	
+		$this->F3625_box18 = $F3625_box18;	
+		$this->F3625_box19 = $F3625_box19;	
+		
+		$this->db->insert("agy_agency_spe_discip", $this);
+	
+		
+	}
+
+	function update_settings ( $agency_id,$discipline_id,$F3625_box15,$F3625_box16,$F3625_box17,$F3625_box18,$F3625_box19 ) {
+
+		$this->db->set("F3625_box15", $F3625_box15);
+		$this->db->set("F3625_box16", $F3625_box16);
+		$this->db->set("F3625_box17", $F3625_box17);
+		$this->db->set("F3625_box18", $F3625_box18);
+		$this->db->set("F3625_box19", $F3625_box19);
+				
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("discipline_id", $discipline_id);
+		$this->db->update("agy_agency_spe_discip");
+				
+	}
+
+}

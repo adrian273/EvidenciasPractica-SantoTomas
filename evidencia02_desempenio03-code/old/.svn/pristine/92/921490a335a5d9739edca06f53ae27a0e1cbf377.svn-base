@@ -1,0 +1,220 @@
+<?php
+
+ class scriptDOconversion extends MY_Controller {
+
+	function scriptDOconversion () {
+		parent::MY_Controller();
+		$this->load->helper('file');
+		$this->load->model('socmdl');
+		$this->load->model('episodemdl');
+		$this->load->model('visitlogmdl');
+		$this->load->model('dordermdl');
+		$this->load->model('usagymdl');
+	}
+	
+	function index () {
+		$this->db->join('doc_doctor_order', 'doc_doctor_order.doc_doctor_order_id = doctor_order.doc_doctor_order_id');
+		$this->db->where_in("doc_doctor_order.doc_doctor_order_type_id", array(5));
+		$query = $this->db->get('doctor_order');
+		echo 'Old Doctor Order found total: '.$query->num_rows();
+		
+	}
+
+	function convert () {
+		$this->db->join('doc_doctor_order', 'doc_doctor_order.doc_doctor_order_id = doctor_order.doc_doctor_order_id');
+		$this->db->where_in("doc_doctor_order.doc_doctor_order_type_id", array(5));
+		$query = $this->db->get('doctor_order');
+		$result = $query->result();
+
+		$output = array();
+		$outputStr = read_file('./datastore/DOconversion_type5.txt');
+		if ($outputStr !== false) {
+			$output = unserialize($outputStr);
+			if (!is_array($output)) {
+				$output = array();
+			}
+		}
+
+		echo "Started conversion. Please wait for a while!<br>";
+		
+		$count = 0;
+		$visits = 0;
+		$skipped = 0;
+		foreach ($result as $key => $DO) {
+			$patient_id = $DO->patient_id;
+			$cms485_id = null;
+
+			$soc = $this->socmdl->getCurrent($patient_id);
+			$cms485 = $this->episodemdl->getCurrent($soc->soc_id);
+
+			// make sure the visit date is not outside the current certification. 
+			if(!empty($cms485) AND strtotime($DO->order_date) >= strtotime($cms485->episode_start_date) 
+			AND strtotime($DO->order_date) <= strtotime($cms485->episode_end_date)) {
+				$cms485_id = $cms485->cms485_id;
+			} else {
+				foreach ($this->episodemdl->getEpisodeByPatientId($patient_id) as $cms485) {
+					// make sure the visit date is not outside the certification. 
+					// echo "episode: {$cms485->episode_start_date} to {$cms485->episode_end_date}<br>";
+					if(strtotime($DO->order_date) >= strtotime($cms485->episode_start_date) 
+					AND strtotime($DO->order_date) <= strtotime($cms485->episode_end_date)) {
+						$cms485_id = $cms485->cms485_id;
+					}
+				}
+			}
+
+			if (is_null($cms485_id)) {
+				$doctor_order_id = null;						
+				if (isset($output[$DO->doc_doctor_order_id]['new_do_id'])) {
+					$doctor_order_id = $output[$DO->doc_doctor_order_id]['new_do_id'];						
+					$this->dordermdl->updateFlex($doctor_order_id, 'do_description', $DO->order_description, 'doctor_order_id' );
+					$this->dordermdl->updateFlex($doctor_order_id, 'order_type_id', $DO->doc_doctor_order_type_id, 'doctor_order_id' );
+					$this->dordermdl->updateFlex($doctor_order_id, 'do_agency_notes', $DO->user_notes, 'doctor_order_id' );
+					$this->dordermdl->updateFlex($doctor_order_id, 'do_doctor_notes', $DO->physician_notes, 'doctor_order_id' );
+
+					echo "old_do_id = {$DO->doc_doctor_order_id}, ";
+					echo "new_do_id = {$doctor_order_id}, ";
+					echo "visit_log_id = NULL<br>";
+				} else {
+					$this->dordermdl->do_description = $DO->order_description;
+					$this->dordermdl->order_type_id = $DO->doc_doctor_order_type_id;
+					$this->dordermdl->do_agency_notes = $DO->user_notes;
+					$this->dordermdl->do_doctor_notes = $DO->physician_notes;
+					
+					$this->dordermdl->insert(0);		
+					$doctor_order_id = $this->db->insert_id();		
+					
+					echo "old_do_id = {$DO->doc_doctor_order_id}, ";
+					echo "new_do_id = {$doctor_order_id}, ";
+					echo "visit_log_id = NULL<br>";
+
+					$output[$DO->doc_doctor_order_id] = array('old_do_id'=>$DO->doc_doctor_order_id, 'new_do_id'=>$doctor_order_id, 'visit_log_id'=>null);
+				}
+						
+				
+				$count++;
+			} else {
+				$visit_user = $this->usagymdl->getByUsAgyId($DO->order_by_user_id);
+				if (empty($visit_user)) {
+					$skipped++;
+					$output[$DO->doc_doctor_order_id] = array('old_do_id'=>$DO->doc_doctor_order_id, 'new_do_id'=>null, 'visit_log_id'=>null);
+
+					write_file('./datastore/DOconversion_type5.txt', serialize($output));	
+
+					continue;
+				}
+
+				// Set visit status to "Pending Agency Approval"
+				$this->visitlogmdl->visit_log_id = NULL;
+				$this->visitlogmdl->visit_status_id = 3;
+				// $this->visitlogmdl->tab_023_doctor_order_status = $DO->tab_023_order_status;
+				// Set DO status to "Signed by Physician" for all
+				$this->visitlogmdl->tab_023_doctor_order_status = 2;
+				$this->visitlogmdl->visit_type_id = 200;
+				$this->visitlogmdl->visit_date_time = $DO->order_date;
+				$this->visitlogmdl->sent_to_agency_date = $DO->order_date;
+				$this->visitlogmdl->sent_to_approve_date = $DO->order_date;
+				$this->visitlogmdl->sent_to_physician_date = !is_null($DO->sent_date) ? $DO->sent_date : $DO->order_date;
+
+				$timestamp = strtotime($this->visitlogmdl->sent_to_physician_date);
+				$Y = date("Y",$timestamp);
+				$M = date("m",$timestamp);
+				$D = date("d",$timestamp);
+				$this->visitlogmdl->signed_by_physician_date = !is_null($DO->signed_date) ? $DO->signed_date : (date("Y-m-d", mktime(0,0,0,$M,$D+30,$Y)));
+				$this->visitlogmdl->visit_user_id = $DO->order_by_user_id;
+				$this->visitlogmdl->visit_asigned_by = $DO->order_by_user_id;
+				$this->visitlogmdl->phys_user_id = null;
+				$this->visitlogmdl->doctor_office_id = $DO->doctor_office_id;
+
+				
+				// Find phys_user_id
+				$doctorOfficeUsers = $this->usagymdl->getByAgencyId($DO->doctor_office_id, null, null, 7);
+				if (count($doctorOfficeUsers)) {
+					$doctorOfficeAdmin = $doctorOfficeUsers[0];
+					$this->visitlogmdl->phys_user_id = $doctorOfficeAdmin->us_agy_id;
+				}
+
+				$this->visitlogmdl->cms485_id = $cms485_id;
+
+				$visit_log_id = false;
+				if (isset($output[$DO->doc_doctor_order_id]['visit_log_id'])) {
+					$visit_log_id = $output[$DO->doc_doctor_order_id]['visit_log_id'];						
+					// $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', $this->visitlogmdl->visit_status_id );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', $this->visitlogmdl->tab_023_doctor_order_status );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_type_id', $this->visitlogmdl->visit_type_id );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_date_time', $this->visitlogmdl->visit_date_time );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_agency_date', $this->visitlogmdl->sent_to_agency_date );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_approve_date', $this->visitlogmdl->sent_to_approve_date );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', $this->visitlogmdl->sent_to_physician_date );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'signed_by_physician_date', $this->visitlogmdl->signed_by_physician_date );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_user_id', $this->visitlogmdl->visit_user_id );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_asigned_by', $this->visitlogmdl->visit_asigned_by );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'phys_user_id', $this->visitlogmdl->phys_user_id );
+					$this->visitlogmdl->updateFlex($visit_log_id, 'doctor_office_id', $this->visitlogmdl->doctor_office_id );
+					
+				} else {					
+					$this->visitlogmdl->insert('N');
+					$visit_log_id = $this->visitlogmdl->visit_log_id;
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 3 );
+				}
+
+				if ($visit_log_id) {
+					if (!is_null($cms485_id)) {
+						$this->app->updateEpisodeVisitNumber($this->visitlogmdl->cms485_id); // reordering visit number
+					}
+					$visitlog = $this->visitlogmdl->getById($visit_log_id);
+					// $episode = $this->episodemdl->getById($visitlog->cms485_id);			
+
+					// Find current episode first
+					// $soc = $this->socmdl->getCurrent($patient_id);
+					// $cms485 = $this->episodemdl->getCurrent($soc->soc_id);
+					
+					$doctor_order_id = null;
+					if (isset($output[$DO->doc_doctor_order_id]['new_do_id'])) {
+						$doctor_order_id = $output[$DO->doc_doctor_order_id]['new_do_id'];						
+						$this->dordermdl->updateFlex($doctor_order_id, 'do_description', $DO->order_description, 'doctor_order_id' );
+						$this->dordermdl->updateFlex($doctor_order_id, 'order_type_id', $DO->doc_doctor_order_type_id, 'doctor_order_id' );
+						$this->dordermdl->updateFlex($doctor_order_id, 'do_agency_notes', $DO->user_notes, 'doctor_order_id' );
+						$this->dordermdl->updateFlex($doctor_order_id, 'do_doctor_notes', $DO->physician_notes, 'doctor_order_id' );
+					} else {
+
+						$this->dordermdl->do_description = $DO->order_description;
+						$this->dordermdl->order_type_id = $DO->doc_doctor_order_type_id;
+						$this->dordermdl->do_agency_notes = $DO->user_notes;
+						$this->dordermdl->do_doctor_notes = $DO->physician_notes;
+
+						$this->dordermdl->insert($visit_log_id);		
+						$doctor_order_id = $this->db->insert_id();	
+					}
+
+					echo "old_do_id = {$DO->doc_doctor_order_id}, ";
+					echo "new_do_id = {$doctor_order_id}, ";
+					echo "visit_log_id = {$visit_log_id}<br>";
+
+					$output[$DO->doc_doctor_order_id] = array('old_do_id'=>$DO->doc_doctor_order_id, 'new_do_id'=>$doctor_order_id, 'visit_log_id'=>$visit_log_id);
+
+					$count++;
+					$visits++;
+				}
+
+			}	
+
+			write_file('./datastore/DOconversion_type5.txt', serialize($output));		
+		}
+
+		if ( ! write_file('./datastore/DOconversion_type5.txt', serialize($output)))
+		{
+		     // echo "<pre>"; print_r($output); echo "</pre>";
+		     // echo serialize($output);
+		} else {
+		     // echo "<pre>"; print_r($output); echo "</pre>";
+		     // echo serialize($output);
+		}
+		echo "<br>{$count} old doctor order converted to new doctor order! from them {$visits} DO are in a CMS period. {$skipped} DO has been skipped because visit user doesn't exist.<br>";
+		echo "<br><br>FINISHED!";
+
+		echo "<hr>";
+		echo "<pre>"; print_r($output); echo "</pre>";
+		echo "<hr>";
+	    echo serialize($output);
+	}
+}

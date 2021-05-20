@@ -1,0 +1,42 @@
+<?
+
+class rptreportnamemdl extends Model {
+
+	var $rpt_report_id;
+	var $report_name;
+	var $report_path;
+	
+	function rptreportnamemdl() {
+		
+		parent::Model();
+		
+	}
+
+	function get ( ) {
+		$this->db->order_by("report_name","ASC");
+		$query = $this->db->get("rpt_report_name");
+		return $query->result();		
+	}
+
+	function getById ( $rpt_report_id ) {    
+		$this->db->where("rpt_report_id", $rpt_report_id);
+		$query = $this->db->get("rpt_report_name");
+
+		return $query->row();
+	}
+
+	function insert () {
+		$this->db->insert("rpt_report_name", $this);
+	}
+
+  function update ( $rpt_report_id ) {		
+		$this->rpt_report_id = $rpt_report_id;		
+		$this->db->where("rpt_report_id", $rpt_report_id);		
+		$this->db->update("rpt_report_name", $this);		
+	}
+
+	function delete ( $rpt_report_id ) {	
+		$this->db->delete("rpt_report_name", array("rpt_report_id" => $rpt_report_id));	
+	}
+
+}

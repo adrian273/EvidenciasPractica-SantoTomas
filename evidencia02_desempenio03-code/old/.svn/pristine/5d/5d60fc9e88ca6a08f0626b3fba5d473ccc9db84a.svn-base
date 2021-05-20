@@ -1,0 +1,75 @@
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center">
+  <tr>
+    <td valign="top">
+			<table border="0" width="100%" cellpadding="5" cellspacing="0" align="center"> 
+				<tr> 
+					<td><strong>Invoice Number:</strong>  {$invoice_no} </td>
+					<td><strong>Invoice Amount:</strong> {$amount}</td>
+					<td><strong>Balance:</strong> {if $balance_in_red}<font color="#FF0000">{$balance}</font>{else}{$balance}{/if}</td>
+				</tr>
+				<tr>
+					<td><strong>Invoice Date:</strong> {$invoice_date|date_format} </td>
+					<td><strong>Agency Paid Status:</strong> {if $agency_paid_status eq 'PA'} Paid {else if $agency_paid_status eq 'NP'} Not Paid {/if}</td>
+					<td></td>
+				</tr>
+				<tr>
+				    <td>
+						<strong>Agency Notes:</strong> <br />
+						<div id="note-txt">{$agency_notes}</div>
+						<span id="edit_link">[<a href="javascript://" onclick="editInvoice({$invoice_id})">Edit Invoice</a>] </span>
+					</td>
+				    <td>&nbsp;</td>
+			    </tr>
+			</table> 
+    </td>
+  </tr>
+  <tr>
+    <td height="100%" valign="top">
+
+	    <div hrefmode="iframes-refresh-always" tabstyle="dhx_blue" id="a_tabbar" class="dhtmlxTabBar" imgpath="{$base_url}style/tab/imgs/" style="width:99.5%; height:100%;"  skinColors="#f4f4f4,#F4F3EE" >
+	       	<div id="b1" width="120" name="Invoice Detail"   href="{$index_url}/agencycontractor/detail_visits/{$invoice_id}/{$back}"></div>
+					<div id="b2" width="120" name="Payments" href="{$index_url}/agencycontractor/payments/{$invoice_id}/{$back}"></div>
+	       	
+	    </div>
+    </td>
+  </tr>
+</table>
+<script>
+  function editInvoice (invoice_id) {literal}{{/literal}
+  			//alert("{$index_url}agencycontractor/invoices/edit_invoice/"+invoice_id);
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 500, 350);
+			w2.setText("Update Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}agencycontractor/edit_invoice/"+invoice_id);
+			
+  {literal}}{/literal}
+
+
+{literal}
+function edit_invoice_notes(){
+	$('#invoice-notes').val($('#note-txt').text());
+	$('#edit_link').hide();
+	$('#note-txt').hide();
+	$('#note-input').show();	
+}
+function save_invoice_notes(){
+	{/literal}ajax('{$index_url}{$resource_path}/save_invoice_notes/{$invoice_id}', ajaxParseAction, 'invoice_notes_form');{literal}
+}
+
+function cancel_edit_notes(saved){
+	if(typeof(saved) !== 'undefined' && saved == 1)
+	$('#note-txt').text($('#invoice-notes').val());
+	
+	$('#note-input').hide(); $('#note-txt').show();	$('#edit_link').show();
+}
+{/literal}
+  
+ </script>

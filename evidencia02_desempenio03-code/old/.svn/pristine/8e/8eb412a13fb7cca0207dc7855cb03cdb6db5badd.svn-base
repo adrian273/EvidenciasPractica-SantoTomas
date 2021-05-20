@@ -1,0 +1,91 @@
+<?php
+
+ class TerritoryMdl extends Model {
+
+	var $territory_id;
+	var $agency_id;
+	var $territory_name;
+
+
+	function TerritoryMdl() {
+		
+		parent::Model();
+		
+	}
+	function get_list ( $normal_result=true,  $agency_id = null) {
+		
+		if($agency_id != null) {
+			$this->db->where("agency_id", $agency_id);
+		}
+		$query = $this->db->get('agy_territory');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('territory_id', 'territory_name');
+	}
+	function get (  $agency_id, $keyword=null) {
+	
+		$this->db->order_by("territory_name", "asc");
+		
+		if (!is_null($keyword)) {
+			$this->db->like('territory_name', $keyword);
+		}
+
+		
+		$this->db->where("agency_id", $agency_id);
+		
+		$query = $this->db->get('agy_territory');
+		return $query->result();
+
+	}
+	
+	function getByTerritoryId ( $territory_id ) {
+		
+		$this->db->where('territory_id', $territory_id);
+		
+		$query = $this->db->get('agy_territory');
+		return $query->row();
+		
+	}
+	
+	function insert ( $agency_id ) {
+		
+		$this->agency_id = $agency_id;
+		
+		$this->db->insert('agy_territory', $this);
+		$this->territory_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $territory_id, $agency_id ) {
+		
+		$this->territory_id = $territory_id;
+		$this->agency_id = $agency_id;
+		
+		$this->db->where('territory_id', $territory_id);
+		
+		$this->db->update('agy_territory', $this);
+		
+	}
+	
+	function delete ( $territory_id ) {
+		
+		$this->db->where('territory_id', $territory_id);
+		
+		$this->db->delete('agy_territory'); 
+		
+	}
+	
+	function suggest ( $agency_id, $keyword ) {
+
+		$this->db->where('agency_id', $agency_id);
+		$this->db->like('territory_name', $keyword);
+		
+		$this->db->limit($this->db->max_suggest);
+
+		$query = $this->db->get('agy_territory');
+		return $query->result();			
+	
+	}
+
+ }

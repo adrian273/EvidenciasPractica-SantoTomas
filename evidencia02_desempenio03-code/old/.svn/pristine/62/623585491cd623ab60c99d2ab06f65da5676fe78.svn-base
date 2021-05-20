@@ -1,0 +1,79 @@
+<?php
+
+class AgencyCredentialTypeMdl extends Model {
+
+	var $id;
+	var $credential_type;
+	var $agency_id;
+	
+	function AgencyCredentialTypeMdl () {
+		parent::Model();		
+	}
+
+	function getFilterList ( $agency_id ) {
+        $this->db->where('tab_value NOT IN (SELECT credential_type FROM agency_credential_types WHERE agency_id = ' . $agency_id . ')');
+        // $this->db->join('tab_parameters', 'agency_credential_types.credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86');
+        $this->db->where('tab_type', 86);
+        $this->db->order_by('tab_value');
+        $query = $this->db->get('tab_parameters');
+        $rows = array();
+        foreach ($query->result() as $key => $pro) {
+            $rows[$pro->tab_value] = $pro->tab_description;
+        }
+        return $rows;
+    }
+
+
+    function getList ( $agency_id, $key_val=false ) {
+        $this->db->join('tab_parameters', 'agency_credential_types.credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86');
+        $this->db->where('agency_id', $agency_id);
+        $this->db->order_by('tab_value');
+        $query = $this->db->get('agency_credential_types');
+
+        // if key/value pair is true then return key/value pair
+        if ($key_val) {
+	        $rows = array();
+	        foreach ($query->result() as $key => $pro) {
+	            $rows[$pro->tab_value] = $pro->tab_description;
+	        }
+	        return $rows;
+        } else {
+        	return $query->result();
+        }
+    }
+
+	function get ( $id ) {
+		$this->db->join('tab_parameters', 'agency_credential_types.credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86');
+		$this->db->where('id', $id);
+		
+		$query = $this->db->get('agency_credential_types');
+		return $query->row();	
+	}
+
+	function insert ($agency_id, $credential_type) {		
+		$this->id = null;
+		$this->agency_id = $agency_id;
+		$this->credential_type = $credential_type;
+		$this->db->insert('agency_credential_types', $this);
+		$this->id = $this->db->insert_id();	
+	}
+	
+	function delete ( $credential_type, $agency_id ) {		
+		$this->db->where("credential_type", $credential_type);
+		$this->db->where("agency_id", $agency_id);
+		$this->db->delete("agency_credential_types");		
+	}
+
+	function updateFlex($id, $attribute, $value, $where = 'id') {
+		$this->db->where($where, $agency_id);
+		$this->db->set($attribute, $value);
+		$this->db->update('agency_credential_types');
+	}
+
+	function update ( $id ) {	
+		$this->db->where("id", $id);
+		$this->db->update("agency_credential_types", $this);
+	
+	}
+	
+}

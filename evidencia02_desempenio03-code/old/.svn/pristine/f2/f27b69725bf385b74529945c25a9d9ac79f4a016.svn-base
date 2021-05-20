@@ -1,0 +1,68 @@
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/{$action}/{$agency_contractor_id}/{$from_date}/{$to_date}{if $confirm_zero_amt}/?confirm_zero_amt=1{/if}">
+  <tr>		
+		<td height="10">Agency Name: </td>
+    <td height="10">
+    	<b>{$agency_name}</b>
+    </td>
+  </tr>
+  <tr>		
+		<td height="10">Total Amount : </td>
+    <td height="10">
+    	<b>${$total_final_rate}</b>
+    </td>
+  </tr>
+  <tr>    
+    <td height="10">Invoice Date: *</td>
+    <td height="10">
+      <input type="text" id="invoice_date" name="invoice_date" value="{$invoice_date}" size="10"
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+    <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('invoice_date'), document.getElementById('fecha_help'));return false;" >    
+    </td>
+  </tr> 
+  <tr>		
+		<td height="10">Invoice Due Date: *</td>
+    <td height="10">
+			<input type="text" id="invoice_due_date" name="invoice_due_date" value="{$invoice_due_date}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('invoice_due_date'), document.getElementById('fecha_help'));return false;" >		
+    </td>
+  </tr>	
+  {if $action == 'ask_invoice_due_date'}
+  <tr>
+    <td>Create Invoice By</td>
+    <td><label><input type="checkbox" name="invoice_by_patient" value="1"> One invoice per patient</label></td>
+  </tr>
+  {/if}
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+  var invoice_due_days = parseInt('{$invoice_due_days}');
+  {literal}
+  $(document).ready(function() {
+      $('input[name=invoice_date]').change(function(){
+        if ( $('#invoice_date').val() != '' && invoice_due_days > 0) {
+          var invoice_date_str = $('#invoice_date').val().replace(/-/g,'/');
+          var d = new Date(invoice_date_str);
+          var newdate = new Date(d);
+
+          newdate.setDate(newdate.getDate() + invoice_due_days);
+          
+          var dd = newdate.getDate();
+          var mm = newdate.getMonth()+1;
+          var y = newdate.getFullYear();
+          mm = ('0'+mm).slice(-2);
+          dd = ('0'+dd).slice(-2);
+          $('#invoice_due_date').val(mm+'-'+dd+'-'+y);
+
+        }
+      });
+  }); 
+  {/literal}
+</script>

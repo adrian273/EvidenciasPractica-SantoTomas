@@ -1,0 +1,53 @@
+<?php
+
+ class VisitTypeDiscipMdl extends Model {
+
+	var $visit_type_disc_id;
+	var $visit_type_id;
+  	var $discipline_id;
+
+	function VisitTypeDiscipMdl () {
+		parent::Model();	
+	}
+	
+	function getById ( $visit_type_disc_id ) {
+	
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = vit_visit_type_discip.discipline_id');
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vit_visit_type_discip.visit_type_id');
+		
+		$this->db->where('visit_type_disc_id', $visit_type_disc_id);
+		$query = $this->db->get('vit_visit_type_discip');
+		return $query->row();
+	}
+
+	function getByDiscipline ( $discipline_id ) {
+		$this->db->select("vit_visit_type_discip.*, vit_visit_type.visit_type_id, vit_visit_type.visit_description");
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vit_visit_type_discip.visit_type_id', 'left');
+		
+		$this->db->where('vit_visit_type_discip.discipline_id', $discipline_id);	
+		$query = $this->db->get('vit_visit_type_discip');
+		return $query->result();
+	}
+	
+	function getFilterVistTypesByDiscipline ( $discipline_id ) {
+	
+		$this->db->where('visit_type_id NOT IN (SELECT visit_type_id FROM vit_visit_type_discip WHERE discipline_id = ' . $discipline_id . ')');
+		$this->db->order_by('visit_description');
+		
+		$query = $this->db->get('vit_visit_type');
+		return $query->result2('visit_type_id', 'visit_description');			
+	}
+	
+	function insert ( $visit_type_id, $discipline_id ) {
+		//echo "khush";
+		$this->visit_type_id = $visit_type_id;
+		$this->discipline_id = $discipline_id;
+		$this->db->insert('vit_visit_type_discip', $this);	
+	}
+	
+	function delete ( $visit_type_disc_id ) {
+		$this->db->where('visit_type_disc_id', $visit_type_disc_id);
+		$this->db->delete('vit_visit_type_discip');
+	}
+	
+ }

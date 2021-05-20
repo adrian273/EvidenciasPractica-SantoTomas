@@ -1,0 +1,141 @@
+<?
+
+ class visitprintqueuemdl extends Model {
+
+	var $prt_visit_print_queue_id;
+	var $visit_log_id;
+	var $user_id;
+	var $prt_visit_print_queue_status;
+	var $creation_datetime;
+
+	function visitprintqueuemdl () {
+
+		parent::Model();
+		
+	}
+
+	function insert () {
+		
+		$this->db->insert('prt_visit_print_queue', $this);
+		
+	}
+	
+	function get ( $agency_id, $status=null ) {
+		
+		$this->db->select('prt_visit_print_queue.*, vis_visit_log.*, vit_visit_type.*, CONCAT(us_agy.first_name," ",us_agy.last_name) as user_name, CONCAT(pat_patient.first_name," ",pat_patient.last_name) as patient_name, vit_visit_type.visit_program');
+
+		$this->db->join('vis_visit_log', 		'vis_visit_log.visit_log_id = prt_visit_print_queue.visit_log_id');
+		$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('soc_start_of_care',   	'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id AND agency_id = ' . $agency_id);
+		$this->db->join('vit_visit_type',		'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		$this->db->join('us_agy',				'us_agy.us_agy_id = prt_visit_print_queue.user_id');
+		
+    if( $this->input->post('modal') == 1 ){
+      // STATUS
+			if( $this->input->post('status_id') != 0 )
+			{	
+				$this->db->where("tab_013_status", (int) $this->input->post('status_id') );	
+			}
+			// PATIENT NAME
+			if( strlen( trim( $this->input->post('patient_name') ) ) > 0 )
+			{	
+				$patient_name = trim( $this->input->post('patient_name') ) ;
+				//
+				$this->db->where("( pat_patient.first_name LIKE '%".addslashes( $patient_name )."%' OR pat_patient.last_name LIKE '%".addslashes( $patient_name )."%' )" );	
+				/*
+				$patient_name = explode(' ' , trim( $this->input->post('patient_name') ) );
+				if( count( $patient_name ) >= 2  )
+				{
+					$this->db->like("pat_patient.first_name", "%".$patient_name[0]."%" );	
+					$this->db->like("pat_patient.last_name", "%".$patient_name[1]."%" );
+				}
+				else
+				{
+					$this->db->where("pat_patient.last_name", "%".$patient_name[0]."%" );
+				}
+				*/
+				
+			}
+			// CLINITIAN
+			$visit_user_id	= preg_replace("/[^0-9]/", "", $this->input->post('clinitian') );
+			if( strlen( $visit_user_id ) > 0 ) 
+			{	
+				$this->db->where("vis_visit_log.visit_user_id", ''.( (int) $visit_user_id ) );	
+			}
+			// VISIT TYPE
+			if ( $this->input->post('visit_type') != 0 ) 
+			{
+				$this->db->where("vis_visit_log.visit_type_id", (int) $this->input->post('visit_type') );
+			}		
+			// VISIT STATUS
+			if ( $this->input->post('visit_status') != 0 ) 
+			{
+				$this->db->where("vis_visit_log.visit_status_id", (int) $this->input->post('visit_status') );
+			}		
+			
+			//DATE FROM
+			if ($date_from = $this->input->post('date_from')) 
+			{
+				$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($date_from), 'MYSQL_NOTIME'));
+			}
+			//DATE TO
+			if ($date_to = $this->input->post('date_to')) 
+			{
+				$this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($date_to), 'MYSQL_NOTIME'));
+			}
+    }
+    
+		if (!is_null($status) && !is_null($status)) {
+			$this->db->where('prt_visit_print_queue_status', $status);
+		}
+
+		$this->db->order_by('creation_datetime', 'DESC');
+
+		return $this->db->get('prt_visit_print_queue')->result();	
+			
+	}
+
+  function getByIds ( $agency_id, $ids=array() ) {
+		
+		$this->db->select('prt_visit_print_queue.*, vis_visit_log.*, vit_visit_type.*, CONCAT(us_agy.first_name," ",us_agy.last_name) as user_name, CONCAT(pat_patient.first_name," ",pat_patient.last_name) as patient_name, vit_visit_type.visit_program');
+
+		$this->db->join('vis_visit_log', 		'vis_visit_log.visit_log_id = prt_visit_print_queue.visit_log_id');
+		$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('soc_start_of_care',   	'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id AND agency_id = ' . $agency_id);
+		$this->db->join('vit_visit_type',		'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		$this->db->join('us_agy',				'us_agy.us_agy_id = prt_visit_print_queue.user_id');
+		
+		
+		$this->db->where_in('prt_visit_print_queue_id', $ids);
+		
+		$this->db->order_by('creation_datetime', 'DESC');
+
+		return $this->db->get('prt_visit_print_queue')->result();	
+			
+	}
+
+  
+	function getById ( $prt_visit_print_queue_id ) {
+
+		$this->db->where('prt_visit_print_queue_id', $prt_visit_print_queue_id);
+		
+		return $this->db->get('prt_visit_print_queue')->row();
+				
+	}
+	
+	function updatePrintStatus ( $prt_visit_print_queue_id ) {
+		
+		$this->db->where('prt_visit_print_queue_id', $prt_visit_print_queue_id);
+		$this->db->update('prt_visit_print_queue' ,array('prt_visit_print_queue_status' => $this->prt_visit_print_queue_status));
+		
+	}	
+	
+	function delete ( $prt_visit_print_queue_id ) {
+		
+		$this->db->delete('prt_visit_print_queue', array('prt_visit_print_queue_id' => $prt_visit_print_queue_id));
+		
+	}
+	
+ }

@@ -1,0 +1,134 @@
+<?php
+
+ class TplOtPnMdl extends Model {
+
+	var $tpl_otpn_id;
+	var $tpl_otpn_name;
+	var $user_id;
+    var $primary_diag;
+    var $secondary_diag;
+    var $primary_diag_date;
+    var $secondary_diag_date;  
+    var $blood_pressure;
+    var $temperature;
+    var $respiration;
+    var $pulse;
+    var $treat_evaluation;
+    var $treat_adl_training;
+    var $treat_transfer;
+    var $treat_muscle;
+    var $treat_establish_hep;
+    var $treat_upgrade_hep;
+    var $treat_perceptual;
+    var $treat_fine;
+    var $treat_neuro;
+    var $treat_sensory;
+    var $treat_ortho;
+    var $treat_home;
+    var $treat_other;
+    var $treat_other_desc;
+    var $tab_75_pain_assessment;
+    var $pain_location;
+    var $pain_control;
+    var $BP;
+    var $tab_062_right_left;
+    var $system_sitt_lyin_stand;
+    var $system_hr;
+    var $system_o2_sat;
+    var $system_skin;
+    var $funct_dyspnea;
+    var $funct_diff_walking;
+    var $funct_diff_transfer;
+    var $funct_diff_dressing;
+    var $funct_other;
+    var $funct_other_desc;
+    var $objective_findings;
+    var $subjective_findings;
+    var $treatment;
+    var $plan_of_care;
+    var $plan;
+    var $hobo_consid_taxing;
+    var $hobo_residual;
+    var $hobo_confusion;
+    var $hobo_requires;
+    var $hobo_dependent;
+    var $hobo_other;
+    var $hobo_other_desc;
+    var $coord_md;
+    var $coord_rn;
+    var $coord_lvn;
+    var $coord_aide;
+    var $coord_pt;
+    var $coord_ot;
+    var $coord_st;
+    var $coord_msw;
+    var $coord_ptCG;
+    var $dc_plan_continue;
+    var $dc_plan_five_days_notif;
+    var $dc_plan_other;
+    var $dc_plan_desc;
+    var $ther_supervisor;
+    var $ther_na;
+    var $ther_name;
+    var $ther_implem_plan;
+    var $ther_follow_plan;
+    var $ther_raport_pat_fam;
+    var $ther_eval_plan;
+    var $ther_notes;
+    var $addendum;
+    var $supervisor_signed;
+
+	function TplOtPnMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $template_id ) {
+		
+		$this->db->where('tpl_otpn_id', $template_id);
+	
+		$query = $this->db->get('tpl_otpn');
+		return $query->row();
+		
+	}
+	
+	function getByUserId ( $user_id ) {
+		
+		$this->db->where('user_id', $user_id);
+	
+		$query = $this->db->get('tpl_otpn');
+		return $query->result2('tpl_otpn_id', 'tpl_otpn_name');
+		
+	}
+
+	function insert ( $user_id, $template_name ) {
+
+		$this->user_id = $user_id;
+        $this->tpl_otpn_name = $template_name;
+		$this->supervisor_signed = 0;
+		
+		$this->db->insert('tpl_otpn', $this);
+        return $this->db->insert_id();		
+	}
+	
+    function update ( $tpl_otpn_id ) {
+        unset($this->tpl_otpn_id);
+        unset($this->user_id);
+        $this->db->where('tpl_otpn_id', $tpl_otpn_id);
+        $this->db->update('tpl_otpn', $this);
+    }
+
+    function updateFlex($tpl_otpn_id, $attribute, $value, $where = 'tpl_otpn_id') {
+        $this->db->where($where, $tpl_otpn_id);
+        $this->db->set($attribute, $value);
+
+        $this->db->update('tpl_otpn');
+    }   
+
+    function delete ( $tpl_otpn_id, $user_id ) {
+        $this->db->where('user_id', $user_id);
+        $this->db->where('tpl_otpn_id', $tpl_otpn_id);
+        $this->db->delete('tpl_otpn');
+    }       
+ }

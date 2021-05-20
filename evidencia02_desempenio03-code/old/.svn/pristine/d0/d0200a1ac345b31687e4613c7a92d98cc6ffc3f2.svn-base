@@ -1,0 +1,717 @@
+<?
+
+ class Calendar extends MY_Controller {
+
+	function Calendar () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "calendar");
+		
+	}
+
+	function index ( $year=null, $month=null, $visit_type_id=null, $agency_id=null ) {
+		$us_agys = $this->usagymdl->getByUserId($this->getUserId());
+		$agency_list = array(0=>'All');
+		if (count($us_agys) > 1) {
+			foreach ($us_agys as $usagy) {
+				$agency_list[$usagy->agency_id] = $usagy->agency_name;
+			}			
+			$this->tpl->assign('agency_list', $agency_list);
+			unset($agency_list[0]);			
+		}
+		$year  = (is_null($year) ? date('Y') : $year);
+		$month = (is_null($month) ? date('n') : $month);
+		
+		$this->tpl->assign('cal_month', $month);
+		$this->tpl->assign('cal_year', $year);
+
+		// if ((bool)preg_match( '/^[0-9]+$/', $visit_type_id) == false) $visit_type_id = null;
+		if (!$visit_type_id) $visit_type_id = null;
+		
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign(array("visit_type_id" => $visit_type_id));
+		if($agency_id) {
+			$usagy = $this->usagymdl->getByUserAgencyId($agency_id, $this->getUserId());
+			$this->tpl->assign('agency_id', $agency_id);
+			if (!empty($usagy)) {
+				$cms_events = $this->visitlogmdl->getByUser($usagy->us_agy_id, $year, $month, $visit_type_id);
+				$this->tpl->assign("cms_events", $cms_events);
+			} else {
+				$this->tpl->assign("cms_events", array());
+			}
+		} else {
+			// Default select all events frm all egencies
+			if (count($agency_list) > 1) {
+				$cms_events = array();
+				foreach ($agency_list as $key_agency_id => $agency_name) {
+					$usagy = $this->usagymdl->getByUserAgencyId($key_agency_id, $this->getUserId());
+					if (!empty($usagy)) {
+						$cms_events = array_merge($cms_events, $this->visitlogmdl->getByUser($usagy->us_agy_id, $year, $month, $visit_type_id));
+					}
+				}
+				$this->tpl->assign("cms_events", $cms_events);
+			} else {
+				$this->tpl->assign('agency_id', $this->getAgencyId());
+				$this->tpl->assign("cms_events", $this->visitlogmdl->getByUser($this->getUsAgyId(), $year, $month, $visit_type_id));				
+			}
+				
+		}
+		
+		$this->load->library('calendar');
+		$this->tpl->assign('calendar_table', $this->calendar->generate($year, $month));
+		// color legends
+		$this->tpl->assign('color_legends',$this->parametermdl->getColorLegends());
+		// calendar headers
+		$this->tpl->assign('cal_header_month', $this->calendar->get_month_name($month));
+		$this->tpl->assign('cal_header_year', $year);
+		
+		// calendar navegation links
+		$date_prev_month = $this->calendar->adjust_date($month-1, $year);
+		$date_next_month = $this->calendar->adjust_date($month+1, $year);
+		
+		$this->tpl->assign('cal_prev_link', $date_prev_month['year'] . "/" . $date_prev_month['month'] . "/" . (int)$visit_type_id . "/" . $agency_id);
+		$this->tpl->assign('cal_next_link', $date_next_month['year'] . "/" . $date_next_month['month'] . "/" . (int)$visit_type_id . "/" . $agency_id);
+		
+		
+		$this->tpl->assign_include("dynamic_tpl", "calendar/calendar");
+		$this->tpl->view("calendar/ibase", $this->lang->language);		
+	
+	}	
+
+	// function print_calendar ( $year=null, $month=null, $visit_type_id=null, $agency_id=null ) {
+	function print_calendar ( $us_agy_id = null, $year=null, $month=null, $day=null, $visit_type_id=null ) {
+		if(!$us_agy_id){	    	
+		    $us_agy_id = $this->getUsAgyId();
+	    }
+    
+		$user=$this->usagymdl->getByUsAgyId($us_agy_id);
+
+		$year  = (is_null($year) ? date('Y') : $year);
+		$month = (is_null($month) ? date('n') : $month);
+		$day_fini = 31;
+		
+		$date_to = isset($_REQUEST['date_to'])?$_REQUEST['date_to']:'';
+		$date_from = isset($_REQUEST['date_from'])?$_REQUEST['date_from']:'';
+
+		if ($date_to != '') {
+			$day_fini = null;
+		}
+		
+		$this->tpl->assign('cal_month', $month);
+		$this->tpl->assign('cal_year', $year);
+
+		// if ((bool)preg_match( '/^[0-9]+$/', $visit_type_id) == false) $visit_type_id = null;
+		if (!$visit_type_id) $visit_type_id = null;
+		
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign(array("visit_type_id" => $visit_type_id));
+
+		$cms_events = $this->visitlogmdl->getByUser($us_agy_id, $year, $month, $visit_type_id,null,null, $day, $day_fini, $date_to);
+		
+		$this->tpl->assign("cms_events", $cms_events);
+
+		/*if($agency_id) {
+			$usagy = $this->usagymdl->getByUserAgencyId($agency_id, $this->getUserId());
+			$this->tpl->assign('agency_id', $agency_id);
+			if (!empty($usagy)) {
+				$cms_events = $this->visitlogmdl->getByUser($usagy->us_agy_id, $year, $month, $visit_type_id);
+				$this->tpl->assign("cms_events", $cms_events);
+			} else {
+				$this->tpl->assign("cms_events", array());
+			}
+		} else {
+			// Default select all events frm all egencies
+			if (count($agency_list) > 1) {
+				$cms_events = array();
+				foreach ($agency_list as $key_agency_id => $agency_name) {
+					$usagy = $this->usagymdl->getByUserAgencyId($key_agency_id, $this->getUserId());
+					if (!empty($usagy)) {
+						$cms_events = array_merge($cms_events, $this->visitlogmdl->getByUser($usagy->us_agy_id, $year, $month, $visit_type_id));
+					}
+				}
+				$this->tpl->assign("cms_events", $cms_events);
+			} else {
+				$this->tpl->assign('agency_id', $this->getAgencyId());
+				$this->tpl->assign("cms_events", $this->visitlogmdl->getByUser($this->getUsAgyId(), $year, $month, $visit_type_id));				
+			}
+				
+		}*/
+		
+		$this->load->library('calendar');
+		$this->tpl->assign('calendar_table', $this->calendar->generate($year, $month));
+		// color legends
+		$this->tpl->assign('color_legends',$this->parametermdl->getColorLegends());
+		// calendar headers
+		$this->tpl->assign('cal_header_month', $this->calendar->get_month_name($month));
+		$this->tpl->assign('cal_header_year', $year);
+		$this->tpl->assign('print_date', date("m-d-y"));
+		$this->tpl->assign('date_to', $date_to);
+		
+		// calendar navegation links
+		$date_prev_month = $this->calendar->adjust_date($month-1, $year);
+		$date_next_month = $this->calendar->adjust_date($month+1, $year);
+		
+		// $this->tpl->assign('cal_prev_link', $date_prev_month['year'] . "/" . $date_prev_month['month'] . "/" . (int)$visit_type_id . "/" . $agency_id);
+		// $this->tpl->assign('cal_next_link', $date_next_month['year'] . "/" . $date_next_month['month'] . "/" . (int)$visit_type_id . "/" . $agency_id);
+		
+		
+		$this->tpl->assign_include("dynamic_tpl", "calendar/calendar_print");
+		$this->tpl->view("calendar/ibase", $this->lang->language);		
+	
+	}	
+	
+	function addEventForm ( $visit_date ) {
+		
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign('visit_date', 	  $visit_date);
+		
+		$this->tpl->assign('patient_list', $this->patientmdl->getByUsAgyId($this->getUsAgyId(), null, null, null, FALSE));
+		
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("calendar/add_event_form", $this->lang->language, false)));
+		
+	}
+	
+	function addEvent () {
+		$loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$document = $this->xml->Document();
+
+		// validations
+		if ($this->input->post('visit_time_hour') == null || $this->input->post('visit_time_hour') < 0 || $this->input->post('visit_time_hour') > 12) {
+			$document->append($this->xml->ElementCData("alert", null, "You must indicate visit time."));
+			exit;
+		}
+		
+		if ($this->input->post('visit_time_min') == null || $this->input->post('visit_time_min') < 0 || $this->input->post('visit_time_min') > 59) {
+			$document->append($this->xml->ElementCData("alert", null, "You must indicate visit time."));
+			exit;
+		}
+		
+		if ($this->input->post('visit_type_id') == null) {
+			$document->append($this->xml->ElementCData("alert", null, "You must indicate visit type."));
+			exit;
+		}
+		
+		if ($this->input->post('patient_id') == null) {
+			$document->append($this->xml->ElementCData("alert", null, "You must indicate Patient."));
+			exit;
+		}
+		
+		// getting current patient episode
+		$soc = $this->socmdl->getCurrent($this->input->post('patient_id'));
+		$episode = $this->episodemdl->getCurrent($soc->soc_id);
+		$visit_type_id = $this->input->post('visit_type_id');
+		
+		// make sure the visit date is not outside the certification. 
+		// Visit types=101 and 104 - these can be created outside the certification period
+		// if (!in_array($visit_type_id, array(101,104))) {
+		// Now For alternative therapies, allow the creation of visits/tasks before the cms_485.start_date
+	    if ($loggedInAgency->provides_altern_therapy != 'Y') {
+			if (human_to_unix($this->input->post('visit_date')) < mysql_to_unix($episode->episode_start_date) || human_to_unix($this->input->post('visit_date')) > mysql_to_unix($episode->episode_end_date)) {
+				$document->append($this->xml->ElementCData("alert", null, "Patient being scheduled is outside the certification period."));
+				exit;
+			}
+		}		
+	
+
+		$visittype = $this->visittypemdl->getById($this->input->post('visit_type_id'));
+
+		// saving event in database
+		$this->assignPostData($this->visitlogmdl);
+		$this->visitlogmdl->cms485_id = $episode->cms485_id;
+		$this->visitlogmdl->visit_user_id = $this->getUsAgyId();
+		$this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+		$this->visitlogmdl->visit_date_time = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME') . " " . ($this->input->post('visit_time_hour') + $this->input->post('time_type')) . ":" . $this->input->post('visit_time_min');
+		
+
+		// check shcedule overlapping
+		if (!$this->validateNewVisitTime( $this->visitlogmdl->cms485_id, $this->visitlogmdl->visit_date_time )) {
+			// shceduled time overlapping
+	    	// $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, "WARNING - Conflict with other Visit scheduled at: ".date("h:i a", strtotime($this->visitlogmdl->visit_date_time)) ));
+            exit;     
+		}
+
+		// check shcedule overlapping user level
+		if (!$this->validateNewVisitTimeForUser( $this->visitlogmdl->visit_user_id, $this->visitlogmdl->visit_date_time )) {
+			// shceduled time overlapping
+	    	// $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, "WARNING - Conflict with Clinician's other Visit scheduled at: ".date("h:i a", strtotime($this->visitlogmdl->visit_date_time)) ));
+            exit;     
+		}
+		
+		$this->visitlogmdl->insert($visittype->billable_yn);
+		
+		$this->app->updateEpisodeVisitNumber($this->visitlogmdl->cms485_id); // reordering visit number
+		
+		// change patient status to current if status is Non-Assigned
+		$cms485 = $this->cms485mdl->getById($this->visitlogmdl->cms485_id);
+		if(count($cms485) > 0){
+			$soc = $this->socmdl->getById($cms485->soc_id);
+			if(count($soc) > 0){
+				$patient_id = $soc->patient_id;
+	        	$patient = $this->patientmdl->getById($patient_id); 
+		      	if ($patient->tab_013_status == 6) {
+			        $this->patientmdl->updateFlex($patient_id, 'tab_013_status', 2);
+			        
+			        $pat_contractor = $this->patientcontractormdl->get($patient_id);
+			        $pat_contractor_id = null;
+			        if(sizeof($pat_contractor) > 0){
+			          $pat_contractor = $pat_contractor[0];          
+			          $pat_contractor_id  = $pat_contractor->pat_contractor_id;
+			        } else {
+			          $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			          $pat_contractor_id  = $contractor->pat_contractor_id;
+			        }
+			        if ($pat_contractor_id) {
+			           $this->patientcontractormdl->updateFlex($pat_contractor_id, 'company_patient_status', 2 );
+			        }
+		      	}
+		    }
+	  	}
+
+		$visitlog = $this->visitlogmdl->getById($this->visitlogmdl->visit_log_id);
+		
+		$this->updateCellEvents(standard_date(mysql_to_unix($visitlog->visit_date_time), 'MYSQL_NOTIME'), $document);
+		
+	}
+	
+	function updateCellEvents ( $visit_date, $xmldoc ) {
+		
+		$date = mysql_to_unix($visit_date);
+		$year = date("Y", $date);
+		$month = date("m", $date);
+		$day = date("d", $date);
+		
+		$xmldoc->append($this->xml->ElementCData("js", "script=resizeCell('" . $day . "'):::setInner('ctt_" . $day . "', ''):::tt_HideInit():::"));
+		
+		foreach ($this->visitlogmdl->getByUser($this->getUserId(), $year, $month, null, null, null, $day, $day) as $visitlog) {
+			
+			$aux = date("d", mysql_to_unix($visitlog->visit_date_time));
+			
+			$xmldoc->append($this->xml->ElementCData("js", "script=addEventToCalendar('" . standard_date(mysql_to_unix($visitlog->visit_date_time), 'USA_TIME_CAL') . " " . $visitlog->first_name . " " . $visitlog->middle_initial . "', '" . $aux . "', " . $visitlog->visit_log_id . ", '" . $visitlog->visit_abbrev . "'):::"));
+			
+		}
+		
+	}
+	
+	function editEventForm ( $visit_log_id ) {
+		
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$this->assignObject($visitlog);
+		
+		$this->tpl->assign('team_list', 	  $this->teammdl->getAll($visitlog->patient_id));
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign('time_type', 	  (mdate("%A", mysql_to_unix($visitlog->visit_date_time)) == 'AM' ? '0' : '12'));
+		
+		$episode = $this->episodemdl->getById($visitlog->cms485_id);
+		$soc = $this->socmdl->getById($episode->soc_id);
+		$patient = $this->patientmdl->getById($soc->patient_id);
+		$agency  = $this->agencymdl->getByAgencyId($patient->agency_id);
+		
+		$this->tpl->assign('patient_name', $patient->first_name . " " . $patient->middle_initial. " " . $patient->last_name);
+		$this->tpl->assign('agency_name',  $agency->agency_name);
+		
+    /**
+          #  Get visit open settings. Will it open in new window or not.
+          */          
+    $user_id = $this->session->userdata('user_id');
+    $user_info = $this->usermdl->getById($user_id);    
+		$this->tpl->assign('open_new_window', $user_info->open_new_window);
+    
+		$document = $this->xml->Document();
+		$document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("calendar/edit_event_form", $this->lang->language, false)));
+		
+	}
+	
+	function editEvent () {
+		
+		$document = $this->xml->Document();
+
+		// validations
+		if ($this->input->post('visit_time_hour') == null || $this->input->post('visit_time_hour') < 0 || $this->input->post('visit_time_hour') > 12) {
+			$document->append($this->xml->ElementCData("alert", null, "You must indicate visit time."));
+			exit;
+		}
+		
+		if ($this->input->post('visit_time_min') == null || $this->input->post('visit_time_min') < 0 || $this->input->post('visit_time_min') > 59) {
+			$document->append($this->xml->ElementCData("alert", null, "You must indicate visit time."));
+			exit;
+		}
+		
+		if ($this->input->post('visit_type_id') == null) {
+			$document->append($this->xml->ElementCData("alert", null, "You must indicate visit type."));
+			exit;
+		}
+		
+		$this->assignPostData($this->visitlogmdl);
+		$this->visitlogmdl->visit_user_id = $this->getUsAgyId();
+		$this->visitlogmdl->visit_date_time = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME') . " " . ($this->input->post('visit_time_hour') + $this->input->post('time_type')) . ":" . $this->input->post('visit_time_min');
+		$this->visitlogmdl->update($this->input->post('visit_log_id'));
+		
+		$visitlog = $this->visitlogmdl->getById($this->input->post('visit_log_id'));
+		$this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+		
+		$visitlog = $this->visitlogmdl->getById($this->visitlogmdl->visit_log_id);
+		
+		$this->updateCellEvents(standard_date(mysql_to_unix($visitlog->visit_date_time), 'MYSQL_NOTIME'), $document);
+		
+	}
+	
+	function delete ( $visit_log_id ) {
+		
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		
+    if ($visitlog->visit_status_id != 1) {
+      // when tasks are "delete" they should be copied to the vt_pt_evaluation_copy table
+      $this->db->query("REPLACE INTO vis_visit_log_copy SELECT * FROM `vis_visit_log` WHERE visit_log_id = {$visit_log_id}");
+      $this->db->query("REPLACE INTO vt_pt_evaluation_copy SELECT * FROM `vt_pt_evaluation` WHERE visit_log_id = {$visit_log_id}");
+      $this->db->query("REPLACE INTO vt12_pt_progress_note_copy SELECT * FROM `vt12_pt_progress_note` WHERE visit_log_id = {$visit_log_id}");
+      $this->db->query("REPLACE INTO vt_ot_evaluation_copy SELECT * FROM `vt_ot_evaluation` WHERE visit_log_id = {$visit_log_id}");
+      $this->db->query("REPLACE INTO vt_ot_progress_note_copy SELECT * FROM `vt_ot_progress_note` WHERE visit_log_id = {$visit_log_id}");
+      $this->db->query("REPLACE INTO vt_st_evaluation_copy SELECT * FROM `vt_st_evaluation` WHERE visit_log_id = {$visit_log_id}");
+      $this->db->query("REPLACE INTO vt_st_progress_note_copy SELECT * FROM `vt_st_progress_note` WHERE visit_log_id = {$visit_log_id}");
+    }
+    
+		$this->visitlogmdl->delete($visit_log_id);
+		
+		$this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+		
+		$this->updateCellEvents(standard_date(mysql_to_unix($visitlog->visit_date_time), 'MYSQL_NOTIME'), $this->xml->Document());
+		
+	}
+	
+	function dayfree ( $visit_dates, $year, $month, $visit_type_id=null  ) {
+		
+		$visit_dates = explode(",", $visit_dates);
+		
+		foreach ($visit_dates as $visit_day) {
+			
+			$visits_day = $this->visitlogmdl->getByUser($this->getUsAgyId(), $year, $month);
+			
+			$this->visitlogmdl->dayFreeUser($this->getUsAgyId(), $year . "-" . $month . "-" . $visit_day);
+			
+			foreach($visits_day as $visit) {
+				
+				$this->app->updateEpisodeVisitNumber($visit->cms485_id); // reordering visit number
+				
+			}
+			
+		}
+		
+		$this->index($year, $month, $visit_type_id);
+		
+	}
+	function print_agenda($us_agy_id=null, $year=null, $month=null, $day=null, $visit_type_id=null){
+    
+	    if(!$us_agy_id){	    	
+		    // $user_id = $this->getUserId();
+		    $us_agy_id = $this->getUsAgyId();
+	    }
+    
+		$user=$this->usagymdl->getByUsAgyId($us_agy_id);
+		// $user=$this->usagymdl->getByUserId($user_id);
+		// $user=$user[0];
+		$this->tpl->assign('user',$user->first_name.' '.$user->last_name);
+		$date=$year."-".$month."-".$day;
+		$this->tpl->assign('date',$date);
+		$this->tpl->assign('noedit',true);
+		$this->tpl->assign('us_agy_id', (int)$us_agy_id);
+		$this->tpl->assign('additional_buttons', array('Print Agenda'=>'do_printAgenda(document.getElementById(\'date\').value)','Print Calender'=>'do_printCalendar(document.getElementById(\'date\').value)',
+			// 'Back' => "parent.cancelModal()",
+			'Back' => "history.go(-1)",
+		));
+
+//		$this->tpl->assign('no_commit_form', true);
+
+		$this->tpl->assign(array("visit_type_id" => $visit_type_id));
+		$this->tpl->assign('no_grid_buttons', true);
+		$this->tpl->assign('list_title', "Print Agenda");
+		$this->tpl->assign('resource_grid', 'grid/'.$us_agy_id.'/'.$year.'/'.$month.'/'.$day.'/'.$visit_type_id);		
+		$this->tpl->assign_include("filter_tpl", "calendar/print_agenda/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "calendar/print_agenda/grid");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+
+	function grid ($us_agy_id=null, $year=null, $month=null, $day=null, $visit_type_id=null ) {
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+    
+        if(!$us_agy_id){	    	
+		    // $user_id = $this->getUserId();
+		    $us_agy_id = $this->getUsAgyId();
+	    }
+    
+		$user=$this->usagymdl->getByUsAgyId($us_agy_id);
+    
+    	$this->tpl->assign('user',$user->first_name.' '.$user->last_name);
+		$date=$year."-".$month."-".$day;
+		$this->tpl->assign('date',date("D, m-d-Y",strtotime($date)));
+		
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=15", "Date"));
+		$head->append($this->xml->Element("column", "width=15", "Time"));
+		$head->append($this->xml->Element("column", "width=*;align=center", "Patient Name"));
+    	$head->append($this->xml->Element("column", "width=15", "Visit Type"));		
+		$head->append($this->xml->Element("column", "width=20;align=center",  "Pt Phone"));
+		$head->append($this->xml->Element("column", "width=15", "Address"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		if(($year && $month && $day) || $this->input->post('date') ):
+		
+			if( $date = $this->input->post('date') )
+				list($month,$day,$year)=explode('-',$date);
+		
+		    if(!is_null($us_agy_id)){		    	
+				// $rows  = $this->visitlogmdl->getByUser ($us_agy_id, $year, $month, $visit_type_id,null,null, $day, $day );
+				$rows  = $this->visitlogmdl->getByUser ($us_agy_id, $year, $month, $visit_type_id,null,null, $day );
+		    }
+		    else
+		    	$rows = array();
+
+		else:		
+			$rows=array();		
+		endif;
+	
+		foreach($rows as $row) {      
+			$cell = $this->xml->Element("row", "id=" . $row->visit_log_id);
+			if($row->visit_status_id==1){
+				$cell->append($this->xml->Element("cell", null, date("D, m-d",mysql_to_unix($row->visit_date_time))));
+				$cell->append($this->xml->Element("cell", null, date("H:i",mysql_to_unix($row->visit_date_time))));
+			}else{
+				$cell->append($this->xml->Element("cell", null, date("D, m-d",mysql_to_unix($row->visited_date))));
+				$cell->append($this->xml->Element("cell", null, date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_in))." - ".date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_out)) ));
+			}
+		
+			$cell->append($this->xml->Element("cell", null, $row->first_name.' '.$row->last_name));
+      
+			if ($row->visit_log_number) {
+		        $cell->append($this->xml->Element("cell", null, "(" . $row->visit_log_number . ") " . $row->visit_description ));
+      		}else{
+        		$cell->append($this->xml->Element("cell", null, $row->visit_description));
+			}
+      
+			$cell->append($this->xml->Element("cell", null, $row->phone_home));
+			$cell->append($this->xml->Element("cell", null, $row->address));
+
+			$document->append($cell);
+		}
+
+	}
+	function print_preview($us_agy_id = null, $year=null, $month=null, $day=null, $visit_type_id=null){
+		if(!$us_agy_id){	    	
+		    // $user_id = $this->getUserId();
+		    $us_agy_id = $this->getUsAgyId();
+	    }
+    
+		$user=$this->usagymdl->getByUsAgyId($us_agy_id);
+
+		$this->tpl->assign('no_grid_buttons', true);	
+		$this->tpl->assign('additional_buttons', array(
+			'Cancel'=>"location.href='".base_url()."index.php/calendar/print_agenda/$us_agy_id/$year/$month/$day/{$visit_type_id}'",
+			'Print'=>'print()'));
+	
+		
+		$this->tpl->assign('user_id_test', $us_agy_id);
+		$this->tpl->assign('user',@$user->first_name.' '.@$user->last_name); // De Esta Sale
+		$date=$year."-".$month."-".$day;
+		$this->tpl->assign('date',date("D, m-d-Y",strtotime($date)));
+		
+		
+		$date_to = isset($_REQUEST['date_to'])?$_REQUEST['date_to']:'';
+		$date_from = isset($_REQUEST['date_from'])?$_REQUEST['date_from']:'';
+
+		$cms_events = $this->visitlogmdl->getByUser($us_agy_id, $year, $month, $visit_type_id,null,null, $day, null, $date_to);
+		
+		
+		// $rows = $this->visitlogmdl->getByUser($us_agy_id, $year, $month, $visit_type_id,null,null, $day, $day );
+		$rows = $this->visitlogmdl->getByUser($us_agy_id, $year, $month, $visit_type_id,null,null, $day, null, $date_to);
+		$results =  array();
+		foreach ($rows as $row)
+		{
+			$date = "";
+			$time = "";
+			if($row->visit_status_id==1){
+				$date =  date("D, m-d",mysql_to_unix($row->visit_date_time));
+				$time = date("H:i",mysql_to_unix($row->visit_date_time));
+			}else{
+				$date = date("D, m-d",mysql_to_unix($row->visited_date));
+				$time = date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_in))." - ".date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_out));
+			}
+
+			$visit_type = "";
+			if ($row->visit_log_number) {
+				$visit_type =  "(" . $row->visit_log_number . ") " . $row->visit_description;
+			}else{
+				$visit_type =  $row->visit_description;
+			}
+
+			$results[]=array(
+				'Date'=>$date,
+				'Time'=>$time,
+				'Patient_Name'=>$row->first_name.' '.$row->last_name,
+				'Visit_Type'=>$visit_type,
+				'Pt_Phone'=>$row->phone_home,
+				'Address'=>$row->address				
+				);
+		}
+		
+		$this->tpl->assign('rows', $results);
+		$this->tpl->assign('date_to', $date_to);		
+		
+		$this->tpl->assign_include("dynamic_tpl", "calendar/print_agenda/print_preview");
+		$this->tpl->view("parts/ibase_prt_preview", $this->lang->language);
+
+
+	}
+
+	function print_users_agenda($record_ids, $year=null, $month=null, $day=null, $visit_type_id=null){
+    
+	    $date=$year."-".$month."-".$day;
+		$this->tpl->assign('date',$date);
+		$this->tpl->assign('noedit',true);		
+		$this->tpl->assign('additional_buttons', array('Print Preview'=>'do_users_printAgenda(document.getElementById(\'date\').value)','Cancel' => "parent.cancelModal()"));
+
+//		$this->tpl->assign('no_commit_form', true);
+
+		$this->tpl->assign(array("visit_type_id" => $visit_type_id, 'record_ids'=>$record_ids));
+		$this->tpl->assign('no_grid_buttons', true);
+		$this->tpl->assign('resource_grid', 'users_agenda_grid/'.$record_ids.'/'.$year.'/'.$month.'/'.$day.'/'.$visit_type_id);		
+		$this->tpl->assign_include("filter_tpl", "calendar/print_agenda/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "calendar/print_agenda/grid");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+
+	function users_agenda_grid ($record_ids, $year=null, $month=null, $day=null, $visit_type_id=null ) {
+    
+		$date=$year."-".$month."-".$day;		
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Date"));
+		$head->append($this->xml->Element("column", "width=10", "Time"));
+		$head->append($this->xml->Element("column", "width=*;align=center", "Patient Name"));
+    	$head->append($this->xml->Element("column", "width=15", "Visit Type"));		
+		$head->append($this->xml->Element("column", "width=15;align=center",  "Pt Phone"));
+		$head->append($this->xml->Element("column", "width=15", "Address"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		$records = explode(",", $record_ids);        
+        foreach ($this->usagymdl->getByUsAgyIds($records) as $user) {          	
+          	$user_id = $user->us_agy_id;
+          	// $data['users'][] = $user;
+
+			$rows=array();		
+			if(($year && $month && $day) || $this->input->post('date') ){
+			
+				if( $date = $this->input->post('date') )
+					list($month,$day,$year)=explode('-',$date);
+			
+			    if(!is_null($user_id)){		    	
+					// $rows  = $this->visitlogmdl->getByUser ($user_id, $year, $month, $visit_type_id,null,null, $day, $day );
+					$rows  = $this->visitlogmdl->getByUser ($user_id, $year, $month, $visit_type_id,null,null, $day );
+					// exit($this->db->last_query());
+			    }
+			    else
+			    	$rows = array();			
+			}
+			
+          	$cell = $this->xml->Element("row", "id=usr" . $user->us_agy_id);
+	        $cell->append($this->xml->Element("cell", "colspan=6;aligh=center", '<![CDATA[<b>User: <font color="#0000FF">'.$user->last_name.' '.$user->first_name.'</font></b>]]>'));		
+	        $document->append($cell);
+			if (empty($rows)) {
+				$cell = $this->xml->Element("row", "id=norecords" . $user->us_agy_id);
+		        $cell->append($this->xml->Element("cell", "colspan=6;aligh=center", '<![CDATA[No records]]>'));		
+		        $document->append($cell);
+			}else{				
+				foreach($rows as $row) {      
+					$cell = $this->xml->Element("row", "id=" . $row->visit_log_id);
+					if($row->visit_status_id==1){
+						$cell->append($this->xml->Element("cell", null, date("D, m-d",mysql_to_unix($row->visit_date_time))));
+						$cell->append($this->xml->Element("cell", null, date("H:i",mysql_to_unix($row->visit_date_time))));
+					}else{
+						$cell->append($this->xml->Element("cell", null, date("D, m-d",mysql_to_unix($row->visited_date))));
+						$cell->append($this->xml->Element("cell", null, date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_in))." - ".date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_out)) ));
+					}
+				
+					$cell->append($this->xml->Element("cell", null, $row->first_name.' '.$row->last_name));
+		      
+					if ($row->visit_log_number) {
+				        $cell->append($this->xml->Element("cell", null, "(" . $row->visit_log_number . ") " . $row->visit_description ));
+		      		}else{
+		        		$cell->append($this->xml->Element("cell", null, $row->visit_description));
+					}
+		      
+					$cell->append($this->xml->Element("cell", null, $row->phone_home));
+					$cell->append($this->xml->Element("cell", null, $row->address));
+
+					$document->append($cell);
+				}
+			}
+        }     
+        
+
+	}
+
+	function print_users_preview($record_ids, $year=null, $month=null, $day=null, $visit_type_id=null){
+		
+		$this->tpl->assign('no_grid_buttons', true);	
+		$this->tpl->assign('additional_buttons', array(
+			'Cancel'=>"location.href='".base_url()."index.php/calendar/print_users_agenda/$record_ids/$year/$month/$day/{$visit_type_id}'",
+			'Print'=>'print()'));
+	
+		$date=$year."-".$month."-".$day;
+		$this->tpl->assign('date',date("D, m-d-Y",strtotime($date)));
+		$users = array();
+		$records = explode(",", $record_ids);        
+        foreach ($this->usagymdl->getByUsAgyIds($records) as $user) {          	
+          	$user_id = $user->us_agy_id;
+			// $rows = $this->visitlogmdl->getByUser($user_id, $year, $month, $visit_type_id,null,null, $day, $day );
+			$rows = $this->visitlogmdl->getByUser($user_id, $year, $month, $visit_type_id,null,null, $day);
+			$results =  array();
+			foreach ($rows as $row)
+			{
+				$date = "";
+				$time = "";
+				if($row->visit_status_id==1){
+					$date =  date("D, m-d",mysql_to_unix($row->visit_date_time));
+					$time = date("H:i",mysql_to_unix($row->visit_date_time));
+				}else{
+					$date = date("D, m-d",mysql_to_unix($row->visited_date));
+					$time = date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_in))." - ".date("H:i",mysql_to_unix($row->visited_date." ".$row->visited_time_out));
+				}
+
+				$visit_type = "";
+				if ($row->visit_log_number) {
+					$visit_type =  "(" . $row->visit_log_number . ") " . $row->visit_description;
+				}else{
+					$visit_type =  $row->visit_description;
+				}
+
+				$results[]=array(
+					'Date'=>$date,
+					'Time'=>$time,
+					'Patient_Name'=>$row->first_name.' '.$row->last_name,
+					'Visit_Type'=>$visit_type,
+					'Pt_Phone'=>$row->phone_home,
+					'Address'=>$row->address				
+					);
+			}
+			$user->rows = $results;
+			$users[] = $user;
+		}
+		$this->tpl->assign('users', $users);		
+		
+		$this->tpl->assign_include("dynamic_tpl", "calendar/print_agenda/users_print_preview");
+		$this->tpl->view("parts/ibase_prt_preview", $this->lang->language);
+
+
+	}
+	
+	
+ }

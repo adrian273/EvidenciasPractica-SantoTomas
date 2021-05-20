@@ -1,0 +1,196 @@
+<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="6"> 
+	<tr>
+		<td class="ftitle">Create</td>
+		<td>
+			<label><input type="radio" name="create_type" value="visit" onclick="$('#add_event_form').hide();$('#add_docorder_form').hide();$('#add_visit_form').show();" checked="checked"> Visit</label>
+			<label><input type="radio" name="create_type" value="docorder"  id="create_type_DO" onclick="$('#add_event_form').hide();$('#add_visit_form').hide();$('#add_docorder_form').show();"> Doc Order</label>
+			<label><input type="radio" name="create_type"value="event" onclick="$('#add_docorder_form').hide();$('#add_visit_form').hide();$('#add_event_form').show();"> Event</label>
+		</td>
+	</tr>
+</table>
+<form name="add_event_form" id="add_event_form" method="POST" onsubmit="return false" style="display:none">
+	<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="6"> 
+		<tr>
+			<td class="ftitle" style="width: 33%;">Event Type *</td>
+			<td>
+				{html_options options=$event_type_list name='tab106_event_type'}
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">Action Required </td>
+			<td> 
+				<label><input type="radio" name="action_required" value="NO" checked="checked"> No </label>
+				<label><input type="radio"  name="action_required" value="YES"> Yes</label>
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">Action Req Date </td>
+			<td> 
+				<input type="text" name="action_date" id="action_date" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+                <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('action_date'), document.getElementById('fecha_help'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle" valign="top">Comments:</td>
+			<td>
+				<textarea name="event_comment" style="width:100%;" wrap="auto" rows="6">{$event_comment}</textarea>
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">Visibility: *</td>
+			<td>
+				{html_radios options=$visibility_list selected='public' name='visibility'}
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2" height="100%" valign="bottom">
+				<input type="button" class="btn" value="{$grl_save}" onclick="ajax('{$index_url}{$resource_path}/addEvent', ajaxParseAction, 'add_event_form');">
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="tt_HideInit()">
+				<input type="hidden" name="cms485_id" value="{$cms485_id}">
+				<input type="hidden" name="visit_date" value="{$visit_date}">				
+				<input type="hidden" name="create_type" value="event">				
+			</td>
+		</tr>
+	</table>
+</form>
+<form name="add_visit_form" id="add_visit_form" method="POST" onsubmit="return false">
+	<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="6"> 
+		<tr>
+			<td class="ftitle">Task Date</td>
+			<td id="day_add_event">
+				{$visit_date}
+			</td>
+		</tr>
+
+		<tr>
+			<td class="ftitle" nowrap>Task time</td>
+			<td>
+				{html_select_time display_seconds=false use_24_hours=false minute_interval=5 time='20001010010000' prefix='visit_time_'}
+				</select>
+			</td>
+		</tr>
+
+		<tr>
+			<td class="ftitle" nowrap>User/Clinician * &nbsp;&nbsp;&nbsp;</td>
+			<td>
+				{if $team_list}
+				{html_options options=$team_list selected=$visit_user_id name='visit_user_id' onchange="refreshDisciplineList(this.value)"}
+				{*{html_options options=$team_list selected=$visit_user_id name='visit_user_id' onchange="refreshVisitType(this.value)"}*}
+				{else}
+				{$first_name} {$last_name}
+				<input type="hidden" name="visit_user_id" value="{$us_agy_id}">
+				{/if}
+			</td>
+		</tr>
+		<tr id="tr_disc_title" style="display:none;">
+			<td class="ftitle" nowrap>Discipline:</td>
+			<td id="tr_disc" nowrap>
+				<select name="visit_user_disc" id="visit_user_disc" onchange="typeTaskType(this.value)">
+					{*{html_options options=$user_discipline_lists|truncate has_firts_option=true }*}
+				</select>
+			</td>
+		</tr>
+
+		<tr id="row_task_type">
+			<td class="ftitle">Task Type *</td>
+			<td>
+				{html_options options=$visit_type_list selected=$visit_type_id name='visit_type_id' id='visit_type_id'}
+				<!--<select name="visit_type_id" id="visit_type_id">
+				
+				</select>-->
+			</td>
+		</tr>
+
+		<tr>
+			<td class="ftitle">Comments</td>
+			<td>
+				<textarea name="visit_comments" style="width: 100%; height: 50px" wrap="auto"></textarea>
+			</td>
+		</tr>
+
+		<tr>
+			<td colspan="2" height="100%" valign="bottom">
+				<input type="button" class="btn" value="{$grl_save}" onclick="ajax('{$index_url}{$resource_path}/addEvent', ajaxParseAction, 'add_visit_form');">
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="tt_HideInit()">
+				<input type="hidden" name="cms485_id" value="{$cms485_id}">
+				<input type="hidden" name="visit_date" value="{$visit_date}">
+				<input type="hidden" name="create_type" value="visit">				
+				<input type="hidden" name="confirm_last_ev_date" id="confirm_last_ev_date" value="0">				
+			</td>
+		</tr>
+	</table>
+</form>
+<form name="add_docorder_form" id="add_docorder_form" method="POST" onsubmit="return false" style="display:none">
+	<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="6"> 
+		<tr>
+			<td class="ftitle" nowrap>Order By &nbsp;&nbsp;&nbsp;</td>
+			<td>
+				{$first_name} {$last_name}
+				<input type="hidden" name="visit_user_id" value="{$us_agy_id}">
+			</td>
+		</tr>
+		<tr>
+		    <td class="ftitle" >Order Type *</td>
+		    <td>
+		      {html_options options=$order_type_list name='order_type_id' selected=$order_type_id style='width: 165px;'}
+		    </td>
+	  	</tr>
+		<tr>
+			<td class="ftitle" nowrap valign="top">Order Description * &nbsp;&nbsp;&nbsp;</td>
+			<td>
+				<textarea name="do_description" id="do_description" style="width:100%;" wrap="auto" rows="6">{$do_description}</textarea>
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle" nowrap>Physician Name * &nbsp;&nbsp;&nbsp;</td>
+			<td>
+				{html_options options=$physician_list id='phys_user_id' name='phys_user_id' selected=$phys_user_id}
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2" height="100%" valign="bottom">
+				<input type="button" class="btn" value="{$grl_save}" onclick="ajax('{$index_url}{$resource_path}/addEvent', ajaxParseAction, 'add_docorder_form');">			
+				<input type="button" class="btn" value="{$grl_subt_app}" onclick="checkEpass()">
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="tt_HideInit()">
+				<input type="hidden" name="cms485_id" value="{$cms485_id}">
+				<input type="hidden" name="visit_date" value="{$visit_date}">
+				<input type="hidden" name="visit_type_id" value="200">
+				<input type="hidden" name="submit_for_approval" id="submit_for_approval" value="0">
+				<input type="hidden" name="create_type" value="docorder">				
+			</td>
+		</tr>
+	</table>
+</form>
+
+<script language="JavaScript" type="text/javascript">
+	var dhxWins;  
+    
+    function checkEpass(){literal}{{/literal}
+	    	dhxWins = new dhtmlXWindows();
+	    	dhxWins.enableAutoViewport(false);
+	    	dhxWins.attachViewportTo("vp_container");
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			var w1 = dhxWins.createWindow("w1", 10, 10, 350, 200);
+			w1.setText("Enter your Electronic Password");
+			w1.button("park").hide();
+			w1.button("minmax1").hide();
+		    w1.denyResize(); // deny resizing
+		    w1.denyMove(); 
+		    dhxWins.window('w1').setModal(true);
+		    dhxWins.window('w1').center();
+			w1.attachURL("{$index_url}/task/task/modalCheckEpassword/0");
+		    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+		        w1.hide();
+				w1.setModal(false);
+		    {literal}}{/literal});
+	    {literal}}{/literal});
+    {literal}}{/literal}
+    
+    function submitForm(){literal}{{/literal}
+		dhxWins.window('w1').close();	
+	    setValue('submit_for_approval', 1);
+		// add_docorder_form.submit();
+		ajax('{$index_url}{$resource_path}/addEvent', ajaxParseAction, 'add_docorder_form');
+    {literal}}{/literal};
+</script>

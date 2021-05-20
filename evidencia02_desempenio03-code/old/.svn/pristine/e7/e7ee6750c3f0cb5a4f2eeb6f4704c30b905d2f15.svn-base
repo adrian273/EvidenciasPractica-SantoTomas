@@ -1,0 +1,40 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/editDetail/{$entity_id}">
+  <tr>
+    <td class="ftitle" nowrap>Visit Amount</td>
+    <td>
+		<input type="text" name="visit_amount" value="{$visit_amount}" size="8" class="notnull"/>
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" nowrap>Mileage Amount</td>
+    <td>
+		<input type="text" name="mileage_amount" value="{if $mileage_amount ne ''}{$mileage_amount}{else}0.00{/if}" size="8" class="notnull"/>
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" colspan="2">Comments</td>
+  </tr>
+  <tr>
+    <td height="100%" colspan="2">
+		<textarea name="payroll_comments" style="height: 100%; width: 100%" wrap="auto">{$payroll_comments}</textarea>
+    </td>
+  </tr>
+  <tr> 
+    <td valign="bottom" colspan="2">
+  		<input type="submit" name="submit" class="btn" value="{$grl_save}">
+  		<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.unload()">
+    </td>
+  </tr>
+ </form>
+</table> 
+
+<script>
+{literal}
+	$(document).ready(function() {
+		$('.notnull').change(function(){
+			if($(this).val() == '') $(this).val('0.00');
+		});
+	});
+{/literal}
+</script>

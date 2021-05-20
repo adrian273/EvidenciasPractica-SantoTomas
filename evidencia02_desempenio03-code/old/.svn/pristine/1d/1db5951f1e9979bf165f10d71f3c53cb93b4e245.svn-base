@@ -1,0 +1,88 @@
+<?
+
+ class doprintqueuemdl extends Model {
+	
+	var $prt_do_print_queue_id;
+	var $doc_doctor_order_id;
+	var $user_id;
+	var $prt_do_print_queue_status;
+	var $creation_datetime;
+
+	function doprintqueuemdl () {
+
+		parent::Model();
+		
+	}
+
+	function insert () {
+		
+		$this->db->insert('prt_do_print_queue', $this);
+		
+	}
+	
+	function get ( $agency_id, $status=null ) {
+		
+		$this->db->select('prt_do_print_queue.*, doc_doctor_order.*, doc_doctor_order_type.*, CONCAT(us_agy.first_name," ",us_agy.last_name) as user_name, CONCAT(pat_patient.first_name," ",pat_patient.last_name) as patient_name');
+
+//		$this->db->select("doc_doctor_order.*, tab_parameters.*, doc_doctor_order_type.*");
+		
+		$this->db->join('doc_doctor_order', 	 'prt_do_print_queue.doc_doctor_order_id = doc_doctor_order.doc_doctor_order_id');
+		$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id AND agency_id = ' . $agency_id);
+		$this->db->join('tab_parameters', 		 'tab_parameters.tab_value = doc_doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		$this->db->join('us_agy',				 'us_agy.us_agy_id = prt_do_print_queue.user_id');
+
+		if (!is_null($status) && !is_null($status)) {
+			$this->db->where('prt_do_print_queue_status', $status);
+		}
+
+		$this->db->order_by('creation_datetime', 'DESC');
+
+		return $this->db->get('prt_do_print_queue')->result();	
+			
+	}
+
+  function getByIds ( $agency_id, $ids=array() ) {
+		
+		$this->db->select('prt_do_print_queue.*, doc_doctor_order.*, doc_doctor_order_type.*, CONCAT(us_agy.first_name," ",us_agy.last_name) as user_name, CONCAT(pat_patient.first_name," ",pat_patient.last_name) as patient_name');
+
+//		$this->db->select("doc_doctor_order.*, tab_parameters.*, doc_doctor_order_type.*");
+		
+		$this->db->join('doc_doctor_order', 	 'prt_do_print_queue.doc_doctor_order_id = doc_doctor_order.doc_doctor_order_id');
+		$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id AND agency_id = ' . $agency_id);
+		$this->db->join('tab_parameters', 		 'tab_parameters.tab_value = doc_doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		$this->db->join('us_agy',				 'us_agy.us_agy_id = prt_do_print_queue.user_id');
+
+		
+
+    $this->db->where_in('prt_do_print_queue_id', $ids);
+    
+		$this->db->order_by('creation_datetime', 'DESC');
+
+		return $this->db->get('prt_do_print_queue')->result();	
+			
+	}
+  
+	function getById ( $prt_do_print_queue_id ) {
+
+		$this->db->where('prt_do_print_queue_id', $prt_do_print_queue_id);
+		
+		return $this->db->get('prt_do_print_queue')->row();
+				
+	}
+	
+	function updatePrintStatus ( $prt_do_print_queue_id ) {
+		
+		$this->db->where('prt_do_print_queue_id', $prt_do_print_queue_id);
+		$this->db->update('prt_do_print_queue' ,array('prt_do_print_queue_status' => $this->prt_do_print_queue_status));
+		
+	}	
+	
+	function delete ( $prt_do_print_queue_id ) {
+		
+		$this->db->delete('prt_do_print_queue', array('prt_do_print_queue_id' => $prt_do_print_queue_id));
+		
+	}
+	
+ }

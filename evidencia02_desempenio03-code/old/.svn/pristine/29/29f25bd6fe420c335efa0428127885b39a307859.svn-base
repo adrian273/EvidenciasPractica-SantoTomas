@@ -1,0 +1,46 @@
+  <link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.8/base/jquery-ui.css" type="text/css" />
+  <script src="{$base_url}style/jquery-ui.1.8.min.js" type="text/javascript"></script>
+
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+    <tr height="35"> 
+      <td>
+
+        <table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+          <tr>
+            <td nowrap>
+              <input type="text" name="keyword" id="keyword">
+              <input type="submit" value="Search">
+            </td>
+            <td align="left" width="70%">
+              {* <label><input type="radio" name="status" {if $status eq ''} checked="checked" {/if} value="" onclick="loadGrid();" /> Both</label> *}
+              <label><input type="radio" name="status" value="1" onclick="loadGrid();" checked="checked" /> Active</label>
+              <label><input type="radio" name="status" value="0" onclick="loadGrid();" /> Inactive</label>
+            </td>
+            <td width="30%"></td>
+            <td align="right">
+             {html_options first_option='All Profiles' options=$profile_list name='profile_id' onchange='loadGrid()'}
+            </td>
+          </tr>
+        </table> 
+
+      </td>
+  </tr> 
+  <!-- <tr><td>
+  <div id="toolbarObj" style="float: left"></div>
+  </td></tr> -->
+</table> 
+
+<script>
+{literal}$(document).ready(function() {
+
+    $("input#keyword").autocomplete({
+
+    source: {/literal}{$name_source_obj}{literal}
+
+    });
+
+  });{/literal}
+
+  
+</script>

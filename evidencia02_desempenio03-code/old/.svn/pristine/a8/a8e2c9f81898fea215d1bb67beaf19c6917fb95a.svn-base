@@ -1,0 +1,55 @@
+<?php
+
+ class TinettiGaitScoresMdl extends Model {
+
+	var $id;
+	var $visit_log_id;
+	var $indication_of_gait;
+	var $step_length_and_height_0;
+	var $step_length_and_height_1;
+	var $step_length_and_height_2;
+	var $foot_clearance_0;
+	var $foot_clearance_1;
+	var $foot_clearance_2;
+	var $step_symmetry;
+	var $step_continuity;
+	var $path;
+	var $trunk;
+	var $walking_time;
+  	
+	function TinettiGaitScoresMdl () {
+		parent::Model();
+	}
+	
+	function get($visit_log_id){
+		$this->db->where('tinetti_gait_scores.visit_log_id',$visit_log_id);
+		$query = $this->db->get('tinetti_gait_scores');
+		return $query->row();
+	}
+	
+	function getById ( $id ) {
+		$this->db->where('id', $id);
+		$query = $this->db->get('tinetti_gait_scores');
+		return $query->row();
+	}
+	
+	function insert (  $visit_log_id ) {
+		$this->visit_log_id = $visit_log_id;
+		$this->id = null;
+		$this->db->insert('tinetti_gait_scores', $this);		
+	}
+	
+	function update ( $visit_log_id, $id ) {
+		$this->visit_log_id = $visit_log_id;
+		$this->id = $id;
+		$this->db->where('id', $id);
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->update('tinetti_gait_scores', $this);		
+	}
+	
+	function delete ( $id ) {
+		$this->db->where('id', $id);
+		$this->db->delete('tinetti_gait_scores');
+	}
+	
+ }

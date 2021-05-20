@@ -1,0 +1,280 @@
+<?php
+class CaseConferenceMdl extends Model {
+
+	  var $case_conf_id;
+	  var $conference_type="30";
+	  var $conference_date;
+	  var $pat_cond_declined=0;
+	  var $pat_cond_unstable=0;
+	  var $pat_cond_unchanged=0;
+	  var $pat_cond_improved=0;
+	  var $pat_cond_stable=0;
+	  var $unusual_home="";
+	  var $hbs_1_bed=0;
+	  var $hbs_2_requieres=0;
+	  var $hbs_3_poor=0;
+	  var $hbs_4_unsteady=0;
+	  var $hbs_5_fatigue=0;
+	  var $hbs_6_severe=0;
+	  var $hbs_7_needs=0;
+	  var $summ_prog_goals="";
+	  var $nutritional_needs="";
+	  var $adv_dir_dnr=NULL;
+	  var $new_diag_prob="";
+	  var $new_goals="";
+	  var $new_change_disc="";
+	  var $future_visits="";
+	  var $additional_comments="";
+	  var $nurse_or_pt_user_id=0;
+	  var $nurse_or_pt_date;
+	  var $sum_sent_physician=0;
+	  var $sum_sent_physician_date;
+	  var $physician_user_id;
+	  var $creation_user_id;
+	  var $creation_datetime;
+	  var $modify_user_id;
+	  var $modify_date;
+
+
+	function CaseConferenceMdl() {
+		
+		parent::Model();
+		
+	}
+	
+	function nurse_name ( $nurse_id,$case_conf_id ) {
+		
+		$this->db->select("CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name");
+		
+		$this->db->join('us_agy', 'us_agy_id = nurse_or_pt_user_id');
+		
+		$this->db->where("nurse_or_pt_user_id", $nurse_id);
+		
+		$this->db->where("case_conf_id",$case_conf_id);
+		
+		$query = $this->db->get('case_conference');
+		//die($this->db->last_query());
+		//return $query->result2('complete_name');
+		
+		if ($query->num_rows() > 0)
+		{
+		   //$row = $query->row_array();
+		   return $query->row_array();
+		}
+		
+	}
+	function getAgencyId ( $nurse_id ) {
+		
+		$this->db->select("*",false);
+		$this->db->join('case_conference', 'us_agy_id = nurse_or_pt_user_id', 'LEFT');
+		$this->db->where("nurse_or_pt_user_id", $nurse_id);
+		$this->db->groupby("us_agy_id");
+		
+		$query = $this->db->get('us_agy');
+		//die($this->db->last_query());
+		if ($query->num_rows() > 0)
+		{
+			return $query->row();
+			//return $query->row_array();
+		}
+		
+	}
+
+	function getByEpidode ( $cms485_id ) {
+//die($cms485_id);
+		/*$this->db->join('tab_parameters', 'tab_parameters.tab_value = doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = doctor_order.order_by_user_id', 'LEFT');
+		
+		$this->db->where("cms485_id", $cms485_id);
+		$this->db->orderby("doctor_order_id", "DESC");
+		
+		$query = $this->db->get("doctor_order");
+		die($this->db->last_query());*/
+		//return $query->result();
+		//**************************************************  Big Boss Code Start Here ***********************************
+		/*$sql = 'select * from case_conference where cms485_id = '.$cms485_id.'';
+		$query = $this->db->query($sql);
+		return $query->result();*/
+		//**************************************************  Big Boss Code End Here  ************************************
+		$sql = "SELECT *, CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name FROM case_conference LEFT JOIN us_agy ON us_agy_id = physician_user_id where cms485_id = '".$cms485_id."'";
+		//die($sql);
+		//$sql = 'select * from case_conference ccon inner join  where cms485_id = '.$cms485_id.'';
+		$query = $this->db->query($sql);
+		return $query->result();
+	  	
+	}
+
+	function getById ( $case_conf_id ) {
+
+		$this->db->where("case_conf_id", $case_conf_id);
+		
+		$query = $this->db->get("case_conference");
+		//die($this->db->last_query());
+		return $query->row();
+		
+	}
+	function getById2 ( $case_conf_id ) {
+
+		$this->db->where("case_conf_id", $case_conf_id);		
+		
+		$query = $this->db->get('case_conference');
+		//die($this->db->last_query());
+		if ($query->num_rows() > 0)
+		{
+		   return $query->row_array();
+		}
+		
+	}
+	
+	function getByUserOrderId ( $order_by_user_id, $keyword=null, $tab_023_order_status=null ) {
+
+		$this->db->select("pat_patient.patient_id, doctor_order.*, us_agy.*, tab_parameters.*");
+		
+		$this->db->join('cms_485',   			'cms_485.cms485_id = doctor_order.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 'tab_parameters.tab_value = doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = doctor_order.order_by_user_id', 'LEFT');
+		
+		if (!is_null($tab_023_order_status)) {
+			$this->db->where("tab_023_order_status", $tab_023_order_status);
+		}
+		
+		if (!is_null($keyword)) {
+			$this->db->where("(pat_patient.first_name LIKE '%{$keyword}%' OR pat_patient.last_name LIKE '%{$keyword}%')");
+		}
+		
+		$this->db->where("order_by_user_id", $order_by_user_id);
+		
+		$this->db->orderby("doctor_order_id", "DESC");
+		
+		$query = $this->db->get("doctor_order");
+		return $query->result();
+		
+	}
+
+	function insert ( $cms485_id ) {
+
+		$this->cms485_id = $cms485_id;
+
+		$this->db->insert("case_conference", $this);
+		//die($this->db->last_query());
+		$this->case_conf_id = $this->db->insert_id();
+		
+		$case_conf_disciplines=$this->input->post('case_conf_disciplines');
+		for($i=0;$i<count($case_conf_disciplines);$i++){
+			$this->db->insert('case_conf_disciplines',array('case_conf_id'=>$this->case_conf_id,'user_id'=>$case_conf_disciplines[$i]));
+		}
+	}
+
+	function update ( $cms485_id, $case_conf_id ) {
+
+		$this->case_conf_id = $case_conf_id;
+		$this->cms485_id = $cms485_id;
+		
+		$this->db->where("case_conf_id", $case_conf_id);
+
+		$this->db->update("case_conference", $this);
+		
+		$this->db->where('case_conf_id',$case_conf_id);
+		$this->db->delete('case_conf_disciplines');
+		
+		$case_conf_disciplines=$this->input->post('case_conf_disciplines');
+		for($i=0;$i<count($case_conf_disciplines);$i++){
+			$this->db->insert('case_conf_disciplines',array('case_conf_id'=>$case_conf_id,'user_id'=>$case_conf_disciplines[$i]));
+		}
+		
+	}
+
+	function delete ( $case_conf_id ) {
+
+		$this->db->where('case_conf_id',$case_conf_id);
+		$this->db->delete('case_conf_disciplines');
+		
+		$this->db->where("case_conf_id", $case_conf_id);
+		
+		$this->db->delete("case_conference");
+		
+		
+		
+	}
+	
+	function report1 ( $agency_id ) {
+		
+		$this->db->join('cms_485',   			'cms_485.cms485_id = doctor_order.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 		'tab_parameters.tab_value = doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		
+		$this->db->where("agency_id", $agency_id);
+		
+		if ($doctororder_date_ini = $this->input->post('doctororder_date_ini')) {
+			$this->db->where("order_date >=", standard_date(human_to_unix($doctororder_date_ini), 'MYSQL_NOTIME'));
+		}
+		
+		if ($doctororder_date_fin = $this->input->post('doctororder_date_fin')) {
+			$this->db->where("order_date <=", standard_date(human_to_unix($doctororder_date_fin), 'MYSQL_NOTIME'));
+		}
+		
+		if ($tab_013_status = $this->input->post('tab_013_status')) {
+			$this->db->where("tab_013_status", $tab_013_status);
+		}
+		
+		$this->db->orderby("order_date", "DESC");
+		
+		$query = $this->db->get("doctor_order");
+		return $query->result();
+		
+	}
+	function getDisciplineUserIds($case_conf_id)
+	{		
+		$this->db->where('case_conf_id',$case_conf_id);
+		$disciplines=$this->db->get('case_conf_disciplines')->result();
+		$ids=array();
+		for($i=0;$i<count($disciplines);$i++){
+			$ids[$i]=$disciplines[$i]->user_id;
+		}
+		return $ids;
+	}
+	
+	function getDisciplineUsers($case_conf_id)
+	{		
+		$this->db->select("us_agy.us_agy_id,CONCAT(first_name, ' ', last_name, ' - ', short_description) as complete_name");
+		$this->db->where('case_conf_id',$case_conf_id);
+		$this->db->from('case_conf_disciplines');
+		$this->db->join('us_agy','case_conf_disciplines.user_id=us_agy.us_agy_id');
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = us_agy.discipline_id');
+		$this->db->order_by("first_name", "asc");
+		//$this->db->select('us1_user.*');
+		$query = $this->db->get();
+		$disciplines=$query->result();
+		//die(print_r($disciplines));
+		return $disciplines;
+	}
+	
+	/*function getNurseOrPT ( $patient_id ) {
+		
+		$this->db->select("us1.us_agy_id, CONCAT_WS(' ', us1.first_name, us1.last_name) as complete_name");
+		
+		//$this->db->join('ppr_patient_provider ppp', 'ppp.patient_id = pp.patient_id');
+		
+		$this->db->join('us_agy us1', 'us1.user_id = ppp.user_id');
+		
+		//$this->db->join('dis_discipline dd', 'dd.discipline_id = us1.discipline_id');
+		
+		//$this->db->where("dd.discipline_id", '1');
+		//$this->db->or_where("dd.discipline_id", '2');
+		
+		$this->db->where("us1.discipline_id", '1');
+		$this->db->or_where("us1.discipline_id", '2');
+		
+		$this->db->groupby("us1.us_agy_id");
+		
+		//$query = $this->db->get('pat_patient pp');
+		$query = $this->db->get('ppr_patient_provider ppp');
+		//die($this->db->last_query());
+		return $query->result2('us_agy_id', 'complete_name');
+		
+	}*/
+
+}

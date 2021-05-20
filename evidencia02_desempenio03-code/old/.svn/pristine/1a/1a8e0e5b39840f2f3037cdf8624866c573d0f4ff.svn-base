@@ -1,0 +1,1288 @@
+<?php
+
+include 'visitform.php';
+
+class otev extends VisitForm
+{
+
+    public function otev()
+    {
+
+        parent::VisitForm();
+
+        $this->load->model('otevmdl');
+
+        $this->tpl->assign("resource_path", "task/otev");
+        $this->tpl->assign(array(
+            "tab_page" => true,
+        ));
+
+        $this->tpl->assign('tab_20_list', $this->parametermdl->getByType(20));
+        $this->tpl->assign('tab_25_list', $this->parametermdl->getByType(25));
+        $this->tpl->assign('tab_33_list', $this->parametermdl->getByType(33));
+        $this->tpl->assign('tab_47_list', $this->parametermdl->getByType(47));
+        //$this->tpl->assign('tab_52_list', $this->parametermdl->getByType(52));
+        $this->tpl->assign('tab_52_list', array(
+            1 => 1,
+            2 => 2,
+        ));
+
+        $this->tpl->assign('tab_87_list', $this->parametermdl->getByType(87));
+        //$this->tpl->assign('tab_92_list', $this->parametermdl->getByType(92));
+        $this->tpl->assign('tab_32_list', $this->parametermdl->getByType(32));
+        $this->tpl->assign('tab_62_list', $this->parametermdl->getByType(62));
+
+        $this->tpl->assign('tab_64_list', $this->parametermdl->getByType(64));
+        $this->tpl->assign('validatationVisit', true);
+    }
+
+    public function index($visit_log_id, $action = 'task', $window = 'self')
+    {
+
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        if (!count($this->otevmdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+            $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($otevs) == 0) {
+                $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // Look into all prev periods
+            }
+
+            if (count($otevs)) {
+                $otev = $otevs[count($otevs) - 1];
+
+                $prev_visit_log_id = $otev->visit_log_id;
+
+                $not_to_import = array(
+                    'visit_log_id',
+                    'ot_assess_id',
+                    'tab_75_pain_assessment',
+                    'pain_location',
+                    'pain_control',
+                    'p1_sa_bp',
+                    'p1_sa_sitt_lyi_stand',
+                    'p1_sa_hr',
+                    'p1_sa_o2_sat',
+                    'p1_sa_skin',
+                    'p1_fun_sts_tab047_dres_upp_ext',
+                    'p1_fun_sts_tab047_dres_low_ext',
+                    'p1_fun_sts_tab047_feed',
+                    'p1_fun_sts_tab047_adap_dev_uten',
+                    'p1_fun_sts_tab047_groo_hair',
+                    'p1_fun_sts_tab047_groo_nail',
+                    'p1_fun_sts_tab047_groo_Shav',
+                    'p1_fun_sts_tab047_urin_toil',
+                    'p1_fun_sts_tab047_bath_bed',
+                    'p1_fun_sts_tab047_hom_mak_kit_laud',
+                    'p1_fun_sts_tab047_hom_mak_meal_prep',
+                    'upload_document_name',
+                    'upload_document_name2',
+                );
+                foreach ($otev as $k => $v) {
+                    if (!in_array($k, $not_to_import) and property_exists($this->otevmdl, $k)) {
+                        $this->otevmdl->$k = $v;
+                    }
+
+                }
+
+                if (count($this->otevmdl->get($visit_log_id))) {
+                    $this->otevmdl->visit_log_id = $visit_log_id;
+                    $this->otevmdl->verbal_doctor_order = 1;
+                    $this->otevmdl->verbal_doctor_order_date = $visitlog->visit_date_time;
+                    $this->otevmdl->update($visit_log_id);
+                } else {
+                    $this->otevmdl->visit_log_id = $visit_log_id;
+                    $this->otevmdl->verbal_doctor_order = 1;
+                    $this->otevmdl->verbal_doctor_order_date = $visitlog->visit_date_time;
+                    $this->otevmdl->insert($visit_log_id);
+                }
+            }
+
+        } else {
+            $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($otevs) == 0) {
+                $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // Look into all prev periods
+            }
+            if (count($otevs)) {
+                $otev = $otevs[count($otevs) - 1];
+
+                $prev_visit_log_id = $otev->visit_log_id;
+
+            }
+        }
+
+        $otevs = $this->otevmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+        if (count($otevs)) {
+            $otev = $otevs[0];
+
+            $next_visit_log_id = $otev->visit_log_id;
+        }
+
+        $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+        $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+        $this->assignObject($visitlog);
+        $OTEV = $this->otevmdl->get($visit_log_id);
+        if (empty($OTEV)) {
+            $OTEV = $this->otevmdl->getEmpty();
+        }
+        $this->assignObject($OTEV);
+
+        $assess_type = null;
+        if ($prev_visit_log_id) {
+            $prev_visitlog = $this->visitlogmdl->getById($prev_visit_log_id);
+            $this->tpl->assign_by_ref('prev_visitlog', $prev_visitlog);
+            $this->tpl->assign_by_ref('prev_otev', $this->otevmdl->get($prev_visit_log_id));
+            // }else if(@$OTEV->tab_92_assess_type == NULL OR @$OTEV->tab_92_assess_type==1){
+        } else {
+            $this->load->model('otevinitialmdl');
+            $assess_type = 'initial';
+            $this->tpl->assign('assess_type', 'initial');
+            $this->tpl->assign_by_ref('prev_otev', $this->otevinitialmdl->get($visit_log_id));
+            /*if (count($this->otevinitialmdl->get($visit_log_id))) {
+        $this->tpl->assign('initial_edit', 'no');
+        }*/
+
+        }
+
+        $rules = array(
+            'visit_duration' => 'required|callback_checkduration',
+        );
+
+        $fields = array(
+            'visit_duration' => 'Visit Duration',
+        );
+
+        if ($this->input->post('verbal_doctor_order') == 1) {
+            $rules['verbal_doctor_order_date'] = 'required';
+            $fields['verbal_doctor_order_date'] = 'Obtained Order Date';
+        }
+
+        $this->validation->set_fields($fields);
+        $this->validation->set_rules($rules);
+
+        if ($this->validation->run() == true) {
+
+            if ($this->updateFormEdition($visit_log_id)) {
+                $this->assignPostData($this->otevmdl);
+
+                if ($this->input->post('p2_discha') == false) {
+                    $this->otevmdl->p2_discha = null;
+                }
+
+                if (count($this->otevmdl->get($visit_log_id))) {
+                    $this->otevmdl->update($visit_log_id);
+                } else {
+                    $this->otevmdl->insert($visit_log_id);
+                }
+
+                //echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+                if ($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id and $this->visitlogmdl->visit_status_id == 8) {
+                    // when tasks are "sent for approval" they should be copied to the vt_ot_evaluation_copy table
+                    $this->db->query("REPLACE INTO vt_ot_evaluation_copy SELECT * FROM `vt_ot_evaluation` WHERE visit_log_id = {$visit_log_id}");
+                }
+
+                $this->load->helper('ajax');
+
+                $this->load->model('otevinitialmdl');
+
+                if (!$prev_visit_log_id) {
+                    if (count($this->otevinitialmdl->get($visit_log_id))) {
+                        $this->assignPostData($this->otevinitialmdl);
+                        $this->otevinitialmdl->update($visit_log_id);
+                    } else if (!isAjax()) {
+                        $this->assignPostData($this->otevinitialmdl);
+                        $this->otevinitialmdl->insert($visit_log_id);
+                    }
+                }
+
+                if (isAjax()) {
+                    echo "1";
+                    exit;
+                } else {
+                    // if(@$OTEV->tab_92_assess_type == NULL OR @$OTEV->tab_92_assess_type==1){
+                    if (!$prev_visit_log_id) {
+                        $this->tpl->assign('assess_type', 'initial');
+                        $this->tpl->assign_by_ref('prev_otev', $this->otevinitialmdl->get($visit_log_id));
+                    }
+
+                    $OTEV = $this->otevmdl->get($visit_log_id);
+
+                    $this->assignObject($OTEV);
+                }
+            }
+
+            $this->formRedirection($visit_log_id);
+
+        }
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            6,
+            7,
+        )));
+        $this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            6,
+        )));
+
+        $additional_buttons = array();
+
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                if ($OTEV->upload_document_name OR $OTEV->upload_document_name2) {
+                    $additional_buttons['Change Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                    $additional_buttons['Remove Document'] = 'removeScannedDocument(' . $visit_log_id . ')';
+                } else {
+                    $additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                }
+            }
+        }
+
+        $additional_buttons['Patient Signature'] = 'capture_pt_signature(' . $visit_log_id . ')';
+        $this->tpl->assign('additional_buttons', $additional_buttons);
+
+        $this->getPatientInfo($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/otev");
+        $this->setfbase($visit_log_id, $action);
+
+        // For user with profile=Company or Agency Manager, for notes w/scanned documents,
+        // we need to also display button "Save" in addition to "Submit for approval"
+        if ($OTEV->upload_document_name
+            and $visitlog->visit_user_id != $this->getUsAgyId()
+            and ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2)
+            and ($this->getUserProfileId() == 1 or $this->getUserProfileId() == 3)) {
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/fbase");
+        }
+
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    public function capture_pt_signature($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        // $otev = $this->otevmdl->get($visit_log_id);
+        //echo FCPATH;
+        $rules = array(
+            'signature' => 'required',
+        );
+        $this->validation->set_rules($rules);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+
+        if ($this->validation->run() == false) {
+            // get the image name based on the visit_log_id
+            // $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+            //echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+            if (isset($visitlog->signature)) {
+                $this->tpl->assign("signature", $visitlog->signature);
+            }
+            $this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+            $this->tpl->view("task/ibase", $this->lang->language);
+        } else {
+            if (!is_null($this->input->post('signature'))) {
+                /*if (empty($otev)) {
+                $this->otevmdl->visit_log_id = $visit_log_id;
+                $this->otevmdl->insert($visit_log_id);
+                }*/
+
+                $signature = $this->input->post('signature');
+                $temp_array = explode(",", $signature);
+                $encoded_image = $temp_array[1];
+                $decoded_image = base64_decode($encoded_image);
+                $signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+                $upload_path = str_replace("\\", "/", FCPATH) . "upload/signatures/";
+
+                file_put_contents($upload_path . $signature_file_name, $decoded_image);
+                $this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+
+                $config = &get_config();
+
+                echo 'Signature has been captured and saved successfully.';
+                echo '<script>
+					setTimeout(function(){
+						parent.location.href=\'' . $config["index_url"] . 'task/otev/index/' . $visit_log_id . '?r=' . time() . '#anchor_pt_signature\';
+					}, 2000);
+				</script>';
+            }
+        }
+    }
+
+    public function upload_document($visit_log_id)
+    {
+        $can_upload = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_upload = true;
+            }
+        }
+
+        if (!$can_upload) {
+            exit('Can\'t Upload!');
+        }
+
+        if ((isset($_FILES['document']) and $_FILES['document']['error'] == 0) OR (isset($_FILES['document2']) AND $_FILES['document2']['error']==0)) {
+            $config = &get_config();
+
+            // Save form 
+            $fname = "";
+            $fname2 = "";
+
+            if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+                $fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+                $fname = str_replace(" ", "_", $fname);
+                $fname = str_replace("%", "_", $fname);
+                $fname = str_replace("#", "", $fname);
+                $fname = str_replace("&", "", $fname);
+                $fname = str_replace(":", "-", $fname);
+                
+                if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH . '/datastore/otev/' . $fname)) {
+                    $fname = "";
+                }
+            }
+
+            if (isset($_FILES['document2']) AND $_FILES['document2']['error']==0) {
+                $fname2 = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document2']['name'], PATHINFO_EXTENSION);
+                $fname2 = str_replace(" ","_",$fname2);
+                $fname2 = str_replace("%","_",$fname2);
+                $fname2 = str_replace("#","",$fname2);
+                $fname2 = str_replace("&","",$fname2);
+                $fname2 = str_replace(":","-",$fname2);
+                if (!move_uploaded_file($_FILES['document2']['tmp_name'], FCPATH.'/datastore/otev/'.$fname2)) {
+                    $fname2 = "";
+                }
+            }
+
+
+            // $fname = microtime()."_".$fname;
+            if($fname OR $fname2) {
+                $otev = $this->otevmdl->get($visit_log_id);
+
+                if (empty($otev)) {
+                    $this->otevmdl->visit_log_id = $visit_log_id;
+                    $this->otevmdl->upload_document_name = $fname;
+                    $this->otevmdl->upload_document_name2 = $fname2;
+                    $this->otevmdl->insert($visit_log_id);
+                } else {
+                    if ($fname) {
+                        @unlink(FCPATH . '/datastore/otev/' . $otev->upload_document_name);
+                        $this->otevmdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+                    }
+
+                    if ($fname2) {
+                        @unlink(FCPATH . '/datastore/otev/' . $otev->upload_document_name2);
+                        $this->otevmdl->updateFlex($visit_log_id, 'upload_document_name2', $fname2);
+                    }
+                }
+
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+
+                echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='" . $config["index_url"] . "task/otev/index/" . $visit_log_id . "';</SCRIPT>";
+
+            } else {
+                exit("Document Upload Failed!");
+            }
+        } else {
+            if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 AND isset($_FILES['document2']['error']) AND $_FILES['document2']['error'] != 0) {
+                $error_string = $this->tpl->get_template_vars('error_string');
+                $error_string .= "<br>Please select Document";
+                $this->tpl->assign("error_string", $error_string);
+            }
+            
+            $otev = $this->otevmdl->get($visit_log_id);
+            $this->assignObject($otev);
+
+            $this->tpl->assign("visit_log_id", $visit_log_id);
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/upload_otev_document");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        }
+    }
+
+    function pre_remove_document($visit_log_id){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+
+        $otev = $this->otevmdl->get($visit_log_id);
+        $this->assignObject($otev);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign_include("dynamic_tpl", "task/documents/remove_otev_document");
+        
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function remove_document($visit_log_id, $doc_number){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+        $otev = $this->otevmdl->get($visit_log_id);
+        
+        switch ($doc_number) {
+            case '1':
+                if (isset($otev->upload_document_name)) {
+                    @unlink(FCPATH.'/datastore/otev/'.$otev->upload_document_name);
+                    $this->otevmdl->updateFlex($visit_log_id, 'upload_document_name', null);
+                }
+                break;
+            case '2':
+                if (isset($otev->upload_document_name2)) {
+                    @unlink(FCPATH.'/datastore/otev/'.$otev->upload_document_name2);
+                    $this->otevmdl->updateFlex($visit_log_id, 'upload_document_name2', null);
+                }
+                break;
+            default:
+                exit('Document Not found.');
+                break;
+        }
+        
+        echo "1";exit();
+
+    }
+
+
+    public function index_archive($visit_log_id, $action = 'task', $window = 'self')
+    {
+        $this->load->model('otevarchivemdl');
+        $visitlog = $this->visitlogmdl->getByIdArchive($visit_log_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        if (!count($this->otevarchivemdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+            $otevs = $this->otevarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($otevs) == 0) {
+                $otevs = $this->otevarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // Look into all prev periods
+            }
+
+            if (count($otevs)) {
+                $otev = $otevs[count($otevs) - 1];
+
+                $prev_visit_log_id = $otev->visit_log_id;
+
+                /*$not_to_import = array (
+            'visit_log_id',
+            'ot_assess_id',
+            'tab_75_pain_assessment',
+            'pain_location',
+            'pain_control',
+            'p1_sa_bp',
+            'p1_sa_sitt_lyi_stand',
+            'p1_sa_hr',
+            'p1_sa_o2_sat',
+            'p1_sa_skin'
+            );
+            foreach ($otev as $k => $v) {
+            if (!in_array($k, $not_to_import) AND property_exists($this->otevarchivemdl, $k))
+            $this->otevarchivemdl-> $k = $v;
+            }
+
+            if (count($this->otevarchivemdl->get($visit_log_id))) {
+            $this->otevarchivemdl->visit_log_id = $visit_log_id;
+            $this->otevarchivemdl->update($visit_log_id);
+            } else {
+            $this->otevarchivemdl->visit_log_id = $visit_log_id;
+            $this->otevarchivemdl->insert($visit_log_id);
+            }*/
+            }
+
+        } else {
+            $otevs = $this->otevarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($otevs)) {
+                $otev = $otevs[count($otevs) - 1];
+
+                $prev_visit_log_id = $otev->visit_log_id;
+
+            }
+        }
+
+        $otevs = $this->otevarchivemdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+        if (count($otevs)) {
+            $otev = $otevs[0];
+
+            $next_visit_log_id = $otev->visit_log_id;
+        }
+
+        $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+        $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+        $this->assignObject($visitlog);
+        $OTEV = $this->otevarchivemdl->get($visit_log_id);
+        $this->assignObject($OTEV);
+
+        $assess_type = null;
+        if ($prev_visit_log_id) {
+            $prev_visitlog = $this->visitlogmdl->getByIdArchive($prev_visit_log_id);
+            $this->tpl->assign_by_ref('prev_visitlog', $prev_visitlog);
+            $this->tpl->assign_by_ref('prev_otev', $this->otevarchivemdl->get($prev_visit_log_id));
+        } else if (@$OTEV->tab_92_assess_type == null or @$OTEV->tab_92_assess_type == 1) {
+            $this->load->model('otevinitialmdl');
+            $assess_type = 'initial';
+            $this->tpl->assign('assess_type', 'initial');
+            $this->tpl->assign_by_ref('prev_otev', $this->otevinitialmdl->get($visit_log_id));
+        }
+
+        if ($this->input->post('verbal_doctor_order') == 1) {
+            $rules = array(
+                'verbal_doctor_order_date' => 'required',
+            );
+
+            $fields = array(
+                'verbal_doctor_order_date' => 'Obtained Order Date',
+            );
+            $this->validation->set_fields($fields);
+            $this->validation->set_rules($rules);
+        }
+
+        /*if ($this->validation->run() == TRUE) {
+
+        $this->updateFormEdition($visit_log_id);
+
+        $this->assignPostData($this->otevarchivemdl);
+
+        if (count($this->otevarchivemdl->get($visit_log_id))) {
+        $this->otevarchivemdl->update($visit_log_id);
+        } else {
+        $this->otevarchivemdl->insert($visit_log_id);
+        }
+
+        $this->load->helper('ajax');
+
+        $this->load->model('otevinitialmdl');
+
+        if (count($this->otevinitialmdl->get($visit_log_id))) {
+        $this->assignPostData($this->otevinitialmdl);
+        $this->otevinitialmdl->update($visit_log_id);
+        } else if (!isAjax()) {
+        $this->assignPostData($this->otevinitialmdl);
+        $this->otevinitialmdl->insert($visit_log_id);
+        }
+
+        if (isAjax()) {
+        echo "1";
+        exit;
+        }else{
+        $otev = $this->otevarchivemdl->get($visit_log_id);
+        $this->assignObject($otev);
+        }
+
+        $this->formRedirection($visit_log_id);
+        }*/
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            6,
+            7,
+        )));
+        $this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            6,
+        )));
+
+        $this->getPatientInfoArchive($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/otev");
+        $this->setfbasearchive($visit_log_id, $action);
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    public function editVDO($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        $otev = $this->otevmdl->get($visit_log_id);
+
+        if ($this->input->post('verbal_doctor_order') == 1) {
+            $rules = array(
+                'verbal_doctor_order_date' => 'required',
+            );
+
+            $fields = array(
+                'verbal_doctor_order_date' => 'Obtained Order Date',
+            );
+            $this->validation->set_fields($fields);
+            $this->validation->set_rules($rules);
+        }
+
+        if ($this->validation->run() == true) {
+
+            if (count($this->otevmdl->get($visit_log_id))) {
+                foreach ($otev as $k => $v) {
+                    if (property_exists($this->otevmdl, $k)) {
+                        $this->otevmdl->$k = $v;
+                    }
+
+                }
+
+                $this->otevmdl->verbal_doctor_order = $this->input->post('verbal_doctor_order');
+                $this->otevmdl->verbal_doctor_order_date = standard_date(human_to_unix($this->input->post('verbal_doctor_order_date')), 'MYSQL_NOTIME');
+                $this->otevmdl->verbal_doctor_order_comments = $this->input->post('verbal_doctor_order_comments');
+                $this->otevmdl->visit_log_id = $visit_log_id;
+                $this->otevmdl->update($visit_log_id);
+            } else {
+                // do nothing
+            }
+            // echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+            $config = &get_config();
+            echo "<SCRIPT>parent.location.href='" . $config["index_url"] . "task/otev/index/" . $visit_log_id . "';parent.dhxWins.unload()</SCRIPT>";
+        } else {
+            $this->assignObject($visitlog);
+            $this->assignObject($otev);
+            $this->tpl->assign("visit_log_id", $visit_log_id);
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/otev_editvdo_form");
+
+            //$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_invoice_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        }
+    }
+
+    public function pdf($visit_log_id)
+    {
+        $this->load->helper('visit_pdf');
+        otev_pdf($visit_log_id, 'D');
+        return;
+    }
+
+    public function edit_template($tpl_id)
+    {
+        $tpl_type = 'otev';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $this->tpl->assign("tpl_type", $tpl_type);
+        // $this->tpl->assign("entity_id", $tpl_type);
+        $this->tpl->assign("record_id", $tpl_id);
+        $this->tpl->assign("faction", 'edit_template');
+        $this->tpl->assign("resource_delete", 'delete_template');
+        // $this->tpl->assign("no_delete_form", true);
+
+        // $this->validation->set_rules(array('template_name' => 'required'));
+        // $this->validation->set_fields(array('template_name' => 'Template Name'));
+
+        $template_field = "tpl_{$tpl_type}_name";
+        $template = $this->visitformtplmdl->get($tpl_id);
+
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to edit this template");
+        }
+
+        if ($this->validation->run() == false) {
+            $this->assignObject($template);
+
+            $this->lang->language['grl_cancel'] = 'Back';
+            $this->tpl->assign("back_url", $back_url);
+            $this->tpl->assign("tpl_type_external_resource", "{$tpl_type}_external_resource");
+            $this->tpl->assign("tpl_type_form", "{$tpl_type}_form");
+            $this->tpl->assign("form_title", "Edit Template");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "user/templates/edit_data");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        } else {
+            $this->assignPostData($this->visitformtplmdl);
+            $this->visitformtplmdl->tpl_otev_name = $template->tpl_otev_name;
+            $this->visitformtplmdl->update($tpl_id);
+
+            $this->tpl->assign('gmessage', "Template has been updated");
+            redirect("task/otev/edit_template/" . $tpl_id);
+        }
+    }
+
+    public function delete_template($tpl_id)
+    {
+        $tpl_type = 'otev';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $template = $this->visitformtplmdl->get($tpl_id);
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to delete this template");
+        }
+
+        $this->visitformtplmdl->delete($tpl_id, $this->getUserId());
+        if ($back_url) {
+            redirect($back_url);
+        } else {
+            redirect("user/templates");
+        }
+    }
+
+    public function checkduration($visit_duration)
+    {
+        if (!is_numeric($visit_duration)) {
+            $this->validation->set_message('checkduration', "Error: please enter number only in visit duration field.");
+            return false;
+        }
+
+        if ($visit_duration > 300) {
+            $this->validation->set_message('checkduration', "Error: visit duration can be 300 minutes maximum.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public function validation_visit($visit_log_id)
+    {
+        $this->load->model('agencysettingsmdl');
+        $agency_conf = $this->agencysettingsmdl->get($this->getAgencyId());
+        $validation_success = 0;
+        $msg = 0;
+        if ($agency_conf->ot_validation == '1') {
+            $rules = array(
+                'visit_duration' => 'callback_checkduration',
+                'primary_diag' => 'required',
+                //'primary_diag_date' => 'required',
+                'secondary_diag' => 'required',
+                //'secondary_diag_date' => 'required',
+                'tab_92_assess_type' => 'required',
+                'tab_43_rehab_poten' => 'required',
+                'mental_status' => 'callback_validate_mental_status[mental_status]',
+                'tab_75_pain_assessment' => 'required',
+				'p1_sa_bp' => 'required',
+				'p1_sa_hr' => 'HR',
+                'tab_062_right_left' => 'required',
+                'p1_sa_sitt_lyi_stand' => 'required',
+                'p1_sa_o2_sat' => 'required',
+                'p1_sa_skin' => 'required',
+                'pain_location' => 'required',
+                'pain_control' => 'required',
+                'functional_impairment' => 'callback_validate_funct_imp[functional_impairment]',
+                'funct_other' => 'callback_validate_funct_other[funct_other]',
+
+                'tab_020_sho_abd_stre_left' => 'required',
+                'tab_020_sho_abd_stre_right' => 'required',
+                'tab_020_sho_int_stre_left' => 'required',
+                'tab_020_sho_int_stre_right' => 'required',
+                'tab_020_sho_flex_stre_left' => 'required',
+                'tab_020_sho_flex_stre_right' => 'required',
+                'tab_020_elb_flex_stre_left' => 'required',
+                'tab_020_elb_flex_stre_right' => 'required',
+                'tab_020_elb_sup_stre_left' => 'required',
+                'tab_020_elb_sup_stre_right' => 'required',
+                'tab_020_wri_flex_stre_left' => 'required',
+                'tab_020_wri_flex_stre_right' => 'required',
+                'tab_020_wri_abd_stre_left' => 'required',
+                'tab_020_wri_abd_stre_right' => 'required',
+                'tab_020_fin_flex_stre_left' => 'required',
+                'tab_020_fin_flex_stre_right' => 'required',
+                'tab_020_fin_abd_stre_left' => 'required',
+                'tab_020_fin_abd_stre_right' => 'required',
+                'tab_020_thu_flex_stre_left' => 'required',
+                'tab_020_thu_flex_stre_right' => 'required',
+                'tab_020_thu_abd_stre_left' => 'required',
+                'tab_020_thu_abd_stre_right' => 'required',
+            
+                'prev_p1_fun_sts_tab047_dres_upp_ext' => 'required',
+                'p1_fun_sts_tab047_dres_upp_ext' => 'required',
+                'prev_p1_fun_sts_tab047_dres_low_ext' => 'required',
+                'p1_fun_sts_tab047_dres_low_ext' => 'required',
+                'prev_p1_fun_sts_tab047_feed' => 'required',
+                'p1_fun_sts_tab047_feed' => 'required',
+                'prev_p1_fun_sts_tab047_adap_dev_uten' => 'required',
+                'p1_fun_sts_tab047_adap_dev_uten' => 'required',
+                'prev_p1_fun_sts_tab047_groo_hair' => 'required',
+                'p1_fun_sts_tab047_groo_hair' => 'required',
+                'prev_p1_fun_sts_tab047_groo_nail' => 'required',
+                'p1_fun_sts_tab047_groo_nail' => 'required',
+                'prev_p1_fun_sts_tab047_groo_Shav' => 'required',
+                'p1_fun_sts_tab047_groo_Shav' => 'required',
+                'prev_p1_fun_sts_tab047_urin_toil' => 'required',
+                'p1_fun_sts_tab047_urin_toil' => 'required',
+                'prev_p1_fun_sts_tab047_bath_bed' => 'required',
+                'p1_fun_sts_tab047_bath_bed' => 'required',
+                'prev_p1_fun_sts_tab047_hom_mak_kit_laud' => 'required',
+                'p1_fun_sts_tab047_hom_mak_kit_laud' => 'required',
+                'prev_p1_fun_sts_tab047_hom_mak_meal_prep' => 'required',
+                'p1_fun_sts_tab047_hom_mak_meal_prep' => 'required',
+
+                'p1_adit_adl_func_sens_propio' => 'required',
+                'p1_adit_adl_func_sens_light' => 'required',
+                'p1_adit_adl_func_sens_deep' => 'required',
+                'p1_adit_adl_func_sharp' => 'required',
+                'p1_adit_adl_func_sens_hot' => 'required',
+                'p1_adit_adl_func_percep_vision' => 'required',
+                'p1_adit_adl_func_percep_position' => 'required',
+                'p1_adit_adl_func_percep_discrimin' => 'required',
+                'p1_adit_adl_func_percep_depth' => 'required',
+                'p1_adit_adl_func_percep_aware' => 'required',
+                'p1_adit_adl_func_cogni_orienta' => 'required',
+                'p1_adit_adl_func_cogni_safe_judg' => 'required',
+                'p1_adit_adl_func_cogni_atten_span' => 'required',
+                'p1_adit_adl_func_cogni_mem_reten' => 'required',
+                'p1_adit_adl_func_cordina_gross_motor' => 'required',
+                'p1_adit_adl_func_cordina_fine_motor' => 'required',
+                'p1_adit_adl_func_balan_static' => 'required',
+                'p1_adit_adl_func_balan_dynamic' => 'required',
+
+                'home_evaluation' => 'callback_validate_home_evaluation[home_evaluation]',
+                'safety_measure' => 'callback_validate_safety_measure[safety_measure]',
+                'p1_saf_other' => 'callback_validate_p1_saf_other[p1_saf_other]',
+                'plan_of_care' => 'callback_validate_plan_of_care[plan_of_care]',
+                'p2_treat_other' => 'callback_validate_p2_treat_other[p2_treat_other]',
+                'p2_h_s_udt_dc_summ_desc' => 'required',
+                'p2_trat_plan_plan_of_care_desc' => 'required',
+                'p2_goals_desc' => 'required',
+                'p2_dis_instructions' => 'required',
+                'home_bound_status' => 'callback_validate_home_bound_status[home_bound_status]',
+                'freq_duration' => 'required',
+                'ther_implem_plan' => 'required',
+                'ther_follow_plan' => 'required',
+                'ther_raport_pat_fam' => 'required',
+                'ther_eval_plan' => 'required',
+                'ther_notes' => 'required',
+                'addendum' => 'required',
+            );
+
+            $fields = array(
+                'primary_diag' => 'Primary Diagnosis',
+                //'primary_diag_date' => 'Primary Diagnosis Date',
+                'secondary_diag' => 'Therapy Diagnosis',
+                //'secondary_diag_date' => 'Therapy Diagnosis Date',
+                'tab_92_assess_type' => 'Assessment Type',
+                'tab_43_rehab_poten' => 'Rehab Potential',
+                'tab_75_pain_assessment' => 'Pain Assessment',
+                'p1_sa_bp' => 'BP',
+                'tab_062_right_left' => 'L or R',
+                'p1_sa_sitt_lyi_stand' => 'Sitting or Lying or Standing',
+                'p1_sa_hr' => 'HR',
+                'p1_sa_o2_sat' => '02 Sat',
+                'p1_sa_skin' => 'Skin',
+                'tab_75_pain_assessment' => 'Pain Assessment',
+                'pain_location' => 'Location',
+                'pain_control' => 'Control Paint Control',
+
+                'tab_020_sho_abd_stre_left' => 'SHOULDER abd/ Add left',
+                'tab_020_sho_abd_stre_right' => 'SHOULDER abd/ Add right',
+
+                'tab_020_sho_int_stre_left' => 'SHOULDER Int / Ext Rotation	 left',
+                'tab_020_sho_int_stre_right' => 'SHOULDER Int / Ext Rotation right',
+                'tab_020_sho_int_rom_left' => 'SHOULDER abd/ Add WFL or WNL left',
+                'sho_int_stre_degre' => 'SHOULDER abd/ Add DEG',
+                'tab_020_sho_int_rom_right' => 'SHOULDER abd/ Add WFL or WNL right',
+                'sho_int_rom_degre' => 'SHOULDER abd/ Add DEG',
+
+                'tab_020_sho_flex_stre_left' => 'SHOULDER Flex / Ext left',
+                'tab_020_sho_flex_stre_right' => 'SHOULDER Flex / Ext right',
+               
+
+                'tab_020_elb_flex_stre_left' => 'ELBOW Flex / Ext  left',
+                'tab_020_elb_flex_stre_right' => 'ELBOW Flex / Ext right',
+              
+
+                'tab_020_elb_sup_stre_left' => 'ELBOW Sup / Pron  left',
+                'tab_020_elb_sup_stre_right' => 'ELBOW Sup / Pron right',
+         
+
+                'tab_020_wri_flex_stre_left' => 'WRIST Flex / Ext left',
+                'tab_020_wri_flex_stre_right' => 'WRIST Flex / Ext right',
+           
+
+                'tab_020_wri_abd_stre_left' => 'WRIST Abd / Add  left',
+                'tab_020_wri_abd_stre_right' => 'WRIST Abd / Add   Right',
+        
+
+                'tab_020_fin_flex_stre_left' => 'FINGERS Flex / Ext left',
+                'tab_020_fin_flex_stre_right' => 'FINGERS Flex / Ext right',
+           
+        
+
+                'tab_020_fin_abd_stre_left' => 'FINGERS Abd / Add	left',
+                'tab_020_fin_abd_stre_right' => 'FINGERS Abd / Add	right ',
+             
+
+                'tab_020_thu_flex_stre_left' => 'THUMBS Flex / Ext	left',
+                'tab_020_thu_flex_stre_right' => 'THUMBS Flex / Ext	right',
+           
+
+                'tab_020_thu_abd_stre_left' => 'THUMBS Abd / Add Left',
+                'tab_020_thu_abd_stre_right' => 'THUMBS Abd / Add Right',
+              
+
+                'prev_p1_fun_sts_tab047_dres_upp_ext' => 'Dressing Upper Ext Previous',
+                'p1_fun_sts_tab047_dres_upp_ext' => 'Dressing Upper Ext	Current',
+                'prev_p1_fun_sts_tab047_dres_low_ext' => 'Dressing Lower Ext Previous',
+                'p1_fun_sts_tab047_dres_low_ext' => 'Dressing Lower Ext	Current',
+                'prev_p1_fun_sts_tab047_feed' => 'Feeding Previous',
+                'p1_fun_sts_tab047_feed' => 'Feeding Current',
+                'prev_p1_fun_sts_tab047_adap_dev_uten' => 'Adaptive Dev-Utensil	Previous',
+                'p1_fun_sts_tab047_adap_dev_uten' => 'Adaptive Dev-Utensil	Current',
+                'prev_p1_fun_sts_tab047_groo_hair' => 'Grooming - Hair	Previous',
+                'p1_fun_sts_tab047_groo_hair' => 'Grooming - Hair Current',
+                'prev_p1_fun_sts_tab047_groo_nail' => 'Grooming - Nails	Previous',
+                'p1_fun_sts_tab047_groo_nail' => 'Grooming - Nails	Current',
+                'prev_p1_fun_sts_tab047_groo_Shav' => 'Grooming - Shaving Previous',
+                'p1_fun_sts_tab047_groo_Shav' => 'Grooming - Shaving Current',
+                'prev_p1_fun_sts_tab047_urin_toil' => 'Urinal - Toilet Previous',
+                'p1_fun_sts_tab047_urin_toil' => 'Urinal - Toilet	Current',
+                'prev_p1_fun_sts_tab047_bath_bed' => 'Bathing - Bed	Previous',
+                'p1_fun_sts_tab047_bath_bed' => 'Bathing - Bed	Current',
+                'prev_p1_fun_sts_tab047_hom_mak_kit_laud' => 'Homemaking - Kit / Laund	Previous',
+                'p1_fun_sts_tab047_hom_mak_kit_laud' => 'Homemaking - Kit / Laund Current',
+                'prev_p1_fun_sts_tab047_hom_mak_meal_prep' => 'Homemaking - Meal Prep Previous',
+                'p1_fun_sts_tab047_hom_mak_meal_prep' => 'Homemaking - Meal Prep Current',
+
+                'p1_adit_adl_func_sens_propio' => 'Propioception',
+                'p1_adit_adl_func_sens_light' => 'Light Touch',
+                'p1_adit_adl_func_sens_deep' => 'Deep Touch',
+                'p1_adit_adl_func_sharp' => 'Sharp / Dull',
+                'p1_adit_adl_func_sens_hot' => 'Hot / Cold	',
+                'p1_adit_adl_func_percep_vision' => 'Vision',
+                'p1_adit_adl_func_percep_position' => 'Position in Space',
+                'p1_adit_adl_func_percep_discrimin' => 'L/R Discrimination',
+                'p1_adit_adl_func_percep_depth' => 'Depth Perception',
+                'p1_adit_adl_func_percep_aware' => 'Awareness',
+                'p1_adit_adl_func_cogni_orienta' => 'Orientation',
+                'p1_adit_adl_func_cogni_safe_judg' => 'Safety / Judgment',
+                'p1_adit_adl_func_cogni_atten_span' => 'Attention Span',
+                'p1_adit_adl_func_cogni_mem_reten' => 'Memory Retention',
+                'p1_adit_adl_func_cordina_gross_motor' => 'Gross Motor	',
+                'p1_adit_adl_func_cordina_fine_motor' => 'Fine Motor	',
+                'p1_adit_adl_func_balan_static' => 'Static',
+                'p1_adit_adl_func_balan_dynamic' => 'Dynamic',
+
+                'p2_h_s_udt_dc_summ_desc' => 'Plan Of care Description',
+                'p2_trat_plan_plan_of_care_desc' => 'Plan Of care Description Two',
+                'p2_goals_desc' => 'Goals With Time Frames',
+                'p2_dis_instructions' => 'Discharge Instructions',
+                'home_bound_status' => 'callback_validate_home_bound_status[home_bound_status]',
+                'freq_duration' => 'Frequency / Duration',
+
+                'ther_implem_plan' => 'Implemented Plan of Care?',
+                'ther_follow_plan' => 'Followed Plan of Care?',
+                'ther_raport_pat_fam' => 'Demonstrated good rapport with patient/family?',
+                'ther_eval_plan' => 'Evaluation of Plan of Care',
+                'ther_notes' => 'Supervisor Notes',
+                'addendum' => 'Addendum',
+
+						);
+						
+						if (!$this->input->post('tab_020_sho_abd_rom_left') && !$this->input->post('sho_abd_stre_degre')) {
+							$rules['tab_020_sho_abd_rom_left'] = 'required';
+							$fields['tab_020_sho_abd_rom_left'] = 'ROM SHOULDER Abd / Add Left';
+						}
+
+						if (!$this->input->post('tab_020_sho_abd_rom_right') && !$this->input->post('sho_abd_rom_degre')) {
+							$rules['tab_020_sho_abd_rom_right'] = 'required';
+							$fields['tab_020_sho_abd_rom_right'] = 'ROM SHOULDER Abd / Add Right';
+						}
+
+						if (!$this->input->post('tab_020_sho_int_rom_left') && !$this->input->post('sho_int_stre_degre')) {
+							$rules['tab_020_sho_int_rom_left'] = 'required';
+							$fields['tab_020_sho_int_rom_left'] = 'ROM SHOULDER Int / Ext Rotation Left';
+						}
+
+						if (!$this->input->post('tab_020_sho_int_rom_right') && !$this->input->post('sho_int_rom_degre')) {
+							$rules['tab_020_sho_int_rom_right'] = 'required';
+							$fields['tab_020_sho_int_rom_right'] = 'ROM SHOULDER Int / Ext Rotation Right';
+						}
+
+						if (!$this->input->post('tab_020_sho_flex_rom_left') && !$this->input->post('sho_flex_stre_degre')) {
+							$rules['tab_020_sho_flex_rom_left'] = 'required';
+							$fields['tab_020_sho_flex_rom_left'] = 'ROM SHOULDER Flex / Ext	 Rotation Left';
+						}
+
+						if (!$this->input->post('tab_020_sho_flex_rom_right') && !$this->input->post('sho_flex_rom_degre')) {
+							$rules['tab_020_sho_flex_rom_right'] = 'required';
+							$fields['tab_020_sho_flex_rom_right'] = 'ROM SHOULDER Flex / Ext Rotation Right';
+						}
+
+						if (!$this->input->post('tab_020_elb_flex_rom_left') && !$this->input->post('sho_elb_flex_stre_degre')) {
+							$rules['tab_020_elb_flex_rom_left'] = 'required';
+							$fields['tab_020_elb_flex_rom_left'] = 'ROM ELBOW Flex / Ext Left';
+						}
+
+						if (!$this->input->post('tab_020_elb_flex_rom_right') && !$this->input->post('sho_elb_flex_rom_degre')) {
+							$rules['tab_020_elb_flex_rom_right'] = 'required';
+							$fields['tab_020_elb_flex_rom_right'] = 'ROM ELBOW Flex / Ext Right';
+						}
+
+						if (!$this->input->post('tab_020_elb_sup_rom_left') && !$this->input->post('sho_elb_sup_stre_degre')) {
+							$rules['tab_020_elb_sup_rom_left'] = 'required';
+							$fields['tab_020_elb_sup_rom_left'] = 'ROM ELBOW Sup / Pron		 Left';
+						}
+
+						if (!$this->input->post('tab_020_elb_sup_rom_right') && !$this->input->post('sho_elb_sup_rom_degre')) {
+							$rules['tab_020_elb_sup_rom_right'] = 'required';
+							$fields['tab_020_elb_sup_rom_right'] = 'ROM ELBOW Sup / Pron	Right';
+						}
+
+						if (!$this->input->post('tab_020_wri_flex_rom_left') && !$this->input->post('sho_wri_flex_stre_degre')) {
+							$rules['tab_020_wri_flex_rom_left'] = 'required';
+							$fields['tab_020_wri_flex_rom_left'] = 'ROM WRIST Flex / Ext	Left';
+						}
+
+						if (!$this->input->post('tab_020_wri_flex_rom_right') && !$this->input->post('sho_wri_flex_rom_degre')) {
+							$rules['tab_020_wri_flex_rom_right'] = 'required';
+							$fields['tab_020_wri_flex_rom_right'] = 'ROM WRIST  Flex / Ext Right';
+						}
+
+						if (!$this->input->post('tab_020_wri_abd_rom_left') && !$this->input->post('sho_wri_abd_stre_degre')) {
+							$rules['tab_020_wri_abd_rom_left'] = 'required';
+							$fields['tab_020_wri_abd_rom_left'] = 'ROM WRIST Abd / Add		Left';
+						}
+
+						if (!$this->input->post('tab_020_wri_abd_rom_right') && !$this->input->post('sho_wri_abd_rom_degre')) {
+							$rules['tab_020_wri_abd_rom_right'] = 'required';
+							$fields['tab_020_wri_abd_rom_right'] = 'ROM WRIST Abd / Add	Right';
+						}
+
+						if (!$this->input->post('tab_020_fin_flex_rom_left') && !$this->input->post('sho_fin_flex_stre_degre')) {
+							$rules['tab_020_fin_flex_rom_left'] = 'required';
+							$fields['tab_020_fin_flex_rom_left'] = 'ROM FINGERS Flex / Ext	Left';
+						}
+
+						if (!$this->input->post('tab_020_fin_flex_rom_right') && !$this->input->post('sho_fin_flex_rom_degre')) {
+							$rules['tab_020_fin_flex_rom_right'] = 'required';
+							$fields['tab_020_fin_flex_rom_right'] = 'ROM FINGERS Flex / Ext	Right';
+						}
+
+						if (!$this->input->post('tab_020_fin_abd_rom_left') && !$this->input->post('sho_fin_abd_stre_degre')) {
+							$rules['tab_020_fin_abd_rom_left'] = 'required';
+							$fields['tab_020_fin_abd_rom_left'] = 'ROM FINGERS Abd / Add	Left';
+						}
+
+						if (!$this->input->post('tab_020_fin_abd_rom_right') && !$this->input->post('sho_fin_abd_rom_degre')) {
+							$rules['tab_020_fin_abd_rom_right'] = 'required';
+							$fields['tab_020_fin_abd_rom_right'] = 'ROM FINGERS Abd / Add	Right';
+						}
+
+						if (!$this->input->post('tab_020_thu_flex_rom_left') && !$this->input->post('sho_thu_flex_stre_degre')) {
+							$rules['tab_020_thu_flex_rom_left'] = 'required';
+							$fields['tab_020_thu_flex_rom_left'] = 'ROM THUMBS Flex / Ext		Left';
+						}
+
+						if (!$this->input->post('tab_020_thu_flex_rom_right') && !$this->input->post('sho_thu_flex_rom_degre')) {
+							$rules['tab_020_thu_flex_rom_right'] = 'required';
+							$fields['tab_020_thu_flex_rom_right'] = 'ROM THUMBS Flex / Ext		Right';
+						}
+
+						if (!$this->input->post('tab_020_thu_abd_rom_left') && !$this->input->post('sho_thu_abd_stre_degre')) {
+							$rules['tab_020_thu_abd_rom_left'] = 'required';
+							$fields['tab_020_thu_abd_rom_left'] = 'ROM THUMBS Abd / Add		Left';
+						}
+
+						if (!$this->input->post('tab_020_thu_abd_rom_right') && !$this->input->post('sho_thu_abd_rom_degre')) {
+							$rules['tab_020_thu_abd_rom_right'] = 'required';
+							$fields['tab_020_thu_abd_rom_right'] = 'ROM THUMBS Abd / Add Right';
+						}
+
+            $this->validation->set_rules($rules);
+            $this->validation->set_fields($fields);
+
+            if ($this->validation->run() == true) {
+                $validation_success = 1;
+            } else {
+                $msg = $this->validation->get_error_msg();
+            }
+        } else {
+            $validation_success = 2;
+        }
+        echo json_encode(array('validation_success' => $validation_success, 'msg' => $msg));
+        exit();
+    }
+
+    public function validate_mental_status($mental_status)
+    {
+        $config = array(
+            'name_callback' => 'validate_mental_status',
+            'value' => $mental_status,
+            'msg' => 'Mental Status',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_funct_imp($functional_impairment)
+    {
+        $config = array(
+            'name_callback' => 'validate_funct_imp',
+            'value' => $functional_impairment,
+            'msg' => 'Functional Impairment',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_funct_other($funct_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_funct_other',
+            'value_other' => $funct_other,
+            'value_other_desc' => $this->input->post('funct_other_desc'),
+            'msg' => 'Treatment Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_home_evaluation($home_evaluation)
+    {
+        $config = array(
+            'name_callback' => 'validate_home_evaluation',
+            'value' => $home_evaluation,
+            'msg' => 'Home Evaluation',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_safety_measure($safety_measure)
+    {
+        $config = array(
+            'name_callback' => 'validate_safety_measure',
+            'value' => $safety_measure,
+            'msg' => 'Safety Measure',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_plan_of_care($plan_of_care)
+    {
+        $config = array(
+            'name_callback' => 'validate_plan_of_care',
+            'value' => $plan_of_care,
+            'msg' => 'Plan of Care',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_home_bound_status($home_bound_status)
+    {
+        $config = array(
+            'name_callback' => 'validate_home_bound_status',
+            'value' => $home_bound_status,
+            'msg' => 'Home Bound Status',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_p1_saf_other($p1_saf_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_p1_saf_other',
+            'value_other' => $p1_saf_other,
+            'value_other_desc' => $this->input->post('p1_saf_other_desc'),
+            'msg' => 'Safety Measure Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_p2_treat_other($p2_treat_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_p2_treat_other',
+            'value_other' => $p2_treat_other,
+            'value_other_desc' => $this->input->post('p2_treat_other_desc'),
+            'msg' => 'Plan of Care	Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_check($item = array())
+    {
+        if ($item['value'] == "0") {
+            $this->validation->set_message("{$item['name_callback']}", 'Check at least one value in ' . $item['msg']);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function validate_other($item = array())
+    {
+        if ($item['value_other']) {
+            if (!$item['value_other_desc'] || $item['value_other_desc'] === "") {
+                $this->validation->set_message("{$item['name_callback']}", $item['msg'] . "Description Required");
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+}

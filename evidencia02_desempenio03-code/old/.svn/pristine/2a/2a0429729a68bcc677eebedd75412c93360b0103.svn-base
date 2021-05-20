@@ -1,0 +1,62 @@
+<?php
+
+class Recipientmdl extends Model{
+
+	var $recipient_id; 
+	var $recipient_name; 	
+  	var $recipient_email;
+
+	function Recipientmdl () {
+
+		parent::Model();
+		
+	}
+
+	function get(){
+
+		$query = $this->db->get('ticket_recipients');
+		return $query->result();
+	}
+
+
+	function getById ( $recipient_id ) {
+	
+		$this->db->where("recipient_id", $recipient_id);
+		$query = $this->db->get('ticket_recipients');
+		return $query->row();			
+	
+	}	
+	
+	function getByIds ( $recipient_id ) {
+	
+		$this->db->where_in('recipient_id', $recipient_id);
+		$query = $this->db->get('ticket_recipients');
+		return $query->row();			
+	
+	}
+
+	function insert () {	
+
+	 	$this->db->insert("ticket_recipients", $this);
+		$this->recipient_id = $this->db->insert_id();
+		
+	}
+
+	function update ( $recipient_id ) {
+		
+		$this->db->where("recipient_id", $recipient_id);
+		$this->db->update("ticket_recipients", $this);
+		
+	}
+
+	function delete ( $recipient_id ) {
+		
+		$this->db->where("recipient_id", $recipient_id);
+		$this->db->delete("ticket_recipients");
+		
+	}
+
+
+}
+
+?>

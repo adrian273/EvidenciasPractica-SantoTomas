@@ -1,0 +1,100 @@
+<?php
+class patientemergencymdl extends Model {
+
+	var $id;
+	var $patient_id;
+	var $contact_name;
+	var $contact_relationship;
+	var $contact_address;
+	var $contact_city;
+	var $contact_state;
+	var $contact_zip;
+	var $contact_phone1;
+	var $contact_phone2;
+	var $contact_comments;
+	var $creation_date;
+	var $creation_user;
+	var $modify_date;
+	var $modify_user;
+
+	function patientemergencymdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $patient_id, $contact_name=null ) {
+		$this->db->select("us_agy.*,pat_patient_emergency1.*",false);
+		$this->db->join('us_agy', 'us_agy.user_id = pat_patient_emergency1.modify_user', 'left');
+		
+		$this->db->where("pat_patient_emergency1.patient_id", $patient_id);
+		
+		if (!is_null($contact_name)) {
+			$this->db->like("contact_name", $contact_name);
+		}
+		
+		$this->db->order_by("contact_name", "ASC");
+		
+		$query = $this->db->get("pat_patient_emergency1");
+		return $query->result();
+		
+	}
+
+	function getById ( $id ) {
+		$this->db->where("id", $id);
+		$query = $this->db->get("pat_patient_emergency1");
+		return $query->row();		
+	}
+
+	function insert ( $patient_id, $creation_user ) {
+
+		$this->patient_id 		= $patient_id;
+		$this->creation_user 	= $creation_user;		 		
+		$this->creation_date = $this->modify_date = standard_date(now(), 'MYSQL');
+		
+		$this->db->insert("pat_patient_emergency1", $this);
+		
+	}
+	
+	function update ( $patient_id, $id ) {
+
+		$emergency = new stdClass();
+		$emergency->contact_name 	= $this->contact_name;
+		$emergency->contact_relationship 	= $this->contact_relationship;
+		$emergency->contact_address 	= $this->contact_address;
+		$emergency->contact_city 	= $this->contact_city;
+		$emergency->contact_state 		= $this->contact_state;
+		$emergency->contact_zip 		= $this->contact_zip;
+		$emergency->contact_phone1 	= $this->contact_phone1;
+		$emergency->contact_phone2 	= $this->contact_phone2;
+		$emergency->contact_comments 	= $this->contact_comments;
+		$emergency->modify_user 	= $this->modify_user;
+		$emergency->modify_date = standard_date(now(), 'MYSQL');	
+		
+		$this->db->where('id', $id);
+		$this->db->update("pat_patient_emergency1", $emergency);		
+	}
+	
+	function delete ( $id ) {		
+		$this->db->where('id', $id);		
+		$this->db->delete("pat_patient_emergency1");		
+	}
+	
+	function getAll () {
+		$this->db->select("us_agy.*,pat_patient_emergency1.*",false);
+		$this->db->join('us_agy', 'us_agy.user_id = pat_patient_emergency1.modify_user', 'left');
+		$this->db->order_by("contact_name", "ASC");
+		
+		$query = $this->db->get("pat_patient_emergency1");
+		return $query->result();		
+	}
+	
+	function getAllFromOld () {
+		$this->db->select("pat_patient_emergency.*",false);
+		//$this->db->join('us_agy', 'us_agy.user_id = pat_patient_emergency.modify_user', 'left');
+		$this->db->order_by("patient_id", "ASC");
+		
+		$query = $this->db->get("pat_patient_emergency");
+		return $query->result();		
+	}
+}

@@ -1,0 +1,89 @@
+<?
+
+class patientnotemdl extends Model {
+
+	var $note_id;
+	var $patient_id;
+	var $note_type;
+	var $notes_descrip;
+	var $creation_user;
+	var $creation_date_time;
+
+	function patientnotemdl() {
+		
+		parent::Model();
+		
+	}
+
+	function get ( $patient_id, $notes_descrip=null ) {
+
+		$this->db->join('us_agy', 'us_agy_id = creation_user');
+
+		if (!is_null($notes_descrip)) {
+			$this->db->like("notes_descrip",$notes_descrip);
+		}
+			
+		$this->db->where("patient_id", $patient_id);
+		$this->db->order_by("note_id","DESC");
+
+		$query = $this->db->get("pat_note");
+		return $query->result();
+		
+	}
+
+	function getById ( $note_id ) {
+
+		$this->db->join('us_agy', 'us_agy_id = creation_user');
+		
+		$this->db->where("note_id", $note_id);
+		$query = $this->db->get("pat_note");
+
+		return $query->row();
+	}
+
+	function getAgencyUserid ( $patient_id, $agency_id ) {
+
+		$this->db->join('us_agy', 'us_agy.us_agy_id = pat_note.creation_user', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		
+		if ($this->input->post('keyword')!='') {
+			$this->db->like("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)", $this->input->post('keyword'));
+			$this->db->or_like("notes_descrip", $this->input->post('keyword'));
+		}
+		//Public
+		if($this->input->post('note_type') == '1'){
+			$this->db->where("note_type", 1);
+		}
+		//Private
+		else{
+			$this->db->where("note_type !=", 1);
+			$this->db->where("us_agy.agency_id", $agency_id);
+		}
+		$this->db->order_by("note_id","DESC");
+		$this->db->where("patient_id", $patient_id);
+		$query = $this->db->get("pat_note");
+		return $query->result();
+		
+	}
+
+	function insert () {
+
+		$this->db->insert("pat_note", $this);
+	}
+	
+	function update ( $note_id, $note_type, $notes_descrip ) {
+		
+		$this->db->set("note_type", $note_type);
+		$this->db->set("notes_descrip", $notes_descrip);
+		$this->db->where("note_id", $note_id);
+		
+		$this->db->update("pat_note");
+	}
+
+	function delete ( $note_id ) {
+	
+		$this->db->delete("pat_note", array("note_id" => $note_id));
+	
+	}
+
+}

@@ -1,0 +1,128 @@
+<?php
+
+class UserMessageMdl extends Model {
+
+	var	$user_msg_id	=	'';
+	var $msg_id			=	'';
+	var $user_to		=	'';
+	var $msg_status		=	'';
+	var $msg_read		=	'';
+	var $msg_important	=	'';
+
+	// 1=msg from user via internal email interface
+	// null=system message, which generated to notify user
+	var $email_type		=	null; 
+
+	function UserMessageMdl() {
+		parent::Model();
+	}
+	
+	function getCountUnread ( $user_to ) {
+
+		$this->db->select('count(user_msg_id) as total');
+
+		$this->db->where("user_to", $user_to);
+		$this->db->where("msg_read", 0);
+
+		$query = $this->db->get("user_message");
+
+		return $query->row()->total;
+	}
+
+	function checkMsgOwner($user_msg_id) {
+
+		$this->db->where("user_msg_id",$user_msg_id);
+
+		$query = $this->db->get("user_message");
+
+		return $query->row();
+	}
+	
+	function getByMessageId ( $msg_id ) {
+		
+		$this->db->select("*, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name");
+		
+		$this->db->join("us_agy", "us_agy.us_agy_id = user_message.user_to");
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->where("msg_id", $msg_id);
+		
+		$query = $this->db->get("user_message");
+
+		return $query->result2('us_agy_id', 'complete_name');
+		
+	}
+
+	function insert ( $msg_id, $user_to, $msg_important, $email_type=null ) {
+
+		$data	= array(
+					'msg_id'=>$msg_id,
+					'user_to'=>$user_to,
+					'msg_important'=>$msg_important,
+					'email_type'=> ($this->input->post("email_type") != "" ? $this->input->post("email_type") : $email_type),
+				);
+
+		$this->db->insert("user_message", $data);
+	}
+
+	function setMsgRead ( $msg_id, $user_to ) {
+
+		$this->db->set('msg_read', 1);
+		$this->db->where('msg_id', $msg_id);
+		$this->db->where('user_to', $user_to);
+
+		$this->db->update('user_message');
+
+	}
+
+	function setMsgTrash ( $msg_id, $user_to, $msg_status=1 ) {
+
+		$this->db->set('msg_status', $msg_status);
+		$this->db->where('msg_id', $msg_id);
+		$this->db->where('user_to', $user_to);
+		$this->db->where('msg_status', $msg_status-1);
+
+		$this->db->update('user_message');
+
+	}
+
+	function setMsgDelete($user_msg_id) {
+
+		$this->db->update('user_message',array('msg_status'=>'3'),array('user_msg_id' => $user_msg_id,));
+	}
+
+	function emptyTrash() {
+
+		//$this->db->update('user_message','','');
+	}
+
+	function getUser($msg_id) {
+
+		$this->db->select("user_to");
+		$this->db->where("user_msg_id",$msg_id);
+
+		$query = $this->db->get("user_message");
+
+		return $query->result();
+	}
+
+	function getUser_($msg_id) {
+
+		$this->db->select("user_to");
+		$this->db->where("msg_id",$msg_id);
+
+		$query = $this->db->get("user_message");
+
+		return $query->result();
+	}
+
+	function checkAllMsgDeleted($msg_id) {
+
+		$this->db->where_not_in("msg_status",array('3'));
+		$this->db->where("msg_id",$msg_id);
+
+		$query = $this->db->get("user_message");
+
+		return $query->num_rows();
+	}
+	
+}

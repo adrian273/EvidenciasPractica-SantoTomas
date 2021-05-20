@@ -1,0 +1,248 @@
+<?php
+
+class Task extends MY_Controller {
+
+	function Task () {
+			
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "oasismanager/task");
+
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+			
+	}
+
+	function index ($rfa_tab=2 , $agency_id = null)
+	{
+		if($rfa_tab==2){
+      $this->tpl->assign_include("filter_tpl", "oasismanager/toolbar");
+      $this->tpl->assign('additional_buttons', array('Export to PC'=>'exportrfa();'));
+    }
+    $this->tpl->assign('enable_paging', true);
+    
+		$agency_id = null;
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+			
+		if (!is_null($rfa_tab)) $this->tpl->assign("entity_id", $agency_id);
+
+		//$this->tpl->assign_include("filter_tpl", "oasismanager/task_gfilter");
+		if (!is_null($rfa_tab)) $this->tpl->assign("rfa_tab", $rfa_tab);
+		$this->tpl->assign_include("script_tpl", "oasismanager/task_script");
+		$this->tpl->assign('tab_013_status', 1);
+			
+			
+		// MODAL FILTER
+		// GET info para selects
+		$this->tpl->assign("status_list" , $this->mparams->get_pacient_status_list() );
+		$this->tpl->assign("visit_type_list" , $this->mparams->get_visit_type_list( true ) );
+		$this->tpl->assign("visit_status_list" , $this->mparams->get_visit_status_list( false ) );
+		$this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( $agency_id , false ) );
+
+			
+
+			
+			
+		$this->tpl->assign_include("dynamic_tpl", "oasismanager/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+			
+	}
+
+	function grid ($rfa_tab=2 , $agency_id=null)
+	{
+			
+			
+		$cdata="";
+			
+
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;type=ch;align=center", ""));
+		$head->append($this->xml->Element("column", "width=3", "#"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+
+		$head->append($this->xml->Element("column", "width=20", "RFA"));
+		$head->append($this->xml->Element("column", "width=7",  "Corr"));
+		$head->append($this->xml->Element("column", "width=10", "Effective Date"));
+
+		$head->append($this->xml->Element("column", "width=7", "HIPPS"));
+		$head->append($this->xml->Element("column", "width=15", "Claim Key"));
+		$head->append($this->xml->Element("column", "width=*", "Status "));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->visitlogmdl->getVisitLogByRFA((is_null($agency_id) ? $this->getAgencyId()  : $agency_id), $rfa_tab) as $key => $task)
+		{
+			//
+			$date1 = new DateTime($task->visited_date);
+			$date2 = new DateTime("now");
+			//$interval = $date1->diff($date2);
+			$days = round(abs($date2->format('U') - $date1->format('U')) / (60*60*24));
+
+			//$days = $interval->format('%d');
+
+
+			if($rfa_tab==1 & $days>=7){
+				$cdata= '<![CDATA['.($key+1).'<img hspace="6" border="0" src="http://localhost/style/images/yellowled.png">]]>';
+
+
+			}else{
+				$cdata=$key+1;
+			}
+
+			$cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, 0));
+			$cell->append($this->xml->Element("cell", null, $cdata));
+			$cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+			$cell->append($this->xml->Element("cell", null, $task->visit_description));
+			$cell->append($this->xml->Element("cell", null, $task->RFA_correction_number));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visited_date, 'USA_DATE'))));
+
+			$cell->append($this->xml->Element("cell", null, $task->RFA_HIPPS));
+			$cell->append($this->xml->Element("cell", null, $task->RFA_claim_key));
+			$cell->append($this->xml->Element("cell", null, $task->tab_status_description));
+
+			$clinician = $this->mparams->get_name_user($task->user_id);
+			$cell->append($this->xml->Element("cell", null, @$clinician->first_name . " " . @$clinician->last_name));
+
+			$case_manager = $this->usagymdl->getByUsAgyId($task->case_manager_user_id);
+			$cell->append($this->xml->Element("cell", null, @$case_manager->first_name . " " . @$case_manager->last_name));
+
+			$document->append($cell);
+
+		}
+			
+	}
+
+	function modal_filter()
+	{
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+
+		$rules = array ('user_epass' 	=> 'required|callback_verify_epass');
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE)
+		{
+			//
+			$this->tpl->assign_include("dynamic_tpl", "visitlog/task_modal_filter");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			/* approve medication, save into pat_medical_approval		 */
+			$this->patientmedicationapprovalmdl->patient_id=$patient_id;
+			$this->patientmedicationapprovalmdl->approved_user_id=$this->getUserId();
+			$this->patientmedicationapprovalmdl->approve();
+
+			echo "<script>parent.cancelModal();</script>";
+		}
+
+	}
+
+
+
+	function exporttopc ( $RFA_export_ids ) {
+		$this->load->model('rfaexporttostatemdl');
+
+		$this->tpl->assign("RFA_export_ids", $RFA_export_ids);
+		$this->tpl->assign("export_date", date('Y-m-d H:i:s'));
+		$this->tpl->assign("grl_save", 'Confirm Export to PC');
+		
+
+//		$rules = array(
+//					   "export_path" => 'required');
+//		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			//$this->assignObject($this->visitlogmdl->getById($visit_log_id));
+
+			$this->tpl->assign_include("dynamic_tpl", "oasismanager/export_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+				
+		} else {
+      $visit_logs = array();
+			$RFA_export_ids=explode(',',$RFA_export_ids);
+			$date2 = new DateTime("now");
+			$name=$date2->format('U');
+			$namefile='upload/'.$name.'_export.txt';
+			$fh=fopen($namefile,"w");
+			foreach ($RFA_export_ids as $item){
+			
+			$visit=$this->visitlogmdl->getVisitLogByVisitlogid($item);
+			if($visit != null){
+        $visit_logs[] = $visit[0];
+				$myString =$visit[0]->first_name." ".$visit[0]->last_name."\n";
+			
+				fwrite($fh,utf8_encode($myString));
+				
+			}
+			}
+				
+			
+			fclose($fh);
+			chmod($namefile, 0777); 
+			
+			$this->rfaexporttostatemdl->export_date=date('Y-m-d H:i:s');
+			$this->rfaexporttostatemdl->export_notes=$this->input->post('export_notes');
+			$this->rfaexporttostatemdl->export_tab_100_status=1;
+			$this->rfaexporttostatemdl->modify_date=date('Y-m-d H:i:s');
+			$this->rfaexporttostatemdl->modify_user_id=$this->getUserId();
+			$this->rfaexporttostatemdl->export_path=$namefile;
+			$rfa_export_id = $this->rfaexporttostatemdl->insert();
+			
+      
+			foreach ($visit_logs as $visit){
+        $this->visitlogmdl->updateFlex($visit->visit_log_id, 'RFA_export_id', $rfa_export_id);
+      }      
+      
+      $file = $namefile;
+
+      if (file_exists($file)) {
+      
+          define('MP_BOUNDARY', '--'.sha1(microtime(true)));
+
+          header('Content-Type: multipart/x-mixed-replace; boundary="'.MP_BOUNDARY.'"');
+          flush();
+
+          echo "Content-Type: text/plain\r\n";
+          echo "Content-Disposition: attachment; filename=".basename($file)."\r\n";
+          echo "\r\n";
+          readfile($file);                    
+          echo MP_BOUNDARY;
+          flush();
+
+          echo "Content-Type: text/html\r\n";
+          echo "\r\n";
+          echo "<html><SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT></html>";
+          echo MP_BOUNDARY.'--';
+          flush();
+          exit;
+      }
+
+				/*	
+			echo "<SCRIPT>
+			myRef = window.open('".base_url().$namefile."','_blank',
+'left=20,top=20,width=500,height=500,toolbar=1,resizable=0');
+			parent.location.reload(true);parent.dhxWins.unload();
+			
+			
+			</SCRIPT>";
+			*/
+		
+        	
+		}
+
+	}
+
+
+}

@@ -1,0 +1,392 @@
+<html>
+<head>
+<title>HomeHealthSystem</title>
+<style type="text/css">
+{literal}
+body {
+ background-color: #fff;
+ margin: 0px;
+ padding: 0px;
+ font-family: Lucida Grande, Verdana, Sans-serif;
+ color: #4F5155;
+ overflow-x: hidden;
+}
+
+.top_td {
+ font-size: 13px;
+ background-color: #e8e8e8;
+ color: #002166;
+ display: block;
+}
+
+.top_td2 {
+ font-size: 12px;
+ color: #002166;
+}
+.bg_color {
+ background-color: #e8e8e8;
+}
+{/literal}
+</style>
+
+<style type="text/css">
+{literal}
+.urbangreymenu{
+width: 150px; /*width of menu*/
+}
+
+a:visited, a:link, a:active {
+	text-decoration: none;
+}
+	
+.urbangreymenu .headerbar{{/literal}
+font: bold 11px Verdana;
+color: white;
+background: #606060 url({$image_url}arrowstop.gif) no-repeat 8px 4px; /*last 2 values are the x and y coordinates of bullet image*/
+margin-bottom: 0; /*bottom spacing between header and rest of content*/
+padding: 5px 0 5px 31px; /*31px is left indentation of header text*/
+{literal}}
+
+.urbangreymenu .headerbar a{
+text-decoration: none;
+color: white;
+display: block;
+}
+
+.urbangreymenu ul{
+list-style-type: none;
+margin: 0;
+padding: 0;
+margin-bottom: 0; /*bottom spacing between each UL and rest of content*/
+}
+
+.urbangreymenu ul li{
+padding-bottom: 1px; /*bottom spacing between menu items*/
+
+}
+
+.urbangreymenu ul li a{
+font: normal 11px Verdana;
+color: black;
+/*background: #E9E9E9;*/
+display: block;
+padding: 2px 0;
+line-height: 16px;
+padding-left: 10px; /*link text is indented 8px*/
+text-decoration: none;
+}
+
+.urbangreymenu ul li a:visited{
+color: black;
+}
+
+.urbangreymenu ul li a:hover{ /*hover state CSS*/
+color: white;
+background: #385696;
+}
+.top_td .alert{
+position: absolute;
+background: #fff;
+color: white;
+right: 10px;
+top:20px;
+font-size: 13px;
+font-weight: normal;
+padding: 10px;
+border: 2px solid white;
+opacity: 0.5;
+}
+.top_td .alert a{
+color:red;
+}
+.top_td .alert a:hover{
+text-decoration: underline;
+}
+{/literal}
+</style>
+<link href="{$base_url}style/dropmenu.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="{$base_url}style/dropdown.js"></script>
+<script type="text/javascript" src="{$base_url}style/jquery-1.4.2.min.js"></script>
+<script type="text/javascript" src="{$base_url}style/general.js"></script>
+
+<script language="JavaScript" type="text/javascript">
+	var index_url = '{$index_url}';
+</script>
+<base href="{$base_url}" />
+<link href="{$base_url}style/grid/dhtmlXGrid.css" rel="stylesheet" type="text/css">
+<link href="{$base_url}style/grid/dhtmlXGrid_skins.css" rel="stylesheet" type="text/css">
+<link href="{$base_url}style/css.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="{$base_url}style/general.js"></script>
+<script type="text/javascript" src="{$base_url}style/ajaxparse.js"></script>
+<script type="text/javascript" src="{$base_url}style/ajax.js"></script>
+
+<script src="{$base_url}style/grid/dhtmlXCommon.js"></script>
+</head>
+<body>
+<script type="text/javascript" src="{$base_url}style/wz_tooltip.js"></script>
+<script type="text/javascript" src="{$base_url}style/tip_balloon.js"></script>
+
+<script type="text/javascript" src="{$base_url}style/dropdown.js"></script>
+
+<link rel="STYLESHEET" type="text/css" href="{$base_url}style/tab/dhtmlxtabbar.css">
+<script  src="{$base_url}style/tab/dhtmlxtabbar.js"></script>
+<script  src="{$base_url}style/tab/dhtmlxtabbar_start.js"></script>
+
+<link rel="stylesheet" type="text/css" href="{$base_url}style/window/dhtmlxwindows.css">
+<link rel="stylesheet" type="text/css" href="{$base_url}style/window/skins/dhtmlxwindows_dhx_blue.css">
+<script type="text/javascript" src="{$base_url}style/window/dhtmlxwindows.js"></script>
+
+
+<script type="text/javascript" src="{$base_url}style/wz_tooltip.js"></script>
+{*<span style="position:fixed;left:45%; top:33px;">
+	<a href="{$mobile_url}">Jump to Mobile version</a>
+</span>*}
+	<table height="100%" width="100%" cellpadding="0" cellspacing="0" border="0">
+		<tr>
+			<td class="top_td" height="10">
+			<div style="float: left; display: inline">
+				{if $agency->agency_type eq "A"}
+				<span style="color:black;font-weight:bold">&nbsp;Agency: {$agency->agency_name}</span> 
+				{elseif $agency->agency_type eq "P"}
+				<span style="color:red;font-weight:bold">&nbsp;Prospect: {$agency->agency_name}</span> 
+				{elseif $agency->agency_type eq "C"}
+				<span style="color:black;font-weight:bold">&nbsp;Company: {$agency->agency_name}</span> 
+				{elseif $agency->agency_type eq "D"}
+				<span style="color:black;font-weight:bold">&nbsp;Doctor Office: {$agency->agency_name}</span> 
+				{/if}
+
+				{if $multiple_agency == true}
+					&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+					<a href="{$index_url}welcome/premain" >Select Agency</a>
+				{/if}
+				{if $show_discipline_selection == true}
+					&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+					{html_options id='discipline_id' options=$user_discipline_list name='usagy_discipline_id' id='usagy_discipline_id' selected=$user_discipline_selected has_firts_option=false onchange=change_usagy_discipline(this.value)}
+				{/if}
+				{if $show_lob_selection == true}
+					&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+					{html_options options=$agency_products name='lob' id='lob' selected=$logged_in_us_agy->user_tab111_product_id first_option="- Select Line of Business -" onchange=change_usagy_lob(this.value)}
+				{/if}
+				</div>
+				{if $alertcredential != "" OR $alertcredentialerror != ""}
+				<span class="alert">
+					{if $alertcredential != ""}
+						<a href="{$alertcredentialUrl}" target="content">
+							{$alertcredential}
+						</a>
+					{/if}
+					{if $alertcredentialerror != ""}
+						<a href="{$alertcredentialerrorUrl}" target="content">
+							{$alertcredentialerror}
+						</a>
+					{/if}
+				</span>
+				{/if}
+					
+				<div style="float: right; display: inline">&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<a href="{$index_url}welcome/logout" >Logout</a>&nbsp;&nbsp;</div>
+				<!--<div style="float: right; display: inline">&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<a href="{$index_url}administrator/prtqueue" target="content">Print Queue</a>&nbsp;&nbsp;</div>-->
+				
+				<div style="float: right; display: inline">
+					<div id="sample_attach_menu_parent">{$user->first_name} {$user->last_name} <img align="bottom" src="{$image_url}drop_selector.gif"></div>
+					<div id="sample_attach_menu_child">
+						<a class="sample_attach" href="{$index_url}account/index" target="content">My Profile</a>
+						<a class="sample_attach" href="{$index_url}account/passwordchange" target="content">Change Password</a>
+						<a class="sample_attach" href="{$index_url}account/epasswordchange" target="content">Electronic Signature</a>
+						<a class="sample_attach" href="{$index_url}account/index/b2" target="content">My Credentials</a>
+					</div>
+				</div>
+			<td>
+		</tr>
+		<tr>
+			<td height="50" background="{$image_url}top_bg.png" style="background-repeat: no-repeat; background-position: right; border-top: 1px solid #D0D0D0; border-bottom: 1px solid #D0D0D0">
+			
+				<table width="300" cellpadding="3" cellspacing="4" border="0">
+					<tr>
+						<td align="right" style="border-right: 2px solid #4F5155; font-size: 1 colpx">
+							Home Health Soft&nbsp;&nbsp;
+						<td>
+						<td align="left">
+							<img src="{$base_url}style/logo.jpg" height="30">
+						<td>
+					</tr>
+				</table>
+			
+			<td>
+		</tr>
+		<tr>
+			<td height="100%" width="100%">
+				<table height="100%" width="100%" cellpadding="5" cellspacing="0" class="bg_color" border="0">
+					<tr>
+						<td class="top_td2" style="padding-bottom: 5px; padding-top: 5px" valign="top">
+						
+							<div style="text-align: center">
+								<a href="{$index_url}calendar" target="content" onmouseover='Tip("Calendar", OFFSETY, 18)'><img hspace="6" src="{$image_url}icon_maint.png" border="0"></a>
+								<a href="{$index_url}patient/mypatient" target="content" onmouseover='Tip("Patients", OFFSETY, 18)'><img hspace="6" src="{$image_url}patients.png" border="0"></a>
+								<a href="{$index_url}mail/mail" target="content" onmouseover='Tip("Internal Email", OFFSETY, 18)'><img hspace="6" src="{$image_url}mail_generic_{$message_count}.png" id="message_count_image" border="0"></a>
+							</div>
+							
+							
+							<div class="urbangreymenu">
+							{foreach from=$menu key=parent_menu_name item=parent_menu}
+								<h3 class="headerbar"><a href="#">{$parent_menu_name}</a></h3>
+								<ul class="submenu">
+								{foreach from=$parent_menu key=sub_menu_name item=sub_menu_url}
+                                    
+                                    <li><a href="{$index_url}{$sub_menu_url}" target="content">{if $sub_menu_name == "Internal Email"}Internal Email
+                                   {if $countemail > 0} 
+                                   {foreach from=$countemail key=i item=itm}
+                                        {foreach from=$itm key=i2 item=itm2}
+                                             
+                                           {if $itm2 > 0}    
+                                           <font style="color: red;font-weight: bold;font-style: italic;"> ({$itm2}) </font>
+                                           {/if}
+                                        {/foreach}
+                                    {/foreach}
+                                    {/if}
+                                    {elseif $sub_menu_name == "Communication Notes"}Communication Notes
+																			{if $countcomnotes > 0}
+																				<font style="color: red;font-weight: bold;font-style: italic;"> ({$countcomnotes}) </font>
+																			{/if}	
+									{elseif $sub_menu_url == "agencydoctororder"}
+										{$sub_menu_name}<font style="color: red;font-weight: bold;font-style: italic;" title="(Ready,Pending)"> ({$ready_doc_order_count},{$pending_doc_order_count}) </font>
+                                    {else}{$sub_menu_name}{/if}</a></li>
+                                    
+                                    							
+								{/foreach}                                                     
+								</ul>
+							{/foreach}
+							</div>	
+							
+							
+						</td>
+						
+						<td height="100%" width="100%" sstyle="padding-top: 0px" sstyle="padding-bottom: 5px; padding-top: 5px">
+							
+							
+							<table border="0" height="100%" width="100%" bgcolor="white" cellpadding="0" cellspacing="0"> 
+							  <tr> 
+							    <td><img src="{$image_url}c1.png"></td>
+							    <td style="border-top: 1px solid #D0D0D0"><img src="{$image_url}blank.gif"></td>
+							    <td><img src="{$image_url}c2.png"></td>
+							  </tr>
+							  <tr> 
+							    <td style="border-left: 1px solid #D0D0D0"><img src="{$image_url}blank.gif"></td>
+							    <td width="100%" height="100%">
+							    	<iframe src="{if $home_app}{$index_url}{$home_app}{/if}" frameborder="0" scrolling="auto" width="100%" height="100%" id="content" name="content"></iframe>
+							    </td>
+							    <td style="border-right: 1px solid #D0D0D0"><img src="{$image_url}blank.gif"></td>
+							  </tr>
+							  <tr> 
+							    <td><img src="{$image_url}c4.png"></td>
+							    <td style="border-bottom: 1px solid #D0D0D0"><img src="{$image_url}blank.gif"></td>
+							    <td><img src="{$image_url}c3.png"></td>
+							  </tr>
+							</table>
+						
+						</td>
+					</tr>
+				</table>
+			<td>
+		</tr>
+	</table>
+</body>
+
+<script type="text/javascript">
+at_attach("sample_attach_menu_parent", "sample_attach_menu_child", "hover", "y", "pointer");
+var w_top;
+function open_top_popup (url, WD, HT) {literal}{{/literal}
+
+		WD = 1000;
+		HT = 800;
+
+		//if (window.screen) {literal}{{/literal}
+        WD = $(window).width() * 90 / 100;
+        HT = $(window).height() * 85 / 100;
+    //{literal}}{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, WD, HT);
+		w2.setText("Visit Form");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		//w2.denyResize(); // deny resizing
+		//w2.denyMove(); 
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL(url);
+		w_top = w2;			
+  {literal}}{/literal}
+
+var dhxWins;
+var modal_from;
+function modal_test(url, opener) {literal}{{/literal}
+  modal_from = opener;
+  console.log(modal_from);
+  
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+  
+  var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+  w2.setText("New Popup Test to Top Window");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove(); 
+  w2.button("close")._doOnClick = function() {literal}{{/literal}   
+    w2.close();
+  {literal}}{/literal}  
+  
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}" + url);
+{literal}}{/literal}
+
+	function change_usagy_discipline(discipline_id) {literal}{{/literal}
+		var url = '{$index_url}welcome/change_usagy_discipline';
+		{literal}
+		var params = 'discipline_id='+discipline_id;
+		$.ajax({
+			type: "POST",
+			dataType: 'json',
+			url: url,
+			data: params,
+			success: function(data){
+				if(data=='1'){
+					alert('Your discipline has been Changed Successfully.');
+				}
+			},	
+			error: function (data, status, e)
+			{
+				alert('Check your network or contact with administrator.')
+			}
+		});
+	{literal}}{/literal}
+	
+	function change_usagy_lob(lob) {literal}{{/literal}
+		var url = '{$index_url}welcome/change_usagy_lob';
+		{literal}
+		if(lob == 0) {
+			alert("Please select an option.");
+		} else {
+			var params = 'lob='+lob;
+			$.ajax({
+				type: "POST",
+				dataType: 'json',
+				url: url,
+				data: params,
+				success: function(data){
+					if(data=='1'){
+						alert('Your line of business has been Changed Successfully.');
+					}
+				},	
+				error: function (data, status, e)
+				{
+					alert('Check your network or contact with administrator.')
+				}
+			});
+		}
+		{/literal}
+	{literal}}{/literal}	
+</script>
+</html>

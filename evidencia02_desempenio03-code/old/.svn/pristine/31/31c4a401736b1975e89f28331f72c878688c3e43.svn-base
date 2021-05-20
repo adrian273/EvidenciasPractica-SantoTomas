@@ -1,0 +1,103 @@
+
+<form name="edit_event_form" id="edit_event_form" method="POST">
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="6"> 
+		{if $error_string}
+		<tr>
+			<td class="error tbl_msg" colspan="2">{$error_string}</td>
+		</tr>
+		{/if}
+		<tr id="tr_qr_dates_err" style="display: none;">
+		    <td id="td_qr_dates_err" colspan="2" style="color: red;"></td>
+		</tr>
+		<tr>
+          <td class="ftitle"> Therapist</td>
+          <td> 
+            {html_options options=$team_list name='qr_therapist' id='qr_therapist qr_therapist' selected=$qr_therapist}
+          </td>
+        </tr>
+        <tr>
+		    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Schedule QR/8606</td>
+		</tr> 
+        <tr>
+          <td class="ftitle"> Q1</td>
+          <td> 
+            <input size="11" type="text" id="qr1_date" name="qr1_date" value="{$qr1_date}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr1_date'), document.getElementById('fecha_help'));return false;" >
+          </td>
+        </tr>
+        <tr>
+          <td class="ftitle"> Q2</td>
+          <td> 
+            <input size="11" type="text" id="qr2_date" name="qr2_date" value="{$qr2_date}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr2_date'), document.getElementById('fecha_help'));return false;" >
+          </td>
+        </tr>
+        <tr>
+          <td class="ftitle"> Q3</td>
+          <td> 
+            <input size="11" type="text" id="qr3_date" name="qr3_date" value="{$qr3_date}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr3_date'), document.getElementById('fecha_help'));return false;" >
+          </td>
+        </tr>
+        <tr>
+          <td class="ftitle"> Q4</td>
+          <td> 
+            <input size="11" type="text" id="qr4_date" name="qr4_date" value="{$qr4_date}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr4_date'), document.getElementById('fecha_help'));return false;" >  
+          </td>
+        </tr>
+		<tr>
+			<td nowrap height="100%" valign="bottom">
+        		<input type="submit" class="btn" name="submit" value="Save">
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.cancelModal()">
+			</td>
+		</tr>
+</table>
+</form>
+
+<script type="text/javascript">
+{*{literal}
+function load_qr_dates(){
+    {/literal}var url = '{$index_url}patient/mypatient/get_qr_dates/{$estimated_soc_date}';{literal}
+    $.ajax({
+      type: "GET",
+      dataType: 'json',
+      url: url,
+      // data: params,
+      success: function(data){
+        // if (data.qr1_date) {
+          $('#qr1_date').val(data.qr1_date)
+        // }
+        // if (data.qr2_date) {
+          $('#qr2_date').val(data.qr2_date)
+        // }
+        // if (data.qr3_date) {
+          $('#qr3_date').val(data.qr3_date)
+        // }
+        // if (data.qr4_date) {
+          $('#qr4_date').val(data.qr4_date)
+        // }
+
+        if (!data.qr1_date && !data.qr2_date && !data.qr3_date && !data.qr4_date ) {
+          // console.log('show qr  dates error');
+          $('#td_qr_dates_err').html('Error: Calendar for Schedule QR/8606 not found');
+          $('#tr_qr_dates_err').show();
+        } else{
+          // console.log('hide qr  dates error');
+          $('#tr_qr_dates_err').hide();
+        }
+          
+      },  
+      error: function (data, status, e)
+      {
+      	$('#td_qr_dates_err').html('Error: Lodading Schedule QR/8606. Check your internet connection');
+        $('#tr_qr_dates_err').show();
+      }
+    });
+  }
+
+$(document).ready(function() {
+	load_qr_dates();
+});  
+{/literal} *}
+</script>

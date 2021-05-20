@@ -1,0 +1,123 @@
+<?php  if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+function grvi_pdf ( $visit_log_id, $output='F' ) {
+    // $visit_pdf = grvi_generate_pdf($visit_log_id, $output);
+
+    // return $visit_pdf;
+        
+    $visit_pdf = grvi_generate_pdf($visit_log_id, 'F');
+    /** 
+     * New Code support >= PHP 5.3.0
+     */
+    require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+    require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+    require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+    
+    // and we can do stuff
+    $pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+    $filename .= 'datastore/grvi/Policies-Procedures.pdf';
+    // echo $filename; exit();
+    $return_file_name = "";
+
+    $pdf->addPDF($filename, 'all');
+    $pdf->addPDF($visit_pdf, 'all');
+    
+    switch($output){
+        case 'D':
+            
+            $visit_pdf_name = basename($visit_pdf);
+            $return_file_name = $visit_pdf_name;
+            $pdf->merge('download', $visit_pdf_name);
+            @unlink($visit_pdf);
+            break;
+        case 'F':
+            $filepath = FCPATH;
+            $filepath = str_replace("\\","/", $filepath);
+            $visit_pdf_name = basename($visit_pdf);
+            $filepath = $filepath.'tmp/'.$visit_pdf_name;
+            $return_file_name = $filepath;
+            $pdf->merge('file', $filepath);
+            break;
+    }
+
+    return $return_file_name;
+}
+
+function grvi_generate_pdf ( $visit_log_id, $output='F' ) {
+    $CI =& get_instance();
+
+    $CI->load->model('grvimdl');
+
+    $visit_log = $visitlog = $CI->visitlogmdl->getById($visit_log_id);
+    $agy_user_id = $visit_log->user_id;
+    $us1_user = $CI->usermdl->getById($agy_user_id);
+
+
+    // printing pdf
+    $grvi = $CI->grvimdl->get($visit_log_id);
+    if (empty($grvi)) {
+		$grvi = $CI->grvimdl->getEmpty();
+		$grvi->visit_log_id = $visit_log_id;
+	}
+	// if($visitlog->signature != "") {
+	// 	$grvi->pt_signature = $visitlog->signature;
+	// }
+
+    $patient    	= $CI->patientmdl->getById($visit_log->patient_id);
+    // $insurance      = $CI->patientinsurancemdl->getPrimaryInsurance($visit_log->patient_id);
+    // $assigned_to    = $CI->usagymdl->getByUsAgyId($visit_log->visit_user_id);
+    // $approver    	= $CI->usagymdl->getByUsAgyId($visit_log->user_approver);
+    $agency	    	= $CI->agencymdl->getByAgencyId($patient->agency_id);
+    // $episde_icd		= $CI->episodeicdmdl->get($visit_log->cms485_id);
+    // $physician    = $CI->agencymdl->getByAgencyId($visit_log->doctor_office_id);
+	//$phys_user_id  	= $CI->usagymdl->getByUsAgyId($visit_log->phys_user_id);
+
+
+    //$title_text = $visit_log->visit_description." Visit Date: " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $title_text = "GRVI Visit Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+
+    $data = (object) array_merge( (array)$visitlog, (array)$grvi);
+    // echo "<pre>";print_r($data); exit();
+    $data->patient = $patient;
+    $data->agency = $agency;
+    
+    //print_r($data);exit;
+    $data->base_url = base_url();
+  	$content = $CI->load->view('task/documents/grvi_pdf.php',$data,true);
+    
+    // echo $content;exit;
+    
+    //$html = $this->load->view('task/documents/oasis9_pdf', $data, true);
+    $CI->load->library('pdf_dom');
+    
+
+    if ($output == 'D') {
+        $CI->pdf_dom->generate($content, $filename_only, TRUE, 'A4', 'portrait');
+    } else if ($output == 'F') {
+      	$c = 1;
+        while(file_exists($filename.'tmp/'.$filename_only.'.pdf'))
+        {
+            $filename_only =  "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text." _".$c;
+            $c++;
+        }
+        $filename = $filename.'tmp/'.$filename_only;
+
+        $pdf_str = $CI->pdf_dom->generate($content, $filename, false, 'A4', 'portrait'); 
+        
+        $file = $filename.'.pdf';
+        
+        // Write the contents back to the file
+        file_put_contents($file, $pdf_str);
+
+        return $file;
+    }
+
+}
+

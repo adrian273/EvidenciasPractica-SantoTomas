@@ -1,0 +1,79 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Personal Information</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr>
+    <td colspan="2" class="stip">
+    	Before add a new Doctor Office, please search by its NPI
+    </td>
+  </tr> 
+  <tr>
+    <td class="ftitle">NPI</td>
+    <td>
+    	<input type="text" name="doctor_office_npi" id="doctor_office_npi" value="{$doctor_office_npi}"> * <input type="button" value="Search" onclick="searchNPI()">
+    </td>
+  </tr>
+  <tbody id="form_complement" style="display:none;">
+  <tr>
+    <td class="ftitle">Email</td>
+    <td>
+    	<input type="text" name="user_email" id="user_email" value="{$user_email}" disabled> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Confirm Email</td>
+    <td>
+    	<input type="text" name="email_confirm" id="email_confirm" value="{$email_confirm}" disabled> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Doctor First Name</td>
+    <td>
+    	<input type="text" name="first_name" id="first_name" value="{$first_name}" disabled> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Doctor Last Name</td>
+    <td>
+    	<input type="text" name="last_name" id="last_name" value="{$last_name}" disabled> *
+    </td>
+  </tr>
+  </tbody>
+  
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	{literal}
+	function searchNPI () {
+
+		setDisabled('user_email', true);
+		setDisabled('email_confirm', true);
+		setDisabled('first_name', true);
+		setDisabled('last_name', true);
+		switchDisplay2('form_complement', 'none');
+
+	  	url = index_url + 'agencydoctoroffice/searchNPI/' + getValue('doctor_office_npi');
+	    ajaxRequest.getRequest(url, [], [], function(data){
+			if (data == 'false') {
+				setDisabled('user_email', false);
+				setDisabled('email_confirm', false);
+				setDisabled('first_name', false);
+				setDisabled('last_name', false);
+				switchDisplay('form_complement');
+			} else {
+				if (confirm('Doctor Office registered. Would you like to associate with agency?')) {
+		     		ajaxRequest.getRequest(index_url + "agencydoctoroffice/associate/" + getValue('doctor_office_npi')+'/'+{/literal}{$agency_id}{literal}, [], [], function(data) {
+		     			document.location = index_url + 'agencydoctoroffice';
+		     		});
+		     	}
+			}
+	    });
+	  
+	}
+	{/literal}
+
+</script>

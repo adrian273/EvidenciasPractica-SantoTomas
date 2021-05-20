@@ -1,0 +1,134 @@
+  <script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+  {*<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/blitzer/jquery-ui.css" type="text/css" />*}
+  <link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="left">
+  <tr>
+    <td width="60%" valign="top">
+      <table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="left">
+        <tr>
+          <td><b>Employee/User:</b> </td><td>{$first_name} {$last_name} {if $legal_name neq ''}- {$legal_name}{/if}</td>
+          <td><b>Nbr. of payable visits:</b> </td><td>{$visit_count} </td>
+          <td colspan="2"></td>
+        </tr>
+        <tr>
+          <td><b>Process Date:</b> </td><td>{$payroll_batch_process_date|date_format:"%m-%d-%Y":""} </td>
+          <td><b>Period Date:</b> </td><td>{$payroll_batch_process_period_from|date_format:"%m-%d-%Y":""} - {$payroll_batch_process_period_end|date_format:"%m-%d-%Y":""} </td>
+          <td colspan="2"></td>
+        </tr>
+        <tr>
+          <!-- <td><b>Check Amount:</b> </td><td>$ {$sum_visit_amount + $sum_mileage_amount} </td> -->
+          <td><b>Payment Amount:</b> </td><td>$ {$sum_visit_amount + $sum_mileage_amount} </td>
+          <!-- <td><b>Check Date:</b></td><td>{$check_date|date_format:"%m-%d-%Y":""}</td> -->
+          <td><b>Payment Date:</b></td><td>{$check_date|date_format:"%m-%d-%Y":""}</td>
+          <td colspan="2"></td>
+        </tr>
+        <tr>
+          <td><b>Payroll Status:</b></td><td>
+            <label><input type="radio" name="paid" value="paid" onclick="return PaymentStatusUpdate('paid')" {if $payment_status eq 'paid'}checked="checked"{/if}> Paid</label>
+            <label><input type="radio" name="paid" value="not" onclick="return PaymentStatusUpdate('not')" {if $payment_status eq 'not'}checked="checked"{/if}> Not Paid</label>  
+          </td>
+          <td><b>Check Number:</b></td><td>{$check_no}</td>          
+          <td colspan="2"></td>
+        </tr>
+        <tr>
+          <td><b>Payment Type:</b> </td>
+          <td>{$payment_type_list[$payment_type]}</td>
+          <td colspan="4"></td>
+        </tr>
+        <tr>
+          <td><b>Notes:</b> [<a href="javascript:modalEditStub({$payroll_batch_id})">Edit</a>]</a></td><td colspan="3">{$notes}</td>
+          <td colspan="2"></td>
+        </tr>
+      </table>
+
+    </td>
+    <td width="40%" valign="top">
+      
+    </td>
+  </tr>
+</table>
+
+<script language="JavaScript" type="text/javascript">
+  var dhxWins;
+  
+  function modalEditStub ( payroll_batch_id ) {literal}{{/literal}
+ 
+    dhxWins = new dhtmlXWindows();
+    dhxWins.setImagePath("{$base_url}style/window/imgs/");
+    
+    var w1 = dhxWins.createWindow("w1", 10, 10, 400, 300);
+    w1.setText("Edit");
+    w1.button("park").hide();
+    w1.button("minmax1").hide();
+      w1.denyResize(); // deny resizing
+      w1.denyMove(); 
+      dhxWins.window('w1').center();
+      dhxWins.window('w1').setModal(true);
+    w1.attachURL("{$index_url}payroll/history/editStub/" + payroll_batch_id);
+      
+    {literal}}{/literal}
+     
+  function modalEditForm ( visit_log_id ) {literal}{{/literal}
+ 
+      dhxWins = new dhtmlXWindows();
+    dhxWins.setImagePath("{$base_url}style/window/imgs/");
+    
+    var w1 = dhxWins.createWindow("w1", 10, 10, 400, 300);
+    w1.setText("Edit");
+    w1.button("park").hide();
+    w1.button("minmax1").hide();
+      w1.denyResize(); // deny resizing
+      w1.denyMove(); 
+      dhxWins.window('w1').center();
+      dhxWins.window('w1').setModal(true);
+    w1.attachURL("{$index_url}payroll/generate/editDetail/" + visit_log_id);
+      
+    {literal}}{/literal}
+
+  
+  function editRegister ( id ) {literal}{{/literal}
+  {literal}}{/literal}
+    
+  function print ( payroll_batch_id ) {literal}{{/literal}
+    document.location = '{$index_url}payroll/history/printit/' + payroll_batch_id;
+  {literal}}{/literal}  
+
+  {literal}
+  function PaymentStatusUpdate(status){
+    var statusName = (status=='paid') ? 'Paid' : 'Not Paid';
+    if (confirm('Are you sure want to change Payment Status to '+statusName+'?')) {
+      {/literal}url = index_url + 'payroll/history/changePaymentStatus/' + {$stubId}+'/'+status;{literal}
+      ajaxRequest.getRequest(url, [], [], function(data){
+        if (data=='1') {
+          
+        }else{
+          alert("Payment status can not be changed to "+statusName+"!");
+        }
+      });    
+    }else{
+      return false;
+    }   
+
+  }
+  {/literal}
+
+  {literal}
+  function confirmRevert(visit_log_id){
+    if (confirm('Are you sure want to Revert Payroll for the visit?')) {
+      {/literal}url = index_url + 'payroll/history/revertVisit/' + visit_log_id ;{literal}
+      ajaxRequest.getRequest(url, [], [], function(data){
+        if (data=='1') {
+          window.location.reload();
+        }else{
+          alert("Can't be reverted!");
+        }
+      });    
+    }else{
+      return false;
+    }   
+
+  }
+  {/literal}
+</script>
+ 

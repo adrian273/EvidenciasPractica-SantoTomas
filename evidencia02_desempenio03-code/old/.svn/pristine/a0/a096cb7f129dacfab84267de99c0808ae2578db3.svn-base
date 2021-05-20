@@ -1,0 +1,126 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="agency_id" value="{$entity_id}">
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Personal Information</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Email</td>
+    <td>
+    	<input type="text" name="user_email" value="{$user_email}"> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Confirm Email</td>
+    <td>
+    	<input type="text" name="email_confirm" value="{$email_confirm}"> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">User First Name</td>
+    <td>
+    	<input type="text" name="first_name" value="{$first_name}"> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">User Last Name</td>
+    <td>
+    	<input type="text" name="last_name" value="{$last_name}"> *
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Profesional Information</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <!--
+  <tr> 
+    <td class="ftitle">Type Employee</td>
+    <td>{html_options options=$type_employee_list selected=$tab_006_employee_type name='tab_006_employee_type'}</td>
+  </tr>
+  -->
+  <tr> 
+    <td class="ftitle">Discipline</td>
+    <td>
+			<input type="hidden" id="discipline_id" name="discipline_id" value="9">
+			Physician
+			
+			{* if $user_profile_id==6}
+    	<input type="hidden" id="discipline_id" name="discipline_id" value="9">
+			Physician
+			{else}
+			{html_options options=$discipline_list selected=$discipline_id name='discipline_id' onchange='upinVisibility(this.value)'} *
+			{/if *}
+			</td>
+  </tr>
+  <tbody id="upin_td" style="display: none">
+	  <tr>
+	    <td class="ftitle">NPI</td>
+	    <td>
+	    	<input type="text" id="upin" name="npi" value="{$npi}">
+	    </td>
+	  </tr>
+	  <tr>
+	    <td class="ftitle">Upin</td>
+	    <td>
+	    	<input type="text" id="upin" name="upin" value="{$upin}">
+	    </td>
+	  </tr>
+  </tbody>
+  
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Electronic Signature</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr> 
+    <td class="ftitle">User set-up for Electronic Signature</td>
+    <td>{html_radios options=$logic_list selected=$electronic_sign_setup name='electronic_sign_setup' id='electronic_sign_setup'} *</td>
+  </tr>
+  
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency Profile</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr> 
+    <td class="ftitle">Profile</td>
+    <td>
+    	<input type="hidden" id="profile_id" name="profile_id" value="4">
+			Physician
+					
+			{* if $user_profile_id==6}
+    	<input type="hidden" id="profile_id" name="profile_id" value="4">
+			Physician
+			{else}
+			{html_options options=$profile_list selected=$profile_id name='profile_id' id='profile_id'} *
+			{/if *}
+		</td>
+  </tr>
+  
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	function upinVisibility ( discipline_id ) {literal}{{/literal}
+
+		if (discipline_id == 9)  {literal}{{/literal}
+			switchDisplay2('upin_td', '');
+			setValue('profile_id', 4);
+			setCheckedValue('electronic_sign_setup',0);
+		{literal}}{/literal} else {literal}{{/literal}
+		 	switchDisplay2('upin_td', 'none');setValue('upin', '');
+		 	setCheckedValue('electronic_sign_setup',1);
+		{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+	upinVisibility({$discipline_id});
+	
+</script>

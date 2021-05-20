@@ -1,0 +1,65 @@
+<?php
+
+ class CliniciansMap extends MY_Controller {
+
+	function CliniciansMap () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/cliniciansmap");
+		
+	}
+
+	function index ( $patient_id, $episode_id=null ) {
+		$patient 	  = $this->patientmdl->getById($patient_id);
+		array_walk($patient, function(&$item, $key){
+			$item = str_replace(",", "", $item);
+			$item = str_replace("'", "", $item);
+			$item = str_replace('"', '', $item);
+		});
+		
+		$clinicians = array();
+		
+		// foreach($this->teammdl->get($patient_id, $this->input->post('keyword'), $this->input->post('discipline_id')) as $user){
+
+		foreach($this->usagymdl->getAllClinicians($this->getAgencyId()) as $user){
+			if (isset($user->notes)) {
+				unset($user->notes);
+			}
+			array_walk($user, function(&$item, $key){
+				$item = str_replace(",", "", $item);
+				$item = str_replace("'", "", $item);
+				$item = str_replace('"', '', $item);
+			});
+
+			/*$user->first_name = str_replace(",", "", $user->first_name);
+			$user->first_name = str_replace("'", "", $user->first_name);
+			
+			$user->last_name = str_replace(",", "", $user->last_name);
+			$user->last_name = str_replace("'", "", $user->last_name);
+
+			$user->address = str_replace(",", "", $user->address);
+			$user->address = str_replace("'", "", $user->address);
+
+			$user->short_description = str_replace(",", "", $user->short_description);
+			$user->short_description = str_replace("'", "", $user->short_description);*/
+			
+			$clinicians[] = array(
+				'address'=>$user->address, 
+				'short_description'=>$user->short_description, 
+				'last_name'=>$user->last_name, 
+				'first_name'=>$user->first_name,
+				'geo_lat'=>$user->geo_lat,
+				'geo_lng'=>$user->geo_lng,
+			);
+		}
+		
+		$this->tpl->assign("patient_id", $patient_id);
+		$this->tpl->assign("patient", $patient);
+		$this->tpl->assign("clinicians_json",  json_encode(array('clinicians'=>$clinicians)) );
+		$this->tpl->assign("patient_json",  str_replace("'", "",json_encode($patient)) );
+		$this->tpl->assign_include("dynamic_tpl", "patient/team/cliniciansmap");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+ }

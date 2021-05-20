@@ -1,0 +1,98 @@
+<?
+
+ class FacilityMdl extends Model {
+
+	var $facility_id;
+	var $agency_id;
+	var $facility_name;
+	var $tab_031_fac_type;
+	var $facility_nbr;
+	var $phone1;
+	var $phone2;
+	var $fax;
+	var $email;
+	var $address;
+	var $city;
+	var $state_id;
+	var $zip;
+	var $contact_name;
+	var $contact_cell_phone;
+	var $contact_email;
+	var $notes;
+
+	function FacilityMdl() {
+		
+		parent::Model();
+		
+	}
+	
+	function get (  $agency_id, $keyword=null, $facility_type=null ) {
+	
+		$this->db->join('tab_parameters', 'agy_facility.tab_031_fac_type = tab_parameters.tab_value AND tab_parameters.tab_type = 31', 'LEFT');
+		$this->db->order_by("facility_name", "asc");
+		
+		if (!is_null($keyword)) {
+			$this->db->like('facility_name', $keyword);
+		}
+		
+		if (!is_null($facility_type)) {
+			$this->db->where("tab_031_fac_type", $facility_type);
+		}
+		
+		$this->db->where("agency_id", $agency_id);
+		
+		$query = $this->db->get('agy_facility');
+		return $query->result();
+
+	}
+	
+	function getByFacilityId ( $facility_id ) {
+		
+		$this->db->where('facility_id', $facility_id);
+		
+		$query = $this->db->get('agy_facility');
+		return $query->row();
+		
+	}
+	
+	function insert ( $agency_id ) {
+		
+		$this->agency_id = $agency_id;
+		
+		$this->db->insert('agy_facility', $this);
+		$this->facility_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $facility_id, $agency_id ) {
+		
+		$this->facility_id = $facility_id;
+		$this->agency_id = $agency_id;
+		
+		$this->db->where('facility_id', $facility_id);
+		
+		$this->db->update('agy_facility', $this);
+		
+	}
+	
+	function delete ( $facility_id ) {
+		
+		$this->db->where('facility_id', $facility_id);
+		
+		$this->db->delete('agy_facility'); 
+		
+	}
+	
+	function suggest ( $agency_id, $keyword ) {
+
+		$this->db->where('agency_id', $agency_id);
+		$this->db->like('facility_name', $keyword);
+		
+		$this->db->limit($this->db->max_suggest);
+
+		$query = $this->db->get('agy_facility');
+		return $query->result();			
+	
+	}
+
+ }

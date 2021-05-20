@@ -1,0 +1,24 @@
+<?php
+
+ function moneyformat( $amount ) {
+ 	
+ 	if (function_exists("money_format")) {
+ 		return money_format('%(#10n', $amount);
+ 	}else {
+ 		$number = sprintf("%01.2f", $amount);
+ 		
+ 		// divides integer value by commas.
+ 		while (true) { 
+	        $replaced = preg_replace('/(-?\d+)(\d\d\d)/', '$1,$2', $number); 
+	        if ($replaced != $number) { 
+	            $number = $replaced; 
+	        } else { 
+	            break; 
+	        } 
+	    }
+	    
+	    // prepend dollar sign
+	    return "$ ".$number;
+ 	}
+ 	
+ }

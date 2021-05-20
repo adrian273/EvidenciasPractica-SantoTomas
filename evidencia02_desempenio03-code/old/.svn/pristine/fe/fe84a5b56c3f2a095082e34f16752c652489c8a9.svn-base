@@ -1,0 +1,581 @@
+<?php
+ include('visitform.php');
+
+class Aavi extends VisitForm {
+
+	function Aavi () {
+		
+		parent::VisitForm();
+
+		$this->load->model('aavimdl');
+		
+		$this->tpl->assign("resource_path", "task/aavi");
+		$this->tpl->assign("this_visit_name", "Annual Assessment Visit");
+
+		// validate before submit for approval
+		$this->tpl->assign("validatationVisit", true);
+		
+		$this->tpl->assign(array("tab_page" => true));		
+	}
+
+	
+	/**
+	 * aavi form for not CLASS patient
+	 */
+	function index($visit_log_id, $action = 'task', $window = 'self') {
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+	
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$contractor = $this->agencymdl->getByAgencyId($visit_user->agency_id);
+
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+		$prev_visit_log_id = null;
+		$next_visit_log_id = null;
+		$aavi = $this->aavimdl->get($visit_log_id);
+		if (!count($aavi) OR $visitlog->visit_status_id == 1) {
+			$prevAavis = $this->aavimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($prevAavis) == 0) {
+				$prevAavis = $this->aavimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE);
+			}
+
+			if (count($prevAavis)) {
+				$prevAavi = $prevAavis[count($prevAavis) - 1];
+
+				$prev_visit_log_id = $prevAavi->visit_log_id;
+
+				$not_to_import = array (
+					'visit_log_id',
+					'vt122_id',					
+					'pt_signed_date',					
+					'clinician_signature',					
+					'clinician_signed_date',					
+					// 'aavi_notes',
+					'upload_document_name',					
+				);
+				foreach ($prevAavi as $k => $v) {
+					if (property_exists($this->aavimdl, $k)) {
+						if (!in_array($k, $not_to_import))
+							$this->aavimdl-> $k = $v;
+						else if(isset($aavi->$k))
+							$this->aavimdl->$k = $aavi->$k;
+					}					
+				}
+				if (count($aavi)) {
+					$this->aavimdl->visit_log_id = $visit_log_id;
+					$this->aavimdl->update($visit_log_id);
+				} else {
+					$this->aavimdl->visit_log_id = $visit_log_id;
+					$this->aavimdl->insert($visit_log_id);
+				}
+			}
+		} else {
+			$prevAavis = $this->aavimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($prevAavis)) {
+				$prevAavi = $prevAavis[count($prevAavis) - 1];
+				$prev_visit_log_id = $prevAavi->visit_log_id;
+			}
+		}
+		$nextAavis = $this->aavimdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+		if (count($nextAavis)) {
+			$nextAavi = $nextAavis[0];
+			$next_visit_log_id = $nextAavi->visit_log_id;
+		}
+		//echo $prev_visit_log_id."::".$next_visit_log_id;exit;
+		//$this->tpl->assign("form", 'ptpn');  
+		$this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+		$this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+		$this->assignObject($visitlog);
+		$aavi = $this->aavimdl->get($visit_log_id);
+		if (empty($aavi)) {
+			$aavi = $this->aavimdl->getEmpty();
+			$aavi->visit_log_id = $visit_log_id;
+		}
+		// if($visitlog->signature != "") {
+		// 	$aavi->pt_signature = $visitlog->signature;
+		// }
+		$this->assignObject($aavi);
+
+		$rules = array ('visit_date_time'  		=> 'required',
+						);
+    	$fields = array ('visit_date_time'  	=> 'Visit Date',
+						);
+		
+		// $rules['aavi_notes'] = 'required';
+		// $fields['aavi_notes'] = 'Notes';
+    	
+		// $rules['signature'] = 'required';
+		// $fields['signature'] = 'Patient Signature';
+
+		$rules['clinician_signature'] = 'required';
+		$fields['clinician_signature'] = 'Clinician Signature';
+
+		$rules['visit_duration'] = 'required|callback_checkvisitduration';
+		$fields['visit_duration'] = 'Visit Duration';
+
+		if (!$aavi->upload_document_name) {
+			if ($this->input->post('visit_status_id') == 3) {
+				$this->validation->set_rules($rules);
+				$this->validation->set_fields($fields);
+			}
+		}
+
+    	
+		if ($this->validation->run() == TRUE) {
+			if($this->updateFormEdition($visit_log_id)){
+				$this->assignPostData($this->aavimdl);
+				
+
+				$aavi = $this->aavimdl->get($visit_log_id);
+				if (count($aavi)) {
+					//$this->aavimdl->vt122_id = $aavi->vt122_id; 
+					$this->aavimdl->update($visit_log_id);
+				} else {
+					$this->aavimdl->insert($visit_log_id);
+				}
+
+				//echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+				if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+					// when tasks are "sent for approval" they should be copied to the vt122_annual_assessment_visit table
+					$this->db->query("REPLACE INTO vt122_annual_assessment_visit_copy SELECT * FROM `vt122_annual_assessment_visit` WHERE visit_log_id = {$visit_log_id}");
+				}
+
+
+				$this->load->helper('ajax');
+				if (isAjax()) {
+					echo "1";
+					exit;
+				}else{
+					$aavi = $this->aavimdl->get($visit_log_id);        		
+	        		if (empty($aavi)) {
+						$aavi = $this->aavimdl->getEmpty();
+						$aavi->visit_log_id = $visit_log_id;
+					}
+	        		$this->assignObject($aavi);
+
+	        		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	        		$this->assignObject($visitlog);
+	      		}
+			}
+
+			$this->formRedirection($visit_log_id);
+		}
+
+		if ($contractor->state_id = 6) {
+			// 
+		}
+
+		$additional_buttons = array();
+		// if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+		// 	if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+		// 		if ($aavi->upload_document_name ) {
+		// 			$additional_buttons['Change Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+		// 			$additional_buttons['Remove Document'] = 'removeScannedDocument('.$visit_log_id.')';
+		// 		} else {
+		// 			$additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+		// 		}
+		// 	}
+		// }
+
+		
+		$this->tpl->assign('additional_buttons', $additional_buttons );
+
+		$this->getPatientInfo($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		// $this->tpl->assign("patient", $patient);
+		$this->tpl->assign("window", $window);
+		$this->tpl->assign_include("dynamic_form", "task/documents/aavi");
+		$this->setfbase($visit_log_id, $action);
+
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function capture_pt_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		
+		$aavi = $this->aavimdl->get($visit_log_id);   
+		// if($visitlog->signature != "") {
+		// 	$aavi->pt_signature = $visitlog->signature;
+		// }
+		//echo FCPATH;
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			
+			if (isset($visitlog->signature)) {
+				$this->tpl->assign("signature", $visitlog->signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($aavi)) {
+					$this->aavimdl->visit_log_id = $visit_log_id;
+					$this->aavimdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+				// $this->aavimdl->updateFlex($visit_log_id, 'pt_signature', $signature_file_name);
+				// $this->aavimdl->updateFlex($visit_log_id, 'pt_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/aavi/index/'.$visit_log_id.'?r='.time().'#anchor_pt_signature\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function capture_clinician_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		$aavi = $this->aavimdl->get($visit_log_id);   
+		// if($visitlog->signature != "") {
+		// 	$aavi->pt_signature = $visitlog->signature;
+		// }
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if (isset($aavi->clinician_signature)) {
+				$this->tpl->assign("signature", $aavi->clinician_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($aavi)) {
+					$this->aavimdl->visit_log_id = $visit_log_id;
+					$this->aavimdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "clinician_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->aavimdl->updateFlex($visit_log_id, 'clinician_signature', $signature_file_name);
+				$this->aavimdl->updateFlex($visit_log_id, 'clinician_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/aavi/index/'.$visit_log_id.'?r='.time().'#anchor_clinician_signature\';
+					}, 2000);
+				</script>';
+				
+			}
+		}	
+	}	
+
+	
+	function validation_visit($visit_log_id){
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		
+		if ($visitlog->visit_discipline_id) {
+			$user_discipline = $this->disciplinemdl->getById($visitlog->visit_discipline_id);
+			$visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+		}
+
+		$enable_visit = false;
+		// if (isset($agency->F3625_req_visit) AND $agency->F3625_req_visit == 1) {
+			// always enabled visit now
+			$enable_visit = true;
+		// }
+
+		$rules = array();
+		$fields = array();
+
+		$rules['visit_date_time'] = 'required';
+		$fields['visit_date_time'] = 'Order Date';
+
+		// $rules['aavi_notes'] = 'required';
+		// $fields['aavi_notes'] = 'Notes';
+
+
+
+		// Validation for aavi
+  		// $rules['signature'] = 'required';
+		// $fields['signature'] = 'Patient Signature of Annual Assessment visit';
+
+		$rules['clinician_signature'] = 'required';
+		$fields['clinician_signature'] = 'Clinician Signature of Annual Assessment Visit';
+
+		$rules['visit_duration'] = 'required|callback_checkvisitduration';
+		$fields['visit_duration'] = 'Visit Duration';
+		
+		$aavi = $this->aavimdl->get($visit_log_id);
+		if (empty($aavi)) {
+			$aavi = $this->aavimdl->getEmpty();
+			$aavi->visit_log_id = $visit_log_id;
+		}
+		// if($visitlog->signature != "") {
+		// 	$aavi->pt_signature = $visitlog->signature;
+		// }
+
+		if (!$aavi->upload_document_name ) {
+			$this->validation->set_rules($rules);
+			$this->validation->set_fields($fields);
+		}
+
+		$validation_success = 0;
+		$msg = 0;
+		if ($this->validation->run() == TRUE) {
+			$validation_success = 1;
+		} else {
+			$msg = $this->validation->get_error_msg();		
+		}
+
+		echo json_encode(array('validation_success'=>$validation_success, 'msg'=>$msg));
+		exit();
+	}
+	
+	function checkvisitduration($duration){
+		if ($duration > 240) {
+			$this->validation->set_message('checkvisitduration', "Invalid visit duration field.");
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+	}
+
+	function pdf($visit_log_id, $output='D') {
+    	/*$this->load->helper('aavi_pdf');
+    	
+    	aavi_pdf($visit_log_id, $output);
+    	
+		return;*/
+		$this->load->model('aavimdl');
+
+    	$visit_log = $visitlog = $this->visitlogmdl->getById($visit_log_id);
+    	$agy_user_id = $visit_log->user_id;
+    	$us1_user = $this->usermdl->getById($agy_user_id);
+
+
+		// printing pdf
+		$aavi = $this->aavimdl->get($visit_log_id);
+		if (empty($aavi)) {
+			$aavi = $this->aavimdl->getEmpty();
+			$aavi->visit_log_id = $visit_log_id;
+		}
+		// if($visitlog->signature != "") {
+		// 	$aavi->pt_signature = $visitlog->signature;
+		// }
+
+		$patient    	= $this->patientmdl->getById($visit_log->patient_id);
+		// $insurance      = $CI->patientinsurancemdl->getPrimaryInsurance($visit_log->patient_id);
+		// $assigned_to    = $CI->usagymdl->getByUsAgyId($visit_log->visit_user_id);
+		// $approver    	= $CI->usagymdl->getByUsAgyId($visit_log->user_approver);
+		$agency	    	= $this->agencymdl->getByAgencyId($patient->agency_id);
+		// $episde_icd		= $CI->episodeicdmdl->get($visit_log->cms485_id);
+		// $physician    = $CI->agencymdl->getByAgencyId($visit_log->doctor_office_id);
+		//$phys_user_id  	= $CI->usagymdl->getByUsAgyId($visit_log->phys_user_id);
+
+
+		//$title_text = $visit_log->visit_description." Visit Date: " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+		$title_text = "AAVI Visit Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+		$filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+		$filename = FCPATH;
+		$filename = str_replace("\\","/", $filename);
+
+		$data = (object) array_merge( (array)$visitlog, (array)$aavi);
+		// echo "<pre>";print_r($data); exit();
+		$data->patient = $patient;
+		$data->agency = $agency;
+
+		//print_r($data);exit;
+		$data->base_url = base_url();
+		$content = $this->load->view('task/documents/aavi_pdf_dev.php',$data,true);
+		
+		// echo $content;exit;
+		
+		//$html = $this->load->view('task/documents/oasis9_pdf', $data, true);
+        $this->load->library('pdf_dom');
+        $this->pdf_dom->generate($content, $filename_only, true, 'Letter', 'portrait');
+		
+
+	}
+
+	function upload_document($visit_log_id){
+		$can_upload = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_upload = true;
+			}
+		}
+
+		if (!$can_upload) {
+			exit('Can\'t Upload!');
+		}
+
+		if ((isset($_FILES['document']) AND $_FILES['document']['error']==0)) {
+			$config =& get_config();
+
+			// Save form 
+			$fname = "";
+
+			if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+				$fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+				$fname = str_replace(" ","_",$fname);
+				$fname = str_replace("%","_",$fname);
+				$fname = str_replace("#","",$fname);
+				$fname = str_replace("&","",$fname);
+				$fname = str_replace(":","-",$fname);
+				if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/datastore/aavi/'.$fname)) {
+					$fname = "";
+				}
+			}
+
+			// $fname = microtime()."_".$fname;
+			if($fname ) {
+					$aavi = $this->aavimdl->get($visit_log_id);
+
+					if (empty($aavi)) {
+						// $patient = $this->patientmdl->getById($visitlog->patient_id);	
+						// $user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+						// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+						
+						$aavi = $this->aavimdl->getEmpty();
+
+						$this->assignPostData($this->aavimdl, $aavi);
+				        $this->aavimdl->visit_log_id = $visit_log_id;
+				        $this->aavimdl->upload_document_name = $fname;
+				        
+						$this->aavimdl->insert($visit_log_id);
+				    } else {
+				    	if ($fname) {
+				    		@unlink(FCPATH.'/datastore/aavi/'.$aavi->upload_document_name);
+							$this->aavimdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+				    	}
+				    	
+				    }
+
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+				    
+					echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/aavi/index/".$visit_log_id."';</SCRIPT>";
+			}else{
+				exit("Document Upload Failed!");
+			}
+		} else {	
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 ) {
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please select Document";
+				$this->tpl->assign("error_string", $error_string);
+			}
+			$aavi = $this->aavimdl->get($visit_log_id);
+			$this->assignObject($aavi);
+
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/upload_aavi_document");
+
+		
+			$this->tpl->assign("gov_program", $patient->gov_program);
+			$this->tpl->assign("visit_log_id", $visit_log_id);
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		}
+	}
+
+	function pre_remove_document($visit_log_id){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+
+		$aavi = $this->aavimdl->get($visit_log_id);
+		$this->assignObject($aavi);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_tpl", "task/documents/remove_aavi_document");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function remove_document($visit_log_id, $doc_number){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+		$aavi = $this->aavimdl->get($visit_log_id);
+		
+		switch ($doc_number) {
+			case '1':
+				if (isset($aavi->upload_document_name)) {
+					@unlink(FCPATH.'/datastore/aavi/'.$aavi->upload_document_name);
+					$this->aavimdl->updateFlex($visit_log_id, 'upload_document_name', null);
+				}
+				break;
+			default:
+				exit('Document Not found.');
+				break;
+		}
+		
+		echo "1";exit();
+
+	}
+ }

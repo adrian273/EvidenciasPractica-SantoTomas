@@ -1,0 +1,67 @@
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center"> 
+  <tr> 
+    <td valign="top" nowrap class="title" colspan="2">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$list_title}
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr>
+  <tr> 
+    <td class="ftitle">Profile Name</td>
+    <td width="200" nowrap>{$profile_name}</td>
+  </tr>
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="2" height="10">
+    	{html_options id='group_id' options=$group_list name='group_list'}
+    	<input type="button" class="btn" value="Add Menu" onclick="if (getValue('group_id')) document.location = '{$index_url}{$resource_path}/addmenu/{$profile_id}/' + getValue('group_id')">
+    	&nbsp;&nbsp;
+    	<input type="button" class="btn" value="{$grl_back}" onclick="document.location = '{$index_url}{$resource_path}'">
+    </td>
+  </tr>
+  <tr> 
+    <td colspan="2" height="100%">
+		<div id="grid_area" style="height: 99%; width: 99.5%"></div>
+    </td>
+  </tr>
+
+</table> 
+
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGridCell.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_excell_acheck.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_start.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_nxml.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_drag.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_excell_link.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_excell_linkc.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_pgn.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXTreeGrid.js"></script>
+
+<script language="JavaScript" type="text/javascript">
+
+	function loadGrid () {literal}{{/literal}
+	
+		document.getElementById("grid_area").innerHTML = "";
+		
+	    grid = new dhtmlXGridObject("grid_area");
+    	grid.setImagePath("{$base_url}style/grid/imgs/");
+    	grid.setSkin("light");
+    	grid.setOnRowSelectHandler(editRegister);
+    	grid.loadXMLPost("{$index_url}{$resource_path}/groupGrid/{$profile_id}", 'gform');
+    	grid.setSizes();
+	  
+	{literal}}{/literal}
+	
+	function editRegister ( id ) {literal}{{/literal}
+	
+		document.location = "{$index_url}{$resource_path}/editmenu/" + id;
+	  
+	{literal}}{/literal}
+	
+	loadGrid ();
+	
+</script>

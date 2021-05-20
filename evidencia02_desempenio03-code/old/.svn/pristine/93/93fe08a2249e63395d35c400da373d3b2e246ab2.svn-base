@@ -1,0 +1,14 @@
+<?php
+class Maintenance_mode extends Controller{
+	function Maintenance_mode(){
+		parent::Controller();
+		$this->load->model('syssettingsmdl');
+		$row=$this->syssettingsmdl->getSysSetting('maintenance mode');
+		if(!$row->sys_value)redirect();
+	}
+	function index(){
+		$this->tpl->assign_include("dynamic_tpl", "sys_msgs/maintenance_mode");
+		$this->tpl->view("sys_msgs/sys_msg", $this->lang->language);
+	
+    }
+}

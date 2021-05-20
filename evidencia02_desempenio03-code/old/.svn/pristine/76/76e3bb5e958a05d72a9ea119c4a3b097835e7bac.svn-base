@@ -1,0 +1,172 @@
+<?
+
+ class SocContractorHistoryMdl extends Model {
+
+	var $history_id;
+	var $soc_contractor_id;
+	var $soc_id;
+	var $agency_contractor_id;	
+	//var $company_patient_status;	
+	var $has_insu_medicare;
+	var $insu_medicare_hic_number;
+	var $has_insu_medicaid;
+	var $insu_medicaid_id;
+	var $insu_medicaid_auth_from_date;
+	var $insu_medicaid_auth_to_date;
+	var $insu_medicaid_nursing;
+	var $insu_medicaid_PT;
+	var $insu_medicaid_OT;
+	var $insu_medicaid_ST;
+	var $has_insu_other;
+	var $insu_other_id;
+	var $insu_other_auth_from_date;
+	var $insu_other_auth_to_date;
+	var $insu_other_nursing;
+	var $insu_other_PT;
+	var $insu_other_OT;
+	var $insu_other_ST;
+	var $referral_date_time;
+	var $prim_diagnosis;
+	// var $date_disch_from_hospital;
+	// var $discharge_from;
+	// var $date_discharge_from_agency;
+  // var $elig_verif_by;
+  	var $prim_doctor_office_id;
+	var $second_doctor_office_id;
+	var $prim_doctor_user_id;
+	var $second_doctor_user_id;  
+	// var $f2f_date;
+	// var $f2f_received_date;
+	var $diagnosis_info;
+	// var $referral_id;
+	// var $other_referral_name;
+	var $facility_id;
+	var $referral_notes;
+	var $dis_sn;
+	var $dis_pt;
+	var $dis_ot;
+	var $dis_st;
+	var $dis_msgw;
+	var $dis_aqu;
+	var $dis_beh;
+	var $dis_mas;
+	var $dis_mus;
+	var $dis_rec;
+	var $dis_hbr;
+	var $dis_art;
+	var $case_manager_user_id;
+	var $estimated_soc_date;
+	var $lock_soc;
+	var $clinician_user_id;
+	var $assign_now;
+	var $current_soc;
+	var $create_user_id;
+	var $create_datetime;
+	var $modify_user_id;
+	var $modify_datetime;
+	var $homebound_st;
+	var $precautions_contra;
+	// var $length_stay;
+	var $weigth_bearing_sts;
+	var $dnr_orders;
+	var $contractor_notes;
+	var $referral_status;
+	var $status_notes;
+	/*var $status_date;*/
+	
+
+	function SocContractorHistoryMdl () {
+
+		parent::Model();
+		
+	}
+	function getById ( $history_id ) {
+		
+		$this->db->where('history_id', $history_id);
+		
+		$query = $this->db->get('soc_contractor_referral_history');
+		return $query->row();
+		
+	}
+
+	/**
+	 * Get total number history found
+	 * @param int, $soc_contractor_id
+	 * @return int
+	 */
+	function getCount ( $soc_contractor_id ) {		
+		$this->db->where('soc_contractor_id', $soc_contractor_id);
+		
+		$query = $this->db->get('soc_contractor_referral_history');
+		return $query->num_rows();		
+	}
+
+	function getHistoriesCount($soc_contractor_id){
+		$this->db->where('soc_contractor_referral_history.soc_contractor_id', $soc_contractor_id);
+		$query = $this->db->get('soc_contractor_referral_history');
+		return $query->num_rows();
+	}
+
+	/**
+	 * Get total number history found
+	 * @param int, $soc_contractor_id
+	 * @return int
+	 */
+	function getHistories ( $soc_contractor_id ) {	
+		// $count = $this->getCount($soc_contractor_id);
+
+		$this->db->select('MAX(history_id) as max_id');
+		$this->db->where('soc_contractor_id', $soc_contractor_id);		
+		$query = $this->db->get('soc_contractor_referral_history');
+		$row = $query->row();
+		$max_id = $row->max_id;
+
+		$this->db->select("soc_contractor_referral_history.*, CONCAT_WS(' ', usr1.first_name, usr1.last_name) as referred_by, CONCAT_WS( ' ', usr2.first_name, usr2.last_name) as modified_by, agy_agency.agency_name as prim_doctor_name, pat_patient.first_name as pat_first_name, pat_patient.last_name as pat_last_name, pat_patient.patient_id, agy.agency_name as contractor_name, agy.agency_status as contractor_status");
+		
+		$this->db->join('agy_agency', 'agy_agency.agency_id = soc_contractor_referral_history.prim_doctor_office_id','LEFT');    
+    	$this->db->join('us_agy usagy1', 'usagy1.us_agy_id = soc_contractor_referral_history.create_user_id','LEFT');
+		$this->db->join('us1_user usr1', 'usr1.user_id = usagy1.user_id','LEFT');    
+    	$this->db->join('us_agy usagy2', 'usagy2.us_agy_id = soc_contractor_referral_history.modify_user_id' , 'LEFT');
+		$this->db->join('us1_user usr2', 'usr2.user_id = usagy2.user_id','LEFT');
+		$this->db->join('soc_start_of_care', 	'soc_start_of_care.soc_id = soc_contractor_referral_history.soc_id','LEFT');
+		$this->db->join('pat_patient', 	'pat_patient.patient_id = soc_start_of_care.patient_id','LEFT');
+    	$this->db->join('pat_contractor', 	'pat_contractor.patient_id = soc_start_of_care.patient_id AND pat_contractor.agency_contractor_id = soc_contractor_referral_history.agency_contractor_id','LEFT');
+    	$this->db->join('agency_contractor', 	'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id','LEFT');
+    	$this->db->join('agy_agency agy', 'agy.agency_id = agency_contractor.contractor_id','LEFT');
+    
+		$this->db->where('soc_contractor_referral_history.soc_contractor_id', $soc_contractor_id);
+		$this->db->where('soc_contractor_referral_history.history_id <', (int)$max_id);
+		$this->db->order_by('soc_contractor_referral_history.history_id', 'desc');
+		// $this->db->limit($count, 1);
+		$query = $this->db->get('soc_contractor_referral_history');
+		return $query->result();
+	}
+  
+	// function update ( $soc_contractor_id ) {
+ //    //$this->modify_user_id = $this->getUsAgyId();
+	// 	$this->modify_datetime = date('Y-m-d H:i:s');
+	// 	$this->soc_contractor_id = $soc_contractor_id;
+	// 	$this->db->where("soc_contractor_id", $soc_contractor_id);
+		
+	// 	$this->db->update("soc_contractor_referral_history", $this);
+		
+	// }
+  function insert ( $soc_contractor_id , $data = array()) {
+    //$this->create_user_id = $this->getUsAgyId();
+		// $this->create_datetime = date('Y-m-d');
+		
+		$this->soc_contractor_id = $soc_contractor_id;
+		if (empty($data)) {
+			$this->db->insert('soc_contractor_referral_history', $this);
+		} else {
+			$this->db->insert('soc_contractor_referral_history', $data);			
+		}
+		
+		// $this->soc_contractor_id = $this->db->insert_id();
+	
+	}
+  
+
+	
+	
+ }

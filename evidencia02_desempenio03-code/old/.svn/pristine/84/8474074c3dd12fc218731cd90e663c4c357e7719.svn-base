@@ -1,0 +1,537 @@
+<?
+include ('visitform.php');
+
+class msvt extends VisitForm {
+
+	function msvt() {
+
+		parent :: VisitForm();
+
+		$this->load->model('msvtmdl');
+
+		$this->tpl->assign("resource_path", "task/msvt");
+		$this->tpl->assign(array (
+			"tab_page" => true
+		));
+
+	}
+
+	function index($visit_log_id, $action = 'task') {		
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		$this->assignObject($visitlog);
+		$MSVT = $this->msvtmdl->get($visit_log_id);
+		
+
+		if ($this->validation->run() == TRUE) {
+
+			if($this->updateFormEdition($visit_log_id)){
+				//			$this->visitlogmdl->updateStatus($visit_log_id, 6);
+
+				$this->assignPostData($this->msvtmdl);
+
+				if (count($this->msvtmdl->get($visit_log_id))) {
+					$this->msvtmdl->update($visit_log_id);
+				} else {
+					$this->msvtmdl->provider_sign_date = standard_date(now(), 'MYSQL');
+					$this->msvtmdl->insert($visit_log_id);
+				}
+			}
+
+			$this->formRedirection($visit_log_id);
+
+			if ($this->session->userdata('task_return')) {
+				header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+				return;
+			}
+
+		}
+
+		// if (!$MSVT->primary_diag OR !$MSVT->secondary_diag OR !$MSVT->primary_diag_date OR !$MSVT->secondary_diag_date) {
+		if (TRUE) {
+			$prev_eval = array();
+			$this->load->model('ptevmdl');
+			$ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($ptevs) == 0) {
+				$ptevs = $this->ptevmdl->getPrevious(null, @ $visitlog->visit_date_time, @ $visitlog->cms485_id, TRUE); // look all PTEV of current SOC        
+			}			
+			if (count($ptevs)) {
+				$prev_eval = $ptevs[count($ptevs) - 1];				
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('otevmdl');
+				$otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+				if (count($otevs) == 0) {
+					$otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($otevs)) {
+					$prev_eval = $otevs[count($otevs) - 1];
+				}
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('stevmdl');
+				$stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+				if (count($stevs) == 0) {
+					$stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($stevs)) {
+					$prev_eval = $stevs[count($stevs) - 1];
+				}			
+			}
+
+			
+			if (isset($prev_eval->primary_diag)) {
+				@$MSVT->primary_diag = $prev_eval->primary_diag;
+				$this->tpl->assign("primary_diag", $prev_eval->primary_diag);
+			}
+			$this->msvtmdl->updateFlex($visit_log_id, 'primary_diag', @$MSVT->primary_diag);
+
+
+			if (isset($prev_eval->secondary_diag)) {
+				@$MSVT->secondary_diag = $prev_eval->secondary_diag;
+				$this->tpl->assign("secondary_diag", $prev_eval->secondary_diag);
+			}
+			$this->msvtmdl->updateFlex($visit_log_id, 'secondary_diag', @$MSVT->secondary_diag);
+
+			if (isset($prev_eval->primary_diag_date)) {
+				@$MSVT->primary_diag_date = $prev_eval->primary_diag_date;
+				$this->tpl->assign("primary_diag_date", $prev_eval->primary_diag_date);
+			}
+			$this->msvtmdl->updateFlex($visit_log_id, 'primary_diag_date', @$MSVT->primary_diag_date);
+
+			if (isset($prev_eval->secondary_diag_date)) {
+				@$MSVT->secondary_diag_date = $prev_eval->secondary_diag_date;
+				$this->tpl->assign("secondary_diag_date", $prev_eval->secondary_diag_date);
+			}
+			$this->msvtmdl->updateFlex($visit_log_id, 'secondary_diag_date', @$MSVT->secondary_diag_date);
+
+		}
+
+		$this->assignObject($MSVT);
+
+		if ($this->session->userdata('task_return')) {
+			$this->tpl->assign('cancel_action', $this->config->config["index_url"] . $this->session->userdata('task_return'));
+		}
+
+		$this->getPatientInfo($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/msvt");
+		$this->setfbase($visit_log_id, $action);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function index_archive($visit_log_id, $action = 'task') {
+		$this->load->model('msvtarchivemdl');
+		$visitlog = $this->visitlogmdl->getByIdArchive($visit_log_id);
+
+		$this->assignObject($visitlog);
+		$this->assignObject($this->msvtarchivemdl->get($visit_log_id));
+
+		/*if ($this->validation->run() == TRUE) {
+
+			$this->updateFormEdition($visit_log_id);
+			//			$this->visitlogmdl->updateStatus($visit_log_id, 6);
+
+			$this->assignPostData($this->msvtarchivemdl);
+
+			if (count($this->msvtarchivemdl->get($visit_log_id))) {
+				$this->msvtarchivemdl->update($visit_log_id);
+			} else {
+				$this->msvtarchivemdl->provider_sign_date = standard_date(now(), 'MYSQL');
+				$this->msvtarchivemdl->insert($visit_log_id);
+			}
+
+			$this->formRedirection($visit_log_id);
+
+			if ($this->session->userdata('task_return')) {
+				header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+				return;
+			}
+
+		}*/
+
+		if ($this->session->userdata('task_return')) {
+			$this->tpl->assign('cancel_action', $this->config->config["index_url"] . $this->session->userdata('task_return'));
+		}
+
+		$this->getPatientInfoArchive($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/msvt");
+		$this->setfbasearchive($visit_log_id, $action);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	function pdf($visit_log_id) {
+		$this->load->helper('visit_pdf');
+	    msvt_pdf($visit_log_id,'D');
+	    
+	    return;
+	    
+		// saving before printing pdf
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+
+		if (!$this->request->is_get() && ($visit_log->visit_status_id == 1 || $visit_log->visit_status_id == 2 || $visit_log->visit_status_id == 6)) {
+
+			$this->visitlogmdl->updateStatus($visit_log_id, 6);
+			$this->assignPostData($this->msvtmdl);
+
+			if (count($this->msvtmdl->get($visit_log_id))) {
+				$this->msvtmdl->update($visit_log_id);
+			} else {
+				$this->msvtmdl->provider_sign_date = standard_date(now(), 'MYSQL');
+				$this->msvtmdl->insert($visit_log_id);
+			}
+
+		}
+
+		// printing pdf
+		$msvt = $this->msvtmdl->get($visit_log_id);
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$patient = $this->patientmdl->getById($visit_log->patient_id);
+		$insurance = $this->patientinsurancemdl->getPrimaryInsurance($visit_log->patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$episde_icd = $this->episodeicdmdl->get($visit_log->cms485_id);
+		$physician = $this->agencymdl->getByAgencyId($visit_log->doctor_office_id);
+		// $phys_user_id = $this->usagymdl->getByUsAgyId($visit_log->phys_user_id);
+
+		$path_ticket = realpath("style/images/icon_enable_negro.gif");
+		$MSVT = $msvt;
+		// if (!$MSVT->primary_diag OR !$MSVT->secondary_diag OR !$MSVT->primary_diag_date OR !$MSVT->secondary_diag_date) {
+		if (TRUE) {
+			$prev_eval = array();
+			$this->load->model('ptevmdl');
+			$ptevs = $this->ptevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id);
+			if (count($ptevs) == 0) {
+				$ptevs = $this->ptevmdl->getPrevious(null, @ $visit_log->visit_date_time, @ $visit_log->cms485_id, TRUE); // look all PTEV of current SOC        
+			}			
+			if (count($ptevs)) {
+				$prev_eval = $ptevs[count($ptevs) - 1];				
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('otevmdl');
+				$otevs = $this->otevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id);
+				if (count($otevs) == 0) {
+					$otevs = $this->otevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($otevs)) {
+					$prev_eval = $otevs[count($otevs) - 1];
+				}
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('stevmdl');
+				$stevs = $this->stevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id);
+				if (count($stevs) == 0) {
+					$stevs = $this->stevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($stevs)) {
+					$prev_eval = $stevs[count($stevs) - 1];
+				}			
+			}
+
+			if (isset($prev_eval->primary_diag)) {
+				$MSVT->primary_diag = $prev_eval->primary_diag;
+			}
+
+			if (isset($prev_eval->secondary_diag)) {
+				$MSVT->secondary_diag = $prev_eval->secondary_diag;
+			}
+
+			if (isset($prev_eval->primary_diag_date)) {
+				$MSVT->primary_diag_date = $prev_eval->primary_diag_date;
+			}
+
+			if (isset($prev_eval->secondary_diag_date)) {
+				$MSVT->secondary_diag_date = $prev_eval->secondary_diag_date;
+			}			
+
+		}
+
+		$msvt = $MSVT;
+
+		  $label_font = "Arial";
+		  $data_font = "Courier";
+
+		$__FONT['PDF']['SIZE'] = 11;
+		$__FONT['PDF']['FORM_MEDIUM'] = 10;
+		$__FONT['PDF']['FORM_SMALL'] = 9;
+		$__FONT['PDF']['FORM_SMALL2'] = 9;
+		$__FONT['PDF']['FORM_SMALL3'] = 6.5;
+		$__FONT['PDF']['FORM_SMALL4'] = 9.5;
+		$__FONT['PDF']['FORM_arial8'] = 9.5;
+
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH', $this->config->item('fonts_path'));
+
+		$cero_x = 11;
+		$cero_y = 2;
+		$this->fpdf->Open();
+		$pdf = $this->fpdf;
+		$pdf->AddPage();
+
+		$pdf->SetDrawColor(130, 100);
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(($cero_x +0), ($cero_y +12), $agency->agency_name); // agency name
+
+		$pdf->SetFont($label_font, '', $__FONT['PDF']['FORM_SMALL3']);
+		$pdf->Text(($cero_x +0), ($cero_y +22), "Licensed and Certified Home Health Agency");
+    	// visit date
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +473), ($cero_y +22), "VISIT DATE: " );
+		$pdf->SetFont($label_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +473+55), ($cero_y +22), standard_date(mysql_to_unix($visit_log->visited_date)));
+
+		$pdf->Rect(8, 28, 577, 740);
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		// DOB
+		$pdf->Text(($cero_x), ($cero_y +36), "DOB: ");
+		$pdf->SetFont($label_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x+25), ($cero_y +36), standard_date(mysql_to_unix($patient->date_birth)));
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +210), ($cero_y +36), "MISSED VISIT REPORT"); 
+		$pdf->Text(($cero_x +445), ($cero_y +36), "Time In/out: "); 
+		$pdf->SetFont($label_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +445+55), ($cero_y +36), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in), 'USA_TIME')."-".date("h:i A",mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out))); 
+		$pdf->Line(($cero_x -3), ($cero_y +40.5), ($cero_x +574), ($cero_y +40.5));
+
+		$cero_y = 20;
+		$pdf->SetTextColor(0, 0, 0);
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +0), ($cero_y +32), "Patient Name: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +60), ($cero_y +32), $patient->first_name . " " . $patient->last_name); // pacient name
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->SetTextColor(0, 0, 0);
+
+		$pdf->SetDrawColor(130, 100);
+
+		if (!empty($insurance)) {
+            $pdf->Text(($cero_x +210+45), ($cero_y +32), substr($insurance->tab_description, 0, 10)." #: ");
+
+            $pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $pdf->Text(($cero_x +260+45), ($cero_y +32), $insurance->ins_id);
+        }else {
+             $pdf->Text(($cero_x +210+55), ($cero_y +32), "  NA ");
+             $pdf->Rect(($cero_x +210+45), ($cero_y +23.5), 8.4, 8.4);
+             $pdf->Image($path_ticket, ($cero_x +210+45+1), ($cero_y +24.5), 6);
+        }
+        
+		/*// medicare id
+		if ($patient->tab_102_prim_insura_type == 1 OR $patient->medicare_id) {
+			$pdf->Text(($cero_x +210+45), ($cero_y +32), "Medicare #: ");
+
+			$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+			$pdf->Text(($cero_x +260+45), ($cero_y +32), $patient->medicare_id);
+		}
+		elseif ($patient->tab_102_prim_insura_type == 2 OR $patient->medicaid_id) {
+			$pdf->Text(($cero_x +210+45), ($cero_y +32), "Medicaid #: ");
+
+			$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+			$pdf->Text(($cero_x +260+45), ($cero_y +32), $patient->medicaid_id);
+		}
+		elseif ($patient->tab_102_prim_insura_type == 3 OR $patient->managed_care_id) {
+			$pdf->Text(($cero_x +210+45), ($cero_y +32), "Other/HMO #: ");
+
+			$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+			$pdf->Text(($cero_x +260+55), ($cero_y +32), $patient->managed_care_id);
+		} else {
+			$pdf->Text(($cero_x +210+55), ($cero_y +32), "  NA ");
+			$pdf->Rect(($cero_x +210+45), ($cero_y +23.5), 8.4, 8.4);
+
+      //if (is_null($patient->medicare_id)){
+			$pdf->Image($path_ticket, ($cero_x +210+45+1), ($cero_y +24.5), 6);
+      //}          
+		}*/
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+
+		$pdf->Text(($cero_x +377+38), ($cero_y +32), "Medical Rec#: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +440+38), ($cero_y +32), $patient->medical_rec_nbr);
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +372), ($cero_y +42), "  SOC: ");
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +415), ($cero_y +42), standard_date(mysql_to_unix($visit_log->estimated_soc_date))); // soc date
+
+		// primary and second icd
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +0), ($cero_y +42), "Primary Dx: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +60), ($cero_y +42), substr(@$msvt->primary_diag, 0, 25));
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +210+45), ($cero_y +42), "Dx Date: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +250+45), ($cero_y +42), (!is_null(@ $msvt->primary_diag_date) ? standard_date(mysql_to_unix(@ $msvt->primary_diag_date)) : ""));
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +0), ($cero_y +52), "Therapy Dx: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +60), ($cero_y +52), substr(@$msvt->secondary_diag, 0, 25));
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +210+45), ($cero_y +52), "Dx Date: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +250+45), ($cero_y +52), (!is_null(@ $msvt->secondary_diag_date) ? standard_date(mysql_to_unix(@ $msvt->secondary_diag_date)) : ""));
+
+		// start and end soc date
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +377), ($cero_y +52), "From: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +415), ($cero_y +52), standard_date(mysql_to_unix($visit_log->episode_start_date)));
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +490), ($cero_y +52), "To: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +505), ($cero_y +52), standard_date(mysql_to_unix($visit_log->episode_end_date)));
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		if ($visit_log->episode_start_date == $visit_log->estimated_soc_date) {
+			$pdf->Text(($cero_x +495), ($cero_y +42), "   Certification");
+		} else {
+			$pdf->Text(($cero_x +495), ($cero_y +42), "   Recertif.");
+		}
+
+		$pdf->Rect(($cero_x +490), ($cero_y +33.5), 8.4, 8.4);
+		$pdf->Image($path_ticket, ($cero_x +491), ($cero_y +34.5), 6);
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +0), ($cero_y +62), "Physician: ");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		//$pdf->Text(($cero_x +60), ($cero_y +62), @ $phys_user_id->complete_name);
+		$pdf->Text(($cero_x +60), ($cero_y +62), @ $physician->agency_name);
+
+		$pdf->SetFont($label_font, 'B', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +210+45), ($cero_y +62), "Clinician:");
+
+		$pdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(($cero_x +250+48), ($cero_y +62), $visit_log->first_name . " " . $visit_log->last_name);
+		$cero_y = $cero_y +5;
+		$pdf->SetLineWidth(0.5);
+		$pdf->Line(($cero_x -3), ($cero_y +60.5), ($cero_x +573), ($cero_y +60.5));
+
+
+		$this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(($cero_x +20), ($cero_y +72), "PATIENT DID NOT RECEIVE TREATMENT TODAY FOR THE FOLLOWING REASON(S):");
+
+		$this->fpdf->Rect(($cero_x +20), ($cero_y +90), 8, 8);
+		if (@ $msvt->alter_caregiver == 1) {
+			$this->fpdf->Image($path_ticket, ($cero_x +21), ($cero_y +91), 6);
+		}
+		$this->fpdf->Text(($cero_x +40), ($cero_y +97), "Alternate Caregiver available to provide care");
+
+		$this->fpdf->Rect(($cero_x +20), ($cero_y +100), 8, 8);
+		if (@ $msvt->patient_refused == 1) {
+			$this->fpdf->Image($path_ticket, ($cero_x +21), ($cero_y +101), 6);
+		}
+		$this->fpdf->Text(($cero_x +40), ($cero_y +107), "Patient refused services");
+
+		$this->fpdf->Rect(($cero_x +20), ($cero_y +110), 8, 8);
+		if (@ $msvt->family_refused == 1) {
+			$this->fpdf->Image($path_ticket, ($cero_x +21), ($cero_y +111), 6);
+		}
+		$this->fpdf->Text(($cero_x +40), ($cero_y +117), "Family refused services");
+
+		$this->fpdf->Rect(($cero_x +20), ($cero_y +120), 8, 8);
+		if (@ $msvt->patient_requested == 1) {
+			$this->fpdf->Image($path_ticket, ($cero_x +21), ($cero_y +121), 6);
+		}
+		$this->fpdf->Text(($cero_x +40), ($cero_y +127), "Patient requested no visit today");
+
+		$this->fpdf->Rect(($cero_x +20), ($cero_y +130), 8, 8);
+		if (@ $msvt->no_answer == 1) {
+			$this->fpdf->Image($path_ticket, ($cero_x +21), ($cero_y +131), 6);
+		}
+		$this->fpdf->Text(($cero_x +40), ($cero_y +137), "No answer to door (provide follow-up plans)");
+
+		$this->fpdf->Rect(($cero_x +20), ($cero_y +140), 8, 8);
+		if (@ $msvt->other == 1) {
+			$this->fpdf->Image($path_ticket, ($cero_x +21), ($cero_y +141), 6);
+		}
+		$this->fpdf->Text(($cero_x +40), ($cero_y +147), "Other:");
+
+		$eje_y = 185;
+		$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL']);
+		$c = 0;
+		$lines = explode("\n", wordwrap(@$msvt->other_description, 86, "\n"));
+        foreach ($lines as $substring) {
+		// foreach (str_split($msvt->other_description, 95) as $substring) {
+
+			$this->fpdf->Text(50, $eje_y, $substring);
+			$eje_y += 10;
+
+			$c++;
+
+			if ($c == 4)
+				break;
+
+		}
+
+		$this->fpdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(51, 250, "Plan:");
+
+		$eje_y = 268;
+		$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL']);
+		$c = 0;
+		$lines = explode("\n", wordwrap(@$msvt->plan, 86, "\n"));
+        foreach ($lines as $substring) {
+		// foreach (str_split($msvt->plan, 95) as $substring) {
+
+			$this->fpdf->Text(50, $eje_y, $substring);
+			$eje_y += 10;
+
+			$c++;
+
+			if ($c == 4)
+				break;
+
+		}
+
+		$this->fpdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Rect(90, 320, 8, 8);
+		if (@ $msvt->superv_notified == 1) {
+			$this->fpdf->Image($path_ticket, 91, 321, 6);
+		}
+		$this->fpdf->Text(105, 327, "Supervisor Notified");
+
+		$this->fpdf->Rect(300, 320, 8, 8);
+		if (@ $msvt->md_notified == 1) {
+			$this->fpdf->Image($path_ticket, 301, 321, 6);
+		}
+		$this->fpdf->Text(315, 327, "MD Notified");
+
+		$this->fpdf->Text(13, 626, "Electronically signed by:__________________________________________________ Date_____________________________");
+		$this->fpdf->SetFont('Courier', 'B', $__FONT['PDF']['FORM_MEDIUM']);
+		if ($visit_log->sent_to_approve_date) {
+			$this->fpdf->Text(113, 625, $visit_log->first_name . " " . $visit_log->last_name);
+			$this->fpdf->Text(386, 625, standard_date(mysql_to_unix($visit_log->visit_date_time)));
+		}
+
+		$this->fpdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(11, 820, $agency->address . ', ' . $agency->city . ', ' . $this->statemdl->getNameShort($agency->state_id) . ' ' . $agency->zip);
+		$this->fpdf->Text(350, 820, "Phone: " . $agency->phone_primary);
+		$this->fpdf->Text(470, 820, "Fax: " . $agency->fax);
+
+		$this->fpdf->Output('msvt.pdf', 'D');
+
+	}
+
+}

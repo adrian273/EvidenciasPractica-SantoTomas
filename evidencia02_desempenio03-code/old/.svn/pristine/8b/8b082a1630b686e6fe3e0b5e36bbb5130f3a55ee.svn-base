@@ -1,0 +1,119 @@
+<div class="main_form_html" style="width:1000px;">
+	<h2 style=" margin:0px; padding:0px;">{$agency->agency_name}<span style="float:right;font-size:12px; margin-top:10px">Referral date/time: {$referral_date} {$referral_time}</span></h2>
+	<span style="font-size:10px;">Licensed and Certified Home Health Agency</span>
+	<h1 style="text-align:center">REFERRAL INTAKE</h1>
+	<div align="center" class="main_frm" style="border:solid 1px #000000; min-height:500px; padding-left:10px; padding-right:10px;">
+		<table cellpadding="0" cellspacing="0" width="100%" class="brdr_b">
+			<tr><td colspan="4">&nbsp;</td></tr>
+			<tr>
+				<td class="ftitle">Patient Name:</td>
+				<td>{$patient->last_name}, {$patient->first_name}</td>
+				<td class="ftitle">Medical Rec#:</td>
+				<td>{$patient->medical_rec_nbr}</td>
+			</tr>
+			<tr>
+				<td class="ftitle">Address:</td>
+				<td>{$patient->address}</td>
+				<td class="ftitle">Home Phone:</td>
+				<td>{$patient->phone_home}</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td>{$patient->city}, {$patient->state_name_short} {$patient->zip1}</td>
+				<td class="ftitle">Cell Phone:</td>
+				<td>{$patient->phone_cell}</td>
+			</tr>
+			
+		
+			<tr><td colspan="4">&nbsp;</td></tr>
+			<tr>
+				<td class="ftitle" colspan="4">Referral or Doctor Notes:</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td colspan="3">{$referral_notes}</td>
+			</tr>
+		
+		
+			<tr><td colspan="4">&nbsp;</td></tr>
+			<tr>
+				<td class="ftitle" colspan="4">Diagnosis Information:</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td colspan="3">{$diagnosis_info}</td>
+			</tr>
+			
+		
+			<tr><td colspan="4">&nbsp;</td></tr>
+			<tr>
+				<td class="ftitle">Primary Doctor:</td>
+				<td>
+					{$prim_doctor->complete_name}<br />
+					{$prim_doctor->address},<br />
+					{$prim_doctor->city} {$prim_doctor->zip1}<br />
+					Phone: {$prim_doctor->phone_home}<br />
+					Upin: {$prim_doctor->upin}			
+				</td>
+				<td class="ftitle">Secondary:</td>
+				<td>
+					{$second_doctor->complete_name}<br />
+					{$second_doctor->address},<br />
+					{$second_doctor->city} {$second_doctor->zip1}<br />
+					Phone: {$second_doctor->phone_home}<br />
+					Upin: {$second_doctor->upin}			
+				</td>
+			</tr>
+			
+		
+			<tr><td colspan="4">&nbsp;</td></tr>
+			<tr>
+				<td class="ftitle" colspan="4">Disciplines Needed:</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td colspan="3">
+					<table>
+						<tr>
+					      {if $dis_sn}
+					      <td><img src="{$image_url}ok.png" />   SN   </td>
+					      <td>&nbsp;</td>
+					      {/if}								    
+					      {if $dis_pt}
+					      <td><img src="{$image_url}ok.png" />   PT   </td>
+					      <td>&nbsp;</td>								    
+					      {/if}								    
+					      <td>{if $dis_ot}<img src="{$image_url}ok.png" />   OT   </td>
+					      <td>&nbsp;</td>								    
+					      {/if}								    
+					      {if $dis_st}
+					      <td><img src="{$image_url}ok.png" />   ST   </td>
+					      <td>&nbsp;</td>
+					      {/if}								    
+						  {if $dis_msgw}
+					      <td><img src="{$image_url}ok.png" /> MSW</td>
+					      {/if}								    
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+</div>	
+<div class="footer">
+<table border="0">
+<tr>
+<td style="text-align:left; vertical-align:bottom;">
+{$agency->addresss}<br />
+{$agency->city}, {$agency->state_name_long} {$agency->zip}
+</td>
+<td style="text-align:right; vertical-align:bottom;">
+Phone: {$agency->phone_primary}<br />
+Fax: {$agency->fax}
+</td>
+</tr>
+</table>
+</div>
+<div style="text-align:center; padding-top:10px; width:1000px;">
+<input type="button" value="Print" name="btnPrint" id="btnPrint" onclick="print_order();" />&nbsp;&nbsp;&nbsp;<input type="button" value="Close" name="btnClose" id="btnClose" onclick="window.close();" />
+</div>

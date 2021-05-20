@@ -1,0 +1,114 @@
+
+<script language="JavaScript" type="text/javascript">
+	
+	function afterload () {literal}{{/literal}
+	
+	{literal}}{/literal}
+	
+	function editRegister ( id ) {literal}{{/literal}
+	
+		if (id > 0)
+			editFactor(id)
+	{literal}}{/literal}
+	
+</script>
+
+<table border="0" height="100%" width="100%" cellpadding="4" cellspacing="0" align="center"> 
+ {if $list_title}
+  <tr> 
+    <td valign="top" nowrap class="title" colspan="3">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$list_title}
+    </td>
+  </tr>
+  {/if}
+  {if $filter_tpl != ""}
+  <tr id="gfilter">
+   <form id="gform" method="POST" onsubmit="loadGrid(); return false;">
+    <input type="hidden" id="fecha_help">
+    <td colspan="3" height="40">
+		{include file=$filter_tpl}
+    </td>
+   </form>
+  </tr>
+  {else}
+  <tr>
+    <td colspan="3" height="10"></td>
+  </tr>
+  {/if}
+  <tr> 
+    <td colspan="3" height="100%">
+		<div id="grid_area" style="height: 99%; width: 100%"></div>
+    </td>
+  </tr>
+  <tr height="30"> 
+    <td nowrap width="30%" style="padding-top: 5px" valign="bottom">
+		{if !$no_grid_buttons}
+			<input type="button" class="btn" value="{$grl_add} {$add_sufix}" onclick="document.location = '{$index_url}{$resource_path}/{$resource_add|default:"add"}{if $entity_id}/{$entity_id}{/if}'">
+		{/if}
+
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+    </td>
+    <td nowrap align="center" nowrap width="40%">
+    	{if $gmessage != ''}<span class="tbl_msg_ok" style="height: 25px">{$gmessage}</span>{/if}
+    </td>
+    <td nowrap width="30%" align="right" valign="bottom">
+		<div id="grid_paginal"></div>
+    </td>
+  </tr>
+
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	document.body.style.overflow = 'hidden';
+	var grid;
+
+	function loadGrid () {literal}{{/literal}
+	
+		if (document.getElementById("grid_paginal").innerHTML != "") {literal}{{/literal}
+		
+			grid.clearAll();
+			grid.updateFromXMl("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform');
+			
+		{literal}}{/literal} else {literal}{{/literal}
+	
+			document.getElementById("grid_paginal").innerHTML = "";
+			document.getElementById("grid_area").innerHTML = "";
+			
+		    grid = new dhtmlXGridObject("grid_area");
+	    	grid.setImagePath("{$base_url}style/grid/imgs/")
+	    	grid.iconImagePath = "{$base_url}style/grid/imgs/";
+	    	grid.setSkin("light");
+	    	{if !$enable_paging}grid.enablePaging(true, 80, 5, "grid_paginal");{/if}
+	    	{if !$noedit}grid.setOnRowSelectHandler(editRegister);{/if}
+	    	{if $checkHandler}
+	    		grid.setOnCheckHandler(checkRegister);
+	    	{/if}
+	    	
+	    	grid.enableSmartXMLParsing(true);
+	    	
+	    	grid.kidsXmlFile = "{$index_url}{$resource_path}/child";
+    		grid.loadXMLPost("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform', afterload);
+	    	grid.setSizes();
+    	
+    	{literal}}{/literal}
+    	
+	{literal}}{/literal}
+	
+	function deleteRegister () {literal}{{/literal}
+
+		if (grid.getSelectedId(0)) document.location = "{$index_url}{$resource_path}/{$resource_delete|default:"delete"}{if $entity_id}/{$entity_id}{/if}/" + grid.getSelectedId();
+	  
+	{literal}}{/literal}
+	
+	function checkRegister ( idr, idc, value ) {literal}{{/literal}
+	
+		ajax("{$index_url}{$resource_path}/checkHandler{if $entity_id}/{$entity_id}{/if}/" + idr + "/" + idc + "/" + value, ajaxParseAction);
+	  
+	{literal}}{/literal}
+	
+	loadGrid();
+	
+</script>

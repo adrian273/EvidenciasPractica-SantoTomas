@@ -1,0 +1,260 @@
+<?php
+
+class AvgReport extends MY_Controller {
+	
+	function AvgReport () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "avgreport");		
+		
+		if ($this->getUserProfileId() != 1) {
+			show_404();
+			exit();
+		}
+				
+		$this->months = array(1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Aug', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec');
+	}
+
+	function index () {	    
+	    $this->tpl->assign("no_grid_buttons", true);
+	    $this->tpl->assign("noedit", true);
+	    $this->tpl->assign("resource_edit", "details");
+    	$this->tpl->assign(array("list_title" => "Average Nbr. of Visits per Certification"));
+		// $this->tpl->assign_include("filter_tpl", "administrator/useragency/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");		
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function grid () {		
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");				
+		$head->append($this->xml->Element("column", "width=16;type=link", "Month-Year"));
+		$head->append($this->xml->Element("column", "width=*", "New SOCs"));
+		$head->append($this->xml->Element("column", "width=*", "New Re-cert"));		
+		// $head->append($this->xml->Element("column", "width=*", "Patients skip"));
+		//vanlt add
+		$head->append($this->xml->Element("column", "width=*", "Avg PT Visits"));
+		$head->append($this->xml->Element("column", "width=*", "Avg OT Visits"));
+		$head->append($this->xml->Element("column", "width=*", "Avg ST Visits"));
+		// $head->append($this->xml->Element("column", "width=*", "Total Average"));		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		
+		$transposed = array_slice($this->months, date('n'), 12, true) + array_slice($this->months, 0, date('n'), true);		 
+		$months_year = array();
+		
+		foreach (array_slice($this->months, date('n'), 12, true) as $M => $month) {
+			$months_year[$M] = date("Y")-1;
+		}
+		foreach (array_slice($this->months, 0, date('n'), true) as $M => $month) {
+			$months_year[$M] = date("Y");
+		}
+		// print_r($months_year);exit();
+		$last_months = array_reverse(array_slice($transposed, -12, 12, true), true);
+		foreach ($last_months as $M => $month) {
+			$Y = $months_year[$M];
+			$D=cal_days_in_month(CAL_GREGORIAN,$M,$Y);
+			$from_date = date("Y-m-d",mktime(0,0,0,$M,1,$Y));
+			// $from_date = date("Y-m-d",mktime(0,0,0,$M,1,$Y-1));
+			$to_date = date("Y-m-d",mktime(0,0,0,$M,$D,$Y));
+
+			$this->db->select('count(*) as total');
+			$this->db->where("episode_start_date >= '".$from_date."' AND episode_start_date <= '".$to_date."'");
+			$query = $this->db->get('cms_485');
+			$new_patients = $query->row()->total;
+			
+			$this->db->select('count(*) as total');
+			$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+			$this->db->where("cms_485.episode_start_date >= '".$from_date."' AND cms_485.episode_start_date <= '".$to_date."'");
+			$this->db->where("cms_485.episode_start_date != soc_start_of_care.estimated_soc_date");
+			$query = $this->db->get('cms_485');			
+			$new_certs = $query->row()->total;
+			
+			$no_patients = $no_pt_visits = $avg_pt_visits = $no_ot_visits = $avg_ot_visits = $no_st_visits = $avg_st_visits = $avg_total = $skip = 0;
+
+			if ($new_patients > 0) {
+				$this->db->select('cms485_id');
+				$this->db->where("episode_start_date >= '".$from_date."' AND episode_start_date <= '".$to_date."'");
+				$query = $this->db->get('cms_485');
+				$result = $query->result();			
+				$skip = 0;
+				$cms485_ids = array();
+				foreach ($result as $value) {
+					$cms485_id = $value->cms485_id;
+					$cms485_ids[] = $cms485_id;				
+					$this->db->select('count(*) as total');	
+					$this->db->where('cms485_id',$cms485_id)		;
+					// $this->db->where("visit_date_time >= '".$from_date."' AND visit_date_time <= '".$to_date."'");
+					$this->db->where_in("visit_type_id", array(10,12));
+					$query = $this->db->get('vis_visit_log');			
+					if($query->row()->total == 0){
+						$skip++;
+					}
+				}
+				$no_patients = $new_patients - $skip;
+				
+				// PT visits
+				if (!empty($cms485_ids)) {
+					$this->db->select('count(*) as total');			
+					// $this->db->where("visit_date_time >= '".$from_date."' AND visit_date_time <= '".$to_date."'");					
+					$this->db->where_in("cms485_id", $cms485_ids);
+					$this->db->where_in("visit_type_id", array(10,12));
+					$query = $this->db->get('vis_visit_log');			
+					$no_pt_visits = $query->row()->total;
+				}
+				
+				/*$this->db->select('count(*) as total');						
+				$this->db->where_in("visit_type_id", array(10,12));
+				$query = $this->db->get('vis_visit_log');			
+				$total_pt_visits = $query->row()->total;*/
+				$avg_pt_visits = $no_patients > 0 ? $no_pt_visits/$no_patients : 0;
+				// $avg_pt_visits = number_format((float)$avg_pt_visits, 3, '.', '');
+
+				// OT visits
+				if (!empty($cms485_ids)) {
+					$this->db->select('count(*) as total');			
+					// $this->db->where("visit_date_time >= '".$from_date."' AND visit_date_time <= '".$to_date."'");
+					$this->db->where_in("cms485_id", $cms485_ids);
+					$this->db->where_in("visit_type_id", array(40,42));
+					$query = $this->db->get('vis_visit_log');			
+					$no_ot_visits = $query->row()->total;
+				}
+				/*$this->db->select('count(*) as total');						
+				$this->db->where_in("visit_type_id", array(40,42));
+				$query = $this->db->get('vis_visit_log');			
+				$total_ot_visits = $query->row()->total;*/
+				$avg_ot_visits = $no_patients > 0 ? $no_ot_visits/$no_patients : 0;
+				// $avg_ot_visits = number_format((float)$avg_ot_visits, 3, '.', '');
+
+
+				// ST visits
+				if (!empty($cms485_ids)) {
+					$this->db->select('count(*) as total');			
+					// $this->db->where("visit_date_time >= '".$from_date."' AND visit_date_time <= '".$to_date."'");
+					$this->db->where_in("cms485_id", $cms485_ids);
+					$this->db->where_in("visit_type_id", array(60,62));
+					$query = $this->db->get('vis_visit_log');			
+					$no_st_visits = $query->row()->total;
+				}
+
+				/*$this->db->select('count(*) as total');						
+				$this->db->where_in("visit_type_id", array(60,62));
+				$query = $this->db->get('vis_visit_log');			
+				$total_st_visits = $query->row()->total;			*/
+				$avg_st_visits = $no_patients > 0 ? $no_st_visits/$no_patients : 0;
+				// $avg_st_visits = number_format((float)$avg_st_visits, 3, '.', '');
+
+				// Total average
+				$avg_sum = $avg_pt_visits + $avg_ot_visits + $avg_st_visits;			
+				$avg_total = $avg_sum / 3;
+				// $avg_total = number_format((float)$avg_total, 3, '.', '');
+
+			}
+
+			
+
+			$cell = $this->xml->Element("row", "id=" . $M);
+			$cell->append($this->xml->Element("cell", null, $month.'-'.$Y."^" . $this->config->config['index_url'] . "avgreport/details/" . $M."/".$Y ));
+			$cell->append($this->xml->Element("cell", null, $new_patients));
+			$cell->append($this->xml->Element("cell", null, $new_certs));			
+			// $cell->append($this->xml->Element("cell", null, $skip));
+			$cell->append($this->xml->Element("cell", null, number_format((float)$avg_pt_visits, 1, '.', '') ));
+			$cell->append($this->xml->Element("cell", null, number_format((float)$avg_ot_visits, 1, '.', '') ));
+			$cell->append($this->xml->Element("cell", null, number_format((float)$avg_st_visits, 1, '.', '') ));
+			// $cell->append($this->xml->Element("cell", null, number_format((float)$avg_total, 3, '.', '') ));
+			//end		
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function details ($M, $Y) {	    
+	    $this->tpl->assign("no_grid_buttons", true);
+	    $this->tpl->assign("noedit", true);
+	    $this->tpl->assign("items_per_page", 300);
+	    $this->tpl->assign("resource_grid", "detail_grid/".$M."/".$Y);
+	    $this->tpl->assign('additional_buttons', array('Back' => 'window.location.href=\''.$this->config->site_url().'/avgreport\''));
+	    
+    	$this->tpl->assign(array("list_title" => "Month-Year:   ".$this->months[$M]."-".$Y));		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");		
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+	function detail_grid($M, $Y){
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");				
+		$head->append($this->xml->Element("column", "width=16", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "SOC date"));
+		$head->append($this->xml->Element("column", "width=*", "Certif. Start"));		
+		$head->append($this->xml->Element("column", "width=*", "Certif. End"));						
+		$head->append($this->xml->Element("column", "width=*", "#Visits PT"));
+		$head->append($this->xml->Element("column", "width=*", "#Visits OT"));
+		$head->append($this->xml->Element("column", "width=*", "#Visits ST"));		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+
+		$D=cal_days_in_month(CAL_GREGORIAN,$M,$Y);
+		$from_date = date("Y-m-d",mktime(0,0,0,$M,1,$Y));
+		// $from_date = date("Y-m-d",mktime(0,0,0,$M,1,$Y-1));
+		$to_date = date("Y-m-d",mktime(0,0,0,$M,$D,$Y));
+
+		$this->db->select('cms485_id');
+		$this->db->where("episode_start_date >= '".$from_date."' AND episode_start_date <= '".$to_date."'");
+		$query = $this->db->get('cms_485');
+		$result = $query->result();			
+		$skip = 0;
+		$cms485_ids = array();
+		foreach ($result as $value) {
+			$cms485_id = $value->cms485_id;
+			$episode = $this->episodemdl->getById($cms485_id);						
+			$patient = $this->patientmdl->getById($episode->patient_id);
+
+			// PT visits
+			$this->db->select('count(*) as total');						
+			$this->db->where("cms485_id", $cms485_id);
+			$this->db->where_in("visit_type_id", array(10,12));
+			$query = $this->db->get('vis_visit_log');			
+			$no_pt_visits = $query->row()->total;
+
+			// OT visits
+			$this->db->select('count(*) as total');						
+			$this->db->where("cms485_id", $cms485_id);
+			$this->db->where_in("visit_type_id", array(40,42));
+			$query = $this->db->get('vis_visit_log');			
+			$no_ot_visits = $query->row()->total;
+
+			// ST visits			
+			$this->db->select('count(*) as total');							
+			$this->db->where("cms485_id", $cms485_id);
+			$this->db->where_in("visit_type_id", array(60,62));
+			$query = $this->db->get('vis_visit_log');			
+			$no_st_visits = $query->row()->total;
+
+
+			$cell = $this->xml->Element("row", "id=" . $episode->patient_id);
+			$cell->append($this->xml->Element("cell", null, $patient->first_name . " " . $patient->middle_initial. " " . $patient->last_name ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($episode->estimated_soc_date), 'USA_DATE') ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($episode->episode_start_date), 'USA_DATE') ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($episode->episode_end_date), 'USA_DATE') ));			
+			$cell->append($this->xml->Element("cell", null, $no_pt_visits ));
+			$cell->append($this->xml->Element("cell", null, $no_ot_visits ));
+			$cell->append($this->xml->Element("cell", null, $no_st_visits ));			
+			//end		
+			$document->append($cell);
+		
+		}
+
+	}
+	
+
+}	

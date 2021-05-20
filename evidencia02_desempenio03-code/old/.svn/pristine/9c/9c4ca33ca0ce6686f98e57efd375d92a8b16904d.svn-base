@@ -1,0 +1,97 @@
+<?
+
+class signed extends MY_Controller {
+
+	function signed () {
+	
+		parent::MY_Controller();
+		
+		$this->tpl->assign("resource_path", "doctoroffice/signed");
+		$this->tpl->assign('tab_page', true);
+		
+		$this->expected_time = array (
+					1 => '+1 day',
+					2 => '+2 day',
+					3 => '+3 day',
+					4 => '+1 wekk'
+		);
+
+	}
+
+	function index () {
+		
+		$this->session->unset_userdata('doctororder_return');
+		
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("profile_id", $this->getUserProfileId());
+		
+		if ($this->getAgencyType() == 'C') {
+			$this->tpl->assign("resource_add",  "addContractor");
+			$this->tpl->assign("resource_grid", "gridContractor");
+		}
+		
+		$this->tpl->assign('doctor_order_status_list', $this->parametermdl->getByType(23));
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+	function grid () {
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;align=center", "Order Date"));
+		$head->append($this->xml->Element("column", "width=*", "Order Type"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Agency"));
+		$head->append($this->xml->Element("column", "width=*", "Signed Date "));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		$data = $this->docdoctorordermdl->getByDoctorOffice($this->getAgencyId(), array(3), $this->input->post('keyword'), 'ASC');
+
+		foreach ($data as $order) {
+
+			$patient   		= $this->patientmdl->getById($order->patient_id);
+			$order_by  		= $this->usagymdl->getByUsAgyId($order->order_by_user_id);
+			$expected_sign 	= $this->parametermdl->get(94, $order->tab_094_expected_time_sign);
+
+			$cell = $this->xml->Element("row", "id=" . $order->doc_doctor_order_id);
+			$icon = $this->config->config["base_url"] . "style/images/no_img.gif";
+			
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->order_date))));
+			$cell->append($this->xml->Element("cell", null, $order->doc_doctor_order_type_description));
+			$cell->append($this->xml->Element("cell", null, $patient->first_name . " " . $patient->last_name));
+			$cell->append($this->xml->Element("cell", null, @$order->agency_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->signed_date))));
+			
+			$document->append($cell);
+		}
+
+	}
+	
+	function edit ( $doctor_order_id ) {
+		
+		$config =& get_config();
+		$doctor_order = $this->docdoctorordermdl->getById($doctor_order_id);
+		
+		if (!count($doctor_order)) {
+			show_error("Doctor Order not exit.");
+		}
+		
+		$doctor_order_type = $this->docdoctorordertypemdl->getById($doctor_order->doc_doctor_order_type_id);
+		
+		if ($doctor_order_type->doc_doctor_order_type_program == null) {
+			show_error("Doctor Order not implemented...");
+		}
+				
+		$this->session->set_userdata('doctororder_return', "doctoroffice/signed");
+		
+		header("Location: " . $config["index_url"] . "doctororder/" . $doctor_order_type->doc_doctor_order_type_program . "/index/" . $doctor_order_id);
+		
+	}
+
+}

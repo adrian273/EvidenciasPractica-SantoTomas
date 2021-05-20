@@ -1,0 +1,71 @@
+	<tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Doctor Order Dates</td>
+	</tr> 
+	<tr>
+	    <td colspan="4" height="10"></td>
+	</tr>
+	<tr>
+		<td class="ftitle" >Sent to Physician Date</td>
+		<td>
+			{$sent_date|date_format} 
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle" >Signed by Physician Date</td>
+		<td>
+			{if $tab_023_order_status == 2 && $allow_sign}
+				<input type="text" name="signed_date" id="signed_date" value="{$signed_date|default:$smarty.now|date_format}" onchange="if(getValue('sent_date') == '') setValue('signed_date', '')" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop && getValue('sent_date') != '') gfPop.fStartPop(document.getElementById('signed_date'), document.getElementById('fecha_help'));return false;" >
+				<br>
+				<i>After specify this date, the status will change to Signed by Physician</i>
+			{else}
+				{$signed_date|date_format}
+			{/if}
+		</td>
+	</tr>
+	{if !$doctor_order_user_is_physician}
+	<tr>
+		<td class="ftitle">Expected time to sign</td>
+		<td>
+			{html_options options=$tab_094_list_options selected=$tab_094_expected_time_sign name='tab_094_expected_time_sign'} 
+		</td>
+	</tr>
+	{/if}
+	<tr>
+		<td class="ftitle" valign="top">Agency/Clinician Notes</td>
+		<td>
+			{if !$doctor_order_user_is_physician && $tab_023_order_status <= 2 }
+		  		<textarea name="user_notes" rows="5" cols="50" wrap="auto">{$user_notes}</textarea>
+		  		<i>This field is not printed</i>
+		  	{else}
+		  		{$user_notes|nl2br}
+		  	{/if}
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2" height="10"></td>
+	</tr>
+	<tr>
+		<td class="ftitle" valign="top">Physician Notes</td>
+		<td>
+			{if $tab_023_order_status == 2 && $doctor_order_user_is_physician}
+				<textarea name="physician_notes" rows="5" cols="50" wrap="auto">{$physician_notes}</textarea>
+			{else}
+				{$physician_notes|nl2br}
+			{/if} 
+		</td>
+	</tr>
+	
+	{if $electronic_sign_setup == 1}
+	<script language="JavaScript" type="text/javascript">
+  
+    function signDoctorOrder (){literal}{{/literal}
+	    
+	    document.location = '{$index_url}{$cancel_action}';
+		
+    {literal}}{/literal};
+  
+	</script>
+	{/if}
+  
+	

@@ -1,0 +1,132 @@
+<?
+class AgencyDoctorOfficeMdl extends Model {
+
+	var $agency_doctor_office_id;
+	var $agency_id;
+	var $doctor_office_id;
+
+	function AgencyDoctorOfficeMdl() {
+
+		parent :: Model();
+
+	}
+	
+	function get($agency_id,$keyword=null, $normal_result = true) {
+
+		$this->db->join('agy_agency', 'agy_agency.agency_id = agency_doctor_office.doctor_office_id');
+		
+		if (!is_null($keyword)) {
+			$this->db->like('agency_name', $keyword);
+		}
+		
+		$this->db->where("agency_doctor_office.agency_id", $agency_id);
+		$this->db->orderby('agency_name');
+
+		$query = $this->db->get('agency_doctor_office');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('doctor_office_id', 'agency_name');
+	}
+
+	function getByDoctorOfficeId($doctor_office_id) {
+		$this->db->where("doctor_office_id", $doctor_office_id);
+
+		$query = $this->db->get('agency_doctor_office');
+		return $query->row();
+	}
+
+	function getAgencyIds($doctor_office_id) {
+		$this->db->select('agency_id');
+		$this->db->where("doctor_office_id", $doctor_office_id);
+
+		$query = $this->db->get('agency_doctor_office');
+		$result = $query->result();
+		$rows = array();
+		foreach ($result as $key => $value) {
+			$rows[] = $value->agency_id;
+		}
+		return $rows;
+	}
+
+	function getByAgencyContractorId($agency_contractor_id) {
+
+		$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');
+
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+
+		$this->db->where("agency_contractor.agency_contractor_id", $agency_contractor_id);
+
+		$query = $this->db->get('agency_contractor');
+		return $query->row();
+	}
+
+	function getByContractor($contractor_id, $agency_type = null, $normal_result = true) {
+
+		$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+
+		$this->db->where("agency_contractor.contractor_id", $contractor_id);
+
+		if (!is_null($agency_type)) {
+			$this->db->where('agency_type', $agency_type);
+		}
+
+		$query = $this->db->get('agency_contractor');
+
+		if ($normal_result == true) {
+			return $query->result();
+		} else {
+
+			return $query->result2('agency_id', 'agency_name');
+		}
+
+	}
+
+	function getContractorName($contractor_id, $agency_id) {
+
+		$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id');
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+
+		$this->db->where("agency_contractor.agency_id", $agency_id);
+		$this->db->where("agency_contractor.contractor_id", $contractor_id);
+
+		$query = $this->db->get('agency_contractor');
+		$result = $query->result();
+		return $result[0]->agency_name;
+	}
+
+	function getNot($agency_id, $state_id) {
+
+		$this->db->select('agy_agency.agency_id, agency_name');
+
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id');
+		$this->db->join('agency_contractor', 'agency_contractor.contractor_id = agy_agency.agency_id AND agency_contractor.agency_id = ' . $agency_id, ' LEFT');
+
+		$this->db->where("agy_agency.agency_type", 'C');
+		$this->db->where("agy_agency.state_id", $state_id);
+		$this->db->where("agency_contractor_id IS NULL");
+
+		$query = $this->db->get('agy_agency');
+		return $query->result2('agency_id', 'agency_name');
+
+	}
+
+	function insert($agency_id) {
+
+		$this->agency_id = $agency_id;
+
+		$this->db->insert('agency_doctor_office', $this);
+		$this->agency_doctor_office_id = $this->db->insert_id();
+
+	}
+
+	function delete( $agency_doctor_office_id ) {
+
+		$this->db->where('agency_doctor_office_id', $agency_doctor_office_id);
+
+		$this->db->delete('agency_doctor_office');
+
+	}
+
+}

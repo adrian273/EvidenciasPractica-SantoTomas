@@ -1,0 +1,114 @@
+<?php
+class patientpharmacymdl extends Model {
+
+	var $id;
+	var $patient_id;
+	var $pharmacy_name;
+	var $pharmacy_address;
+	var $pharmacy_city;
+	var $pharmacy_state;
+	var $pharmacy_zip;
+	var $pharmacy_phone;
+	var $pharmacy_fax;
+	var $pharmacy_comments;
+	var $creation_date;
+	var $creation_user;
+	var $modify_date;
+	var $modify_user;
+/*
+	var $approve_user;
+	var $approve_date;
+*/
+
+	function patientpharmacymdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $patient_id, $pharmacy_name=null ) {
+		$this->db->select("us_agy.*,pat_patient_pharmacy1.*",false);
+		$this->db->join('us_agy', 'us_agy.user_id = pat_patient_pharmacy1.modify_user', 'left');
+		
+		$this->db->where("pat_patient_pharmacy1.patient_id", $patient_id);
+		
+		if (!is_null($pharmacy_name)) {
+			$this->db->like("pharmacy_name", $pharmacy_name);
+		}
+		
+		$this->db->order_by("pharmacy_name", "ASC");
+		
+		$query = $this->db->get("pat_patient_pharmacy1");
+		return $query->result();
+		
+	}
+
+	function getById ( $id ) {
+		$this->db->where("id", $id);
+		$query = $this->db->get("pat_patient_pharmacy1");
+		return $query->row();		
+	}
+
+	function insert ( $patient_id, $creation_user ) {
+
+		$this->patient_id 		= $patient_id;
+		$this->creation_user 	= $creation_user;
+				 		
+		$this->creation_date = $this->modify_date = standard_date(now(), 'MYSQL');
+		
+		$this->db->insert("pat_patient_pharmacy1", $this);
+		
+	}
+	
+	function update ( $patient_id, $id ) {
+
+		$pharmacy = new stdClass();
+		$pharmacy->pharmacy_name 	= $this->pharmacy_name;
+		$pharmacy->pharmacy_address 	= $this->pharmacy_address;
+		$pharmacy->pharmacy_city 	= $this->pharmacy_city;
+		$pharmacy->pharmacy_state 		= $this->pharmacy_state;
+		$pharmacy->pharmacy_zip 		= $this->pharmacy_zip;
+		$pharmacy->pharmacy_phone 	= $this->pharmacy_phone;
+		$pharmacy->pharmacy_fax 	= $this->pharmacy_fax;
+		$pharmacy->pharmacy_comments 	= $this->pharmacy_comments;
+		$pharmacy->modify_user 	= $this->modify_user;
+		$pharmacy->modify_date = standard_date(now(), 'MYSQL');	
+		
+		$this->db->where('id', $id);
+		$this->db->update("pat_patient_pharmacy1", $pharmacy);		
+	}
+	
+	/*function updateApprove ( $id, $user_id ) {
+		$pharmacy = null;
+		$pharmacy->approve_date	= standard_date(now(), 'MYSQL');
+		$pharmacy->approve_user	= $user_id;		
+		$this->db->where('id', $id);
+		
+		$this->db->update("pat_patient_pharmacy1", $pharmacy);		
+	}*/
+	
+	function delete ( $id ) {		
+		$this->db->where('id', $id);		
+		$this->db->delete("pat_patient_pharmacy1");		
+	}
+	
+	function getAll () {		
+		$this->db->select("us_agy.*,pat_patient_pharmacy1.*",false);
+		$this->db->join('us_agy', 'us_agy.user_id = pat_patient_pharmacy1.modify_user', 'left');
+		
+		$this->db->order_by("pharmacy_name", "ASC");
+		
+		$query = $this->db->get("pat_patient_pharmacy1");
+		return $query->result();	
+	}	
+	
+	function getAllFromOld () {		
+		$this->db->select("pat_patient_pharmacy.*",false);
+		//$this->db->join('us_agy', 'us_agy.user_id = pat_patient_pharmacy.modify_user', 'left');
+		
+		$this->db->order_by("patient_id", "ASC");
+		
+		$query = $this->db->get("pat_patient_pharmacy");
+		return $query->result();	
+	}
+}

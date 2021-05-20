@@ -1,0 +1,138 @@
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<input type="hidden" value="" name="visit_date_ini" id="visit_date_ini_print" >
+<input type="hidden" value="" name="visit_date_fin" id="visit_date_fin_print" >
+</form>
+<form method="POST" action="{$index_url}{$resource_path}/ready"> 
+
+
+	<table border="0" width="100%" cellpadding="5" cellspacing="0" align="center"> 
+		{if empty($payroll_options)}
+		<tr> 
+			<td>
+				<b>Payroll Period Start:</b>
+				<input type="text" id="visit_date_ini" name="visit_date_ini" value="{$visit_date_ini}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				&nbsp;&nbsp;&nbsp;
+				<b>End:</b>
+				<input type="text" id="visit_date_fin" name="visit_date_fin" value="{$visit_date_fin}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				<input type="submit" value="Update">
+			</td>
+			<td>
+				<b>Total Payments for period:</b> {$total_amount}
+			</td>
+		</tr>
+		{else}		
+		<tr>
+			<td style="width:20%;"><label><input type="radio" name="date_filter_type" id="date_filter_type_cycle" {if $date_filter_type == 'cycle'} checked="checked" {/if}  value="cycle" /> &nbsp; <b>Payroll Cycle:</b></label></td>
+				{if $cycleYears|@count gt 0}
+					<td style="width:20%;">
+						<select id="cycle-year" onchange="getCycles(this.value)">
+							<option value="">Select Cycle Year</option>
+							{foreach from=$cycleYears key=label item=cycleYear}
+							<option value="{$cycleYear}">{$cycleYear}</option>
+							{/foreach}
+						</select>
+					</td>
+				{/if}
+			<td style="width:20%;">
+				{html_options options=$payroll_options selected=$payroll_cycle_id name='payroll_cycle_id' id='payroll_cycle_id'} 
+				<!--<select name="" id="">
+					{foreach from=$payroll_options item=item key=key}
+						<option value="{$item->id}" {if $payroll_cycle_id eq $item->id} selected="selected" {/if}>{$item->date_range}</option>
+					{/foreach}
+				</select> -->
+				
+			</td>
+			<td><input type="hidden" name="payment_date" id="payment_date" value="{$payment_date}">
+				<b>Payment Date:</b> {$payment_date}
+			</td>
+		</tr>		
+	
+		<tr> 
+			<td><label><input type="radio" name="date_filter_type" id="date_filter_type_range" {if $date_filter_type == 'range'} checked="checked" {/if} value="range" /> &nbsp; <b>Visit Date:</b></label></td>
+			<td>
+				<strong>From</strong>
+				<input type="text" id="visit_date_ini" name="visit_date_ini" value="{$visit_date_ini}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				&nbsp;&nbsp;&nbsp;
+				</td><td>
+				<b>End:</b>
+				<input type="text" id="visit_date_fin" name="visit_date_fin" value="{$visit_date_fin}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				<input type="submit" value="Update" id="update_filter" />
+			</td>
+			
+		</tr>
+		<tr>
+			<td>
+				<b>Total Payments for period:</b> 
+			</td>
+			<td>
+				{$total_amount}
+			</td>
+		</tr>
+		{/if}
+		<tr>
+			<td>
+				{if $visit_check gt 0 }
+				
+					<label type="text" name="msg_warning" ><center><font color="red">Warning: Pending Payroll Visits exist prior to this period!</font></center></label>
+				{/if}
+
+			</td>
+
+		</tr>		
+	</table>
+	
+{literal}
+<script language="javascript" type="text/javascript">
+	$(document).ready(function(){
+		$("#update_filter").click(function(){
+			//alert("asdfasdf");
+			if ($("input[name='date_filter_type']").length > 0) {
+				if($("input[name='date_filter_type']:checked").length == 0) {
+					alert('Please select one option Payroll Cycle/Visit Date Range');
+					return false;
+				} else {
+					if($("input[name='date_filter_type']:checked").val() == 'cycle') {
+						if($("#payroll_cycle_id").val() == '') {
+							alert("Please select a Payroll Cycle option.");
+							return false;
+						}
+					}
+				}
+			}
+		});
+	});
+
+	function getCycles(year) {{/literal}
+    	if (year == "") 
+    		return;
+
+    	$('#payroll_cycle_id').html('<option>Loading ...</option>')
+    	var url = '{$index_url}payroll/cycles/cycleYear/'+year+'/option';
+        {literal}
+        $.ajax({
+            type: "GET",
+            // dataType: 'json',
+            url: url,
+            // data: params,
+            success: function(data){
+            	$('#payroll_cycle_id').html('<option></option>'+data);
+            },  
+            error: function (data, status, e)
+            {
+                alert('An error occured. check your internet connection');
+            }
+        });
+        {/literal}
+	{literal}}
+
+</script>
+{/literal}
+

@@ -1,0 +1,74 @@
+<style>
+{literal}
+td{font-size: 12px;padding: 5px;}
+{/literal}
+{if $pdf}
+{literal}td{font-size: 14px;padding: 5px;}{/literal}
+{/if}
+</style>
+<table border="0" width="100%" cellpadding="4" cellspacing="0"> 
+{if $pdf}
+<tr>
+	<td colspan="6" align="left"><h2>{$form_title}</h2></td>
+	<td align="right" style="padding-right:15px;"><h3>{$agency->agency_name}</h3></td>
+</tr>
+{/if}
+{if $filter}
+<tr>
+	<td colspan="7" align="left">Filter by Medicaid Type : <select onchange="location.href='{$index_url}{$resource_path}/index/'+this.value;" name="medicaid_hmo" id="medicaid_hmo"><option value="">Select one</option><option value="M" {if $medicaid_hmo eq 'M'}selected="selected"{/if}>Molina</option><option value="S" {if $medicaid_hmo eq 'S'}selected="selected"{/if}>Superior</option><option value="T" {if $medicaid_hmo eq 'T'}selected="selected"{/if}>Traditional</option></select></td>
+</tr>
+{elseif $medicaid_hmo}
+<tr>
+	<td colspan="7" align="left">Medicaid Type : {if $medicaid_hmo eq 'M'}Molina{elseif $medicaid_hmo eq 'S'}Superior{elseif $medicaid_hmo eq 'T'}Traditional{/if}</td>
+</tr>
+{/if}
+<tr>
+	<td colspan="7" align="left"><h2 style="text-align:center; margin:0; padding:5px;">Current Patients</h2></td>
+</tr>
+<tr>
+	<td width="20%"></td>
+	<td colspan="5" align="left"><h4>A/ U/ R = Authorized / Used / Remaining</h4></td>
+	<td width="30%"><h4>Date: {$smarty.now|date_format}</h4></td>
+</tr>
+<tr>
+	<td colspan="7"><hr /></td>
+</tr>	
+{foreach from=$patients key=k item=p}
+	<tr bgcolor="#DDD" height="30">
+	<td width="20%">Patient:	{$p->first_name} {$p->last_name}</td>
+	<td colspan="2">SOC : {$p->soc->estimated_soc_date|date_format:"%m/%d/%Y"}</td>
+	<td colspan="3">Cert Period: {$p->episode->episode_start_date|date_format:"%m/%d/%Y"} &nbsp;{$p->episode->episode_end_date|date_format:"%m/%d/%Y"}</td>
+	<td width="30%">Skill/Staff: {$p->team_users}</td>
+	</tr>
+
+	<tr>
+	<td width="20%"><b>Current Auth Period:	</b></td>
+	<td><b>SN Visits Auth	</b></td>
+	<td><b>PT Visits Auth	</b></td>
+	<td><b>OT Visits Auth	</b></td>	
+	<td><b>ST Visits Auth	</b></td>		
+	<td><b>HHA Vis Auth	</b></td>		
+	<td width="10%"><b>Notes</b></td>
+	</tr>
+	{foreach from=$p->authvisits key=vk item=av}	
+		<tr>
+			<td width="20%">{$av->author_from_date|date_format:"%m/%d/%Y"} {$av->author_end_date|date_format:"%m/%d/%Y"}</td>
+			<td>{$av->nbr_sn_visits} / {$av->sn_used} / {$av->sn_remain}</td>
+			<td>{$av->nbr_pt_visits} / {$av->pt_used} / {$av->pt_remain}</td>
+			<td>{$av->nbr_ot_visits} / {$av->ot_used} / {$av->ot_remain}</td>
+			<td>{$av->nbr_st_visits} / {$av->st_used} / {$av->st_remain}</td>
+			<td>{$av->hha_nbr_visits} / {$av->hha_used} / {$av->hha_remain}</td>
+			<td width="10%">{$av->authvisits_notes}</td>
+		</tr>
+	{foreachelse}	
+	 <tr>
+	 	<td></td>
+	 	<td colspan="5" align="center">No authorize visits sets yet</td>
+		<td></td>
+	 </tr>	
+	{/foreach}		
+{/foreach}	
+<tr>
+	<td colspan="7"><hr /></td>
+</tr>	
+</table>

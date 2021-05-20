@@ -1,0 +1,1414 @@
+<?php
+
+include 'visitform.php';
+
+class ptpn extends VisitForm
+{
+
+    public function ptpn()
+    {
+
+        parent::VisitForm();
+
+        $this->load->model('ptpnmdl');
+
+        $this->tpl->assign("resource_path", "task/ptpn");
+        $this->tpl->assign(array(
+            "tab_page" => true,
+        ));
+
+        $this->tpl->assign('tab_024_list_values', array_keys($this->parametermdl->getByType(24)));
+        $this->tpl->assign('tab_024_list_options', $this->parametermdl->getByType(24));
+        $this->tpl->assign('tab_048_list_options', $this->parametermdl->getByType(48));
+        $this->tpl->assign('tab_075_pain_level_list', $this->parametermdl->getByType(75));
+        $this->tpl->assign('tab_63_list', $this->parametermdl->getByType(63));
+        $this->tpl->assign('tab_109_list', $this->parametermdl->getByType(109));
+        
+        $this->tpl->assign('validatationVisit', true);
+    }
+
+    public function index($visit_log_id, $action = 'task', $window = 'self')
+    {
+        $goals_to_import = array(
+            'p2_return_to_pre',
+            'p2_return_to_pre_weeks',
+            'p2_return_to_pre_met',
+            'p2_return_to_pre_on_date',
+            'p2_patient_will',
+            'p2_patient_will_weeks',
+            'p2_patient_will_met',
+            'p2_patient_will_on_date',
+            'p2_return_to_opti',
+            'p2_return_to_opti_weeks',
+            'p2_return_to_opti_met',
+            'p2_return_to_opti_on_date',
+            'p2_demost_eff',
+            'p2_demost_eff_weeks',
+            'p2_demost_eff_met',
+            'p2_demost_eff_on_date',
+            'p2_improv_bed_mov',
+            'p2_improv_bed_mov_desc1',
+            'p2_improv_bed_mov_weeks',
+            'p2_improv_bed_mov_met',
+            'p2_improv_bed_mov_on_date',
+            'p2_improv_bed_mov_indep',
+            'p2_improv_bed_mov_indep_weeks',
+            'p2_improv_bed_mov_indep_met',
+            'p2_improv_bed_mov_indep_on_date',
+            'p2_improv_trans',
+            'p2_improv_trans_desc1',
+            'p2_improv_trans_desc2',
+            'p2_improv_trans_weeks',
+            'p2_improv_trans_met',
+            'p2_improv_trans_on_date',
+            'p2_indep_trans',
+            'p2_indep_trans_weeks',
+            'p2_indep_trans_met',
+            'p2_indep_trans_on_date',
+            'p2_pat_indep',
+            'p2_pat_indep_weeks',
+            'p2_pat_indep_met',
+            'p2_pat_indep_on_date',
+            'p2_improv_wheel',
+            'p2_improv_wheel_desc',
+            'p2_improv_wheel_weeks',
+            'p2_improv_wheel_met',
+            'p2_improv_wheel_on_date',
+            'p2_pat_ambul',
+            'p2_pat_ambul_desc1',
+            'p2_pat_ambul_desc2',
+            'p2_pat_ambul_weeks',
+            'p2_pat_ambul_met',
+            'p2_pat_ambul_on_date',
+            'p2_climb',
+            'p2_climb_desc1',
+            'p2_climb_desc2',
+            'p2_climb_met',
+            'p2_tab_063_climb_weeks',
+            'p2_climb_on_date',
+            'p2_indep_ambul',
+            'p2_indep_ambul_desc',
+            'p2_indep_ambul_weeks',
+            'p2_indep_ambul_met',
+            'p2_indep_ambul_on_date',
+            'p2_ambul_endur',
+            'p2_ambul_endur_desc1',
+            'p2_ambul_endur_desc2',
+            'p2_ambul_endur_weeks',
+            'p2_ambul_endur_met',
+            'p2_ambul_endur_on_date',
+            'p2_increa_stren_UE',
+            'p2_increa_stren_UE_5',
+            'p2_increa_stren_UE_weeks',
+            'p2_increa_stren_UE_met',
+            'p2_increa_stren_UE_on_date',
+            'p2_increa_stren_LE',
+            'p2_increa_stren_LE_5',
+            'p2_increa_stren_LE_weeks',
+            'p2_increa_stren_LE_met',
+            'p2_increa_stren_LE_on_date',
+            'p2_increa_rom',
+            'p2_increa_rom_desc1',
+            'p2_increa_rom_desc2',
+            'p2_increa_rom_desc3',
+            'p2_increa_rom_weeks',
+            'p2_increa_rom_met',
+            'p2_increa_rom_on_date',
+            'p2_increa_rom2',
+            'p2_increa_rom2_desc1',
+            'p2_increa_rom2_desc2',
+            'p2_increa_rom2_desc3',
+            'p2_increa_rom2_weeks',
+            'p2_increa_rom2_met',
+            'p2_increa_rom2_on_date',
+            'p2_demos_rom',
+            'p2_demos_rom_weeks',
+            'p2_demos_rom_met',
+            'p2_demos_rom_on_date',
+            'p2_demos_proper',
+            'p2_demos_proper_prosthe',
+            'p2_demos_proper_brace',
+            'p2_demos_proper_splint',
+            'p2_demos_proper_weeks',
+            'p2_demos_proper_met',
+            'p2_demos_proper_on_date',
+            'p2_demos_proper_dme',
+            'p2_demos_proper_dme_weeks',
+            'p2_demos_proper_dme_met',
+            'p2_demos_proper_dme_on_date',
+            'p2_tinetti_bal',
+            'p2_tinetti_bal_score',
+            'p2_tinetti_bal_weeks',
+            'p2_tinetti_bal_met',
+            'p2_tinetti_bal_on_date',
+            'p2_improv_score',
+            'p2_improv_score_desc1',
+            'p2_improv_score_desc2',
+            'p2_improv_score_met',
+            'p2_improv_score_on_date',
+            'p2_follow_exer',
+            'p2_follow_exer_date',
+            'p2_follow_exer_met',
+            'p2_follow_exer_on_date',
+            'p2_other3',
+            'p2_other3_desc',
+            'p2_other3_weeks',
+            'p2_other3_met',
+            'p2_other3_on_date',
+            'p2_other4',
+            'p2_other4_desc',
+            'p2_other4_weeks',
+            'p2_other4_met',
+            'p2_other4_on_date',
+            'p2_other5',
+            'p2_other5_desc',
+            'p2_other5_weeks',
+            'p2_other5_met',
+            'p2_other5_on_date',
+            'p2_other6',
+            'p2_other6_desc',
+            'p2_other6_weeks',
+            'p2_other6_met',
+            'p2_other6_on_date',
+        );
+
+        $rules = array();
+        $fields = array();
+
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id);
+        $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+        $this->tpl->assign("agency", $agency);
+
+        $visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+        $company_settings = $this->agencysettingsmdl->get($visit_user->agency_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+
+        // look all PTPN/PTEV of current SOC
+        $prevGoals = false;
+        if (isset($company_settings->track_goals_ptpn) AND $company_settings->track_goals_ptpn == 1) {
+            $prevGoals = $this->ptpnmdl->getPreviousGoals($visitlog->visit_date_time, $visitlog->cms485_id, true);
+            $this->tpl->assign("track_goals_ptpn", true);
+        }
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        if (!count($this->ptpnmdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+
+            $this->load->model('ptpnmdl');
+
+            $ptpns = $this->ptpnmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptpns) == 0) {
+                $ptpns = $this->ptpnmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // look all PTPN of current SOC
+            }
+
+            if (count($ptpns)) {
+                $ptpn = $ptpns[count($ptpns) - 1];
+
+                $prev_visit_log_id = $ptpn->visit_log_id;
+                $not_to_import = array(
+                    'bp',
+                    'temp',
+                    'resp',
+                    'pulse',
+                    'tab_075_pain_level',
+                    'subj_mins_since_last',
+                    'visit_log_id',
+                    'pt_clinical_visit_id',
+                    'primary_diag',
+                    'secondary_diag',
+                    'primary_diag_date',
+                    'secondary_diag_date',
+                    'upload_document_name',
+                    'upload_document_name2',
+                    'supervisor_signed',
+                );
+                if ($visit_user->short_description == 'PT') {
+                    $not_to_import[] = 'ther_supervisor';
+                }
+
+                foreach ($ptpn as $k => $v) {
+                    if (!in_array($k, $not_to_import) and property_exists($this->ptpnmdl, $k)) {
+                        $this->ptpnmdl->$k = $v;
+                    }
+
+                }
+                if ($prevGoals and is_object($prevGoals)) {
+                    foreach ($prevGoals as $k => $v) {
+                        if (in_array($k, $goals_to_import) and property_exists($this->ptpnmdl, $k)) {
+                            // echo '<font color=green>'.$k.'='.$v.'</font><br>';
+                            $this->ptpnmdl->$k = $v;
+                        } else {
+                            // echo '<font color=red>'.$k.'='.$v.'</font><br>';
+                        }
+                    }
+
+                }
+
+                if (count($this->ptpnmdl->get($visit_log_id))) {
+                    $this->ptpnmdl->visit_log_id = $visit_log_id;
+                    $this->ptpnmdl->update($visit_log_id);
+                } else {
+                    $this->ptpnmdl->visit_log_id = $visit_log_id;
+                    $this->ptpnmdl->insert($visit_log_id);
+                }
+
+            } else {
+                // import goals only
+                if ($prevGoals and is_object($prevGoals)) {
+                    foreach ($prevGoals as $k => $v) {
+                        if (in_array($k, $goals_to_import) and property_exists($this->ptpnmdl, $k)) {
+                            // echo '<font color=green>'.$k.'='.$v.'</font><br>';
+                            $this->ptpnmdl->$k = $v;
+                        } else {
+                            // echo '<font color=red>'.$k.'='.$v.'</font><br>';
+                        }
+                    }
+
+                    if (count($this->ptpnmdl->get($visit_log_id))) {
+                        $this->ptpnmdl->visit_log_id = $visit_log_id;
+                        $this->ptpnmdl->update($visit_log_id);
+                    } else {
+                        $this->ptpnmdl->visit_log_id = $visit_log_id;
+                        $this->ptpnmdl->insert($visit_log_id);
+                    }
+                }
+
+            }
+
+            $ptpns = $this->ptpnmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptpns)) {
+                $ptpn = $ptpns[0];
+
+                $next_visit_log_id = $ptpn->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        } else {
+            $ptpns = $this->ptpnmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptpns)) {
+                $ptpn = $ptpns[count($ptpns) - 1];
+
+                $prev_visit_log_id = $ptpn->visit_log_id;
+            }
+
+            $ptpns = $this->ptpnmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($ptpns)) {
+                $ptpn = $ptpns[0];
+
+                $next_visit_log_id = $ptpn->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        }
+
+        $this->assignObject($visitlog);
+        $ptpn = $this->ptpnmdl->get($visit_log_id);
+        if (empty($ptpn)) {
+            $ptpn = $this->ptpnmdl->getEmpty();
+        }
+        $this->assignObject($ptpn);
+
+        /*
+         * import diagnosis 4 fields from previous Eval
+         */
+        $prev_eval = array();
+        $this->load->model('ptevmdl');
+        $ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+        if (count($ptevs) == 0) {
+            $ptevs = $this->ptevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id, true); // look all PTEV of current SOC
+        }
+        if (count($ptevs)) {
+            $prev_eval = $ptevs[count($ptevs) - 1];
+        }
+        if (empty($prev_eval)) {
+            $this->load->model('otevmdl');
+            $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($otevs) == 0) {
+                $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // Look into all prev periods
+            }
+            if (count($otevs)) {
+                $prev_eval = $otevs[count($otevs) - 1];
+            }
+        }
+        if (empty($prev_eval)) {
+            $this->load->model('stevmdl');
+            $stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($stevs) == 0) {
+                $stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // Look into all prev periods
+            }
+            if (count($stevs)) {
+                $prev_eval = $stevs[count($stevs) - 1];
+            }
+        }
+        if (isset($prev_eval->primary_diag)) {
+            $this->tpl->assign("primary_diag", $prev_eval->primary_diag);
+        }
+        if (isset($prev_eval->secondary_diag)) {
+            $this->tpl->assign("secondary_diag", $prev_eval->secondary_diag);
+        }
+        if (isset($prev_eval->primary_diag_date)) {
+            $this->tpl->assign("primary_diag_date", $prev_eval->primary_diag_date);
+        }
+        if (isset($prev_eval->secondary_diag_date)) {
+            $this->tpl->assign("secondary_diag_date", $prev_eval->secondary_diag_date);
+        }
+        /*
+         * End of importing diagnosis fields
+         */
+
+        if (@$ptpn->ther_na == '1') {
+            $this->tpl->assign("show_therapy_sup_report", "no");
+        } else if (@$ptpn->ther_name != null || @$ptpn->ther_implem_plan != null || @$ptpn->ther_follow_plan != null || @$ptpn->ther_raport_pat_fam != null || @$ptpn->ther_eval_plan != null || @$ptpn->ther_notes != null) {
+            $this->tpl->assign("show_therapy_sup_report", "yes");
+        } else {
+            $this->tpl->assign("show_therapy_sup_report", "no");
+        }
+
+        $rules = array(
+            'visit_duration' => 'required|callback_checkduration',
+        );
+
+        $fields = array(
+            'visit_duration' => 'Visit Duration',
+        );
+
+        $this->validation->set_fields($fields);
+        $this->validation->set_rules($rules);
+
+        if ($this->validation->run() == true) {
+
+            if ($this->updateFormEdition($visit_log_id)) {
+                $this->assignPostData($this->ptpnmdl);
+
+                if ($this->input->post('ther_na') == 1 or $this->input->post('ther_na') == '1') {
+                    $this->ptpnmdl->ther_name = null;
+                    $this->ptpnmdl->ther_implem_plan = null;
+                    $this->ptpnmdl->ther_follow_plan = null;
+                    $this->ptpnmdl->ther_raport_pat_fam = null;
+                    $this->ptpnmdl->ther_eval_plan = null;
+                    $this->ptpnmdl->ther_notes = null;
+                } else {
+                    $this->ptpnmdl->ther_na = null;
+                }
+
+                // if ($prevGoals and is_object($prevGoals)) {
+                //     foreach ($prevGoals as $k => $v) {
+                //         if (in_array($k, $goals_to_import) and property_exists($this->ptpnmdl, $k)) {
+                //             // echo '<font color=green>'.$k.'='.$v.'</font><br>';
+                //             if ($this->input->post($k) ===  false) {
+                //                 // save previous PTNote data 
+                //                 $this->ptpnmdl->$k = $v;
+                //             } else {
+                //                 // save form entered data. nothing to do here as $this->assignPostData($this->ptpnmdl) already assigned data
+                //             }
+
+                //         } else {
+                //             // echo '<font color=red>'.$k.'='.$v.'</font><br>';
+                //         }
+                //     }
+
+                // }
+
+                if (count($this->ptpnmdl->get($visit_log_id))) {
+                    $this->ptpnmdl->update($visit_log_id);
+                } else {
+                    $this->ptpnmdl->insert($visit_log_id);
+                }
+
+                if ($this->input->post('visit_status_id') == 3) {
+                    // Submitted for approval. check is co-signer assigned. If assigned then need to send notification to co-signer.
+                    if ($this->ptpnmdl->ther_supervisor and $this->ptpnmdl->supervisor_signed != 1) {
+                        if (isset($company_settings->override_ptpn_sup_co_sign) and $company_settings->override_ptpn_sup_co_sign == 1) {
+                            // when "Override Superv ELECTRONIC Co-sign"is ON. ** this action will override the ELEC text even if the Supervisor Therapist doesn't actually sign.
+                            $this->ptpnmdl->updateFlex($visit_log_id, 'supervisor_signed', 1);
+
+                        } else if (isset($company_settings->ptpn_req_co_sign) and $company_settings->ptpn_req_co_sign == 1) {
+                            $config = &get_config();
+
+                            $this->messagemdl->user_from = $this->getUsAgyId();
+                            $this->messagemdl->msg_type = 'email';
+                            $this->messagemdl->msg_subject = 'You have a note to sign';
+                            $this->messagemdl->msg_text = 'A PTPN note is waiting for your sign before approval. <a href="javascript://" onclick="window.location.href=\'' . $config["index_url"] . 'task/task/edit/' . $visit_log_id . '\';">Click here</a> to open the note.';
+                            $msg_id = $this->messagemdl->insert();
+
+                            $this->usermessagemdl->insert($msg_id, $this->ptpnmdl->ther_supervisor, 0);
+                        }
+                    }
+                }
+
+                //echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+                if ($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id and $this->visitlogmdl->visit_status_id == 8) {
+                    // when tasks are "sent for approval" they should be copied to the vt12_pt_progress_note_copy table
+                    $this->db->query("REPLACE INTO vt12_pt_progress_note_copy SELECT * FROM `vt12_pt_progress_note` WHERE visit_log_id = {$visit_log_id}");
+                }
+
+                $this->load->helper('ajax');
+                if (isAjax()) {
+                    echo "1";
+                    exit;
+                } else {
+                    $ptpn = $this->ptpnmdl->get($visit_log_id);
+                    if (@$ptpn->ther_na == '1') {
+                        $this->tpl->assign("show_therapy_sup_report", "no");
+                    } else if (@$ptpn->ther_name != null || @$ptpn->ther_implem_plan != null || @$ptpn->ther_follow_plan != null || @$ptpn->ther_raport_pat_fam != null || @$ptpn->ther_eval_plan != null || @$ptpn->ther_notes != null) {
+                        $this->tpl->assign("show_therapy_sup_report", "yes");
+                    } else {
+                        $this->tpl->assign("show_therapy_sup_report", "no");
+                    }
+
+                    $this->assignObject($ptpn);
+                }
+            }
+
+            $this->formRedirection($visit_log_id);
+
+        }
+
+        $additional_buttons = array(
+            'Display Evaluation' => "open_popup('" . $this->config->config["index_url"] . "task/ptpn/prevEval/" . $visit_log_id . "', 1000, 600)",
+        );
+
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                if ($ptpn->upload_document_name OR $ptpn->upload_document_name) {
+                    $additional_buttons['Change Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                    $additional_buttons['Remove Document'] = 'removeScannedDocument(' . $visit_log_id . ')';
+                } else {
+                    $additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                }
+            }
+        }
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            2,
+            3,
+        )));
+        $this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            2,
+        )));
+
+        if (($visitlog->visit_status_id == 3 or $visitlog->visit_status_id == 8) and $ptpn->ther_supervisor != null and $ptpn->supervisor_signed != 1) {
+            if (isset($company_settings->ptpn_req_co_sign) and $company_settings->ptpn_req_co_sign == 1) {
+                $additional_buttons['Supervisor Signature'] = "SupvisorSignature()";
+            }
+        }
+
+        $additional_buttons['Patient Signature'] = 'capture_pt_signature(' . $visit_log_id . ')';
+
+        $this->tpl->assign('additional_buttons', $additional_buttons);
+
+        $this->getPatientInfo($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/ptpn");
+        $this->setfbase($visit_log_id, $action);
+
+        // For user with profile=Company or Agency Manager, for notes w/scanned documents,
+        // we need to also display button "Save" in addition to "Submit for approval"
+        if ($ptpn->upload_document_name
+            and $visitlog->visit_user_id != $this->getUsAgyId()
+            and ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2)
+            and ($this->getUserProfileId() == 1 or $this->getUserProfileId() == 3)) {
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/fbase");
+        }
+
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    public function supervisor_electronic_pass($visit_log_id)
+    {
+
+        $this->tpl->assign('faction', 'supervisor_electronic_pass');
+        $this->tpl->assign('visit_log_id', $visit_log_id);
+
+        $rules = array('password' => 'required');
+        $this->validation->set_rules($rules);
+
+        if ($this->validation->run() == true) {
+            $ptpn = $this->ptpnmdl->get($visit_log_id);
+            if ($ptpn->ther_supervisor) {
+                $supervisor = $this->usagymdl->getByUsAgyId($ptpn->ther_supervisor);
+                $supervisorUserInfo = $this->usermdl->getById($supervisor->user_id);
+                if ($supervisorUserInfo->electronic_signature == md5($this->input->post('password'))) {
+                    $this->ptpnmdl->updateFlex($visit_log_id, 'supervisor_signed', 1);
+                    echo "<script>parent.dhxWins.window('w1').close();parent.location.href='" . $this->config->config["index_url"] . "task/ptpn/index/" . $visit_log_id . "';</script>";
+                } else {
+                    echo "Supervisor Electronic password doesn't match.";
+                    exit();
+                }
+            } else {
+                echo "Supervisor not assigned yet.";
+                exit();
+            }
+        } else {
+
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/supervisor_electronic_pass");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        }
+
+    }
+
+    public function capture_pt_signature($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        // $ptpn = $this->ptpnmdl->get($visit_log_id);
+        //echo FCPATH;
+        $rules = array(
+            'signature' => 'required',
+        );
+        $this->validation->set_rules($rules);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+
+        if ($this->validation->run() == false) {
+            // get the image name based on the visit_log_id
+            // $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+            //echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+            if (isset($visitlog->signature)) {
+                $this->tpl->assign("signature", $visitlog->signature);
+            }
+            $this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+            $this->tpl->view("task/ibase", $this->lang->language);
+        } else {
+            if (!is_null($this->input->post('signature'))) {
+                /*if (empty($ptpn)) {
+                $this->ptpnmdl->visit_log_id = $visit_log_id;
+                $this->ptpnmdl->insert($visit_log_id);
+                }*/
+
+                $signature = $this->input->post('signature');
+                $temp_array = explode(",", $signature);
+                $encoded_image = $temp_array[1];
+                $decoded_image = base64_decode($encoded_image);
+                $signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+                $upload_path = str_replace("\\", "/", FCPATH) . "upload/signatures/";
+
+                file_put_contents($upload_path . $signature_file_name, $decoded_image);
+                $this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+
+                $config = &get_config();
+
+                echo 'Signature has been captured and saved successfully.';
+                echo '<script>
+					setTimeout(function(){
+						parent.location.href=\'' . $config["index_url"] . 'task/ptpn/index/' . $visit_log_id . '?r=' . time() . '#anchor_pt_signature\';
+					}, 2000);
+				</script>';
+            }
+        }
+    }
+
+    public function upload_document($visit_log_id)
+    {
+        $can_upload = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_upload = true;
+            }
+        }
+
+        if (!$can_upload) {
+            exit('Can\'t Upload!');
+        }
+
+        if ((isset($_FILES['document']) and $_FILES['document']['error'] == 0) OR (isset($_FILES['document2']) AND $_FILES['document2']['error']==0)) {
+            $config = &get_config();
+
+            $fname = "";
+            $fname2 = "";
+
+            if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+                $fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+                $fname = str_replace(" ", "_", $fname);
+                $fname = str_replace("%", "_", $fname);
+                $fname = str_replace("#", "", $fname);
+                $fname = str_replace("&", "", $fname);
+                $fname = str_replace(":", "-", $fname);
+                
+                if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH . '/datastore/ptpn/' . $fname)) {
+                    $fname = "";
+                }
+            }
+
+            if (isset($_FILES['document2']) AND $_FILES['document2']['error']==0) {
+                $fname2 = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document2']['name'], PATHINFO_EXTENSION);
+                $fname2 = str_replace(" ","_",$fname2);
+                $fname2 = str_replace("%","_",$fname2);
+                $fname2 = str_replace("#","",$fname2);
+                $fname2 = str_replace("&","",$fname2);
+                $fname2 = str_replace(":","-",$fname2);
+                if (!move_uploaded_file($_FILES['document2']['tmp_name'], FCPATH.'/datastore/ptpn/'.$fname2)) {
+                    $fname2 = "";
+                }
+            }
+
+
+
+            if($fname OR $fname2) {
+                $ptpn = $this->ptpnmdl->get($visit_log_id);
+
+                if (empty($ptpn)) {
+                    $this->ptpnmdl->visit_log_id = $visit_log_id;
+                    $this->ptpnmdl->upload_document_name = $fname;
+                    $this->ptpnmdl->upload_document_name2 = $fname2;
+                    $this->ptpnmdl->insert($visit_log_id);
+                } else {
+                    if ($fname) {
+                        @unlink(FCPATH . '/datastore/ptpn/' . $ptpn->upload_document_name);
+                        $this->ptpnmdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+                    }
+
+                    if ($fname2) {
+                        @unlink(FCPATH . '/datastore/ptpn/' . $ptpn->upload_document_name2);
+                        $this->ptpnmdl->updateFlex($visit_log_id, 'upload_document_name2', $fname2);
+                    }
+                }
+
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+
+                echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='" . $config["index_url"] . "task/ptpn/index/" . $visit_log_id . "';</SCRIPT>";
+
+                /*if($this->submitForApproval($visit_log_id)){
+            $this->ptpnmdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+
+            $config =& get_config();
+
+            // Submitted for approval. check is co-signer assigned. If assigned then need to send notification to co-signer.
+            $ptpn = $this->ptpnmdl->get($visit_log_id);
+            if ($ptpn->ther_supervisor) {
+            $this->messagemdl->user_from = $this->getUsAgyId();
+            $this->messagemdl->msg_type = 'email';
+            $this->messagemdl->msg_subject = 'You have a note to sign';
+            $this->messagemdl->msg_text = 'A PTPN note is waiting for your sign before approval. <a href="javascript://" onclick="window.location.href=\''.$config["index_url"].'task/task/edit/'.$visit_log_id.'\';">Click here</a> to open the note.';
+            $msg_id = $this->messagemdl->insert();
+
+            $this->usermessagemdl->insert($msg_id, $this->ptpnmdl->ther_supervisor, 0);
+            }
+
+            echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/ptpn/index/".$visit_log_id."';</SCRIPT>";
+            } else {
+            @unlink(FCPATH.'/datastore/ptpn/'.$fname);
+            // echo "<SCRIPT>alert('Payroll visit rate not found');parent.dhxWins.window('w1').close();</SCRIPT>";
+            }*/
+            } else {
+                exit("Document Upload Failed!");
+            }
+        } else {
+            if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 AND isset($_FILES['document2']['error']) AND $_FILES['document2']['error'] != 0) {
+                $error_string = $this->tpl->get_template_vars('error_string');
+                $error_string .= "<br>Please select Document";
+                $this->tpl->assign("error_string", $error_string);
+            }
+            
+            $ptpn = $this->ptpnmdl->get($visit_log_id);
+            $this->assignObject($ptpn);
+
+            $this->tpl->assign("visit_log_id", $visit_log_id);
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/upload_ptpn_document");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        }
+    }
+
+    function pre_remove_document($visit_log_id){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+
+        $ptpn = $this->ptpnmdl->get($visit_log_id);
+        $this->assignObject($ptpn);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign_include("dynamic_tpl", "task/documents/remove_ptpn_document");
+        
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function remove_document($visit_log_id, $doc_number){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+        $ptpn = $this->ptpnmdl->get($visit_log_id);
+        
+        switch ($doc_number) {
+            case '1':
+                if (isset($ptpn->upload_document_name)) {
+                    @unlink(FCPATH.'/datastore/ptpn/'.$ptpn->upload_document_name);
+                    $this->ptpnmdl->updateFlex($visit_log_id, 'upload_document_name', null);
+                }
+                break;
+            case '2':
+                if (isset($ptpn->upload_document_name2)) {
+                    @unlink(FCPATH.'/datastore/ptpn/'.$ptpn->upload_document_name2);
+                    $this->ptpnmdl->updateFlex($visit_log_id, 'upload_document_name2', null);
+                }
+                break;
+            default:
+                exit('Document Not found.');
+                break;
+        }
+        
+        echo "1";exit();
+
+    }
+
+    public function index_archive($visit_log_id, $action = 'task', $window = 'self')
+    {
+        $this->load->model('ptpnarchivemdl');
+        $visitlog = $this->visitlogmdl->getByIdArchive($visit_log_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        if (!count($this->ptpnarchivemdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+
+            $this->load->model('ptpnarchivemdl');
+
+            $ptpns = $this->ptpnarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptpns) == 0) {
+                $ptpns = $this->ptpnarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // look all PTPN of current SOC
+            }
+
+            if (count($ptpns)) {
+                $ptpn = $ptpns[count($ptpns) - 1];
+
+                $prev_visit_log_id = $ptpn->visit_log_id;
+                /*$not_to_import = array (
+            'bp',
+            'temp',
+            'resp',
+            'pulse',
+            'tab_075_pain_level',
+            'subj_mins_since_last',
+            'visit_log_id',
+            'pt_clinical_visit_id'
+            );
+            foreach ($ptpn as $k => $v) {
+            if (!in_array($k, $not_to_import) AND property_exists($this->ptpnarchivemdl, $k))
+            $this->ptpnarchivemdl-> $k = $v;
+            }
+
+            if (count($this->ptpnarchivemdl->get($visit_log_id))) {
+            $this->ptpnarchivemdl->visit_log_id = $visit_log_id;
+            $this->ptpnarchivemdl->update($visit_log_id);
+            } else {
+            $this->ptpnarchivemdl->visit_log_id = $visit_log_id;
+            $this->ptpnarchivemdl->insert($visit_log_id);
+            }*/
+
+            }
+
+            $ptpns = $this->ptpnarchivemdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptpns)) {
+                $ptpn = $ptpns[0];
+
+                $next_visit_log_id = $ptpn->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        } else {
+            $ptpns = $this->ptpnarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptpns)) {
+                $ptpn = $ptpns[count($ptpns) - 1];
+
+                $prev_visit_log_id = $ptpn->visit_log_id;
+            }
+
+            $ptpns = $this->ptpnarchivemdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($ptpns)) {
+                $ptpn = $ptpns[0];
+
+                $next_visit_log_id = $ptpn->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        }
+
+        $this->assignObject($visitlog);
+
+        $ptpn = $this->ptpnarchivemdl->get($visit_log_id);
+
+        if (@$ptpn->ther_na == '1') {
+            $this->tpl->assign("show_therapy_sup_report", "no");
+        } else if (@$ptpn->ther_name != null || @$ptpn->ther_implem_plan != null || @$ptpn->ther_follow_plan != null || @$ptpn->ther_raport_pat_fam != null || @$ptpn->ther_eval_plan != null || @$ptpn->ther_notes != null) {
+            $this->tpl->assign("show_therapy_sup_report", "yes");
+        } else {
+            $this->tpl->assign("show_therapy_sup_report", "no");
+        }
+
+        $this->assignObject($ptpn);
+
+        /*if ($this->validation->run() == TRUE) {
+
+        $this->updateFormEdition($visit_log_id);
+
+        $this->assignPostData($this->ptpnarchivemdl);
+
+        if ($this->input->post('ther_na') == 1 OR $this->input->post('ther_na') == '1') {
+        $this->ptpnarchivemdl->ther_name = null;
+        $this->ptpnarchivemdl->ther_implem_plan = null;
+        $this->ptpnarchivemdl->ther_follow_plan = null;
+        $this->ptpnarchivemdl->ther_raport_pat_fam = null;
+        $this->ptpnarchivemdl->ther_eval_plan = null;
+        } else {
+        $this->ptpnarchivemdl->ther_na = null;
+        }
+
+        if (count($this->ptpnarchivemdl->get($visit_log_id))) {
+        $this->ptpnarchivemdl->update($visit_log_id);
+        } else {
+        $this->ptpnarchivemdl->insert($visit_log_id);
+        }
+
+        //echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+        if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+        // when tasks are "sent for approval" they should be copied to the vt12_pt_progress_note_copy table
+        $this->db->query("REPLACE INTO vt12_pt_progress_note_copy SELECT * FROM `vt12_pt_progress_note_copy` WHERE visit_log_id = {$visit_log_id}");
+        }
+
+        $this->load->helper('ajax');
+        if (isAjax()) {
+        echo "1";
+        exit;
+        }else{
+        $ptpn = $this->ptpnarchivemdl->get($visit_log_id);
+        if (@ $ptpn->ther_na == '1') {
+        $this->tpl->assign("show_therapy_sup_report", "no");
+        } else if (@ $ptpn->ther_name != null || @ $ptpn->ther_implem_plan != null || @ $ptpn->ther_follow_plan != null || @ $ptpn->ther_raport_pat_fam != null || @ $ptpn->ther_eval_plan != null || @ $ptpn->ther_notes != null) {
+        $this->tpl->assign("show_therapy_sup_report", "yes");
+        }else{
+        $this->tpl->assign("show_therapy_sup_report", "no");
+        }
+
+        $this->assignObject($ptpn);
+        }
+        $this->formRedirection($visit_log_id);
+
+        }*/
+
+        $user = $this->usermdl->getById($this->session->userdata('user_id'));
+        $us_agy = $this->usagymdl->getByUserId($this->session->userdata('user_id'));
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            2,
+            3,
+        )));
+        $this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            2,
+        )));
+
+        /*$this->tpl->assign('additional_buttons', array (
+        'Display Evaluation' => "open_popup('" . $this->config->config["index_url"] . "task/ptpn/prevEval/" . $visit_log_id . "', 1000, 600)"
+        ));*/
+
+        $this->getPatientInfoArchive($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/ptpn");
+        $this->setfbasearchive($visit_log_id, $action);
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    public function prevEval($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        $this->load->model('ptevmdl');
+
+        $prev_visit_log_id = null;
+
+        $ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+        if (count($ptevs) == 0) {
+            $ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, true); // look all PTEV of current SOC
+        }
+
+        if (count($ptevs)) {
+            $ptev = $ptevs[count($ptevs) - 1];
+
+            $prev_visit_log_id = $ptev->visit_log_id;
+
+        }
+
+        if (!$prev_visit_log_id) {
+            $ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptevs)) {
+                $ptev = $ptevs[count($ptevs) - 1];
+
+                $prev_visit_log_id = $ptev->visit_log_id;
+            }
+        }
+
+        if ($prev_visit_log_id) {
+            header("Location: " . $this->config->config["index_url"] . "task/ptev/index/" . $prev_visit_log_id);
+        } else {
+            die("No previous PT Evaluation was found");
+        }
+
+    }
+
+    public function pdf($visit_log_id)
+    {
+        $this->load->helper('visit_pdf');
+        ptpn_pdf($visit_log_id, 'D');
+
+        return;
+    }
+
+    public function edit_template($tpl_id)
+    {
+        $tpl_type = 'ptpn';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $this->tpl->assign("tpl_type", $tpl_type);
+        // $this->tpl->assign("entity_id", $tpl_type);
+        $this->tpl->assign("record_id", $tpl_id);
+        $this->tpl->assign("faction", 'edit_template');
+        $this->tpl->assign("resource_delete", 'delete_template');
+        // $this->tpl->assign("no_delete_form", true);
+
+        // $this->validation->set_rules(array('template_name' => 'required'));
+        // $this->validation->set_fields(array('template_name' => 'Template Name'));
+
+        $template_field = "tpl_{$tpl_type}_name";
+        $template = $this->visitformtplmdl->get($tpl_id);
+
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to edit this template");
+        }
+
+        if ($this->validation->run() == false) {
+            $this->assignObject($template);
+
+            $this->lang->language['grl_cancel'] = 'Back';
+            $this->tpl->assign("back_url", $back_url);
+            $this->tpl->assign("tpl_type_external_resource", "{$tpl_type}_external_resource");
+            $this->tpl->assign("tpl_type_form", "{$tpl_type}_form");
+            $this->tpl->assign("form_title", "Edit Template");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "user/templates/edit_data");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        } else {
+            $this->assignPostData($this->visitformtplmdl);
+            $this->visitformtplmdl->tpl_ptpn_name = $template->tpl_ptpn_name;
+            $this->visitformtplmdl->update($tpl_id);
+
+            $this->tpl->assign('gmessage', "Template has been updated");
+            redirect("task/ptpn/edit_template/" . $tpl_id);
+        }
+    }
+
+    public function delete_template($tpl_id)
+    {
+        $tpl_type = 'ptpn';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $template = $this->visitformtplmdl->get($tpl_id);
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to delete this template");
+        }
+
+        $this->visitformtplmdl->delete($tpl_id, $this->getUserId());
+        if ($back_url) {
+            redirect($back_url);
+        } else {
+            redirect("user/templates");
+        }
+    }
+
+    public function checkduration($visit_duration)
+    {
+        if (!is_numeric($visit_duration)) {
+            $this->validation->set_message('checkduration', "Error: please enter number only in visit duration field.");
+            return false;
+        }
+
+        if ($visit_duration > 300) {
+            $this->validation->set_message('checkduration', "Error: visit duration can be 300 minutes maximum.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public function validation_visit($visit_log_id)
+    {
+        $this->load->model('agencysettingsmdl');
+        $agency_conf = $this->agencysettingsmdl->get($this->getAgencyId());
+        $validation_success = 0;
+        $msg = 0;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+        $rules = array();
+        $fields = array(); 
+        if ($agency_conf->pt_validation == '1') {
+            $rules = array(
+                'visit_duration' => 'callback_checkduration',
+                'primary_diag' => 'required',
+                'secondary_diag' => 'required',
+                'primary_diag_date' => 'required',
+                'secondary_diag_date' => 'required',
+                'bp' => 'required',
+                'temp' => 'required',
+                'resp' => 'required',
+                'pulse' => 'required',
+                'subj_text' => 'required',
+                'tab_075_pain_level' => 'required',
+                'subj_mins_since_last' => 'required',
+                'coordination_of_care' => 'callback_validate_coordination_of_care',
+                'coord_other' => 'callback_validate_coord_other',
+                #'rom' => 'callback_validate_item[rom]',
+                #'strength' => 'callback_validate_strength',
+                'day30_assess_text' => 'required',
+                'dc_planning' => 'callback_validate_dc_planning',
+                'dc_plan_other' => 'callback_validate_dc_plan_other',
+                //'ther_supervisor' => 'required',
+                'addendum' => 'required',
+
+                'ther_exer_comments' => 'required',
+                #'modalities_text' => 'required',
+                #'balance_training_text' => 'required',
+                'p2_patient_will' => 'callback_val_p2_patient_will[p2_patient_will]',
+                'p2_return_to_opti' => 'callback_val_p2_return_to_opti[p2_return_to_opti]',
+                'p2_demost_eff' => 'callback_val_p2_demost_eff[p2_demost_eff]',
+                'p2_improv_bed_mov_indep' => 'callback_val_p2_improv_bed_mov_indep[p2_improv_bed_mov_indep]',
+                'p2_indep_trans' => 'callback_val_p2_indep_trans[p2_indep_trans]',
+                'p2_pat_ambul' => 'callback_val_p2_pat_ambul[p2_pat_ambul]',
+            );
+
+            $fields = array(
+                'primary_diag' => 'Primary Diagnosis',
+                'secondary_diag' => 'Therapy Diagnosis',
+                'primary_diag_date' => 'Primary Diagnosis Date',
+                'secondary_diag_date' => 'Therapy Diagnosis Date',
+                'bp' => 'Blood Pressure',
+                'temp' => 'Temperature',
+                'resp' => 'Respiratory/02 Sat',
+                'pulse' => 'Pulse',
+                'subj_text' => 'Subjective',
+                'tab_075_pain_level' => 'Pain Level',
+                'subj_mins_since_last' => 'Time since pain meds taken:',
+                'day30_assess_text' => "Assessment / Progress Related to Patient's Goals Description",
+                'ther_supervisor' => 'Supervising Therapist',
+                'addendum' => 'Addendum',
+
+                'ther_exer_comments' => 'Therapeutic Exercises',
+                #'modalities_text' => 'Modalities Description',
+                #'balance_training_text' => 'Balance Retraining',
+            );
+
+            if ($this->input->post('modalities_na') == 1) {
+                $rules['modalities_text'] = '';
+                $fields['modalities_text'] = '';
+            } else {
+                $rules['modalities_text'] = 'required';
+                $fields['modalities_text'] = 'Modalities Description';
+            }
+
+            if ($this->input->post('balance_training_na') == 1) {
+                $rules['balance_training_text'] = '';
+                $fields['balance_training_text'] = '';
+            } else {
+                $rules['balance_training_text'] = 'required';
+                $fields['balance_training_text'] = 'Balance Retraining';
+            }
+
+            if ($agency_conf->ptpn_req_co_sign == 1) {
+                if($visit_user->discipline_id == 3 || $visit_user->discipline_id == 5 || $visit_user->discipline_id == 7) {
+                    $rules['ther_supervisor'] = 'required';
+                    $fields['ther_supervisor'] = 'Supervising Therapist';
+                }
+            }
+
+            $this->validation->set_rules($rules);
+            $this->validation->set_fields($fields);
+
+            if ($this->validation->run() == true) {
+                $validation_success = 1;
+            } else {
+                $msg = $this->validation->get_error_msg();
+            }
+        } else {
+            if ($agency_conf->ptpn_req_co_sign == 1) {
+                if($visit_user->discipline_id == 3 || $visit_user->discipline_id == 5 || $visit_user->discipline_id == 7) {
+                    $rules = array('ther_supervisor' => 'required');
+                    $fields = array('ther_supervisor' => 'Supervising Therapist');
+                }
+                $this->validation->set_rules($rules);
+                $this->validation->set_fields($fields);
+    
+                if ($this->validation->run() == true) {
+                    $validation_success = 1;
+                } else {
+                    $msg = $this->validation->get_error_msg();
+                }
+            } else {
+                $validation_success = 2;
+            }
+            //
+        }
+
+        echo json_encode(array('validation_success' => $validation_success, 'msg' => $msg));
+        exit();
+    }
+
+    public function validate_coordination_of_care()
+    {
+        if ($this->input->post('coordination_of_care') === "0") {
+            $this->validation->set_message('validate_coordination_of_care', "check at least one value in section Coordination of Care");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function validate_coord_other()
+    {
+        if ($this->input->post('coord_other')) {
+            if (!$this->input->post('coord_oth_text')) {
+                $this->validation->set_message('validate_coord_other', " Coordination of Care Other Description Required");
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+
+    public function validate_item($rom)
+    {
+        if ($rom === "0") {
+            $this->validation->set_message('validate_item', "check at least one value in section ROM");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function validate_strength()
+    {
+        if ($this->input->post('strength') === "0") {
+            $this->validation->set_message('validate_strength', "check at least one value in section Strength");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function validate_dc_planning()
+    {
+        if ($this->input->post('dc_planning') === "0") {
+            $this->validation->set_message('validate_dc_planning', "check at least one value in section D/C Planning/Plan");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function validate_dc_plan_other()
+    {
+        if ($this->input->post('dc_plan_other')) {
+            if (!$this->input->post('dc_plan_comments')) {
+                $this->validation->set_message('validate_dc_plan_other', "D/C Planning/Plan Other Description Required");
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+
+    public function val_p2_patient_will($p2_patient_will)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_patient_will',
+            'check' => $p2_patient_will,
+            'select_value' => $this->input->post('p2_patient_will_weeks'),
+            'select_met' => $this->input->post('p2_patient_will_met'),
+            'date' => $this->input->post('p2_patient_will_on_date'),
+            'other_field' => false,
+            'msg' => 'Patient will meet maximum potential within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_return_to_opti($p2_return_to_opti)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_return_to_opti',
+            'check' => $p2_return_to_opti,
+            'select_value' => $this->input->post('p2_return_to_opti_weeks'),
+            'select_met' => $this->input->post('p2_return_to_opti_met'),
+            'date' => $this->input->post('p2_return_to_opti_on_date'),
+            'other_field' => false,
+            'msg' => 'Patient will meet maximum potential within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_demost_eff($p2_demost_eff)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_demost_eff',
+            'check' => $p2_demost_eff,
+            'select_value' => $this->input->post('p2_demost_eff_weeks'),
+            'select_met' => $this->input->post('p2_demost_eff_met'),
+            'date' => $this->input->post('p2_demost_eff_on_date'),
+            'other_field' => false,
+            'msg' => 'Demonstrate effective pain management within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_improv_bed_mov_indep($p2_improv_bed_mov_indep)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_improv_bed_mov_indep',
+            'check' => $p2_improv_bed_mov_indep,
+            'select_value' => $this->input->post('p2_improv_bed_mov_indep_weeks'),
+            'select_met' => $this->input->post('p2_improv_bed_mov_indep_met'),
+            'date' => $this->input->post('p2_improv_bed_mov_indep_on_date'),
+            'other_field' => false,
+            'msg' => ' Improve bed mobilty to independent within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function val_p2_indep_trans($p2_indep_trans)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_indep_trans',
+            'check' => $p2_indep_trans,
+            'select_value' => $this->input->post('p2_indep_trans_weeks'),
+            'select_met' => $this->input->post('p2_indep_trans_met'),
+            'date' => $this->input->post('p2_indep_trans_on_date'),
+            'other_field' => false,
+            'msg' => 'Independent with transfer skills within',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+
+    public function val_p2_pat_ambul($p2_pat_ambul)
+    {
+        $config = array(
+            'name_callback' => 'val_p2_pat_ambul',
+            'check' => $p2_pat_ambul,
+            'select_value' => $this->input->post('p2_pat_ambul_weeks'),
+            'select_met' => $this->input->post('p2_pat_ambul_met'),
+            'date' => $this->input->post('p2_pat_ambul_on_date'),
+            'other_field' => $this->input->post('p2_pat_ambul_desc1'),
+            'msg' => 'Patient will ambulate',
+        );
+        if ($this->validate_s_l_time_frames($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    /**
+     *  Short Term and Long Term Goals with Time Frames
+     *    Validations
+     * @param array $config
+     * @return bool
+     */
+    public function validate_s_l_time_frames($config = array())
+    {
+        if ($config['check']) {
+            if ($config['other_field'] === false) {
+                if (!($config['select_value']) || !$config['select_met'] || !$config['date']) {
+                    $this->validation->set_message("{$config['name_callback']}", $config['msg'] . " Week, Met and Date is  Required");
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                if (!($config['select_value']) || !$config['select_met'] || !$config['date'] || !$config['other_field']) {
+                    $this->validation->set_message("{$config['name_callback']}", $config['msg'] . " Field, Week, Met and Date is  Required");
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+    }
+}

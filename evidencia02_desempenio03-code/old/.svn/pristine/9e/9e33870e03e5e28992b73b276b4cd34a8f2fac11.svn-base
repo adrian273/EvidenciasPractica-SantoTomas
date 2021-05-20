@@ -1,0 +1,169 @@
+<?
+
+ class OtPnArchiveMdl extends Model {
+
+        var $ot_progress_note_id;
+        var $visit_log_id;
+        var $primary_diag;
+      	var $secondary_diag;
+        var $primary_diag_date;
+      	var $secondary_diag_date;  
+        var $blood_pressure;
+        var $temperature;
+        var $respiration;
+        var $pulse;
+        var $treat_evaluation;
+        var $treat_adl_training;
+        var $treat_transfer;
+        var $treat_muscle;
+        var $treat_establish_hep;
+        var $treat_upgrade_hep;
+        var $treat_perceptual;
+        var $treat_fine;
+        var $treat_neuro;
+        var $treat_sensory;
+        var $treat_ortho;
+        var $treat_home;
+        var $treat_other;
+        var $treat_other_desc;
+        var $tab_75_pain_assessment;
+        var $pain_location;
+        var $pain_control;
+        var $BP;
+        var $tab_062_right_left;
+        /*var $system_BP_rigth;
+        var $system_BP_left;*/
+        var $system_sitt_lyin_stand;
+        /*var $system_sitting;
+        var $system_lying;
+        var $system_standing;*/
+        var $system_hr;
+        var $system_o2_sat;
+        var $system_skin;
+        var $funct_dyspnea;
+        var $funct_diff_walking;
+        var $funct_diff_transfer;
+        var $funct_diff_dressing;
+        var $funct_other;
+        var $funct_other_desc;
+        var $objective_findings;
+        var $subjective_findings;
+        var $treatment;
+        var $plan_of_care;
+        var $plan;
+        var $hobo_consid_taxing;
+        var $hobo_residual;
+        var $hobo_confusion;
+        var $hobo_requires;
+        var $hobo_dependent;
+        var $hobo_other;
+        var $hobo_other_desc;
+        var $coord_md;
+        var $coord_rn;
+        var $coord_lvn;
+        var $coord_aide;
+        var $coord_pt;
+        var $coord_ot;
+        var $coord_st;
+        var $coord_msw;
+        var $coord_ptCG;
+        var $dc_plan_continue;
+        var $dc_plan_five_days_notif;
+        var $dc_plan_other;
+        var $dc_plan_desc;
+        var $addendum;
+
+	function OtPnArchiveMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt_ot_progress_note_copy');
+		return $query->row();
+	
+	}
+
+	function insert () {
+	
+		$this->db->insert('vt_ot_progress_note_copy', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->ot_progress_note_id);
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$this->db->update('vt_ot_progress_note_copy', $this);
+	
+	}
+	
+	function getPrevious ( $user_id=null, $previous_date, $episode_id, $allepisodes=false ) {
+		$soc_id = null;
+        if($allepisodes AND $episode_id){      
+          $this->db->select('soc_id');
+          $this->db->where('cms485_id', $episode_id);
+          $query = $this->db->get('cms_485');    
+          $row = $query->row_array();
+          $soc_id = $row['soc_id'];
+        }
+
+        $this->db->join('vis_visit_log_copy',   'vis_visit_log_copy.visit_log_id = vt_ot_progress_note_copy.visit_log_id');
+
+        if (!is_null($user_id))
+          $this->db->where('visit_user_id', $user_id);
+        
+        $this->db->where('visit_date_time <', $previous_date);
+        if(!is_null($soc_id)){
+            $this->db->join('cms_485',   'cms_485.soc_id = '.$soc_id);
+            $this->db->where('vis_visit_log_copy.cms485_id=cms_485.cms485_id');
+            $this->db->group_by('vis_visit_log_copy.visit_log_id');
+        }else{
+            $this->db->where('cms485_id', $episode_id);
+        }
+
+      $this->db->order_by('visit_date_time');
+
+      $query = $this->db->get('vt_ot_progress_note_copy');
+      return $query->result();
+
+    }
+  
+  function getNext ( $user_id=null, $previous_date, $episode_id ) {
+		
+		$this->db->join('vis_visit_log_copy',   'vis_visit_log_copy.visit_log_id = vt_ot_progress_note_copy.visit_log_id');
+		  
+        if (!is_null($user_id))
+		$this->db->where('visit_user_id', $user_id);
+		
+        $this->db->where('visit_date_time >', $previous_date);
+		$this->db->where('cms485_id', $episode_id);
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt_ot_progress_note_copy');
+		return $query->result();
+		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new OtPnArchiveMdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->ot_progress_note_id = $object1->ot_progress_note_id;
+		$object->visit_log_id = $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('vt_ot_progress_note_copy', $object);
+		
+	}
+	
+ }

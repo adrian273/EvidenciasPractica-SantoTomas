@@ -1,0 +1,33 @@
+<?
+
+ class DoctorOrderPTEVMdl extends Model {
+	
+	var $doctor_order_ptev_id;
+	var $doc_doctor_order_id;
+	var $visit_log_id;
+
+	function DoctorOrderPTEVMdl () {
+
+		parent::Model();
+		
+	}
+
+	function getByDoctorOrder ( $doc_doctor_order_id ) {
+	
+		$this->db->where('doc_doctor_order_id', $doc_doctor_order_id);
+	
+		$query = $this->db->get('doctor_order_ptev');
+		return $query->row();
+	
+	}
+	
+	function insert ( $doc_doctor_order_id, $visit_log_id ) {
+		
+		$this->db->set('doc_doctor_order_id', $doc_doctor_order_id);
+		$this->db->set('visit_log_id',        $visit_log_id);
+		
+		$this->db->insert("doctor_order_ptev");
+		
+	}
+	
+ }

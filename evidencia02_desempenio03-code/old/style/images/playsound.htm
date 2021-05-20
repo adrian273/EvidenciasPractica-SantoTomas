@@ -1,0 +1,26 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><!--
+
+     Copyright © 2007 SolarWinds.net, Inc. ipMonitor, the ipMonitor logo,
+     and Watching the Network are registered trademarks of SolarWinds.net, Inc.
+
+--><head><title>ipMonitor 8.5 - Play Sound</title>
+<script type="text/javascript">
+function psound()
+{
+  var loc  = "" + window.location;
+  var hint = "redalert";
+  if( loc.match( /[?]sound=([^&]+)(&|$)/ ) ) hint = RegExp.$1;
+
+  var l = window.location.protocol.replace(/:/,'') + "://" + window.location.host + "/sounds/" + hint + ".wav";
+
+  var isopera = navigator.userAgent.match( /\bopera/i );
+
+  document.getElementById("ipmsound").innerHTML = "<" + (isopera ? "bgsound" : "embed") + " id=ipmsound width=0 height=0 src=\"" + l + "\" autostart=true hidden=true>";
+}
+</script>
+</head>
+<body onload="psound();">
+<div id=ipmsound><!-- --></div>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<?
+
+ class UsAgyCredentialMdl extends Model {
+
+	var $us_agy_credential_id;
+	var $us_agy_id;
+	var $tab_086_credential_type;
+	var $credential_id;
+	var $expiration_date;
+	var $cred_note;
+	var $alert_days;
+	var $attachment_id;
+  var $credential_renewed;
+
+	function UsAgyCredentialMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $us_agy_credential_id ) {
+
+		$this->db->join('tab_parameters', 'us_agy_credential.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+			
+		$this->db->where('us_agy_credential_id', $us_agy_credential_id);
+		
+		$query = $this->db->get('us_agy_credential');
+    
+    $row = $query->row();
+    
+    $this->attachment_id = $row->attachment_id;
+    /*
+    foreach($row as $k=>$v)
+      if($k=='attachment_id')
+      $this->$k = $v;
+    */
+		return $row;
+	
+	}
+
+	function getByUsAgyId ( $us_agy_id ) {
+
+    $this->db->select("us_agy_credential.*, tab_parameters.*, us_agy_credential_attachments.attachment");
+    
+		$this->db->join('tab_parameters', 'us_agy_credential.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+		$this->db->join('us_agy_credential_attachments', 'us_agy_credential.attachment_id = us_agy_credential_attachments.attachment_id', 'LEFT');
+			
+		$this->db->where('us_agy_id', $us_agy_id);
+		
+		$this->db->order_by('expiration_date', 'ASC');
+
+		$query = $this->db->get('us_agy_credential');
+    
+		return $query->result();
+	
+	}
+	
+	function getByAgencyId ( $agency_id ) {
+    
+		$this->db->select("us_agy_credential.*, us_agy.*, tab_parameters.*, us_agy_credential_attachments.attachment,  DATEDIFF(expiration_date, NOW()) as expiration_days_left");
+		$this->db->join('us_agy', 'us_agy.us_agy_id = us_agy_credential.us_agy_id');
+		$this->db->join('tab_parameters', 'us_agy_credential.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+		$this->db->join('us_agy_credential_attachments', 'us_agy_credential_attachments.attachment_id = us_agy_credential.attachment_id', 'LEFT');
+    
+		$this->db->where('agency_id', $agency_id);
+		
+		$this->db->order_by('expiration_date', 'ASC');
+
+		$query = $this->db->get('us_agy_credential');
+    
+		return $query->result();
+	
+	}
+	
+	function countAlertDays($us_agy_id){
+		$sql="select count(*) as days from us_agy_credential where us_agy_id={$us_agy_id} and (To_days( expiration_date ) - TO_DAYS( now() ))<alert_days";
+		$row = $this->db->query($sql)->row();
+		return $row->days;
+	}
+	function getAlertDays($us_agy_id){
+		$this->db->select("*,(To_days( expiration_date ) - TO_DAYS( now() )) as left_days",false);
+		$this->db->where("us_agy_id={$us_agy_id} and (To_days( expiration_date ) - TO_DAYS( now() ))<alert_days");
+		$this->db->join('tab_parameters', 'us_agy_credential.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+		return $this->db->get('us_agy_credential')->result();
+	}
+
+	function insert () {
+		if(!$this->credential_renewed)
+      $this->credential_renewed = 'N';
+      
+		$this->db->insert('us_agy_credential', $this);
+		$this->us_agy_credential_id = $this->db->insert_id();
+    return $this->us_agy_credential_id;
+	}
+	
+	function update ( $us_agy_credential_id ) {
+		
+		$this->us_agy_credential_id = $us_agy_credential_id;
+		
+		$this->db->where('us_agy_credential_id', $us_agy_credential_id);
+		
+		$this->db->update('us_agy_credential', $this);
+		
+	}
+  
+  function update_attachment ( $us_agy_credential_id, $attachment ) {		
+    if(!$us_agy_credential_id OR !$attachment){
+      //$this->attachment_id = 0;
+      return 0;
+    }
+    
+    
+		/*$this->db->select('attachment');
+    $this->db->from('us_agy_credential_attachments');
+    $this->db->where('attachment_id',$this->attachment_id);
+    $this->db->where('us_agy_credential_id',$us_agy_credential_id);
+    $result = $this->db->get();
+    if($result->num_rows()>0){
+      $row = $result->row_array();
+      $result->free_result(); 
+      @unlink(PATH_DIR.'/datastore/credential/'.$row['attachment']);
+    }
+		*/
+    
+    $insert_data = array();
+    $insert_data['us_agy_credential_id'] = $us_agy_credential_id;
+    $insert_data['attachment'] = $attachment;
+    $this->db->insert('us_agy_credential_attachments',$insert_data);
+		$this->attachment_id = $this->db->insert_id();
+      
+    
+		$this->db->where('us_agy_credential_id', $us_agy_credential_id);		
+		$this->db->update('us_agy_credential', array('attachment_id'=>$this->attachment_id));
+		
+	}
+	
+	function delete ( $us_agy_credential_id ) {
+		
+		$this->db->where('us_agy_credential_id', $us_agy_credential_id);
+		$this->db->delete('us_agy_credential');
+		
+	}
+	
+ }

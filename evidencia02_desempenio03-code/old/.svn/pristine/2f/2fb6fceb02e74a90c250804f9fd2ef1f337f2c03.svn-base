@@ -1,0 +1,101 @@
+<?php
+
+include ('admin_controller.php');
+ class Discipline extends Admin_Controller {
+
+	function Discipline () {
+		
+		parent::Admin_Controller();		
+		$this->tpl->assign("resource_path", "administrator/discipline");
+		
+	}
+
+	// landing page for Discipline Visits menu in admin panel
+	function index () {		
+		$this->tpl->assign("list_title", "Discipline List");
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);	
+	}
+	
+	// to display the rows from dis_discipline table
+	function grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Discipline Name"));
+		$head->append($this->xml->Element("column", "width=*", "Discipline Description"));
+		$head->append($this->xml->Element("column", "width=6;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->disciplinemdl->get() as $discipline) {
+			
+			$cell = $this->xml->Element("row", "id=" . $discipline->discipline_id);
+			$cell->append($this->xml->Element("cell", null, $discipline->discipline_id));
+			$cell->append($this->xml->Element("cell", null, $discipline->short_description));
+			$cell->append($this->xml->Element("cell", null, $discipline->description));
+			$cell->append($this->xml->Element("cell", null, "Visit types^" . $this->config->config['index_url'] . "administrator/discipline/edit/" . $discipline->discipline_id));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	// to display a list of all attached visti_types to a discipline or to add more visit_types to a discipline
+	function edit ( $discipline_id ) {
+		$this->load->model('disciplinemdl');
+		$this->load->model('visittypediscipmdl');
+		$discipline = $this->disciplinemdl->getById($discipline_id);
+		$data = $this->visittypediscipmdl->getByDiscipline($discipline_id);
+		//echo "<pre>"; print_r($data); echo "</pre>";
+		$this->tpl->assign('visit_type_list', $this->visittypediscipmdl->getFilterVistTypesByDiscipline($discipline_id));
+		$this->tpl->assign("list_title", "Visit Types");
+		$this->tpl->assign("grid_buttons", "false");
+		$this->tpl->assign(array("discipline_id" => $discipline_id, "description" => $discipline->description));
+		
+		$this->tpl->assign_include("dynamic_tpl", "administrator/discipline/group_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	// to add a row in vit_visit_type_discip table with 2 fields 1. discipline_id and 2. visit_type_id
+	function addvisittype ( $discipline_id, $visit_type_id ) {
+		$this->load->model('visittypediscipmdl');
+		$this->visittypediscipmdl->insert($visit_type_id, $discipline_id);
+		$this->edit($discipline_id);
+		
+	}
+	
+	// to delete a row from vit_visit_type_discip table based on the discipline_id and visit_type_disc_id
+	function deletevisit ( $discipline_id, $visit_type_disc_id ) {
+		$this->load->model('visittypediscipmdl');
+		$this->visittypediscipmdl->delete($visit_type_disc_id);
+		$this->edit($discipline_id);
+		
+	}
+	
+	// to display the rows from vit_visit_type_discip table
+	function visittypeGrid ( $discipline_id ) {
+		$this->load->model('visittypediscipmdl');
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=6;align=center;type=linkc", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->visittypediscipmdl->getByDiscipline($discipline_id) as $visit) {
+			$cell = $this->xml->Element("row", "id=" . $visit->visit_type_id);
+			$cell->append($this->xml->Element("cell", null, $visit->visit_type_id));
+			$cell->append($this->xml->Element("cell", null, $visit->visit_description));			
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "administrator/discipline/deletevisit/" . $discipline_id . "/" . $visit->visit_type_disc_id . "^Are you sure to delete this menu?"));
+			$document->append($cell);
+		}
+	}
+ }

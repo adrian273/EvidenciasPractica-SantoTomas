@@ -1,0 +1,179 @@
+<?php
+class patientinsurancemdl extends Model {
+
+	var $id;
+	var $patient_id;
+	var $tab_107_ins_type;
+	var $tab_108_prim_sec;
+	var $ins_id;
+	var $ins_description;
+	var $ins_effective_date;
+	var $ins_thru_date;
+	var $creation_date;
+	var $creation_user;
+	var $modify_date;
+	var $modify_user;
+	var $ins_comments;
+/*
+	var $approve_user;
+	var $approve_date;
+*/
+
+	function patientinsurancemdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $patient_id, $ins_description=null, $tab_108_prim_sec = null ) {
+		$this->db->select("pat_patient_insurance1.*,tab_107.tab_value as ins_type_value,tab_107.tab_description as ins_type_desc,tab_108.tab_value as ins_prim_value,tab_108.tab_description as ins_prim_desc",false);
+		// $this->db->join('us_agy', 'us_agy.user_id = pat_patient_insurance1.modify_user', 'left');
+		$this->db->join('tab_parameters as tab_107', 'pat_patient_insurance1.tab_107_ins_type = tab_107.tab_value AND tab_107.tab_type = 107', 'LEFT');
+		$this->db->join('tab_parameters as tab_108', 'pat_patient_insurance1.tab_108_prim_sec = tab_108.tab_value AND tab_108.tab_type = 108', 'LEFT');
+		
+		$this->db->where("pat_patient_insurance1.patient_id", $patient_id);
+		
+		if (!is_null($ins_description)) {
+			$this->db->like("ins_description", $ins_description);
+		}
+		if (!is_null($tab_108_prim_sec)) {
+			$this->db->like("tab_108_prim_sec", $tab_108_prim_sec);
+		}		
+
+		if ($this->input->post('ins_type') != '') {
+			$this->db->like("tab_107_ins_type", $this->input->post('ins_type'));
+		}
+		$this->db->order_by("ins_description", "ASC");
+		
+		$query = $this->db->get("pat_patient_insurance1");
+		return $query->result();
+		
+	}
+
+	function getById ( $id ) {
+		$this->db->where("id", $id);
+		$query = $this->db->get("pat_patient_insurance1");
+		return $query->row();		
+	}
+
+	function insert ( $patient_id, $creation_user ) {
+
+		$this->patient_id 		= $patient_id;
+		$this->creation_user 	= $creation_user;
+		// $insurance->modify_user = $this->modify_user;		 		
+		$this->creation_date = $this->modify_date = standard_date(now(), 'MYSQL');
+		unset($this->edit_id);
+		$this->db->insert("pat_patient_insurance1", $this);
+		
+	}
+	
+	function update ( $patient_id, $id ) {
+
+		$insurance = new stdClass();
+		$insurance->tab_107_ins_type 	= $this->tab_107_ins_type;
+		$insurance->tab_108_prim_sec 	= $this->tab_108_prim_sec;
+		$insurance->ins_id 		= $this->ins_id;
+		$insurance->ins_description 	= $this->ins_description;
+		$insurance->ins_effective_date 	= $this->ins_effective_date;
+		$insurance->ins_thru_date 	= $this->ins_thru_date;
+		$insurance->modify_user 	= $this->modify_user;
+		$insurance->ins_comments 	= $this->ins_comments;
+		$insurance->modify_date = standard_date(now(), 'MYSQL');	
+		
+		$this->db->where('id', $id);
+		$this->db->update("pat_patient_insurance1", $insurance);		
+	}
+	
+	function updateApprove ( $id, $user_id ) {
+		$insurance = new stdClass();
+		$insurance->approve_date	= standard_date(now(), 'MYSQL');
+		$insurance->approve_user	= $user_id;		
+		$this->db->where('id', $id);
+		
+		$this->db->update("pat_patient_insurance1", $insurance);		
+	}
+	
+	function delete ( $id ) {		
+		$this->db->where('id', $id);		
+		$this->db->delete("pat_patient_insurance1");		
+	}
+	function updatePrimaryInsurance ( $patient_id ) {
+		
+		$this->db->set('tab_107_ins_type', $this->tab_107_ins_type);
+		$this->db->set('ins_id', $this->ins_id);
+		$this->db->set('tab_108_prim_sec', 1);
+		
+		$this->db->where("patient_id", $patient_id);
+		
+		$this->db->update("pat_patient_insurance1");
+	
+	}
+
+	function getPrimaryInsurance($patient_id){
+		$this->db->where("patient_id", $patient_id);
+		$this->db->where("tab_108_prim_sec", 1);
+		$this->db->join('tab_parameters', 'tab_parameters.tab_type = 107 AND tab_107_ins_type = tab_parameters.tab_value', 'LEFT');
+		$query = $this->db->get("pat_patient_insurance1");
+		return $query->row();	
+	}
+
+	function getMedicareInsurance($patient_id){
+		$this->db->where("patient_id", $patient_id);
+		$this->db->where("tab_107_ins_type", 1);
+		$this->db->join('tab_parameters', 'tab_parameters.tab_type = 107 AND tab_107_ins_type = tab_parameters.tab_value', 'LEFT');
+		$query = $this->db->get("pat_patient_insurance1");
+		return $query->row();	
+	}
+
+	function getMedicaidInsurance($patient_id){
+		$this->db->where("patient_id", $patient_id);
+		$this->db->where("tab_107_ins_type", 2);
+		$this->db->join('tab_parameters', 'tab_parameters.tab_type = 107 AND tab_107_ins_type = tab_parameters.tab_value', 'LEFT');
+		$query = $this->db->get("pat_patient_insurance1");
+		if ($query->num_rows() == 0) {
+			$this->db->where("patient_id", $patient_id);
+			$this->db->where("tab_107_ins_type", 3);
+			$this->db->join('tab_parameters', 'tab_parameters.tab_type = 107 AND tab_107_ins_type = tab_parameters.tab_value', 'LEFT');
+			$query = $this->db->get("pat_patient_insurance1");
+			if ($query->num_rows() == 0) {
+				$this->db->where("patient_id", $patient_id);
+				$this->db->where("tab_107_ins_type", 4);
+				$this->db->join('tab_parameters', 'tab_parameters.tab_type = 107 AND tab_107_ins_type = tab_parameters.tab_value', 'LEFT');
+				$query = $this->db->get("pat_patient_insurance1");
+			}
+		}
+		
+		return $query->row();	
+	}
+	
+	function getAll () {
+		$this->db->select("us_agy.*,pat_patient_insurance1.*,tab_107.tab_value as ins_type_value,tab_107.tab_description as ins_type_desc,tab_108.tab_value as ins_prim_value,tab_108.tab_description as ins_prim_desc",false);
+		$this->db->join('us_agy', 'us_agy.user_id = pat_patient_insurance1.modify_user', 'left');
+		$this->db->join('tab_parameters as tab_107', 'pat_patient_insurance1.tab_107_ins_type = tab_107.tab_value AND tab_107.tab_type = 107', 'LEFT');
+		$this->db->join('tab_parameters as tab_108', 'pat_patient_insurance1.tab_108_prim_sec = tab_108.tab_value AND tab_108.tab_type = 108', 'LEFT');		
+		$this->db->order_by("ins_description", "ASC");
+		
+		$query = $this->db->get("pat_patient_insurance1");
+		return $query->result();
+		
+	}	
+	
+	function getAllFromOld () { //pat_patient.tab_102_prim_insura_type
+		$this->db->select("pat_patient.tab_102_prim_insura_type,pat_patient_insurance.*",false);
+		$this->db->join('pat_patient', 'pat_patient.patient_id = pat_patient_insurance.patient_id', 'left');	
+		$this->db->order_by("patient_id", "ASC");
+		
+		$query = $this->db->get("pat_patient_insurance");
+		return $query->result();
+		
+	}		
+
+	function updateFlex($id, $attribute, $value, $where = 'id') {
+
+		$this->db->where($where, $id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('pat_patient_insurance1');
+
+	}
+}

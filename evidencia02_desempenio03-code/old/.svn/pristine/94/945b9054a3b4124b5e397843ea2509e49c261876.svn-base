@@ -1,0 +1,257 @@
+<?php
+
+class CoordCare extends MY_Controller {
+
+	
+	/*var $rules = array("conference_date"		=> "trim|required",
+						"physician_user_id"		=> "trim|required",
+						"nurse_or_pt_user_id"	=> "trim|required",
+						"unusual_home"			=>'trim|required',
+						"nurse_or_pt_date"		=>'trim|required',
+						"sum_sent_physician_date"=>'trim|required'
+						);*/
+	var $rules = array("conference_date"		=> "trim|required");
+
+
+	function CoordCare() {
+	
+		parent::MY_Controller();
+		
+		$this->tpl->assign("resource_path", "patient/coordcare");
+		$this->tpl->assign('tab_page', true);
+
+	}
+
+	function index ( $cms485_id ) {
+		$b_url = base_url();
+		$this->tpl->assign("base_url", $b_url);
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("add_sufix", "Coord Care");
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+	function fivedaynotice ( $cms485_id ) {
+		$b_url = base_url();
+		$this->tpl->assign("base_url", $b_url);
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("add_sufix", "Coord Care");
+		
+		$this->tpl->assign_include("dynamic_tpl", "patient/coordcare/fivedaynotice");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}	
+	
+	function dischargesummary ( $cms485_id ) {
+		$b_url = base_url();
+		$this->tpl->assign("base_url", $b_url);
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("add_sufix", "Coord Care");
+		
+		$this->tpl->assign_include("dynamic_tpl", "patient/coordcare/dischargesummary");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}	
+	function grid ( $cms485_id ) {
+	//die('kkkkkkkk');
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+
+		$head->append($this->xml->Element("column", "width=15;align=center", "Case Conference date"));
+		$head->append($this->xml->Element("column", "width=*", "Conference Type"));
+		$head->append($this->xml->Element("column", "width=*", "Primary Nurse of PT"));
+		$head->append($this->xml->Element("column", "width=*", "Sent to Physician"));
+		$head->append($this->xml->Element("column", "width=*", "Date Sent"));
+		
+		//$head->append($this->xml->Element("column", "width=*", "New Diagnosis/Problems"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		$this->load->model('caseconferencemdl');
+		//die($this->input->post('keyword'));
+		foreach($this->caseconferencemdl->getByEpidode($cms485_id) as $order){
+
+			//$physician = $this->usagymdl->getByUsAgyId($order->physician_id);
+			$nurse = $this->caseconferencemdl->nurse_name($order->nurse_or_pt_user_id,$order->case_conf_id);
+			//die($nurse['complete_name']);
+			$cell = $this->xml->Element("row", "id=" . $order->case_conf_id);
+			//$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->conference_type))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->conference_date))));
+			if($order->conference_type=='30'){
+				$set_type = '30 day summary';
+			}
+			elseif($order->conference_type=='60'){
+				$set_type = '60 day summery';
+			}
+			else{
+				$set_type = 'Case Conference';
+			}
+			//$cell->append($this->xml->Element("cell", null, $order->conference_type));
+			$cell->append($this->xml->Element("cell", null, $set_type));
+			$cell->append($this->xml->Element("cell", null, $nurse['complete_name']));
+			$cell->append($this->xml->Element("cell", null, $order->complete_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->sum_sent_physician_date))));
+			
+			//$cell->append($this->xml->Element("cell", null, $order->new_diag_prob));
+			$document->append($cell);
+		}
+
+	}
+
+	/*function setDoctorOrderStatus () {
+		
+		$this->caseconferencemdl->tab_023_order_status = 1;
+		
+		if (!is_null($this->caseconferencemdl->sent_date)) {
+			$this->caseconferencemdl->tab_023_order_status = 2;
+		}
+		
+		if (!is_null($this->caseconferencemdl->signed_date)) {
+			$this->caseconferencemdl->tab_023_order_status = 3;
+		}
+		
+		if (!is_null($this->caseconferencemdl->received_date)) {
+			$this->caseconferencemdl->tab_023_order_status = 4;
+		}
+		
+	}*/
+
+	function add ( $cms485_id ) {
+
+		$this->tpl->assign("faction", "add");
+		$this->tpl->assign("entity_id", $cms485_id);
+		
+		$this->load->model('caseconferencemdl');
+		
+		$episode = $this->episodemdl->getById($cms485_id);
+		$this->tpl->assign('physician_list', $this->patientmdl->getPhysicians($episode->patient_id));
+		
+		//die(print_r($this->patientmdl->getNurse($episode->patient_id)));
+		//$this->tpl->assign('nurse_or_pt_user', $this->patientmdl->getNurse($episode->patient_id));
+		//$this->tpl->assign('nurse_or_pt_user', $this->caseconferencemdl->getNurseOrPT($episode->patient_id));
+		$this->tpl->assign('nurse_or_pt_user', $this->teammdl->getAll($episode->patient_id,array(1,2)));
+		
+		//$this->tpl->assign('ppr_list',$this->pprpatientprovidermdl->getAll($episode->patient_id));
+		$this->tpl->assign('ppr_list',$this->teammdl->getAll($episode->patient_id));
+
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/coordcare/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {			
+			$this->assignPostData($this->caseconferencemdl);
+			//$this->caseconferencemdl->order_by_user_id = $this->getUsAgyId();
+			//$this->setDoctorOrderStatus();
+			$this->caseconferencemdl->insert($cms485_id);
+			
+			$this->tpl->assign('gmessage', "Coord Care" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($cms485_id);
+
+		}
+		
+	}
+	
+	function edit ( $cms485_id, $case_conf_id ) {
+
+		$this->tpl->assign("faction", "edit");
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("record_id", $case_conf_id);
+		
+		$episode = $this->episodemdl->getById($cms485_id);
+		//die(print_r($this->patientmdl->getPhysicians($episode->patient_id)));
+		$this->tpl->assign('physician_list', $this->patientmdl->getPhysicians($episode->patient_id));
+		
+		
+		//$this->tpl->assign('nurse_or_pt_user', $this->patientmdl->getNurse($episode->patient_id));
+		//$this->tpl->assign('nurse_or_pt_user', $this->caseconferencemdl->getNurseOrPT($episode->patient_id));
+		$this->tpl->assign('nurse_or_pt_user', $this->teammdl->getAll($episode->patient_id,array(1,2)));
+		
+		//$this->tpl->assign('ppr_list',$this->pprpatientprovidermdl->getAll($episode->patient_id));
+		$this->tpl->assign('ppr_list',$this->teammdl->getAll($episode->patient_id));
+		//$this->tpl->assign('d_user_ids',$this->caseconferencemdl->getDisciplineUserIds($case_conf_id));
+		$this->tpl->assign('case_conf_disciplines',$this->caseconferencemdl->getDisciplineUserIds($case_conf_id));
+		
+		$this->assignObject($this->caseconferencemdl->getById($case_conf_id));
+
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/coordcare/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->assignPostData($this->caseconferencemdl);
+			//die(print_r($this->caseconferencemdl));
+			//$this->caseconferencemdl->order_by_user_id = $this->getUsAgyId();
+			//$this->setDoctorOrderStatus();
+			$this->caseconferencemdl->update($cms485_id, $case_conf_id);
+			
+			$this->tpl->assign('gmessage', "Coord Care" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($cms485_id);
+
+		}
+		
+	}
+	
+	function print_case_conference ( $cms485_id, $case_conf_id ) {
+
+		$this->tpl->assign("faction", "edit");
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("record_id", $case_conf_id);
+		
+		$episode = $this->episodemdl->getById($cms485_id);
+		//die(print_r($this->patientmdl->getPhysicians($episode->patient_id)));
+		$this->tpl->assign('physician_list', $this->patientmdl->getPhysicians($episode->patient_id));
+		$case_conf=$this->caseconferencemdl->getById($case_conf_id);
+		$case_conf2=$this->caseconferencemdl->getById2($case_conf_id);
+		//die($case_conf2['case_conf_id'].'->'.$case_conf2['nurse_or_pt_user_id']);
+		$nurse = $this->caseconferencemdl->nurse_name($case_conf2['nurse_or_pt_user_id'],$case_conf2['case_conf_id']);
+		//--------------------------------------------------------------------------------------------------------------
+		$us_agy=$this->caseconferencemdl->getAgencyId($case_conf2['nurse_or_pt_user_id']);
+		//die($us_agy->agency_id);
+		$agency=$this->agencymdl->getByAgencyId($us_agy->agency_id);
+		//die($agency->agency_name);
+		//dir($agency);
+		//--------------------------------------------------------------------------------------------------------------
+		$physician = $this->usagymdl->getByUsAgyId($case_conf->physician_user_id);
+		$this->assignObject($case_conf);
+		
+		//die(print_r($this->pprpatientprovidermdl->getAll()));
+		$this->tpl->assign('ppr_list',$this->teammdl->getAll($episode->patient_id));
+		//$this->tpl->assign('ppr_list',$this->teammdl->getAll($episode->patient_id));
+		//$this->tpl->assign('case_conf_disciplines',$this->caseconferencemdl->getDisciplineUserIds($case_conf_id));
+		
+		//die(print_r($this->caseconferencemdl->getDisciplineUsers($case_conf_id)));
+		
+		$this->tpl->assign('disciplines',$this->caseconferencemdl->getDisciplineUsers($case_conf_id));
+		$this->tpl->assign("physician",$physician);
+		$this->tpl->assign("nurse",$nurse['complete_name']);
+		$this->tpl->assign("agency",$agency);
+		
+		$this->tpl->view("patient/coordcare/print_case_conference", $this->lang->language);
+	}
+	
+	function delete ( $cms485_id, $doctor_order_id ) {
+		
+		$this->caseconferencemdl->delete($doctor_order_id);
+		
+		$this->tpl->assign('gmessage', "Doctor Order" . $this->lang->line('grl_del_msg'));
+
+		$this->index($cms485_id);
+		
+	}
+
+}

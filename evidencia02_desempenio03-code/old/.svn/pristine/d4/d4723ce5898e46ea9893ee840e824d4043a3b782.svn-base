@@ -1,0 +1,48 @@
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center">   
+    {if $page_title}
+    <tr>
+        <td colspan="2" class="title">
+            <!-- <img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> --> {$page_title}
+        </td>
+    </tr>
+    {/if}
+    <tr>
+        <td colspan="2" height="10">
+            {html_options id='type_list' options=$type_list name='type_list'}
+            <input type="button" class="btn" value="Add Credential Type" onclick="if (getValue('type_list')) document.location = '{$index_url}{$resource_path}/add/{$agency_id}/' + getValue('type_list')">
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2" height="100%"><div id="grid_area" style="height: 99%; width: 99.5%"></div></td>
+    </tr>
+</table>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGridCell.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_excell_acheck.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_start.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_nxml.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_drag.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_excell_link.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_excell_linkc.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXGrid_pgn.js"></script>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlXTreeGrid.js"></script>
+<script language="JavaScript" type="text/javascript">
+
+    function loadGrid () {literal}{{/literal}
+
+        document.getElementById("grid_area").innerHTML = "";
+
+        grid = new dhtmlXGridObject("grid_area");
+        grid.setImagePath("{$base_url}style/grid/imgs/");
+        grid.setSkin("light");
+        //grid.setOnRowSelectHandler(editRegister);
+        grid.loadXMLPost("{$index_url}{$resource_path}/grid/{$agency_id}", 'gform');
+        grid.setSizes();
+
+        {literal}}{/literal}
+
+
+
+    loadGrid ();
+
+</script>

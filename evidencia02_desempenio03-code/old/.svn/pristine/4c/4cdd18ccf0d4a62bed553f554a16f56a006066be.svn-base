@@ -1,0 +1,44 @@
+<?
+
+ class Manual extends MY_Controller {
+
+	var $user_id;
+
+	function Manual () {
+		
+		parent::MY_Controller();
+		
+		$this->user_id = $this->session->userdata('user_id');
+    //	$this->output->enable_profiler();
+		
+	}
+
+	function index () {
+    $file =  realpath("datastore/HOMEHEALTHSOFT INC2.doc");
+    //echo $file;exit;
+    if($file != ""){
+      if (file_exists($file))
+      {
+          header('Content-Description: File Transfer');
+          header('Content-Type: application/msword');
+          header('Content-Disposition: attachment; filename=HOMEHEALTHSOFT_manual.doc');
+          header('Content-Transfer-Encoding: binary');
+          header('Expires: 0');
+          header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+          header('Pragma: public');
+          header('Content-Length: ' . filesize($file));
+          //ob_clean();
+          flush();
+          readfile($file);
+          exit;
+      }else
+      {
+          echo "Manual does not exists";exit;
+      }
+    }else{
+      echo "Manual does not exists";exit;
+    }
+    	
+	}
+	
+ }

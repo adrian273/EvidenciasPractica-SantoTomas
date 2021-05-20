@@ -1,0 +1,226 @@
+<?
+
+ class Patient extends MY_Controller {
+
+	function Patient () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/patient");
+		
+		$this->tpl->assign(array("tab_page" => true, "no_grid_buttons" => true));
+		
+	}
+
+	function patients ($us_agy_id){
+		$this->tpl->assign('us_agy_id', $us_agy_id);
+
+		$this->tpl->assign_include("dynamic_tpl", "useragency/pt_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function index ( $us_agy_id ) {
+
+		$this->tpl->assign('entity_id', $us_agy_id);
+
+		// code add for serching start
+
+	  $data = $this->patientmdl->getByUsAgyId($us_agy_id);
+      $names = array();
+    
+      foreach($data as $patient){
+        $names[] = '"'.addslashes($patient->last_name ." ".$patient->first_name).'"';
+      }
+      $name_source_obj = "[".implode(",",$names)."]";  
+      $this->tpl->assign("name_source_obj", $name_source_obj);
+
+	  // code add for serching end
+
+	  if ($this->session->userdata('useragency_pt_list_status')) {
+	  	$this->tpl->assign('default_pat_filter_status', $this->session->userdata('useragency_pt_list_status'));
+	  }
+
+		$this->tpl->assign_include("filter_tpl", "patient/gauthofilter");
+		//$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbasenew");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}	
+	
+	function grid ( $us_agy_id ) {
+
+		$this->session->set_userdata('useragency_pt_list_status', $this->input->post('tab_013_status'));		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=9", "Account Nbr"));
+		$head->append($this->xml->Element("column", "width=7;align=center;sort=int", "Days Left"));
+		$head->append($this->xml->Element("column", "width=7;align=center;sort=int", "Visits"));
+		$head->append($this->xml->Element("column", "width=9", "Phone"));
+		$head->append($this->xml->Element("column", "width=9", "Birth Date"));
+		$head->append($this->xml->Element("column", "width=*", "Address"));
+		$head->append($this->xml->Element("column", "width=*", "Agency Name"));
+		$head->append($this->xml->Element("column", "width=*", "Status"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->patientmdl->getByUsAgyId($us_agy_id, $this->input->post('keyword'), $this->input->post('tab_013_status')) as $patient) {
+			$episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+			
+			$cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+			$cell->append($this->xml->Element("cell", null, $patient->patient_id));
+			$cell->append($this->xml->Element("cell", null, $patient->last_name. " " .$patient->first_name));
+			$cell->append($this->xml->Element("cell", null, $patient->medical_rec_nbr));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(@ $episode->expiration_days_left)));
+			if ($episode) {
+				$cell->append($this->xml->Element("cell", null, $this->visitlogmdl->getTotalTherapy($episode->cms485_id)));
+			} else {
+				$cell->append($this->xml->Element("cell", null, null));
+			}
+			$cell->append($this->xml->Element("cell", null, $patient->phone_home));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($patient->date_birth))));
+			$cell->append($this->xml->Element("cell", null, $patient->address));
+			$cell->append($this->xml->Element("cell", null, $patient->agency_name));
+			$cell->append($this->xml->Element("cell", null, $patient->tab_description));
+			$cell->append($this->xml->Element("cell", null, null));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function edit ( $us_agy_id, $patient_id ) {
+		
+		$config =& get_config();
+		
+		$this->load->library('user_agent');
+		if ($this->agent->is_referral()){
+	      	$pt_back_url = str_replace($config["index_url"],'', $this->agent->referrer());        
+			$this->session->set_userdata('pt_back_url', $pt_back_url);
+	    }
+	    
+		echo "<SCRIPT>document.location = '" . $this->config->config['index_url'] . "patient/patient/edit/" . $patient_id . "';</SCRIPT>";
+		
+	}
+
+
+	function pdflist($us_agy_id, $print = true) {
+		
+		$this->load->library('table');
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH', $this->config->item('fonts_path'));
+
+		$usagy = $this->usagymdl->getByUsAgyId($us_agy_id);
+		$user = $this->usermdl->getById($usagy->user_id);
+
+		$this->fpdf->AddPage();
+
+		$this->fpdf->SetFont('Arial', 'B', 10);
+		$this->fpdf->Text(20, 20, $user->last_name. " " .$user->first_name); // agency name
+
+		// date
+		$this->fpdf->Text(20, 30, "Date:");
+
+		$this->fpdf->Text(260, 50, "PATIENT LIST");
+
+		$this->fpdf->SetFont('Arial', '', 10);
+		$this->fpdf->Text(450, 50, "Status: " . ($this->input->post('tab_013_status') ? $this->parametermdl->get(13, $this->input->post('tab_013_status'))->tab_description : 'All Status'));
+
+		$this->fpdf->Text(50, 30, date('m-d-Y'));
+
+		$this->fpdf->SetDrawColor(130, 100);
+
+		$this->fpdf->SetFont('Arial', 'B', 8);
+
+		$this->fpdf->Text(20, 77, "Patient Name");
+		$this->fpdf->Text(150, 77, "Days Left");
+		$this->fpdf->Text(190, 77, "Sceduled Visits");
+		$this->fpdf->Text(255, 77, "Home Phone");
+		$this->fpdf->Text(330, 77, "Address");
+		//$this->fpdf->Text(430, 77, "Physician");
+		//$this->fpdf->Text(525, 77, "SOC date");
+		$this->fpdf->Text(450, 67, "SOC");
+		$this->fpdf->Text(450, 77, "Physician");
+		$this->fpdf->Text(495, 77, "Certification");
+
+		$this->fpdf->Line(20, 80, 574, 80);
+
+		$this->fpdf->SetFont('Courier', '', 8);
+		$this->fpdf->SetLineWidth(0.3);
+
+		$eje_y = 90;
+
+		$data = $this->patientmdl->getByUsAgyId($us_agy_id, $this->input->post('keyword'), $this->input->post('tab_013_status'));
+
+		foreach ($data as $patient) {
+			$soc = $this->socmdl->getCurrent($patient->patient_id);
+			$doctorOffice = $this->agencymdl->getByAgencyId($patient->prim_doctor_office_id);
+      		$agency2 = $this->agencymdl->getByAgencyId($patient->agency_id);
+      		$episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+        
+			$this->fpdf->Text(20, $eje_y, substr($patient->first_name . " " . $patient->last_name, 0, 25));
+     	 	if ($this->getAgencyType() != 'A') {
+        		//$this->fpdf->Text(20, $eje_y+10, "Agency: ".$agency2->agency_name.", Physician: ".@$doctorOffice->agency_name);        
+        		$this->fpdf->Text(20, $eje_y+10, "Agency: ".$agency2->agency_name);        
+      		}else{
+        		//$this->fpdf->Text(20, $eje_y+10, "Physician: ".@$doctorOffice->agency_name);
+      		}
+      		$this->fpdf->Text(150, $eje_y, @$episode->expiration_days_left);
+      		if ($episode) {
+				$this->fpdf->Text(190, $eje_y, $this->visitlogmdl->getTotalTherapy($episode->cms485_id));
+			}
+			// $this->fpdf->Text(150, $eje_y, $patient->medical_rec_nbr);
+			$this->fpdf->Text(255, $eje_y, $patient->phone_home);
+			$this->fpdf->Text(330, $eje_y, $patient->address);
+			$this->fpdf->Text(330, $eje_y +10, $patient->city . ($patient->city ? ", " : "") . $patient->state_name_short . ". " . $patient->zip1);
+			//$this->fpdf->Text(430, $eje_y, @$doctorOffice->agency_name);
+			$this->fpdf->Text(450, $eje_y, date("m/d/y",mysql_to_unix($soc->estimated_soc_date)));
+			$this->fpdf->Text(450, $eje_y+10, @$doctorOffice->agency_name);
+			$this->fpdf->Text(495, $eje_y, date("m/d/y",mysql_to_unix(@ $episode->episode_start_date))." ".date("m/d/y",mysql_to_unix(@ $episode->episode_end_date, 'USA_DATE_TIME')) );
+
+      
+			$this->fpdf->Line(20, $eje_y +13, 574, $eje_y +13);
+
+			$eje_y += 20;
+
+			if ($eje_y > 810) {
+				$this->fpdf->AddPage();
+				$eje_y = 30;
+				$this->fpdf->Line(20, $eje_y -7, 574, $eje_y -7);
+			}
+
+		}
+
+		$this->fpdf->Output('patient_list.pdf', 'D');
+
+	}
+
+	function xml_entities($text, $charset = 'UTF-8') {
+		// First we encode html characters that are also invalid in xml
+		$text = htmlentities($text, ENT_COMPAT, $charset, false);
+
+		// Note: &apos; is useless in UTF-8 or in UTF-16
+		$arr_xml_special_char = array (
+			"&quot;",
+			"&amp;",
+			"&apos;",
+			"&lt;",
+			"&gt;"
+		);
+
+		// Building the regex string to exclude all strings with xml special char
+		$arr_xml_special_char_regex = "(?";
+		foreach ($arr_xml_special_char as $key => $value) {
+			$arr_xml_special_char_regex .= "(?!$value)";
+		}
+		$arr_xml_special_char_regex .= ")";
+
+		// Scan the array for &something_not_xml; syntax
+		$pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+
+		// Replace the &something_not_xml; with &amp;something_not_xml;
+		$replacement = '&amp;${1}';
+		return preg_replace($pattern, $replacement, $text);
+	}	
+ }

@@ -1,0 +1,36 @@
+</form>
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/edit_patient_status/{$pat_contractor_id}/{$fromPage}">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}	
+  <tr>		
+		<td height="10">Contractor Name: </td>
+    <td height="10">
+			{$agency_name}
+    </td>
+  </tr>	
+	<tr>		
+		<td height="10">Contractor Patient Status: </td>
+    <td height="10">
+			{html_options options=$tab_13_lsit name='company_patient_status' id='company_patient_status' selected=$company_patient_status'} *
+    </td>
+  </tr>	
+  <tr>		
+		<td height="10">Date: </td>
+    <td height="10">
+			<input type="text" id="company_patient_status_date" name="company_patient_status_date" value="{$company_patient_status_date|date_format:"%m-%d-%Y":"":true}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('company_patient_status_date'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>	  
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>

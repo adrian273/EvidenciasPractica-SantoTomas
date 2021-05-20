@@ -1,0 +1,114 @@
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlxgrid_export.js?{$smarty.now}"></script>
+<script language="JavaScript" type="text/javascript">
+
+    function afterload () {literal}{{/literal}
+        {if isset( $afterload_func ) }{$afterload_func}{/if}
+        {literal}}{/literal}
+
+</script>
+
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/email_ticket/{$record_id}" onsubmit="return validateFormSubmit(this);">
+    <input type="hidden" name="recipient_ids" id="recipient_ids" value="">
+    <table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4">
+        <tr>
+            <td colspan="3" height="47%" valign="top"><div id="grid_area" style="height: 100%; width: 100%"></div></td>
+        </tr>
+        <tr>
+            <td nowrap width="30%" style="padding-top: 5px" valign="bottom"><div id="recinfoArea" style="float: left; line-height: 25px; margin-right: 10px; "></div>
+                <div style="clear: both;"></div></td>
+            <td nowrap width="50%" align="right" valign="bottom"><div id="grid_paginal"></div></td>
+        </tr>
+        {if $error_string}
+        <tr>
+            <td colspan="2" class="error tbl_msg">{$error_string}</td>
+        </tr>
+        {/if}
+        <tr>
+            <td height="10" valign="top"><b>Email Subject:</b> </td>
+            <td height="10" valign="top"><input type="text" name="email_subject" id="email_subject" value="{$email_subject}" style="width: 350px;" /></td>
+        </tr>
+        <tr>
+            <td height="10" colspan="2" valign="top"></td>
+        </tr>
+        <tr>
+            <td valign="top"><b>Message:</b> </td>
+            <td><textarea name="message" id="message" rows="5" cols="35" style="width: 350px;">{$message}</textarea></td>
+        </tr>
+        <tr>
+            <td colspan="2" height="100%" valign="bottom" style=""><input type="submit" class="btn" name="submit" value="Send Email">
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+            </td>
+        </tr>
+    </table>
+</form>
+<script language="JavaScript" type="text/javascript">
+
+    document.body.style.overflow = 'hidden';
+    var grid;
+
+    function loadGrid () {literal}{{/literal}
+
+        if (document.getElementById("grid_paginal").innerHTML != "") {literal}{{/literal}
+
+            grid.clearAll();
+            grid.updateFromXMl("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform');
+
+        {literal}}{/literal} else {literal}{{/literal}
+
+            document.getElementById("grid_paginal").innerHTML = "";
+            document.getElementById("grid_area").innerHTML = "";
+
+            grid = new dhtmlXGridObject("grid_area");
+            grid.setImagePath("{$base_url}style/grid/imgs/")
+            grid.iconImagePath = "{$base_url}style/grid/imgs/";
+            grid.setSkin("light");
+            grid.enablePaging({ if ! isset( $paginate ) }true{else}{$paginate}{/if},{ if ! isset( $items_per_page ) }30{else}{$items_per_page}{/if}, 5, "grid_paginal",true,"recinfoArea");
+            {if !$noedit}grid.setOnRowSelectHandler(editRegister);{/if}
+            {if $checkHandler}
+            grid.setOnCheckHandler(checkRegister);
+            {/if}
+
+            grid.enableSmartXMLParsing(true);
+
+            grid.kidsXmlFile = "{$index_url}{$resource_path}/child";
+            grid.loadXMLPost("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform', afterload);
+            grid.setSizes(100, 200);
+            //grid.enableStableSorting(true);
+            //grid.sortRows(0,"int","asc");    // sort by the sibling column
+            //grid.sortRows(0,"str","des");
+            //alert("asdf");
+            //grid.sortRows(1,"int","asc");
+        {literal}}{/literal}
+		
+		grid.dhx_attachEvent("onRowSelect",function(rowID,celInd){literal}{{/literal} 
+			if(this.cells(rowID, 0).getValue() == 1) {literal}{{/literal} 
+				this.cells(rowID, 0).setValue(0);	
+			{literal}}{/literal} else {literal}{{/literal} 
+				this.cells(rowID, 0).setValue(1);		
+			{literal}}{/literal}			
+		{literal}}{/literal} );
+   {literal}}{/literal}
+
+    function deleteRegister () {literal}{{/literal}
+        if (grid.getSelectedId(0)) document.location = "{$index_url}{$resource_path}/delete{if $entity_id}/{$entity_id}{/if}/" + grid.getSelectedId();
+    {literal}}{/literal}
+
+    function checkRegister ( idr, idc, value ) {literal}{{/literal}
+        ajax("{$index_url}{$resource_path}/checkHandler{if $entity_id}/{$entity_id}{/if}/" + idr + "/" + idc + "/" + value, ajaxParseAction);
+    {literal}}{/literal}
+
+    loadGrid();
+
+    function validateFormSubmit(frm) {literal}{{/literal}
+        if (grid.getCheckedRows(0)) {literal}{{/literal}
+            var record_ids = grid.getCheckedRows(0);
+            $('#recipient_ids').val(record_ids);
+        {literal}}{/literal}
+        return true;
+    {literal}}{/literal}
+
+    //
+    {if $script_tpl != ""}
+    {include file=$script_tpl}
+    {/if}
+</script>

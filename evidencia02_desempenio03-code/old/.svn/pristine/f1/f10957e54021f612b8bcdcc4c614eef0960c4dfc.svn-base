@@ -1,0 +1,45 @@
+<?
+
+ class Demographic extends MY_Controller {
+
+	function Demographic () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "agencyprofile/demographic");
+		
+		$this->tpl->assign("tab_page", true);
+		
+	}
+
+	function index ( $agency_id=null ) {
+		
+		$agency_id = (is_null($agency_id)) ? $this->getAgencyId() : $agency_id;
+		
+		$this->tpl->assign('faction', 'index/' . $agency_id);
+		
+		$this->assignObject($this->agencymdl->getByAgencyId($agency_id));
+		
+		$rules = array ('agency_email'		  	=> 'valid_email',
+						'contact_phone'		  	=> 'valid_phone',
+						'phone_primary'		  	=> 'valid_phone',
+						'phone_secondary'	  	=> 'valid_phone',
+						'fax'				  	=> 'valid_phone');
+		
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == TRUE) {
+
+			$this->assignPostData($this->agencymdl);
+			$this->agencymdl->updateByAgency($agency_id);
+			
+			$this->tpl->assign('success_string', $this->agencymdl->agency_name . $this->lang->line('grl_upd_msg'));
+			
+		}
+	
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "agencyprofile/edit_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+ }

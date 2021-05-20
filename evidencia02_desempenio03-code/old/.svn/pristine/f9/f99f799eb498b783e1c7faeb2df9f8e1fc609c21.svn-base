@@ -1,0 +1,144 @@
+<?php
+
+ class Clinicians extends MY_Controller {
+
+	function Clinicians () {
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "import/clinicians");
+	}
+		
+	function index () {
+		$this->tpl->assign('faction', 'index');
+		
+		if ( $_SERVER['REQUEST_METHOD'] != 'POST' OR (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0) ) {
+			// var_dump($_FILES['document']['error']);
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0) {
+				# code...
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please Select Excel File";
+				$this->tpl->assign("error_string", $error_string);
+			}
+
+			$this->tpl->assign("form_title", "Import Clinicians from Excel File");
+			$this->tpl->assign("no_cancel_form", true);
+			$this->tpl->assign("no_delete_form", true);
+			$this->lang->language['grl_save'] = 'Import Now';
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "import/clinicians/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else if($_FILES['document']['error']==0){
+			$fname = microtime().'_'.basename($_FILES['document']['name']);
+			$fname = str_replace(" ","_",$fname);
+			$fname = str_replace("%","_",$fname);
+			$fname = str_replace("#","",$fname);
+			$fname = str_replace("&","",$fname);
+			// $fname = microtime()."_".$fname;
+			if(move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/tmp/'.$fname)) {
+				$Excel = FCPATH.'/tmp/'.$fname;
+				
+				require_once(APPPATH.'third_party/spreadsheet-reader-master/php-excel-reader/excel_reader2.php');    
+				require_once(APPPATH.'third_party/spreadsheet-reader-master/SpreadsheetReader.php');
+
+				$this->load->helper('email');
+
+				$Spreadsheet = new SpreadsheetReader($Excel);
+				$Sheets = $Spreadsheet->sheets();
+
+				/* For Loop for all sheets */
+				foreach ($Sheets as $Index => $Name)
+				{
+					echo "<pre>";
+					echo "Importing sheet {$Name}...<br>";
+					$Spreadsheet -> ChangeSheet($Index);
+					foreach ($Spreadsheet as $Key => $Row)
+					{
+						if ($Key ==  0) {
+							// Header/columns. So skip it
+							continue;
+						}						
+
+						// Fix special unknown characters
+						array_walk($Row, 'convert_special_chars');
+
+						$us1_user_data = array();
+						$usagy_data = array();
+						$us1_user_data['first_name'] = strstr($Row[0], " ", true);
+						$us1_user_data['last_name'] = trim(strstr($Row[0], " "));
+						$us1_user_data['phone_cell'] = $Row[1];
+						$us1_user_data['user_email'] = valid_email($Row[2]) ? $Row[2] : '';
+						$us1_user_data['cover_area'] = $Row[6]; // City/Region
+						$us1_user_data['internal_email_to_mailbox'] = 1; //Send copy to personal Email=Y
+
+						if (!$us1_user_data['first_name'] AND !$us1_user_data['last_name']) {
+							// names are empty. skip it.
+							echo '<font color=red>Name is empty. skipping it</forn><br>';
+							continue;
+						}
+
+						if (!$us1_user_data['user_email']) {
+							// email is empty. skip it.
+							echo '<font color=red>Email address is empty or invalid. skipping it</font><br>';
+							continue;
+						}
+						
+						$user = $this->usermdl->getByEmail($us1_user_data['user_email']);
+
+						if (!empty($user)) { 
+							// user already  exist: skip it
+							echo '<font color=red>User: '.$us1_user_data['user_email'].' already  exist: skipping it</font><br>';
+							continue;
+						}
+
+						//  other important data to manupulate 
+						$us1_user_data['contract_flag'] = 0; 
+						$us1_user_data['tab_005_user_type'] = 1; // Default
+						if ($this->getAgencyType() == 'C') {
+							$us1_user_data['tab_005_user_type'] = 2;
+						} else if ($this->getAgencyType() == 'D') {
+							$us1_user_data['tab_005_user_type'] = 3;
+						}
+						
+						$this->assignPostData($this->usermdl, (object)$us1_user_data);
+						$this->usermdl->user_id = null;
+						$this->usermdl->insert();
+						$user_id = $this->usermdl->user_id;
+						// user created. Create a temporary password
+						$pass = passgen();
+						$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+
+						$usagy_data['cover_area'] = $Row[6]; // City/Region
+						$usagy_data['agency_id'] = $this->getAgencyId();
+						$usagy_data['first_name'] = $us1_user_data['first_name']; //PTA
+						$usagy_data['last_name'] = $us1_user_data['last_name']; //PTA
+						$usagy_data['phone_cell'] = $us1_user_data['phone_cell']; //PTA
+						$usagy_data['tab_021_user_status'] = 0; //Inactive
+						$usagy_data['discipline_id'] = 3; //PTA
+						$usagy_data['profile_id'] = 13; //Prospect
+						$usagy_data['contractor_or_employee'] = 'E'; //Employee
+						$usagy_data['electronic_sign_setup'] = 1; // User set-up for Electronic Signature
+
+						// assiging user to agency
+						$this->assignPostData($this->usagymdl, (object)$usagy_data);
+						$this->usagymdl->agency_id = $this->getAgencyId();
+						$this->usagymdl->user_id = $user_id;
+						$this->usagymdl->tab_021_user_status = 0; // Inactive
+						$this->usagymdl->us_agy_id = null;
+						$this->usagymdl->insert();		
+
+						echo '<font color=green>User: '.$us1_user_data['first_name'].' '.$us1_user_data['last_name']	.'&lt;'.$us1_user_data['user_email'].'&gt; has been created.</font></br>';
+						
+					}
+				}
+
+				// remove excel file
+				@unlink($Excel);
+			}else{
+				exit("Document Upload Failed!");
+			}
+
+		}
+	}
+	
+ }
+

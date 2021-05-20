@@ -1,0 +1,1498 @@
+<?
+
+ class Billing extends MY_Controller {
+
+	function Billing () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "contractor/billing");
+
+	}
+	
+  function index () {		
+		//$this->tpl->assign_include("dynamic_tpl", "payroll/tbase");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billing/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+	}	
+  
+  function contractor_rates(){
+    //agencies
+    $this->tpl->assign_include("dynamic_tpl", "contractor/billing/contractor_rates_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function bills(){
+  
+  }
+  
+  function invoices(){
+  
+  }
+  
+  /*********** Agency level rate ***************/ 
+  function agencies(){
+  	$contractor_id = $this->getAgencyId();    
+	$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+    $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+    if ($contractor->state_id == 6 AND ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4)) ) ) {
+    	exit('Pending Development');
+    }
+
+    $this->tpl->assign("no_grid_buttons", true);
+    $this->tpl->assign("resource_edit", 'rates_agency');    
+    $this->tpl->assign("resource_grid", "agencies_grid");
+    $this->tpl->assign("paginate", 0);
+    
+    $data = $this->agencycontractormdl->getByContractor($contractor_id, 'A');
+		
+    $names = array();    
+    foreach($data as $agency){
+      $names[] = '"'.addslashes($agency->agency_name).'"';
+    }
+    $name_source_obj = "[".implode(",",$names)."]";  
+    $this->tpl->assign("name_source_obj", $name_source_obj);
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billing/agency_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function rates_agency($agency_contractor_id=0){
+    
+    $agency_contractor = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    
+    //print_r($agency_contractor);exit;
+    
+    $this->tpl->assign("no_grid_buttons", true);
+    //$this->tpl->assign('noedit', true);
+    $this->tpl->assign("resource_edit", 'rates_agency_edit');    
+    $this->tpl->assign("resource_grid", "rates_agency_grid");
+    $this->tpl->assign("resource_add", "rates_agency_add");
+    $this->tpl->assign("resource_delete", "rates_agency_delete");
+    $this->tpl->assign("entity_id", $agency_contractor_id);
+    $this->tpl->assign('additional_buttons', array('Add Rate' => 'addRate()', 'Back' => 'history.go(-1)'));
+    
+    $this->assignObject($agency_contractor);
+    
+    //$this->tpl->assign('agency_contractor', $agency_contractor);
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billing/rates_agency_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billing/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+	function rates_agency_grid ($agency_contractor_id=0) {
+    // LOAD MODELS
+		$this->load->model('contractorrateagencymdl');
+
+		$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+    $us_agy_id = $this->getUsAgyId();  
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+    
+    	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=*", "Effective date"));
+		if ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(3, 4)) ) {
+			$head->append($this->xml->Element("column", "width=*", "CLASS Rate"));
+			$head->append($this->xml->Element("column", "width=*", "YES-W Rate"));
+			$head->append($this->xml->Element("column", "width=*", "Private Rate"));
+			// $head->append($this->xml->Element("column", "width=*", "Priv Min Rate"));
+		} else {			
+			$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+			$head->append($this->xml->Element("column", "width=*", "PTA or COTA"));
+      if ($usAgy->user_tab111_product_id == 2) {
+        $head->append($this->xml->Element("column", "width=*", "Waiver Rate"));
+      }
+		}
+	
+		$head->append($this->xml->Element("column", "width=*", "Modified By"));
+		$head->append($this->xml->Element("column", "width=*", "Date / Time"));
+		//$head->append($this->xml->Element("column", "width=*", "Actions"));
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//if ($this->input->post('agency_type') == 'A')
+			$data = $this->contractorrateagencymdl->getByContractorId($agency_contractor_id);
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+		foreach ($data as $rate) {			
+      //print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $rate->contractor_rate_id);
+			$cell->append($this->xml->Element("cell", null, $rate->visit_description));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->rate_effective_date, 'MYSQL_NOTIME'))));
+			
+			if ($contractor->provides_altern_therapy == "Y" OR in_array($usAgy->user_tab111_product_id, array(3, 4)) ) {
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->class_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->yes_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->private_rate));
+				// $cell->append($this->xml->Element("cell", null, '$'.$rate->private_rate_min));
+			} else {
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->company_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->PTA_or_COTA_rate));
+        
+        if ($usAgy->user_tab111_product_id == 2) {
+          $cell->append($this->xml->Element("cell", null, '$'.$rate->waiver_rate));
+        }
+			}
+
+			
+			$cell->append($this->xml->Element("cell", null, $rate->first_name.' '.$rate->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->modify_date)).' '.date("g:i a", strtotime($rate->modify_date))));
+			//$cell->append($this->xml->Element("cell", null, $rate->fax));
+      
+      		$cell->append($this->xml->Element("cell", null, "Edit^javascript:editRate(" . $rate->contractor_rate_id . ")"));
+      
+      		$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteRate(" . $rate->contractor_rate_id . ")"));
+      
+			$document->append($cell);
+			
+		}
+    
+  }
+  
+	function agencies_grid () {		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Agency"));
+		/*$head->append($this->xml->Element("column", "width=*", "Contact Name"));
+		$head->append($this->xml->Element("column", "width=*", "Contacto Phone"));
+		$head->append($this->xml->Element("column", "width=25", "Fax"));*/
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//if ($this->input->post('agency_type') == 'A')
+			$data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+		foreach ($data as $agency) {			
+			$cell = $this->xml->Element("row", "id=" . $agency->agency_contractor_id);
+			$cell->append($this->xml->Element("cell", null, $agency->agency_name));
+			/*$cell->append($this->xml->Element("cell", null, $agency->contact_name));
+			$cell->append($this->xml->Element("cell", null, $agency->contact_phone));
+			$cell->append($this->xml->Element("cell", null, $agency->fax));*/
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+  function rates_agency_add ( $agency_contractor_id ) {
+		
+    $this->load->model('contractorrateagencymdl');
+    $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+    $us_agy_id = $this->getUsAgyId();  
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+    $rules = array (
+      'visit_type_id'  	=> 'required',
+      // 'company_rate'  	=> 'required',
+      'rate_effective_date'  	=> 'required'
+      );
+  
+    $fields = array (
+      'visit_type_id'  	=> 'Visit Type',
+      // 'company_rate'  	=> 'Visit Rate',
+      'rate_effective_date'  	=> 'Effective Date'
+      );
+        
+    if($this->input->post('visit_type_id')==12){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'PTA Visit Rate';
+    }else if($this->input->post('visit_type_id')==42){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'COTA Visit Rate';
+    } 
+    
+    if ($contractor->provides_altern_therapy == 'Y') {
+    	if (!$this->input->post('class_rate') AND !$this->input->post('yes_rate') AND !$this->input->post('private_rate')) {    		
+    		$rules['class_rate'] = 'required';
+    		$fields['class_rate'] = 'CLASS/YES-W/Private Rate';
+    	} 
+
+    	/*$rules['class_rate'] = 'required';
+    	$rules['yes_rate'] = 'required';
+    	$rules['private_rate'] = 'required';
+    	// $rules['private_rate_min'] = 'required';
+
+    	$fields['class_rate'] = 'CLASS Rate';
+    	$fields['yes_rate'] = 'YES-W Rate';
+    	$fields['private_rate'] = 'Private Rate';
+    	// $fields['private_rate_min'] = 'Private Min Rate';*/
+	} else {			
+		$rules['company_rate'] = 'required';
+		$fields['company_rate'] = 'Visit Rate';
+	}
+
+  if ($usAgy->user_tab111_product_id == 2) {
+    $rules['waiver_rate'] = 'required';
+    $fields['waiver_rate'] = 'Waiver Rate';
+    $this->tpl->assign('LOB', 2);
+  }
+
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules);	
+            
+	if ($this->validation->run() == FALSE) {
+		$this->tpl->assign('agency_contractor_id', $agency_contractor_id);
+		$this->tpl->assign('provides_altern_therapy', $contractor->provides_altern_therapy);
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, $contractor->provides_altern_therapy));
+
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billing/add_rate_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+			
+	} else {
+		$this->assignPostData($this->contractorrateagencymdl);
+		$this->contractorrateagencymdl->modify_user_id=$this->getUserId();
+		$this->contractorrateagencymdl->modify_date=date('Y-m-d H:i:s');
+		$this->contractorrateagencymdl->insert($agency_contractor_id);
+
+		echo "<SCRIPT>parent.loadGrid(); parent.dhxWins.unload();</SCRIPT>";			
+	}		
+  }
+  
+  function rates_agency_edit ( $contractor_rate_id ) {
+		
+    $this->load->model('contractorrateagencymdl');
+    $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+    $us_agy_id = $this->getUsAgyId();  
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+    $this->tpl->assign("contractor_rate_id", $contractor_rate_id);
+		
+    $rules = array (
+      //'visit_type_id'  	=> 'required',
+      // 'company_rate'  	=> 'required',
+      'rate_effective_date'  	=> 'required'
+      );
+  
+    $fields = array (
+      //'visit_type_id'  	=> 'Visit Type',
+      // 'company_rate'  	=> 'Visit Rate',
+      'rate_effective_date'  	=> 'Effective Date'
+      );
+        
+    if($this->input->post('visit_type_id')==12){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'PTA Visit Rate';
+    }else if($this->input->post('visit_type_id')==42){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'COTA Visit Rate';
+    } 
+
+    if ($contractor->provides_altern_therapy == 'Y') {
+    	if (!$this->input->post('class_rate') AND !$this->input->post('yes_rate') AND !$this->input->post('private_rate')) {    		
+    		$rules['class_rate'] = 'required';
+    		$fields['class_rate'] = 'CLASS/YES-W/Private Rate';
+    	} 
+
+    	/*$rules['class_rate'] = 'required';
+    	$rules['yes_rate'] = 'required';
+    	$rules['private_rate'] = 'required';
+    	// $rules['private_rate_min'] = 'required';
+
+    	$fields['class_rate'] = 'CLASS Rate';
+    	$fields['yes_rate'] = 'YES-W Rate';
+    	$fields['private_rate'] = 'Private Rate';
+    	// $fields['private_rate_min'] = 'Private Min Rate';*/
+	} else {			
+		$rules['company_rate'] = 'required';
+		$fields['company_rate'] = 'Visit Rate';
+	}
+
+  if ($usAgy->user_tab111_product_id == 2) {
+    $rules['waiver_rate'] = 'required';
+    $fields['waiver_rate'] = 'Waiver Rate';
+    $this->tpl->assign('LOB', 2);
+  }
+    
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules);	
+		
+	if ($this->validation->run() == FALSE) {
+
+		$this->assignObject($this->contractorrateagencymdl->getById($contractor_rate_id));
+		$this->tpl->assign('provides_altern_therapy', $contractor->provides_altern_therapy);
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billing/edit_rate_form");
+		//$this->tpl->assign_include("dynamic_tpl", "payroll/generate/detail_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	} else {
+    
+		$this->assignPostData($this->contractorrateagencymdl);   
+		if ($contractor->provides_altern_therapy == 'Y') {
+			$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'class_rate', $this->input->post('class_rate'));
+			$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'yes_rate', $this->input->post('yes_rate'));
+			$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'private_rate', $this->input->post('private_rate'));
+			// $this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'private_rate_min', $this->input->post('private_rate_min'));		    	
+		} else {				
+			$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'company_rate', $this->input->post('company_rate'));
+			$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'PTA_or_COTA_rate', $this->input->post('PTA_or_COTA_rate'));
+
+      if ($usAgy->user_tab111_product_id == 2) {
+        $this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'waiver_rate', $this->input->post('waiver_rate'));
+      }
+		}   
+		$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'rate_effective_date', $this->contractorrateagencymdl->rate_effective_date);
+			
+      	$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'modify_user_id', $this->getUserId());
+      	$this->contractorrateagencymdl->updateFlex($contractor_rate_id, 'modify_date', date('Y-m-d H:i:s'));
+      
+		echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+			
+	}		
+    
+  }
+  
+  function rates_agency_delete($contractor_rate_id ) {		
+    $this->load->model('contractorrateagencymdl');
+    
+    $document = $this->xml->Document();
+		$rate = $this->contractorrateagencymdl->getById($contractor_rate_id);    
+		
+    if($rate != null){
+      if($rate->contractor_id == $this->getAgencyId() AND $rate->agency_type == 'A'){        $this->contractorrateagencymdl->delete($contractor_rate_id);
+        $document->append($this->xml->Element('js', 'script=loadGrid()', null));
+      }else{
+        $document->append($this->xml->Element('alert', null, "You are not the contractor to delete this!"));
+        return;
+      }
+    }else {
+			
+			$document->append($this->xml->Element('alert', null, "Contractor rate not found!"));
+			return;
+			
+		}
+    
+  }
+  
+  /*********** Default rate ***************/ 
+  function default_rates(){
+    //$agency_contractor = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor_id = $this->getAgencyId();    
+    $us_agy_id = $this->getUsAgyId();    
+    //print_r($agency_contractor);exit;
+    
+    $contractor = $this->agencymdl->getByAgencyId($contractor_id);
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+    if ($contractor->state_id == 6 AND ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4)) ) ) {
+    	$this->tpl->assign("resource_grid", "rates_default_v2_grid");
+    	$this->tpl->assign("resource_add", "rates_default_add_v2");
+    	$this->tpl->assign("resource_edit", 'rates_default_edit_v2');    
+    	$this->tpl->assign("resource_delete", "rates_default_delete_v2");
+    } else {
+    	$this->tpl->assign("resource_grid", "rates_default_grid");
+    	$this->tpl->assign("resource_add", "rates_default_add");
+    	$this->tpl->assign("resource_edit", 'rates_default_edit');    
+    	$this->tpl->assign("resource_delete", "rates_default_delete");
+    }
+
+    $this->tpl->assign("no_grid_buttons", true);
+    //$this->tpl->assign('noedit', true);
+    $this->tpl->assign("entity_id", $contractor_id.'/'.$us_agy_id);
+    $this->tpl->assign('additional_buttons', array('Add Rate' => 'addRate()', 'Back' => 'history.go(-1)'));
+    
+    //$this->assignObject($agency_contractor);
+    
+    //$this->tpl->assign('agency_contractor', $agency_contractor);
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billing/rates_default_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billing/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+
+	function rates_default_grid ($contractor_id=0) {
+    $contractor_id = $this->getAgencyId();
+		// provide_altern_therapy should checkng from logged in contractor not from seletcted agency
+		$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+    $us_agy_id = $this->getUsAgyId();  
+		$usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+	    // LOAD MODELS
+		$this->load->model('contractorratedefaultmdl');
+    
+    	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=*", "Effective date"));
+		if ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(3, 4)) ) {
+			$head->append($this->xml->Element("column", "width=*", "CLASS Rate"));
+			$head->append($this->xml->Element("column", "width=*", "YES-W Rate"));
+			$head->append($this->xml->Element("column", "width=*", "Private Rate"));
+			// $head->append($this->xml->Element("column", "width=*", "Priv Min Rate"));
+		} else {			
+			$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+			$head->append($this->xml->Element("column", "width=*", "PTA or COTA"));
+      if ($usAgy->user_tab111_product_id == 2) {
+        $head->append($this->xml->Element("column", "width=*", "Waiver Rate"));
+      }
+		}
+	
+		$head->append($this->xml->Element("column", "width=*", "Modified By"));
+		$head->append($this->xml->Element("column", "width=*", "Date / Time"));
+		//$head->append($this->xml->Element("column", "width=*", "Actions"));
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//if ($this->input->post('agency_type') == 'A')
+			$data = $this->contractorratedefaultmdl->getByContractorId($contractor_id);
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+		foreach ($data as $rate) {			
+      		//print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $rate->contractor_custom_rate_id);
+			$cell->append($this->xml->Element("cell", null, $rate->visit_description));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->rate_effective_date, 'MYSQL_NOTIME'))));
+
+			if ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(3, 4)) ) {
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->class_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->yes_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->private_rate));
+				// $cell->append($this->xml->Element("cell", null, '$'.$rate->private_rate_min));
+			} else {			
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->company_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->PTA_or_COTA_rate));
+        if ($usAgy->user_tab111_product_id == 2) {
+          $cell->append($this->xml->Element("cell", null, '$'.$rate->waiver_rate));
+        }
+			}
+			
+			$cell->append($this->xml->Element("cell", null, $rate->first_name.' '.$rate->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->modify_date)).' '.date("g:i a", strtotime($rate->modify_date))));
+			//$cell->append($this->xml->Element("cell", null, $rate->fax));
+      
+      		$cell->append($this->xml->Element("cell", null, "Edit^javascript:editRate(" . $rate->contractor_custom_rate_id . ")"));
+      
+      		$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteRate(" . $rate->contractor_custom_rate_id . ")"));
+      
+			$document->append($cell);
+			
+		}
+    
+  	}
+
+  	function rates_default_v2_grid ($contractor_id=0) {
+  		$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+	    $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+	    if ($contractor->state_id == 6 AND ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4)) ) ) {
+	    	// fine go ahead
+	    } else {
+	    	return $this->rates_default_grid($contractor_id);
+	    }
+
+	    	
+	    // LOAD MODELS
+		$this->load->model('contractorratedefaultv2mdl');
+    
+    	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Program"));
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+			$head->append($this->xml->Element("column", "width=*", "Rate"));
+		$head->append($this->xml->Element("column", "width=*", "Effective date"));
+		
+		$head->append($this->xml->Element("column", "width=*", "Modified By"));
+		$head->append($this->xml->Element("column", "width=*", "Date"));
+		//$head->append($this->xml->Element("column", "width=*", "Actions"));
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+    	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$data = $this->contractorratedefaultv2mdl->getByContractorId($contractor_id);
+		
+		foreach ($data as $rate) {		
+      		//print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $rate->contractor_custom_rate_id);
+			$cell->append($this->xml->Element("cell", null, $rate->client_program));
+			$cell->append($this->xml->Element("cell", null, $rate->visit_description));
+			if ($rate->client_program == 'PRIVATE') {
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->rate1));
+			} else {
+				$cell->append($this->xml->Element("cell", null, 'BA $'.$rate->rate1.', ' . 'MA $'.$rate->rate2));
+			}
+
+
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->rate_effective_date, 'MYSQL_NOTIME'))));
+
+			
+			$cell->append($this->xml->Element("cell", null, $rate->first_name.' '.$rate->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->modify_date)).' '.date("g:i a", strtotime($rate->modify_date))));
+			
+      		$cell->append($this->xml->Element("cell", null, "Edit^javascript:editRate(" . $rate->contractor_custom_rate_id . ")"));
+      
+      		$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteRate(" . $rate->contractor_custom_rate_id . ")"));
+      
+			$document->append($cell);
+			
+		}
+    
+  	}
+
+
+	  
+	function rates_default_add ( $contractor_id, $us_agy_id=null ) {
+		$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+    $us_agy_id = $this->getUsAgyId();
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+    $this->load->model('contractorratedefaultmdl');
+	    
+	    $rules = array (
+	      'visit_type_id'  	=> 'required',
+	      // 'company_rate'  	=> 'required',
+	      'rate_effective_date'  	=> 'required'
+	      );
+	  
+	    $fields = array (
+	      'visit_type_id'  	=> 'Visit Type',
+	      // 'company_rate'  	=> 'Visit Rate',
+	      'rate_effective_date'  	=> 'Effective Date'
+	      );
+	        
+	    if($this->input->post('visit_type_id')==12){      
+	      $rules['PTA_or_COTA_rate'] = 'required';
+	      $fields['PTA_or_COTA_rate'] = 'PTA Visit Rate';
+	    }else if($this->input->post('visit_type_id')==42){      
+	      $rules['PTA_or_COTA_rate'] = 'required';
+	      $fields['PTA_or_COTA_rate'] = 'COTA Visit Rate';
+	    } 
+	  
+	    if ($contractor->provides_altern_therapy == 'Y') {
+	    	if (!$this->input->post('class_rate') AND !$this->input->post('yes_rate') AND !$this->input->post('private_rate')) {    		
+	    		$rules['class_rate'] = 'required';
+	    		$fields['class_rate'] = 'CLASS/YES-W/Private Rate';
+	    	} 
+
+	    	/*$rules['class_rate'] = 'required';
+	    	$rules['yes_rate'] = 'required';
+	    	$rules['private_rate'] = 'required';
+	    	// $rules['private_rate_min'] = 'required';
+
+	    	$fields['class_rate'] = 'CLASS Rate';
+	    	$fields['yes_rate'] = 'YES-W Rate';
+	    	$fields['private_rate'] = 'Private Rate';
+	    	// $fields['private_rate_min'] = 'Private Min Rate';*/
+  		} else {			
+  			$rules['company_rate'] = 'required';
+  			$fields['company_rate'] = 'Visit Rate';
+  		}
+
+      if ($usAgy->user_tab111_product_id == 2) {
+        $rules['waiver_rate'] = 'required';
+        $fields['waiver_rate'] = 'Waiver Rate';
+        $this->tpl->assign('LOB', 2);
+      }
+
+	    $this->validation->set_fields($fields);  
+	    $this->validation->set_rules($rules);	
+	      
+		if ($this->validation->run() == FALSE) {
+				
+			$this->tpl->assign('contractor_id', $contractor_id);
+			$this->tpl->assign('provides_altern_therapy', $contractor->provides_altern_therapy);
+
+        $LOB = null;
+        if ($us_agy_id) {
+          $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+          if (isset($usAgy->user_tab111_product_id)) {
+            $LOB = $usAgy->user_tab111_product_id;
+          }
+        }
+	  		$this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, $contractor->provides_altern_therapy, $contractor_id, $LOB));
+	  
+			$this->tpl->assign_include("dynamic_tpl", "contractor/billing/add_default_rate_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			$this->assignPostData($this->contractorratedefaultmdl);
+			$this->contractorratedefaultmdl->modify_user_id=$this->getUserId();
+			$this->contractorratedefaultmdl->modify_date=date('Y-m-d H:i:s');
+			$this->contractorratedefaultmdl->insert($contractor_id);
+	  
+			echo "<SCRIPT>parent.loadGrid(); parent.dhxWins.unload();</SCRIPT>";			
+		}		
+	}
+
+	function rates_default_add_v2 ( $contractor_id, $us_agy_id=null ) {
+		$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+
+	    $this->load->model('contractorratedefaultv2mdl');
+	    
+	    $rules = array (
+	      'visit_type_id'  	=> 'required',
+	      'client_program'  	=> 'required',
+	      'rate_effective_date'  	=> 'required'
+	      );
+	  
+	    $fields = array (
+	      'visit_type_id'  	=> 'Visit Type',
+	      'client_program'  	=> 'Cleint Program',
+	      'rate_effective_date'  	=> 'Effective Date'
+	      );
+	        
+	    if($this->input->post('client_program')=='PRIVATE'){      
+	      $rules['rate1'] = 'required';
+	      $fields['rate1'] = 'Private Rate';
+	    }else{      
+	      $rules['ba_rate'] = 'required';
+	      $fields['ba_rate'] = 'BA Rate';
+
+	      $rules['ma_rate'] = 'required';
+	      $fields['ma_rate'] = 'MA Rate';
+	    } 
+	  
+	    $this->validation->set_fields($fields);  
+	    $this->validation->set_rules($rules);	
+	      
+		if ($this->validation->run() == FALSE) {
+			$gov_program_list = array(
+                'PRIVATE' => 'PRIVATE',
+                'CES' => 'CES',
+                'SLS' => 'SLS',
+                'CLLI' => 'CLLI',
+                'CCT' => 'CCT',
+            );
+            $this->tpl->assign('gov_program_list', $gov_program_list);
+
+			$this->tpl->assign('faction', 'rates_default_add_v2');	
+			$this->tpl->assign('contractor_id', $contractor_id);
+        
+        $LOB = null;
+        if ($us_agy_id) {
+          $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+          if (isset($usAgy->user_tab111_product_id)) {
+            $LOB = $usAgy->user_tab111_product_id;
+          }
+        }
+
+	  		$this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, 'Y', $contractor_id, $LOB));
+	  
+			$this->tpl->assign_include("dynamic_tpl", "contractor/billing/add_default_rate_form_v2");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			if($this->input->post('client_program')!='PRIVATE'){
+				$_POST['rate1'] = $this->input->post('ba_rate');
+				$_POST['rate2'] = $this->input->post('ma_rate');
+			}
+
+			$this->assignPostData($this->contractorratedefaultv2mdl);
+			$this->contractorratedefaultv2mdl->modify_user_id=$this->getUserId();
+			$this->contractorratedefaultv2mdl->modify_date=date('Y-m-d H:i:s');
+			$this->contractorratedefaultv2mdl->insert($contractor_id);
+	  
+			echo "<SCRIPT>parent.loadGrid(); parent.dhxWins.unload();</SCRIPT>";			
+		}		
+	}
+  
+  function rates_default_edit ( $contractor_rate_id ) {
+    $this->load->model('contractorratedefaultmdl');
+    
+  	$rate = $this->contractorratedefaultmdl->getById($contractor_rate_id);
+  	$contractor_id = $rate->contractor_id;
+  	$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+
+    $us_agy_id = $this->getUsAgyId();
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+    $this->tpl->assign("contractor_rate_id", $contractor_rate_id);
+		
+    $rules = array (
+      //'visit_type_id'  	=> 'required',
+      // 'company_rate'  	=> 'required',
+      'rate_effective_date'  	=> 'required'
+      );
+  
+    $fields = array (
+      //'visit_type_id'  	=> 'Visit Type',
+      // 'company_rate'  	=> 'Visit Rate',
+      'rate_effective_date'  	=> 'Effective Date'
+      );
+        
+    if($this->input->post('visit_type_id')==12){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'PTA Visit Rate';
+    }else if($this->input->post('visit_type_id')==42){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'COTA Visit Rate';
+    } 
+    
+    if ($contractor->provides_altern_therapy == 'Y') {
+    	if (!$this->input->post('class_rate') AND !$this->input->post('yes_rate') AND !$this->input->post('private_rate')) {    		
+    		$rules['class_rate'] = 'required';
+    		$fields['class_rate'] = 'CLASS/YES-W/Private Rate';
+    	} 
+
+    	/*$rules['class_rate'] = 'required';
+    	$rules['yes_rate'] = 'required';
+    	$rules['private_rate'] = 'required';
+    	// $rules['private_rate_min'] = 'required';
+
+    	$fields['class_rate'] = 'CLASS Rate';
+    	$fields['yes_rate'] = 'YES-W Rate';
+    	$fields['private_rate'] = 'Private Rate';
+    	// $fields['private_rate_min'] = 'Private Min Rate';*/
+  	} else {			
+  		$rules['company_rate'] = 'required';
+  		$fields['company_rate'] = 'Visit Rate';
+  	}
+
+    if ($usAgy->user_tab111_product_id == 2) {
+      $rules['waiver_rate'] = 'required';
+      $fields['waiver_rate'] = 'Waiver Rate';
+      $this->tpl->assign('LOB', 2);
+    }
+
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules);	
+    
+		
+	if ($this->validation->run() == FALSE) {
+
+			$this->assignObject($rate);
+			$this->tpl->assign('provides_altern_therapy', $contractor->provides_altern_therapy);
+	      	$this->tpl->assign_include("dynamic_tpl", "contractor/billing/edit_default_rate_form");
+			//$this->tpl->assign_include("dynamic_tpl", "payroll/generate/detail_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+	} else {
+    
+			$this->assignPostData($this->contractorratedefaultmdl);      
+			if ($contractor->provides_altern_therapy == 'Y') {
+				$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'class_rate', $this->input->post('class_rate'));
+				$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'yes_rate', $this->input->post('yes_rate'));
+				$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'private_rate', $this->input->post('private_rate'));
+				// $this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'private_rate_min', $this->input->post('private_rate_min'));		    	
+			} else {			
+				$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'company_rate', $this->input->post('company_rate'));
+				$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'PTA_or_COTA_rate', $this->input->post('PTA_or_COTA_rate'));
+
+        if ($usAgy->user_tab111_product_id == 2) {
+          $this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'waiver_rate', $this->input->post('waiver_rate'));
+        }
+			}
+
+			$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'rate_effective_date', $this->contractorratedefaultmdl->rate_effective_date);
+			
+	  	$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'modify_user_id', $this->getUserId());
+  		$this->contractorratedefaultmdl->updateFlex($contractor_rate_id, 'modify_date', date('Y-m-d H:i:s'));
+      
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+			
+		}
+		
+    
+	}
+
+	function rates_default_edit_v2 ( $contractor_rate_id ) {
+	    $this->load->model('contractorratedefaultv2mdl');
+	    
+		$rate = $this->contractorratedefaultv2mdl->getById($contractor_rate_id);
+		$contractor_id = $rate->contractor_id;
+		$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+
+	    
+	    $this->tpl->assign("contractor_rate_id", $contractor_rate_id);
+			
+	    $rules = array (
+	      // 'visit_type_id'  	=> 'required',
+	      // 'client_program'  	=> 'required',
+	      'rate_effective_date'  	=> 'required'
+	      );
+	  
+	    $fields = array (
+	      // 'visit_type_id'  	=> 'Visit Type',
+	      // 'client_program'  	=> 'Cleint Program',
+	      'rate_effective_date'  	=> 'Effective Date'
+	      );
+	        
+	    if($rate->client_program == 'PRIVATE'){      
+	      $rules['rate1'] = 'required';
+	      $fields['rate1'] = 'Private Rate';
+	    }else{      
+	      $rules['ba_rate'] = 'required';
+	      $fields['ba_rate'] = 'BA Rate';
+
+	      $rules['ma_rate'] = 'required';
+	      $fields['ma_rate'] = 'MA Rate';
+	    } 
+
+
+	    $this->validation->set_fields($fields);  
+	    $this->validation->set_rules($rules);	
+	    
+			
+		if ($this->validation->run() == FALSE) {
+			$this->assignObject($rate);
+			// $gov_program_list = array(
+            //     'PRIVATE' => 'PRIVATE',
+            //     'CES' => 'CES',
+            //     'SLS' => 'SLS',
+            //     'CLLI' => 'CLLI',
+            //     'CCT' => 'CCT',
+            // );
+            // $this->tpl->assign('gov_program_list', $gov_program_list);
+
+			$this->tpl->assign('faction', 'rates_default_edit_v2');	
+			// $this->tpl->assign('contractor_id', $contractor_id);
+	  		// $this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, 'Y'));
+	      	$this->tpl->assign_include("dynamic_tpl", "contractor/billing/edit_default_rate_form_v2");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			if ($rate->client_program == 'PRIVATE') {
+				$this->contractorratedefaultv2mdl->updateFlex($contractor_rate_id, 'rate1', $this->input->post('rate1'));
+			} else {			
+				$this->contractorratedefaultv2mdl->updateFlex($contractor_rate_id, 'rate1', $this->input->post('ba_rate'));
+				$this->contractorratedefaultv2mdl->updateFlex($contractor_rate_id, 'rate2', $this->input->post('ma_rate'));
+			}
+
+			$this->contractorratedefaultv2mdl->updateFlex($contractor_rate_id, 'rate_effective_date', standard_date( human_to_unix($this->input->post('rate_effective_date')), 'MYSQL') );
+			
+    	  	$this->contractorratedefaultv2mdl->updateFlex($contractor_rate_id, 'modify_user_id', $this->getUserId());
+      		$this->contractorratedefaultv2mdl->updateFlex($contractor_rate_id, 'modify_date', date('Y-m-d H:i:s'));
+      
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+				
+		}
+			
+    
+	}
+  
+  	function rates_default_delete($contractor_rate_id ) {		
+    	$this->load->model('contractorratedefaultmdl');
+    
+    	$document = $this->xml->Document();
+		$rate = $this->contractorratedefaultmdl->getById($contractor_rate_id);    
+		
+    	if($rate != null){
+      		if( $rate->contractor_id == $this->getAgencyId() ){ 
+        		$this->contractorratedefaultmdl->delete($contractor_rate_id);
+        		$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+      		}else{
+        		$document->append($this->xml->Element('alert', null, "You are not the contractor to delete this!"));
+    			return;
+      		}
+    	}else {
+			
+			$document->append($this->xml->Element('alert', null, "Contractor rate not found!"));
+			return;
+			
+		}
+  	}
+    
+
+
+  	function rates_default_delete_v2($contractor_rate_id ) {		
+    	$this->load->model('contractorratedefaultv2mdl');
+    
+    	$document = $this->xml->Document();
+		$rate = $this->contractorratedefaultv2mdl->getById($contractor_rate_id);    
+		
+    	if($rate != null){
+      		if( $rate->contractor_id == $this->getAgencyId() ){ 
+        		$this->contractorratedefaultv2mdl->delete($contractor_rate_id);
+        		$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+      		}else{
+        		$document->append($this->xml->Element('alert', null, "You are not the contractor to delete this!"));
+        		return;
+      		}
+    	}else {
+			
+			$document->append($this->xml->Element('alert', null, "Contractor rate not found!"));
+			return;
+			
+		}    
+  	}
+
+  
+  /*********** rate for patients ***************/
+  
+  function add_patients(){
+    $this->tpl->assign("no_grid_buttons", true);
+    $this->tpl->assign("resource_edit", 'rates_patient');    
+    $this->tpl->assign("resource_grid", "add_patients_grid");
+    $this->tpl->assign("paginate", 0);
+    
+    $this->load->model('contractorratepatientmdl');
+    $this->load->model('patientcontractormdl');
+    
+    $data = $this->contractorratepatientmdl->getPatientsByContractorId($this->getAgencyId());
+		$added = array();  
+		foreach ($data as $patient) {	
+      $added[] = $patient->patient_id;
+    }
+    
+    $data = $this->patientcontractormdl->getByContractorId($this->getAgencyId());
+		$names = array();  
+		foreach ($data as $patient) {	
+      if(!in_array($patient->patient_id, $added))
+        $names[] = '"'.addslashes($patient->first_name . " " . $patient->last_name).'"';
+    }
+    
+    $name_source_obj = "[".implode(",",$names)."]";  
+    $this->tpl->assign("name_source_obj", $name_source_obj);
+    
+    $this->tpl->assign('additional_buttons', array('Back' => 'history.go(-1)'));
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billing/patient_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function add_patients_grid ($agency_contractor_id=0) {
+    // LOAD MODELS
+		$this->load->model('patientcontractormdl');
+		$this->load->model('contractorratepatientmdl');
+    
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+    $data = $this->contractorratepatientmdl->getPatientsByContractorId($this->getAgencyId());
+		$added = array();  
+		foreach ($data as $patient) {	
+      $added[] = $patient->patient_id;
+    }
+    
+		$data = $this->patientcontractormdl->getByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+		
+		foreach ($data as $patient) {		
+      if(in_array($patient->patient_id, $added))
+      continue;
+      //print_r($patient);exit;
+			//$cell = $this->xml->Element("row", "id=" . $patient->bill_factor_id);
+			$cell = $this->xml->Element("row", "id=" . $patient->pat_contractor_id);
+			$cell->append($this->xml->Element("cell", null, $patient->last_name . ", " . $patient->first_name));			   
+			$document->append($cell);			
+		}
+    
+  }
+  
+  function patients(){
+  	$contractor_id = $this->getAgencyId();    
+	$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+    $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+    if ($contractor->state_id == 6 AND ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(2, 3, 4)) ) ) {
+    	exit('Pending Development');
+    }
+    
+    $this->load->model('contractorratepatientmdl');
+    
+    $this->tpl->assign("no_grid_buttons", true);
+    $this->tpl->assign("resource_edit", 'rates_patient');    
+    $this->tpl->assign("resource_grid", "patients_grid");
+    $this->tpl->assign("resource_add", "add_patients");
+    $this->tpl->assign('add_sufix', 'Patient');
+    $this->tpl->assign("paginate", 0);
+    
+    //$data = $this->contractorratepatientmdl->getPatientsByContractorId($this->getAgencyId());
+    $data = $this->patientcontractormdl->getByContractorId($contractor_id);
+		$names = array();  
+		foreach ($data as $patient) {	
+      $names[] = '"'.addslashes($patient->first_name . " " . $patient->last_name).'"';
+    }
+    
+    $name_source_obj = "[".implode(",",$names)."]";  
+    $this->tpl->assign("name_source_obj", $name_source_obj);
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billing/patient_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function patients_grid ($agency_contractor_id=0) {
+    // LOAD MODELS
+		$this->load->model('patientcontractormdl');
+		$this->load->model('contractorratepatientmdl');
+    
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//$data = $this->contractorratepatientmdl->getPatientsByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+		
+    $data = $this->patientcontractormdl->getByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'), true, "last_name");
+    
+    //$data = $this->contractorratepatientmdl->getByContractorAndPatientId($agency_contractor_id, $patient_id);
+    
+		foreach ($data as $patient) {			      
+      //print_r($patient);exit;
+			//$cell = $this->xml->Element("row", "id=" . $patient->bill_factor_id);
+			$cell = $this->xml->Element("row", "id=" . $patient->pat_contractor_id);
+			$cell->append($this->xml->Element("cell", null, $patient->last_name . ", " . $patient->first_name));			   
+			$document->append($cell);			
+		}
+    
+  }
+  
+  function rates_patient($pat_contractor_id){
+    //$agency_contractor = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    //$contractor_id = $this->getAgencyId();  
+    $data = $this->patientcontractormdl->getById($pat_contractor_id);
+		$patient_id = $data->patient_id;   
+    $patient = $this->patientmdl->getById($patient_id);    
+    
+    $us_agy_id = $this->getUsAgyId();
+
+    $this->tpl->assign("no_grid_buttons", true);
+    //$this->tpl->assign('noedit', true);
+    $this->tpl->assign("resource_edit", 'rates_patient_edit');    
+    $this->tpl->assign("resource_grid", "rates_patient_grid");
+    $this->tpl->assign("resource_add", "rates_patient_add");
+    $this->tpl->assign("resource_delete", "rates_patient_delete");
+    $this->tpl->assign("entity_id", $pat_contractor_id.'/'.$us_agy_id);
+    $this->tpl->assign('additional_buttons', array('Add Rate' => 'addRate()', 'Back' => 'history.go(-1)'));
+    
+    $this->assignObject($patient);
+    
+    //$this->tpl->assign('agency_contractor', $agency_contractor);
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/billing/rates_patient_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/billing/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+
+  function rates_patient_grid ($pat_contractor_id=0) {
+    	//$contractor_id = $this->getAgencyId();
+    	// LOAD MODELS
+    	$this->load->model('patientcontractormdl');
+		$this->load->model('contractorratepatientmdl');
+
+    $us_agy_id = $this->getUsAgyId();  
+    $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+    
+    	$data = $this->patientcontractormdl->getById($pat_contractor_id);
+		$patient_id = $data->patient_id;
+    $patient = $this->patientmdl->getById($patient_id); 
+
+		$agency_contractor_id = $data->agency_contractor_id;
+    	$contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+
+    	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=*", "Effective date"));
+		
+		if ($contractor->provides_altern_therapy == 'Y' OR in_array($usAgy->user_tab111_product_id, array(3, 4)) ) {
+			$head->append($this->xml->Element("column", "width=*", "CLASS Rate"));
+			$head->append($this->xml->Element("column", "width=*", "YES-W Rate"));
+			$head->append($this->xml->Element("column", "width=*", "Private Rate"));
+			// $head->append($this->xml->Element("column", "width=*", "Priv Min Rate"));
+		} else {			
+			$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+			$head->append($this->xml->Element("column", "width=*", "PTA or COTA"));
+
+      if ($patient->gov_program == 'Waiver') {
+        $head->append($this->xml->Element("column", "width=*", "Waiver Rate"));
+      }
+		}
+
+		$head->append($this->xml->Element("column", "width=*", "Modified By"));
+		$head->append($this->xml->Element("column", "width=*", "Date / Time"));
+		//$head->append($this->xml->Element("column", "width=*", "Actions"));
+	    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+	    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//if ($this->input->post('agency_type') == 'A')
+		$data = $this->contractorratepatientmdl->getByContractorAndPatientId($agency_contractor_id, $patient_id);
+		/*else
+			$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+		
+		foreach ($data as $rate) {			
+      //print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $rate->contractor_patient_rate_id);
+			$cell->append($this->xml->Element("cell", null, $rate->visit_description));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->rate_effective_date, 'MYSQL_NOTIME'))));
+
+			if ($contractor->provides_altern_therapy == "Y"  OR in_array($usAgy->user_tab111_product_id, array(3, 4)) ) {
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->class_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->yes_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->private_rate));
+				// $cell->append($this->xml->Element("cell", null, '$'.$rate->private_rate_min));
+			} else {
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->company_rate));
+				$cell->append($this->xml->Element("cell", null, '$'.$rate->PTA_or_COTA_rate));
+        if ($patient->gov_program == 'Waiver') {
+          $cell->append($this->xml->Element("cell", null, '$'.$rate->waiver_rate));
+        }
+			}
+
+			$cell->append($this->xml->Element("cell", null, $rate->first_name.' '.$rate->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->modify_date)).' '.date("g:i a", strtotime($rate->modify_date))));
+			//$cell->append($this->xml->Element("cell", null, $rate->fax));
+      
+      		$cell->append($this->xml->Element("cell", null, "Edit^javascript:editRate(" . $rate->contractor_patient_rate_id . ")"));
+      
+      		$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteRate(" . $rate->contractor_patient_rate_id . ")"));
+      
+			$document->append($cell);
+			
+		}
+    
+  }
+  
+  function rates_patient_add ( $pat_contractor_id=0, $us_agy_id=null ) {
+		
+    	//$contractor_id = $this->getAgencyId();
+    	// LOAD MODELS
+    	$this->load->model('patientcontractormdl');
+		$this->load->model('contractorratepatientmdl');
+    
+    	$data = $this->patientcontractormdl->getById($pat_contractor_id);
+		$patient_id = $data->patient_id;
+    $patient = $this->patientmdl->getById($patient_id); 
+		$agency_contractor_id = $data->agency_contractor_id;
+    	$contractor = $this->agencymdl->getByAgencyId($data->contractor_id);
+
+    	$rules = array (
+      		'visit_type_id'  	=> 'required',
+      		// 'company_rate'  	=> 'required',
+      		'rate_effective_date'  	=> 'required'
+      	);
+  
+    	$fields = array (
+      		'visit_type_id'  	=> 'Visit Type',
+      		// 'company_rate'  	=> 'Visit Rate',
+      		'rate_effective_date'  	=> 'Effective Date'
+      	);
+
+		if ($contractor->provides_altern_therapy == 'Y') {
+			if (!$this->input->post('class_rate') AND !$this->input->post('yes_rate') AND !$this->input->post('private_rate')) {    		
+	    		$rules['class_rate'] = 'required';
+	    		$fields['class_rate'] = 'CLASS/YES-W/Private Rate';
+	    	} 
+
+    		/*$rules['class_rate'] = 'required';
+			$rules['yes_rate'] = 'required';
+			$rules['private_rate'] = 'required';
+			// $rules['private_rate_min'] = 'required';
+
+			$fields['class_rate'] = 'CLASS Rate';
+			$fields['yes_rate'] = 'YES-W Rate';
+			$fields['private_rate'] = 'Private Rate';
+			// $fields['private_rate_min'] = 'Private Min Rate';*/
+        }else {
+        	$rules['company_rate'] = 'required';
+        	$fields['company_rate'] = 'Visit Rate';
+        }
+
+    	if($this->input->post('visit_type_id')==12){      
+      		$rules['PTA_or_COTA_rate'] = 'required';
+      		$fields['PTA_or_COTA_rate'] = 'PTA Visit Rate';
+    	}else if($this->input->post('visit_type_id')==42){      
+      		$rules['PTA_or_COTA_rate'] = 'required';
+      		$fields['PTA_or_COTA_rate'] = 'COTA Visit Rate';
+    	} 
+    
+    if ($patient->gov_program == 'Waiver') {
+      $rules['waiver_rate'] = 'required';
+      $fields['waiver_rate'] = 'Waiver Rate';
+      $this->tpl->assign('LOB', 2);
+    }
+
+    	$this->validation->set_fields($fields);  
+    	$this->validation->set_rules($rules);	
+      
+      /* 
+		$this->validation->set_rules(array ('visit_type_id'	=> 'required',
+						'company_rate'  	=> 'required',
+						'rate_effective_date' 	=> 'required')); */
+		
+            
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign('pat_contractor_id', $pat_contractor_id);
+
+      $LOB = null;
+      if ($us_agy_id) {
+        $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+        if (isset($usAgy->user_tab111_product_id)) {
+          $LOB = $usAgy->user_tab111_product_id;
+        }
+      }
+
+			$this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, $contractor->provides_altern_therapy, $contractor->agency_id, $LOB));
+
+      		$this->tpl->assign('provides_altern_therapy', $contractor->provides_altern_therapy);
+      
+			$this->tpl->assign_include("dynamic_tpl", "contractor/billing/add_patient_rate_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			$this->assignPostData($this->contractorratepatientmdl);
+	      	$this->contractorratepatientmdl->patient_id=$patient_id;
+	      	$this->contractorratepatientmdl->modify_user_id=$this->getUserId();
+	      	$this->contractorratepatientmdl->modify_date=date('Y-m-d H:i:s');
+	      	$this->contractorratepatientmdl->insert($agency_contractor_id);
+      
+			echo "<SCRIPT>parent.loadGrid(); parent.dhxWins.unload();</SCRIPT>";			
+		}		
+	}
+  
+  function rates_patient_edit ( $contractor_rate_id ) {
+    $this->load->model('contractorratepatientmdl');
+
+  	$rate = $this->contractorratepatientmdl->getById($contractor_rate_id);
+
+    $patient_id = $rate->patient_id;
+    $patient = $this->patientmdl->getById($patient_id); 
+
+  	$agency_contractor = $this->agencycontractormdl->getByAgencyContractorId($rate->agency_contractor_id);
+	$contractor_id = $agency_contractor->contractor_id;
+	$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+
+    
+    $this->tpl->assign("contractor_rate_id", $contractor_rate_id);
+		
+    $rules = array (
+      //'visit_type_id'  	=> 'required',
+      // 'company_rate'  	=> 'required',
+      'rate_effective_date'  	=> 'required'
+      );
+  
+    $fields = array (
+      //'visit_type_id'  	=> 'Visit Type',
+      // 'company_rate'  	=> 'Visit Rate',
+      'rate_effective_date'  	=> 'Effective Date'
+      );
+        
+    if ($contractor->provides_altern_therapy == 'Y') {
+    	if (!$this->input->post('class_rate') AND !$this->input->post('yes_rate') AND !$this->input->post('private_rate')) {    		
+    		$rules['class_rate'] = 'required';
+    		$fields['class_rate'] = 'CLASS/YES-W/Private Rate';
+    	} 
+    	
+    	/*$rules['class_rate'] = 'required';
+		$rules['yes_rate'] = 'required';
+		$rules['private_rate'] = 'required';
+		// $rules['private_rate_min'] = 'required';
+
+		$fields['class_rate'] = 'CLASS Rate';
+		$fields['yes_rate'] = 'YES-W Rate';
+		$fields['private_rate'] = 'Private Rate';
+		// $fields['private_rate_min'] = 'Private Min Rate';*/
+    }else {
+    	$rules['company_rate'] = 'required';
+    	$fields['company_rate'] = 'Visit Rate';
+    }
+
+    if($this->input->post('visit_type_id')==12){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'PTA Visit Rate';
+    }else if($this->input->post('visit_type_id')==42){      
+      $rules['PTA_or_COTA_rate'] = 'required';
+      $fields['PTA_or_COTA_rate'] = 'COTA Visit Rate';
+    } 
+    
+    if ($patient->gov_program == 'Waiver') {
+      $rules['waiver_rate'] = 'required';
+      $fields['waiver_rate'] = 'Waiver Rate';
+      $this->tpl->assign('LOB', 2);
+    }
+
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules);	
+    /* 
+    $this->validation->set_rules(array ('company_rate'  	=> 'required',
+						'rate_effective_date' 	=> 'required')); */
+		
+		//$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->assignObject($rate);
+			$this->tpl->assign('provides_altern_therapy', $contractor->provides_altern_therapy);
+
+      		$this->tpl->assign_include("dynamic_tpl", "contractor/billing/edit_patient_rate_form");
+			//$this->tpl->assign_include("dynamic_tpl", "payroll/generate/detail_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+    
+			$this->assignPostData($this->contractorratepatientmdl);      
+			if ($contractor->provides_altern_therapy == 'Y') {
+				$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'class_rate', $this->input->post('class_rate'));
+				$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'yes_rate', $this->input->post('yes_rate'));
+				$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'private_rate', $this->input->post('private_rate'));
+				// $this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'private_rate_min', $this->input->post('private_rate_min'));		    	
+			} else {				
+				$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'company_rate', $this->input->post('company_rate'));
+				$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'PTA_or_COTA_rate', $this->input->post('PTA_or_COTA_rate'));
+
+        if ($patient->gov_program == 'Waiver') {
+          $this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'waiver_rate', $this->input->post('waiver_rate'));
+        }
+			}
+
+			$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'rate_effective_date', $this->contractorratepatientmdl->rate_effective_date);
+			
+      		$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'modify_user_id', $this->getUserId());
+      		$this->contractorratepatientmdl->updateFlex($contractor_rate_id, 'modify_date', date('Y-m-d H:i:s'));
+      
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+			
+		}
+		
+    
+	}
+  
+  function rates_patient_delete($contractor_rate_id ) {		
+    $this->load->model('contractorratepatientmdl');
+    
+    $document = $this->xml->Document();
+		$rate = $this->contractorratepatientmdl->getById($contractor_rate_id);    
+		
+    if($rate != null){
+      if ($this->hasPatientAccess($rate->patient_id)) {
+        $this->contractorratepatientmdl->delete($contractor_rate_id);
+        $document->append($this->xml->Element('js', 'script=loadGrid()', null));
+      }else{
+        $document->append($this->xml->Element('alert', null, "You are not the contractor to delete this!"));
+        return;
+      }
+    }else {
+			
+			$document->append($this->xml->Element('alert', null, "Contractor rate not found!"));
+			return;
+			
+		}
+    
+  }
+  
+    
+	function rates_add_tmp () {
+		
+		//$this->tpl->assign('faction', 'add');
+		
+		$rules = array ('agency_name'	=> 'required',
+						'first_name'  	=> 'required',
+						'user_email' 	=> 'required|valid_email',
+						'email_confirm' => 'required|matches[user_email]');
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign('form_title', 'Add Prospect');
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "prospecto/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			// inserting agency
+			$this->assignPostData($this->agencymdl);
+			$this->agencymdl->agency_type = 'P';
+			$this->agencymdl->agency_parent_id = $this->getAgencyId();
+			$this->agencymdl->insert();
+			
+			// inserting logged user to prospect
+			$user = $this->usermdl->getById($this->getUserId());
+			
+			// agency setting
+			$this->agencysettingsmdl->sn_approver = $this->usagymdl->us_agy_id;
+			$this->agencysettingsmdl->pt_approver = $this->usagymdl->us_agy_id;
+			$this->agencysettingsmdl->insert($this->agencymdl->agency_id);
+
+			$this->usagymdl->first_name = $user->first_name;
+			$this->usagymdl->last_name = $user->last_name;
+			$this->usagymdl->middle_initial = $user->middle_initial;
+			$this->usagymdl->user_email = $user->user_email;
+			$this->usagymdl->agency_id = $this->agencymdl->agency_id;
+			$this->usagymdl->user_id = $user->user_id;
+			$this->usagymdl->profile_id = 1;
+			$this->usagymdl->insert();
+
+			// assiging all permissions to logged user (manager)
+			foreach ($this->permissionmdl->getAll() as $permission) {
+				$this->usagypermissionmdl->insert($this->usagymdl->us_agy_id, $permission->permission_id);
+			}
+			
+			$this->usagymdl->us_agy_id = NULL;
+
+			// inserting user
+			$this->assignPostData($this->usermdl);
+			$this->usermdl->insert();
+			
+			// inserting user agency
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->agency_id = $this->agencymdl->agency_id;
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->profile_id = 1;
+			$this->usagymdl->insert();
+			
+			// inserting agency contractor
+			$this->agencycontractormdl->contractor_id = $this->getAgencyId();
+			$this->agencycontractormdl->insert($this->agencymdl->agency_id);
+
+			// assiging all permissions to first user (manager)
+			foreach ($this->permissionmdl->getAll() as $permission) {
+				$this->usagypermissionmdl->insert($this->usagymdl->us_agy_id, $permission->permission_id);
+			}
+			
+			// sending user acces information
+			$pass = passgen();
+			$emailtext = $this->emailtextmdl->get(3);
+			
+			$body = str_replace('{user_id}', $this->usermdl->user_email, $emailtext->email_content);
+			$body = str_replace('{user_password}', $pass, $body);
+			$body = str_replace('{app_url}', $this->config->site_url(), $body);
+			
+			$this->load->library('email');
+			$this->email->from('support@homehealthsoft.com', 'HHS Support');
+			$this->email->to($this->usermdl->user_email); 
+			$this->email->subject($emailtext->email_subject);
+			$this->email->message($body);	
+			$this->email->send();
+			
+			// sending user->agency message
+			$emailtext = $this->emailtextmdl->get(4);
+			$agency = $this->agencymdl->getByAgencyId($this->agencymdl->agency_id);
+			
+			$body = str_replace('{user_first_name}', $this->usagymdl->first_name, $emailtext->email_content);
+			$body = str_replace('{agency_name}', $agency->agency_name, $body);
+			
+			$this->load->library('email');
+			$this->email->from('support@homehealthsoft.com', 'HHS Support');
+			$this->email->to($this->usagymdl->user_email); 
+			$this->email->subject($emailtext->email_subject);
+			$this->email->message($body);	
+			$this->email->send();
+			
+			// output message and return to list
+			$this->tpl->assign('gmessage', $this->agencymdl->agency_name . $this->lang->line('grl_add_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+ }

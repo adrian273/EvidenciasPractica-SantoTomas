@@ -1,0 +1,170 @@
+<?php
+
+include ('admin_controller.php');
+ class Profile extends Admin_Controller {
+
+	function Profile () {
+		
+		parent::Admin_Controller();		
+		$this->tpl->assign("resource_path", "administrator/profile");
+		
+	}
+
+	function index () {
+	
+		$this->tpl->assign("list_title", "Profile List");
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Profile Name"));
+		$head->append($this->xml->Element("column", "width=6;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->profilemdl->get() as $profile) {
+			
+			$cell = $this->xml->Element("row", "id=" . $profile->profile_id);
+			$cell->append($this->xml->Element("cell", null, $profile->profile_id));
+			$cell->append($this->xml->Element("cell", null, $profile->profile_name));
+			$cell->append($this->xml->Element("cell", null, "Menu^" . $this->config->config['index_url'] . "administrator/profile/edit/" . $profile->profile_id));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function edit ( $profile_id ) {
+		
+		$profile = $this->profilemdl->getById($profile_id);
+		
+		$this->tpl->assign('group_list', $this->profilegroupmdl->getDisponibleByProfile($profile_id));
+		$this->tpl->assign("list_title", "Group List");
+		$this->tpl->assign("grid_buttons", "false");
+		$this->tpl->assign(array("profile_id" => $profile_id, "profile_name" => $profile->profile_name));
+		
+		$this->tpl->assign_include("dynamic_tpl", "administrator/profile/group_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function addmenu ( $profile_id, $group_id ) {
+		
+		$this->profilegroupmdl->insert($profile_id, $group_id);
+		$this->edit($profile_id);
+		
+	}
+	
+	function deletemenu ( $profile_id, $profile_group_id ) {
+		
+		$this->profilegroupmdl->delete($profile_group_id);
+		$this->edit($profile_id);
+		
+	}
+	
+	function groupGrid ( $profile_id ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Group Name"));
+		$head->append($this->xml->Element("column", "width=10;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("column", "width=6;align=center;type=linkc", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->profilegroupmdl->getByProfile($profile_id) as $group) {
+			
+			$cell = $this->xml->Element("row", "id=" . $group->profile_group_id);
+			$cell->append($this->xml->Element("cell", null, $group->profile_group_id));
+			$cell->append($this->xml->Element("cell", null, $group->group_name));
+			$cell->append($this->xml->Element("cell", null, "Applications^" . $this->config->config['index_url'] . "administrator/profile/editmenu/" . $group->profile_group_id));
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "administrator/profile/deletemenu/" . $profile_id . "/" . $group->profile_group_id . "^Are you sure to delete this menu?"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function editmenu ( $profile_group_id ) {
+		
+		$profilegroup = $this->profilegroupmdl->getById($profile_group_id);
+		
+		$this->tpl->assign('application_list', $this->profilegroupappmdl->getDisponibleByProfieGroup($profile_group_id));
+		$this->tpl->assign("list_title", "Application List");
+		$this->tpl->assign("grid_buttons", "false");
+		$this->tpl->assign(array("profile_id" 		=> $profilegroup->profile_id,
+								 "profile_group_id" => $profile_group_id, 
+								 "profile_name"     => $profilegroup->profile_name, 
+								 "group_name" 		=> $profilegroup->group_name));
+		
+		$this->tpl->assign_include("dynamic_tpl", "administrator/profile/app_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function applicationGrid ( $profile_group_id ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Application Name"));
+		$head->append($this->xml->Element("column", "width=10;align=center;type=linkc", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->profilegroupappmdl->getByProfileGroup($profile_group_id) as $application) {
+			
+			$cell = $this->xml->Element("row", "id=" . $application->profile_group_applica_id);
+			$cell->append($this->xml->Element("cell", null, $application->profile_group_applica_id));
+			$cell->append($this->xml->Element("cell", null, $application->application_name));
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "administrator/profile/deleteapplication/" . $profile_group_id . "/" . $application->profile_group_applica_id . "^Are you sure to delete this application?"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function applicationReorder ( $appplication_ids ) {
+		
+		$appplication_ids = explode(",", $appplication_ids);
+		
+		foreach ($appplication_ids as $sequence => $profile_group_applica_id) {
+			
+			$this->profilegroupappmdl->updateSequence($profile_group_applica_id, $sequence);
+			
+		}
+		
+		$document = $this->xml->Document();
+		
+	}
+	
+	function addapplication ( $profile_group_id, $application_id ) {
+		
+		$sequence = count($this->profilegroupappmdl->getByProfileGroup($profile_group_id));
+		$this->profilegroupappmdl->insert($profile_group_id, $application_id, $sequence);
+		$this->editmenu($profile_group_id);
+		
+	}
+	
+	function deleteapplication ( $profile_group_id, $profile_group_applica_id ) {
+		
+		$this->profilegroupappmdl->delete($profile_group_applica_id);
+		$this->editmenu($profile_group_id);
+		
+	}
+	
+ }

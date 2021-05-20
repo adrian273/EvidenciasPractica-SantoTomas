@@ -1,0 +1,42 @@
+<h1 style="text-align: center;">Payroll Report</h1>
+<a class="print" href="javascript://" onclick="window.print();" style="position: fixed; right: 80px; top: 50px;">Print</a>
+<a class="print" href="javascript://" onclick="history.go(-1)" style="position: fixed; right: 20px; top: 50px;">Back</a>
+{literal}
+<style type="text/css">
+	td,th{font-size: 18px;}
+</style>
+<style type="text/css" media="print">
+	a.print, button{display: none;}
+</style>
+{/literal}
+
+<table align="left">
+	<tr>
+		<td width="170"><b>Process Date :</b></td>
+		<td>{$payroll_batch_process_date|date_format:"%m-%d-%Y":""}</td>
+	</tr>
+	<tr>
+		<td width="170"><b>Period From-Thru :</b></td>
+		<td>{$payroll_batch_process_period_from|date_format:"%m-%d-%Y":""} - {$payroll_batch_process_period_end|date_format:"%m-%d-%Y":""}</td>
+	</tr>
+</table>
+<br>
+<br>
+<br>
+<br>
+<table align="left" width="100%" style="text-align: left;">
+	<tr bgcolor="#cccccc">
+		<th bgcolor="#cccccc">USER</th>
+		<th bgcolor="#cccccc">Nbr Payable Visits</th>
+		<th bgcolor="#cccccc">Check Amount</th>
+		<th bgcolor="#cccccc">Status</th>
+	</tr>
+	{foreach item=payroll from=$rows}
+	<tr>
+		<td>{if $payroll->legal_name neq ''}{$payroll->legal_name} - {/if} {$payroll->last_name} {$payroll->first_name} ({$payroll->short_description})  </td>
+		<td>{$payroll->visit_count}</td>
+		<td>{$payroll->check_amount}</td>
+		<td>{if $payroll->payment_status eq 'paid'}Paid{else}Not Paid{/if}</td>
+	</tr>
+	{/foreach}
+</table>

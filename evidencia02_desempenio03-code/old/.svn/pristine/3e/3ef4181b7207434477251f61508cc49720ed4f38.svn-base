@@ -1,0 +1,49 @@
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/editVDO/{$visit_log_id}">
+ 	<input type="hidden" name="visit_log_id" value="{$visit_log_id}" />
+  <tr>
+  	<td colspan="2">
+		
+		<div style="width: 150px; float: left">Obtained Verbal Order?</div>
+		<div style="float: left">
+				<label><input name="verbal_doctor_order" value="1" {if $verbal_doctor_order neq '0' AND $verbal_doctor_order neq '2' }checked="checked"{/if} type="radio" onclick="VDOchange(this.value)">Yes</label>
+				<label><input name="verbal_doctor_order" value="0" {if $verbal_doctor_order eq '0'}checked="checked"{/if} type="radio" onclick="VDOchange(this.value)">No</label>
+				<label><input name="verbal_doctor_order" value="2" {if $verbal_doctor_order eq '2'}checked="checked"{/if} type="radio" onclick="VDOchange(this.value)">No Needed</label>
+		</div>
+		<div style="clear:both;"></div><br />
+		<div {if $verbal_doctor_order neq '0' AND $verbal_doctor_order neq '2' }{else}style="display:none;"{/if} id="vdo_date">
+			Obtained Order Date 
+	    <input type="text" id="verbal_doctor_order_date" name="verbal_doctor_order_date" value="{if $verbal_doctor_order_date}{$verbal_doctor_order_date|date_format:"%m-%d-%Y":"":true}{else}{$visit_date_time}{/if}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('verbal_doctor_order_date'), document.getElementById('fecha_help'));return false;" >
+		</div><br />
+		<div>
+			V. DO. Comments<br>
+			<textarea name="verbal_doctor_order_comments" cols="45" rows="3" wrap="auto" maxlength="220">{$verbal_doctor_order_comments}</textarea>
+		</div>
+		<br />  	</td>
+  </tr>		
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+
+<script>
+{literal}
+	function VDOchange(vdo){
+		if(vdo==1){
+			document.getElementById('vdo_date').style.display="";
+		}else{
+			document.getElementById('vdo_date').style.display="none";
+		}
+	}
+{/literal}
+</script>

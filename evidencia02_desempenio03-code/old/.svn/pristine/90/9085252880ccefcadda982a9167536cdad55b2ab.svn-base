@@ -1,0 +1,92 @@
+<?
+
+ class Credential extends MY_Controller {
+  var $rules = array ('tab_086_credential_type'	=> 'required',
+						'expiration_date'			=> 'required');
+
+	function Credential () {
+		parent::MY_Controller();
+		$this->load->model('us1usercredentialsmdl');		
+		$this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+		$this->tpl->assign("resource_path", "agencyprofile/credential");
+		$this->tpl->assign('tab_page', true);
+		//$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+	}
+
+	function index ( $agency_id=null ) {
+
+    if(is_null($agency_id))
+    $agency_id = $this->getAgencyId();
+    
+    
+		$this->tpl->assign("add_sufix", "Credential");
+		if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid ( $agency_id=null ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=15", "User Name"));
+		$head->append($this->xml->Element("column", "width=15", "Credential Type"));
+		$head->append($this->xml->Element("column", "width=15", "Credential Id"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Expiration Date"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Days Left"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Attachment"));
+		$head->append($this->xml->Element("column", "width=*", "Notes"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->us1usercredentialsmdl->getByAgencyId((is_null($agency_id) ? $this->getAgencyId()  : $agency_id)) as $credential) {
+			if($credential->expiration_days_left > $credential->alert_days)
+		      continue;
+      
+			$cell = $this->xml->Element("row", "id=" . $credential->user_credential_id);
+			$cell->append($this->xml->Element("cell", null, $credential->first_name . " " . $credential->last_name));
+			$cell->append($this->xml->Element("cell", null, $credential->tab_description));
+			$cell->append($this->xml->Element("cell", null, $credential->credential_id));
+			$cell->append($this->xml->Element("cell", null, (!is_null($credential->expiration_date)) ? standard_date(mysql_to_unix($credential->expiration_date)) : null));
+			$cell->append($this->xml->Element("cell", null, $credential->expiration_days_left));
+			
+			if($credential->attachment_id > 0 AND $credential->attachment!=""){
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<a href="'.base_url().'datastore/credential/'.$credential->attachment.'" target="_blank" title="View credential">View credential</a>')));
+			}else{
+				$cell->append($this->xml->Element("cell", null, ''));
+			}
+      
+			if($credential->notes!="")
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<img src="'.base_url().'style/images/icon_note.jpg" title="'.$credential->notes.'" alt="'.$credential->notes.'" />')));
+			else
+				$cell->append($this->xml->Element("cell", null, ''));      
+			
+			$document->append($cell);			
+		}
+		
+	}
+	
+  function edit ( $us_agy_id, $user_credential_id ) {		
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign('record_id', $user_credential_id);
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('no_commit_form', true);
+		
+	    $row = $this->us1usercredentialsmdl->getByCredentialId($user_credential_id);
+	    // $us_agy_id = $row->us_agy_id;
+	    // $this->tpl->assign("us_agy_id", $us_agy_id);
+        
+		$this->assignObject($row);
+	
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+		// $this->tpl->assign_include("dynamic_form", "useragency/credential_form");
+		$this->tpl->assign_include("dynamic_form", "account/credential_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	
+ }

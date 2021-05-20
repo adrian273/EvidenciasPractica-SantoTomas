@@ -1,0 +1,279 @@
+<?php
+
+include ('admin_controller.php');
+ class Maintenance extends Admin_Controller {
+
+	function Maintenance () {
+		
+		parent::Admin_Controller();		
+		$this->tpl->assign("resource_path", "administrator/maintenance");
+		
+	}
+
+  function index(){
+    $this->tpl->assign("form_title", "Maintenance List");
+		$this->tpl->assign_include("dynamic_tpl", "administrator/maintenance/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+  }
+  
+  function updates(){
+    //$this->tpl->assign("no_grid_buttons", true);
+    //$this->tpl->assign('noedit', true);
+    $this->tpl->assign("resource_edit", 'updates_edit');    
+    $this->tpl->assign("resource_grid", "updates_grid");
+    $this->tpl->assign("resource_add", "updates_add");
+    $this->tpl->assign("resource_delete", "updates_delete");
+    
+    //$this->tpl->assign("list_title", "Software Update List");
+		//$this->tpl->assign_include("filter_tpl", "administrator/maintenance/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function working(){
+    //$this->tpl->assign("no_grid_buttons", true);
+    //$this->tpl->assign('noedit', true);
+    $this->tpl->assign("resource_edit", 'working_edit');    
+    $this->tpl->assign("resource_grid", "working_grid");
+    $this->tpl->assign("resource_add", "working_add");
+    $this->tpl->assign("resource_delete", "working_delete");
+    
+    //$this->tpl->assign("list_title", "Working On List");
+		//$this->tpl->assign_include("filter_tpl", "administrator/maintenance/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+	
+	function updates_grid () {
+		
+		//$maintenance_types = $this->lang->line('maintenance_type_list');
+		//$status		  = $this->lang->line('maintenance_status_list');
+		$this->load->model('maintenancemdl');
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		//$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=10", "Date Released"));
+		$head->append($this->xml->Element("column", "width=*", "Description"));		
+		$head->append($this->xml->Element("column", "width=6;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->maintenancemdl->getSoftwareUpdates($this->input->post('keyword'), $this->input->post('search_type')) as $maintenance) {
+			
+			$cell = $this->xml->Element("row", "id=" . $maintenance->maintenance_id);
+			//$cell->append($this->xml->Element("cell", null, $maintenance->maintenance_id));			
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($maintenance->released_date))));
+			$cell->append($this->xml->Element("cell", null, $maintenance->details));
+			$cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "administrator/maintenance/updates_edit/" . $maintenance->maintenance_id));
+			$document->append($cell);			
+		}
+		
+	}
+  
+  function working_grid () {		
+		//$maintenance_types = $this->lang->line('maintenance_type_list');
+		//$status		  = $this->lang->line('maintenance_status_list');
+		$this->load->model('maintenancemdl');
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		//$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=10", "Expected Date"));
+		$head->append($this->xml->Element("column", "width=*", "Description"));		
+		$head->append($this->xml->Element("column", "width=6;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->maintenancemdl->getWorkingUpdates($this->input->post('keyword'), $this->input->post('search_type')) as $maintenance) {
+			
+			$cell = $this->xml->Element("row", "id=" . $maintenance->maintenance_id);
+			//$cell->append($this->xml->Element("cell", null, $maintenance->maintenance_id));			
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($maintenance->expected_date))));
+			$cell->append($this->xml->Element("cell", null, $maintenance->details));
+			$cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "administrator/maintenance/updates_edit/" . $maintenance->maintenance_id));
+			$document->append($cell);			
+		}
+		
+	}
+	
+	function updates_add () {
+    $this->tpl->assign("cancel_url", "administrator/maintenance/updates");
+    $this->tpl->assign("resource_index", "updates");
+    
+		$this->tpl->assign('no_delete_form', true);
+		$this->tpl->assign('faction', 'updates_add');
+		//$this->tpl->assign('maintenance_types_list', array_splice($this->lang->line('maintenance_type_list'), 0, 2));
+		
+		$rules = array ('released_date'	=> 'required',
+						'details'	=> 'required'
+						);
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Maintenance : Add new updates/release");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/maintenance/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+      $this->load->model('maintenancemdl');
+      
+			$this->assignPostData($this->maintenancemdl);			
+			$this->maintenancemdl->type = "updates";
+			$this->maintenancemdl->insert();
+			
+			// output message and return to list
+			$this->tpl->assign('gmessage', "A new updates/release" . $this->lang->line('grl_add_msg'));
+			
+			$this->updates();
+			
+		}
+		
+	}
+	
+	function updates_edit ( $maintenance_id ) {
+    $this->load->model('maintenancemdl');
+    
+    $this->tpl->assign("cancel_url", "administrator/maintenance/updates");
+    $this->tpl->assign("resource_index", "updates");
+    $this->tpl->assign("resource_delete", "updates_delete");
+      
+		$this->tpl->assign('faction', 'updates_edit');
+		$this->tpl->assign('record_id', $maintenance_id);
+		
+		$this->assignObject($this->maintenancemdl->getById($maintenance_id));
+		
+		$rules = array ('released_date'	=> 'required',
+						'details'	=> 'required'
+						);
+			
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Maintenance : Edit updates/release");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/maintenance/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->maintenancemdl);
+      $this->maintenancemdl->type = "updates";
+			$this->maintenancemdl->update($maintenance_id);
+			
+			$this->tpl->assign('gmessage', "Software updates" . $this->lang->line('grl_upd_msg'));
+			
+			$this->updates();
+			
+		}
+		
+	}
+	
+	function updates_delete ( $maintenance_id ) {
+		$this->load->model('maintenancemdl');
+		$maintenance = $this->maintenancemdl->getById($maintenance_id);
+		
+		$this->maintenancemdl->delete($maintenance_id);
+		
+		$this->tpl->assign('gmessage', "An Update/release" . $this->lang->line('grl_del_msg'));
+		$this->updates();
+		
+	}
+
+
+	function working_add () {
+    $this->tpl->assign("cancel_url", "administrator/maintenance/working");
+    $this->tpl->assign("resource_index", "working");
+    
+		$this->tpl->assign('no_delete_form', true);
+		$this->tpl->assign('faction', 'working_add');
+		//$this->tpl->assign('maintenance_types_list', array_splice($this->lang->line('maintenance_type_list'), 0, 2));
+		
+		$rules = array ('expected_date'	=> 'required',
+						'details'	=> 'required'
+						);
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Maintenance : Add new Working on record");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/maintenance/add_form_working");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+      $this->load->model('maintenancemdl');
+      
+			$this->assignPostData($this->maintenancemdl);			
+			$this->maintenancemdl->type = "working";
+			$this->maintenancemdl->insert();
+			
+			// output message and return to list
+			$this->tpl->assign('gmessage', "A new Working on record " . $this->lang->line('grl_add_msg'));
+			
+			$this->working();
+			
+		}
+		
+	}
+	
+	function working_edit ( $maintenance_id ) {
+    $this->load->model('maintenancemdl');
+    
+    $this->tpl->assign("cancel_url", "administrator/maintenance/working");
+    $this->tpl->assign("resource_index", "working");
+    $this->tpl->assign("resource_delete", "working_delete");
+    
+		$this->tpl->assign('faction', 'working_edit');
+		$this->tpl->assign('record_id', $maintenance_id);
+		
+		$this->assignObject($this->maintenancemdl->getById($maintenance_id));
+		
+		$rules = array ('expected_date'	=> 'required',
+						'details'	=> 'required'
+						);
+			
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Maintenance : Edit Working on");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/maintenance/edit_form_working");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->maintenancemdl);
+      $this->maintenancemdl->type = "working";
+			$this->maintenancemdl->update($maintenance_id);
+			
+			$this->tpl->assign('gmessage', "Working on record" . $this->lang->line('grl_upd_msg'));
+			
+			$this->working();
+			
+		}
+		
+	}
+	
+	function working_delete ( $maintenance_id ) {
+		$this->load->model('maintenancemdl');
+		$maintenance = $this->maintenancemdl->getById($maintenance_id);
+		
+		$this->maintenancemdl->delete($maintenance_id);
+		
+		$this->tpl->assign('gmessage', "A Working on record" . $this->lang->line('grl_del_msg'));
+		$this->working();
+		
+	}
+	
+ }

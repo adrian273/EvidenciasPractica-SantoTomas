@@ -1,0 +1,18 @@
+<?
+
+ class Front extends MY_Controller {
+	function Front () {
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "doctorder/front");
+	}
+	function index () {
+		/*if (!($this->getUserProfileId() == 1 || $this->getUserProfileId() == 2)) {
+			$this->tpl->assign('manage_tab', true);
+		}*/
+		if ($this->getUserId() == '2') {
+			$this->tpl->assign('manage_tab', true);
+		}
+		$this->tpl->assign_include("dynamic_tpl", "doctorder/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}	
+ }

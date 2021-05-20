@@ -1,0 +1,323 @@
+{literal}
+<style type="text/css">
+    #soc_select{width: 220px;}
+    #a_tabbar {width: 100%;}
+    @media only screen and (device-width: 768px) {
+      /* For general iPad layouts */
+      #soc_select{width: 140px;}
+      #a_tabbar {width: 768px;}
+    }
+</style>
+{/literal}
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center">
+  <tr>
+    <td valign="top" nowrap class="title">
+    	<div style="float: left;color:green">
+    		<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom;"> <span style="font-size: 12px;color:black">Patient Name:</span> {$patient_name} &nbsp;&nbsp;&nbsp;&nbsp; 
+            {if $pt_back_url}
+                [<a href="{$index_url}{$pt_back_url}">Back</a>]
+            {else}
+                [<a href="javascript://" onclick="history.go(-1)">Back</a>]
+            {/if}
+    	</div>
+    	{if $agency}
+	    	<div style="float: right"><a href="javascript:showagencyinfo()">
+	    		<span style="font-size: 12px">{if $agency->agency_type == 'A'}Agency{else}Prospect{/if}:</span> 
+	    		{$agency->agency_name}
+	    	</a></div>
+	    {/if}
+    </td>
+    <td nowrap class="btitle" align="right" valign="bottom">
+    	<!--
+    	<a style="font-size: 11px" href="javascript:void()">
+    	Patient Overview</a>  <img valign="top" name="edit_pat_btn" src="{$image_url}icon_executable.png" border=0>
+    	-->
+    </td>
+  </tr>
+  {if $create_new_soc neq "Y"}
+  <tr> 
+    <td height="40" colspan="2">
+    
+		<table border="0" cellpadding="0" cellspacing="0" width="100%">
+		  <tr>
+		    <td class="ftitle" nowrap style="width: 40px">SOC:</td>
+		    <td id="soc_text" nowrap width="90">
+		    	{$current_soc_date|date_format}
+		    </td>
+		    <td id="soc_select" style="display: none">
+		    	<select onchange="document.location = '{$index_url}patient/mypatient/selectBySocId/' + this.value">
+		    		{foreach from=$soc_list item=soc}
+		    			<option value="{$soc->soc_id}" {if $soc_id == $soc->soc_id}selected{/if}>{$soc->estimated_soc_date|date_format}</option>
+		    		{/foreach}
+		    	</select>
+  				{if $change_soc_date && $lock_soc == 1}
+  					<a href="javascript:changeSocDate()">Modify SOC Date</a>
+  				{/if}
+		    </td>
+		    
+		    <td class="ftitle" style="width: 40px">Cert: </td>
+		    <td id="cert_text" nowrap width="260">From: {$episode_start_date|date_format}&nbsp;&nbsp;&nbsp;&nbsp;To: {$episode_end_date|date_format}</td>
+		    <td id="cert_select" style="display: none" width="260">
+		    	<select onchange="document.location = '{$index_url}patient/mypatient/edit/{$patient_id}/' + this.value+'/b7'">
+		    		{foreach from=$episode_list item=episode}
+		    			<option value="{$episode->cms485_id}" {if $cms485_id == $episode->cms485_id}selected{/if}>
+		    				From: {$episode->episode_start_date|date_format}&nbsp;&nbsp;&nbsp;&nbsp;To: {$episode->episode_end_date|date_format}
+		    			</option>
+		    		{/foreach}
+		    	</select>
+		    </td>
+		    <td width="65">
+		    	<a style="font-size: 11px" href="javascript:switchDisplay('cancel_ch_cert');switchDisplay('ch_cert');switchDisplay('soc_text');switchDisplay('soc_select');switchDisplay('cert_text');switchDisplay('cert_select');switchDisplay('cert_delete')">
+		    		<span id="ch_cert">Change</span>
+		    		<span id="cancel_ch_cert" style="display: none">cancel</span>
+		    	</a>
+		    </td>
+                        
+            <td width="140">
+                {assign var='episode_num' value=$episode_list|@count}
+                {if $episode_num gt 1}
+                
+                {literal}
+                 <script type="text/javascript">
+                    var sequence = new Array();
+                    var cert_ids = new Array();
+                    var current_patient_id = 0;
+                    var current_view = 0;
+                    var total_episode = 0;
+                    {/literal}
+                    {foreach from=$episode_list item=episode key=key}
+                        {if $cms485_id == $episode->cms485_id}
+                            current_view = {$key};
+                            current_patient_id = {$episode->cms485_id};
+                        {/if}
+                        sequence['{$key}'] = '{$episode->cms485_id}';
+                        cert_ids['{$episode->cms485_id}'] = 'From: {$episode->episode_start_date|date_format}&nbsp;&nbsp;&nbsp;&nbsp;To: {$episode->episode_end_date|date_format}';
+                    {/foreach}
+                    
+                    
+                    
+                    {assign var='episode_last' value=$episode_list|@end}
+                    {if $cms485_id == $episode_last->cms485_id}
+                        switchDisplay('next_cert');
+                        switchDisplay('next_cert_visible');
+                    {/if}
+                    {literal}
+                    function next_cert(){
+                        total_episode = sequence.length;
+                        
+                        if(current_view == 0)
+                        {
+                            switchDisplay('pre_cert');
+                            switchDisplay('pre_cert_visible'); 
+                        }
+                        
+                        current_view++;
+                        $('#cert_text').empty().append(cert_ids[sequence[current_view]]);
+                        
+                        if(current_view == total_episode-1)
+                        {
+                            switchDisplay('next_cert');
+                            switchDisplay('next_cert_visible'); 
+                        }
+                        
+                        document.location = '{/literal}{$index_url}{literal} patient/mypatient/edit/{/literal}{$patient_id}{literal}/' + sequence[current_view]+'/b7';
+                    }
+                    
+                    function pre_cert(){
+                        total_episode = sequence.length; 
+                        if(current_view == total_episode-1) {
+                            switchDisplay('next_cert');
+                            switchDisplay('next_cert_visible');
+                        }
+                        
+                        if(current_view == 1) {
+                            current_view = 0;
+                            $('#cert_text').empty().append(cert_ids[sequence[0]]);
+                            switchDisplay('pre_cert');
+                            switchDisplay('pre_cert_visible');
+                        }
+                        else {
+                            current_view--;
+                            $('#cert_text').empty().append(cert_ids[sequence[current_view]]);
+                        }
+                        document.location = '{/literal}{$index_url}{literal}patient/mypatient/edit/{/literal}{$patient_id}{literal}/' + sequence[current_view]+'/b7';
+                    }
+                 </script>   
+                {/literal}
+                {if $cms485_id == $episode_list[0]->cms485_id}
+                    <a id="pre_cert" style="font-size: 11px;display:none;" href="javascript:pre_cert();">
+                    <span ><< Previous </span></a>
+                    <span style="font-size: 11px;" id="pre_cert_visible"><< Previous </span>
+                {else}
+                    <a id="pre_cert" style="font-size: 11px;" href="javascript:pre_cert();">
+                    <span ><< Previous </span></a>
+                    <span style="font-size: 11px;display: none;" id="pre_cert_visible"><< Previous </span>
+                {/if}
+                
+                {if $cms485_id == $episode_last->cms485_id}
+                    <a id="next_cert" style="font-size: 11px;display:none;" href="javascript:next_cert();">
+                        <span id="next_cert"> Next >>   </span>
+                    </a>
+                    <span id="next_cert_visible" style="font-size: 11px;"> Next >>   </span>
+                {else}
+                    <a id="next_cert" style="font-size: 11px" href="javascript:next_cert();">
+                        <span id="next_cert"> Next >>   </span>
+                    </a>
+                    <span id="next_cert_visible" style="font-size: 11px;display:none;"> Next >>   </span>
+                {/if}
+            {/if}    
+            </td>
+            
+		    <td width="170">
+		    	{if $create_episode}
+		    	<a style="font-size: 11px" href="javascript:createEpisode()">
+		    		Create New Certification
+		    	</a>
+		    	{/if}
+		    </td>
+				
+				<td width="150">
+					{if $visit_logs_count == 0}
+						<a href="javascript:void(0);" id="cert_delete" style="display: none;">Delete Certification</a>
+					{else}
+						<a href="javascript:void();" id="cert_delete"></a>
+					{/if}
+				</td>
+				
+		  </tr>
+		</table>
+    
+    </td>
+  </tr>
+  {/if}
+  <tr> 
+    <td height="100%" valign="top" colspan="2">
+    
+                <div hrefmode="iframes-on-demand" tabstyle="dhx_blue" id="a_tabbar" {if $active_tab}select="{$active_tab}"{/if} class="dhtmlxTabBar" imgpath="{$base_url}style/tab/imgs/" style="height:99.5%;"  skinColors="#FCFBFC,#F4F3EE" >
+                    {if $create_new_soc eq "Y"}
+                        <div id="b2" width="99" name="Agency Intake" href="{$index_url}/patient/referral/index/{$patient_id}/{if $cms485_id}{$cms485_id}{else}0{/if}/{$create_new_soc}"></div>
+                    {else}
+                       	<div id="b1" width="89" name="Patient Info" href="{$index_url}/patient/patient/patientinfo/{$patient_id}/{$cms485_id}"></div>					
+                        <div id="b13" width="89" name="All Patients" href="{$index_url}/patient/patient/all_patients"></div>                   
+    					<div id="b2" width="89" name="Agency Intake" href="{$index_url}/patient/referral/index/{$patient_id}/{if $cms485_id}{$cms485_id}{else}0{/if}/{$create_new_soc}"></div>
+                        <div id="b3" width="105" name="Therapy Referrals" href="{$index_url}/patient/referral/therapy/{$patient_id}/{$cms485_id}"></div>
+    					<div id="b4" width="49" name="Team" href="{$index_url}/patient/teamfront/index/{$patient_id}/{$cms485_id}"></div>
+    					{if $full_tab}
+    						<div id="b5" width="79" name="Plan of Care" href="{$index_url}/patient/plancare/index/{$patient_id}/{$cms485_id}"></div>
+    						{*
+                            <!-- <div id="b6" width="99" name="Doctor Orders" href="{$index_url}/patient/doctororder/index/{$patient_id}"></div> -->
+                            *}
+                            <div id="b12" width="89" name="Doctor Orders" href="{$index_url}/patient/doctorder/index/{$patient_id}/{$cms485_id}"></div>
+    						<div id="b7" width="59" name="Calendar" href="{$index_url}/patient/calendarfront/index/{$patient_id}/{$cms485_id}"></div>
+    						<div id="b8" width="59" name="Visit Log" href="{$index_url}/patient/task/index/{$patient_id}/{$cms485_id}"></div>
+    						<div id="b9" width="75" name="Coord Care" href="{$index_url}/patient/coordcarefront/index/{$patient_id}/{$cms485_id}"></div>
+    						<!-- <div id="b10" width="110" name="Discharge Summary" href="{$index_url}/patient/dischargesummary/index/{$patient_id}"></div> -->
+    						
+                            <!-- <div id="b12" width="120" name="Visit log - save" href="{$index_url}/patient/task/saved/{$patient_id}/{$cms485_id}"></div> -->
+    					{/if}
+                    {/if}
+									
+                </div>
+    
+    </td>
+  </tr>
+</table>
+
+<script language="JavaScript" type="text/javascript">
+
+	$(document).ready(function(){literal}{{/literal}
+		$('#cert_delete').click(function(e){literal}{{/literal}
+			e.preventDefault();
+			var url = '{$index_url}patient/mypatient/delete_certification/{$patient_id}/{$cms485_id}/b7';
+			//alert(url);
+			document.location = url;
+		{literal}}{/literal});
+	{literal}}{/literal});
+	
+	document.body.style.overflow = 'hidden';
+	
+    function showagencyinfo () {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+        
+        var w1 = dhxWins.createWindow("w1", 10, 10, 350, 250);
+        w1.setText("Agency Details");
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').setModal(true);
+        dhxWins.window('w1').center();
+        w1.attachURL("{$index_url}patient/patient/agencydetails/{$patient_id}");
+        
+        dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+            
+            w1.hide();
+            w1.setModal(false);
+            
+        {literal}}{/literal});
+        
+    {literal}}{/literal}
+    	
+    function createEpisode () {literal}{{/literal}
+    
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 250);
+		w1.setText("New Episode");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+        {if $therapy_type eq 'S'}
+        w1.attachURL("{$index_url}/patient/referral/new_soc_special/{$patient_id}");
+        {else}
+		w1.attachURL("{$index_url}patient/cms485/add/{$soc_id}");
+        {/if}
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    	
+    {literal}}{/literal}
+    
+    function changeSocDate () {literal}{{/literal}
+        {if $change_soc_date_popup}
+        alert("Please contact Home Health Soft to assist in modifying existing SOCs - Create a Heat Ticket or Call: 469-366-4877");
+        return;
+        {/if}
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, 350, 300);
+		w2.setText("Change Start of Care Date");
+		w2.button("park").hide();
+		w2.button("minmax2").hide();
+	    w2.denyResize(); // deny resizing
+	    w2.denyMove(); 
+	    dhxWins.window('w2').setModal(true);
+	    dhxWins.window('w2').center();
+		w2.attachURL("{$index_url}patient/referral/changeSocDate/{$soc_id}/{$cms485_id}");
+		
+	    dhxWins.window('w2').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w2.hide();
+			w2.setModal(false);
+	        
+	    {literal}}{/literal});
+    	
+    {literal}}{/literal}
+
+</script>

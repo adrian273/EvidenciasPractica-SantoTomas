@@ -1,0 +1,55 @@
+{if $inloop neq 'yes'}
+	{literal}
+	<style type="text/css" media="print">
+	@page {
+	  size: A4 landscape;
+	  margin: 42pt 12pt;
+	}
+    .btn-wrap {
+    	display: none;
+    }	
+	</style>
+	{/literal}
+	<div class="btn-wrap" style="text-align:center; padding-top:10px; max-width:1000px;">
+		<input type="button" value="Print" name="btnPrint" id="btnPrint" onclick="window.print()" />&nbsp;&nbsp;&nbsp;<input type="button" value="Back" name="btnClose" id="btnClose" onclick="history.go(-1);" />
+	</div>
+{/if}
+<div class="main_form_html" style="max-width:1000px;">
+<table class="results" border="0" width="100%" cellpadding="4" cellspacing="0" align="center">
+	<tr>
+		<td><b>Agenda for user :</b> {$user} </td>
+		<td><b>Date:</b> {$date}</td>
+	</tr>
+</table>
+<table class="results" border="1" width="100%" cellpadding="4" cellspacing="0" align="center">
+	<tr>
+		<th>Date</th>
+		<th>Time</th>
+		<th>Patient Name</th>
+		<th>Visit Type</th>
+		<th>Pt Phone</th>
+		<th>Address</th>
+	</tr>
+		{foreach key=cid item=con from=$rows}
+	<tr>
+		<td>&nbsp;{$con.Date}</td>
+		<td>&nbsp;{$con.Time}</td>
+		<td>&nbsp;{$con.Patient_Name}</td>
+		<td>&nbsp;{$con.Visit_Type}</td>
+		<td>&nbsp;{$con.Pt_Phone}</td>
+		<td>&nbsp;{$con.Address}</td>
+	</tr>
+		{foreachelse}
+		<tr><td colspan="6">No Records</td></tr>
+		{/foreach}
+</table>
+</div>	
+{if $inloop neq 'yes'}
+	<div class="btn-wrap" style="text-align:center; padding-top:10px; max-width:1000px;">
+	<input type="button" value="Print" name="btnPrint" id="btnPrint" onclick="window.print()" />&nbsp;&nbsp;&nbsp;<input type="button" value="Back" name="btnClose" id="btnClose" onclick="history.go(-1);" />
+	</div>
+	<script>
+		window.print();
+		// history.go(-1);
+	</script>
+{/if}

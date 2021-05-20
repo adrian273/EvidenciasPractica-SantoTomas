@@ -1,0 +1,154 @@
+
+<table width="100%" cellpadding="4" cellspacing="0" border="0">
+
+	<tr>
+		<td colspan="2">
+			<div id="toolbarObj" style="float: left"></div>
+		</td>
+	</tr>
+	<!--
+	<tr>
+		<td style="font-size: 15px"><b>{$msg_subject}</b></td>
+		<td align="right">
+			<div onclick="document.getElementById('table_details').style.display='';document.getElementById('div_show').style.display='none';document.getElementById('div_hide').style.display=''" id="div_show" style="cursor:pointer"><a href="javascript:void(0)">show details</a></div>
+			<div onclick="document.getElementById('table_details').style.display='none';document.getElementById('div_hide').style.display='none';document.getElementById('div_show').style.display='';" id="div_hide" style="cursor:pointer;display:none"><a href="javascript:void(0)">hide details</a></div>
+		</td>
+	</tr>
+	-->
+	<tr>
+		<td colspan="2" id="table_details" style="sdisplay:none" width="100%">
+			<table width="100%">
+			  <tr>
+			    <td width="200" colspan="2" nowrap></td>
+			    <td></td>
+			  </tr>
+			  <tr>
+			    <td class="ftitle" valign="top">From</td>
+			    <td>{$sender_complete_name}</td>
+			  </tr>
+			  <tr>
+			    <td class="ftitle" valign="top">To</td>
+			    <td>{$msg_users}</td>
+			  </tr>
+			{if $patient!=""}
+			  <tr>
+			  <td class="ftitle" >Patient</td>
+			  <td>{$patient->first_name} {$patient->last_name}</td>
+			  </tr>
+			 {/if}
+			  <tr>
+			    <td class="ftitle" >Date</td>
+			    <td>{$msg_date|date_format:"%m-%d-%Y %r"}</td>
+			  </tr>
+			  <tr>
+			    <td class="ftitle" >Subject</td>
+			    <td>{$msg_subject}</td>
+			  </tr>
+			  {if $attachment_file neq ""}
+			  <tr>
+			    <td class="ftitle" >Attachment</td>
+			    <td>{$attachment_file}</td>
+			  </tr>
+			  {/if}
+			  <tr>
+			    <td class="subtitle" colspan="2"><img src="{$image_url}blank.gif"></td>
+			  </tr>
+			</table>
+		</td>
+	</tr>
+	
+  <tr>
+    <td colspan="2" height="10">{$msg_text|nl2br}</td>
+  </tr>
+</table>
+
+<script>
+
+	parent.parent.document.getElementById('message_count_image').src = '{$image_url}mail_generic_{$message_count}.png';
+
+	function reply_msg(param) {literal}{{/literal}
+		parent.document.location.href="{$index_url}mail/compose/reply/{$msg_id}/"+param;
+	{literal}}{/literal}
+
+	function setMsgTrash() {literal}{{/literal}
+		document.location.href="{$index_url}mail/{$back_path}/messageTrash/{$msg_id}";
+	{literal}}{/literal}
+
+	function printMsg() {literal}{{/literal}
+		{if $print_comm_note}
+			document.location.href="{$index_url}mail/allcomnotes/pdf/{$msg_id}";
+		{/if}
+	{literal}}{/literal}
+
+	function goToInbox() {literal}{{/literal}
+		{if $back_path neq ""}
+		document.location.href="{$index_url}mail/{$back_path}";
+		{elseif $back_url neq ""}
+		document.location.href="{$back_url}";
+		{else}
+		history.go(-1);
+		{/if}
+	{literal}}{/literal}
+
+	function viewFile(file) {literal}{{/literal}
+		window.open('{$image_url}attachment/'+file,'','toolbar=no,location=no,scrollbars=no,resizable=yes');
+
+	{literal}}{/literal}
+
+</script>
+
+<script language="JavaScript" type="text/javascript">
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    {if $print_comm_note}
+    webBar.addButton("print", 1, "Print", "icon_printer.png");
+    {/if}
+    webBar.addButton("back", 1, "Back", "undo.png");
+	{if $back_path == "inbox"}
+	    webBar.addSeparator('sp1', 2);
+		webBar.addButton("reply", 3, "Reply", "mail_reply.png");
+		webBar.addButton("replyall", 4, "Reply All", "mail_replyall.png");
+    {/if}
+	webBar.addSeparator('sp1', 5);
+	{if $back_path == "trash"}
+		webBar.addButton("return", 6, "Return to Original Folder", "folder_sent_mail.png");
+		webBar.addButton("delete", 7, "Delete Forever", "mail_delete.png");
+	{else}
+		webBar.addButton("delete", 6, "Delete", "mail_delete.png");
+	{/if}
+    
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'back':
+		  goToInbox()
+		  break;
+		case 'print':
+		  printMsg()
+		  break;
+		case 'reply':
+		  reply_msg(0)
+		  break;
+		case 'replyall':
+		  reply_msg(1)
+		  break;
+		case 'delete':
+		  setMsgTrash()
+		  break;
+		case 'return':
+		  document.location.href="{$index_url}mail/trash/returnToFolder/{$msg_id}";
+		  break;
+		{literal}}{/literal}
+    {literal}}{/literal});
+    
+    
+    var webBar2 = new dhtmlXToolbarObject("toolbarObj2", "standard");
+    webBar2.setIconsPath("{$base_url}style/images/");
+    webBar2.addButton("new", 1, " Compose", "mail_generic.png");
+    
+    webBar2.attachEvent("onClick", function(eid){literal}{{/literal}
+		parent.document.location.href='{$index_url}mail/compose';
+    {literal}}{/literal});
+	
+</script>

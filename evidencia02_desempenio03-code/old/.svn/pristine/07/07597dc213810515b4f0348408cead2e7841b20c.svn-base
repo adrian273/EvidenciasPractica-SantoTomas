@@ -1,0 +1,126 @@
+<?php
+
+class Revertinvoices extends MY_Controller {
+
+    
+	function Revertinvoices () {
+      parent::MY_Controller();
+    
+      $this->tpl->assign("resource_path", "script/revertinvoices");
+      $this->load->config('constants');  
+
+      $this->load->model('companyinvoicemdl');
+      $this->load->model('invoiceotherchargesmdl');    
+	}
+
+ function removeZeroBillAmount(){
+    // $this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = invoice_view.agency_contractor_id');       
+    // $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');    
+    $this->db->where("invoice_amount", 0);
+    $query = $this->db->get('invoice_view');
+    $invoices = $query->result();
+    
+    echo count($invoices)." Zero Bill amount invoices found <br>";
+    foreach ($invoices as $invoice) {
+      // echo $invoice->invoice_id.",";
+      $this->invoice($invoice->invoice_id);
+    }
+ }
+ 
+ function invoice($invoice_id = 10313){
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    if (empty($invoice)) {
+      echo ('Invoice ID: '.$invoice_id.' Not Found<br>');
+      return;
+    }    
+
+    echo 'Reverting invoice (id:'.$invoice->invoice_id.') # '.$invoice->invoice_no.' ...';
+    
+    $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+    foreach ($visits as $visit) {
+        $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', null);
+    }
+
+    // Update Invoice amount
+    $difference = 0;
+    $total_final_rate = 0;
+    
+    $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+    if(count($visits) > 0 ){
+      $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);      
+    }
+
+    $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice->invoice_id);
+    $difference = round(abs($total_final_rate - $invoice->invoice_amount), 2);
+    if($total_final_rate != $invoice->invoice_amount AND $difference >0 ){
+      $this->companyinvoicemdl->updateFlex($invoice->invoice_id, 'invoice_amount', $total_final_rate);
+    }
+
+    if ($invoice->agency_balance > 0) {
+      $agency_balance  = $invoice->agency_balance  - $difference;
+      $this->companyinvoicemdl->updateFlex($invoice->invoice_id, 'agency_balance ', $agency_balance );
+    }
+
+    // fetch invoice updated data
+    $invoice = $this->companyinvoicemdl->getById($invoice->invoice_id);
+    if ($invoice->balance == 0 AND $invoice->agency_balance == 0) {
+        // this is blank invoice. we can remove it.
+        $this->companyinvoicemdl->delete($invoice->invoice_id);
+      echo 'DELETED<br>';
+    } else {
+      echo 'Not DELETED, because balance='.$invoice->balance.', agency_balance='.$invoice->agency_balance.' (not ZERo)<br>';
+    }
+      
+
+ }
+
+  function byperiod(){
+    exit('disabled');
+    
+    $this->load->model('companyinvoicemdl');
+    $this->load->model('invoiceotherchargesmdl');
+
+    $_POST['invoice_from_date'] = '11-15-2018';
+    $_POST['invoice_to_date'] = '11-19-2018';
+    $invoices = $this->companyinvoicemdl->getByContractor($this->getAgencyId());
+
+    foreach ($invoices as $invoice) {
+        echo 'Reverting invoice (id:'.$invoice->invoice_id.') #'.$invoice->invoice_no.'...';
+        $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+        foreach ($visits as $visit) {
+            $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', null);
+        }
+
+        // Update Invoice amount
+        $difference = 0;
+        $total_final_rate = 0;
+        
+        $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+        if(count($visits) > 0 ){
+          $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);      
+        }
+
+        $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice->invoice_id);
+        $difference = round(abs($total_final_rate - $invoice->invoice_amount), 2);
+        if($total_final_rate != $invoice->invoice_amount AND $difference >0 ){
+          $this->companyinvoicemdl->updateFlex($invoice->invoice_id, 'invoice_amount', $total_final_rate);
+        }
+
+        if ($invoice->agency_balance > 0) {
+          $agency_balance  = $invoice->agency_balance  - $difference;
+          $this->companyinvoicemdl->updateFlex($invoice->invoice_id, 'agency_balance ', $agency_balance );
+        }
+
+        // fetch invoice updated data
+        $invoice = $this->companyinvoicemdl->getById($invoice->invoice_id);
+        if ($invoice->balance == 0 AND $invoice->agency_balance == 0) {
+            // this is blank invoice. we can remove it.
+            $this->companyinvoicemdl->delete($invoice->invoice_id);
+        }
+
+        echo 'DONE<br>';
+    }
+  } 
+
+}
+

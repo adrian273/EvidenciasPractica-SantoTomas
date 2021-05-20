@@ -1,0 +1,1007 @@
+<?
+
+ class history extends MY_Controller {
+
+	function history () {
+		
+		parent::MY_Controller();
+		$this->load->model('payrollbatchprocessmdl');
+
+		$this->tpl->assign("resource_path", "payroll/history");
+		$this->tpl->assign("tab_page",true);
+
+	}
+
+	function index(){
+		$this->tpl->assign_include("dynamic_tpl", "payroll/history/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function byprocessdate($process_date_ini=null, $process_date_fin=null){
+		// 90 days ago
+		$process_date_ini = date('m-d-Y', strtotime('-90 days'));
+		$this->tpl->assign("process_date_ini", $process_date_ini);
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("process_date_ini", $process_date_ini);
+		$this->tpl->assign("process_date_fin", $process_date_fin);
+		$this->tpl->assign("items_per_page", 99999);
+		// $this->tpl->assign("resource_grid", 'gridBatchProcess/'.$process_date_ini.'/'.$process_date_fin);
+		$this->tpl->assign("resource_grid", 'gridBatchProcess');
+		$this->tpl->assign("resource_edit", 'stubsinbatch');  
+		$this->tpl->assign_include("filter_tpl", "payroll/history/byprocessdate_gfilter");
+		
+		
+		$this->tpl->assign_include("dynamic_tpl", "payroll/history/byprocessdate_gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+
+
+	function gridBatchProcess ($process_date_ini=null, $process_date_fin=null) {		
+		if (!is_null($process_date_ini)) {
+			$process_date_ini = standard_date(human_to_unix($process_date_ini), 'MYSQL_NOTIME');
+		}
+		if (!is_null($process_date_fin)) {
+			$process_date_fin = standard_date(human_to_unix($process_date_fin), 'MYSQL_NOTIME');
+		}
+		
+		if($this->input->post('process_date_ini') != ""){
+			$process_date_ini = standard_date(human_to_unix($this->input->post('process_date_ini')), 'MYSQL_NOTIME');
+		} 
+		if($this->input->post('process_date_fin') != ""){
+			$process_date_fin = standard_date(human_to_unix($this->input->post('process_date_fin')), 'MYSQL_NOTIME');
+		}
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=11;align=center;type=link", "Process Date"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period From"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period End"));
+		$head->append($this->xml->Element("column", "width=*;align=left", "Nbr Users Processed"));
+		$head->append($this->xml->Element("column", "width=*;align=left", "Status"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Total Amount"));
+		$head->append($this->xml->Element("column", "width=8;type=link;align=center", "Actions"));
+		$head->append($this->xml->Element("column", "width=8;type=link;align=center", "#cspan"));
+		// $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->payrollbatchprocessmdl->get($this->getAgencyId(), $process_date_ini, $process_date_fin) as $batch) {			
+
+			$stubs = $this->payrollbatchmdl->getByProcessNo($batch->payroll_batch_process_number, null, 'C');
+
+			if (count($stubs)==0) {
+				continue;
+			}
+			
+			$noVisits = 0;
+			$totalAmount = 0.00;
+			$status = "Complete";
+			foreach ($stubs as $key => $stub) {
+				$noVisits += $stub->visit_count;
+				$totalAmount += ($stub->sum_visit_amount + $stub->sum_mileage_amount);
+				if ($stub->payment_status!='paid') {
+					$status = "Incomplete";					
+				}
+			}
+
+			$cell = $this->xml->Element("row", "id=" . $batch->payroll_batch_process_number);
+			// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($batch->payroll_batch_process_date), 'USA_DATE_TIME') ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($batch->payroll_batch_process_date), 'USA_DATE_TIME').'^'.$this->config->config['index_url'] . "payroll/history/stubsinbatch/" . $batch->payroll_batch_process_number ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($batch->payroll_batch_process_period_from))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($batch->payroll_batch_process_period_end))));
+			$cell->append($this->xml->Element("cell", null, count($stubs) ));
+			$cell->append($this->xml->Element("cell", null, $status ));
+
+			$cell->append($this->xml->Element("cell", null, moneyformat($totalAmount) ));
+			if ($status === 'Incomplete') {
+				$cell->append($this->xml->Element("cell", null, "Paid^javascript:paidPayrollBatch(" . $batch->payroll_batch_process_number . ")"));
+				$cell->append($this->xml->Element("cell", null, "Revert^javascript:revertPayrollBatch(" . $batch->payroll_batch_process_number . ")"));
+			} else {
+				$cell->append($this->xml->Element("cell", null, null));
+				$cell->append($this->xml->Element("cell", null, null));
+			}
+				
+			// $cell->append($this->xml->Element("cell", null, "Print Pre-Payroll^javascript:printPrePayroll(" . $batch->payroll_batch_process_number . ")"));
+			// $cell->append($this->xml->Element("cell", null, "Confirm Payment^javascript:confirmPayroll(" . $batch->payroll_batch_process_number . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function revertBatchProcess($payroll_batch_process_number) {
+		$batches = $this->payrollbatchmdl->getByProcessNo($payroll_batch_process_number);
+	    if (empty($batches) ){
+	      echo "payroll batch not found";exit;
+	    } 
+
+
+		if (count($batches)==0) {
+			$this->payrollbatchprocessmdl->delete($payroll_batch_process_number);
+	    	echo '1'; exit();
+		}
+		
+		$status = "Complete";
+		foreach ($batches as $key => $stub) {
+			if ($stub->payment_status!='paid') {
+				$status = "Incomplete";					
+			}
+		}
+
+		if ($status == "Complete") {
+			exit('0');
+		}
+
+	    foreach ($batches as $payroll) {
+	    	foreach ($this->payrollbatchmdl->getHistoryDetail($payroll->payroll_batch_id) as $visit_log) {
+	    		$this->visitlogmdl->updateFlex($visit_log->visit_log_id, 'payroll_status', 'R');
+				$this->visitlogmdl->updateFlex($visit_log->visit_log_id, 'payroll_batch_id', null);
+	    	}
+
+	    	$this->payrollbatchmdl->delete($payroll->payroll_batch_id);
+	    }
+
+	    $this->payrollbatchprocessmdl->delete($payroll_batch_process_number);
+
+	    echo '1'; exit();
+	}
+
+	function paidtobatch($payroll_batch_process_number){
+		/*foreach ($this->payrollbatchmdl->getByProcessNo($payroll_batch_process_number, null, 'C') as $payroll) {
+			if ($payroll->payment_status!='paid') {
+				$this->payrollbatchmdl->updateFlex($payroll->payroll_batch_id, array( 'payment_status'=>'paid' ));
+			}
+		}*/
+
+		$batches = $this->payrollbatchmdl->getByProcessNo($payroll_batch_process_number);
+	    if (empty($batches) ){
+	      echo "payroll batch not found";exit;
+	    } 
+
+	    
+		//echo "<pre>"; print_r($_POST); echo "</pre>";
+	
+		$rules = array (
+			'paid_date' 	=> 'required'
+		);
+		
+		$fields = array (
+			'paid_date' 	=> 'Date Paid'
+		); 		
+	
+            
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+    
+		if ($this->validation->run() == FALSE) {
+      		/*$this->tpl->assign('payment_type_list', array (
+				'check' => 'Check',
+				'directdepo' => 'Direct Deposit',
+				'other' => 'Other'
+			));*/
+
+			$this->tpl->assign("payroll_batch_process_number", $payroll_batch_process_number);
+	    
+      
+			// $this->assignObject($payrollbatch);
+			
+			$this->tpl->assign_include("dynamic_tpl", "payroll/history/paid_batch_modal_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			$paid_date = standard_date(human_to_unix($this->input->post('paid_date')), 'MYSQL_NOTIME');
+			$notes = $this->input->post('notes');
+			foreach ($batches as $payroll) {
+				if ($payroll->payment_status!=='paid') {
+					// System default payment type
+					$payment_type = null;
+					// Find user default payment type for payroll_batch.user_id
+					$user_usagy  = $this->usagymdl->getByUsAgyId($payroll->user_id);
+					if (!is_null($user_usagy->default_payment_type)) {
+						$payment_type = $user_usagy->default_payment_type;
+					}
+					// Update Payment information
+					$this->payrollbatchmdl->updateFlex($payroll->payroll_batch_id, array( 'payment_status'=>'paid','check_date'=>$paid_date, 'notes'=>$notes, 'payment_type'=>$payment_type ));
+					// Change Payroll batch status to 'C' Complete
+					$this->payrollbatchmdl->changeStatus($payroll->payroll_batch_id, 'C');
+				}
+			}	      
+	      
+	      echo "<SCRIPT>parent.window.location.reload();parent.dhxWins.unload()</SCRIPT>";
+				
+		}
+	}
+
+	function stubsinbatch ($payroll_batch_process_number) {
+		$this->assignObject($this->payrollbatchprocessmdl->getOne($payroll_batch_process_number));
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridStubsInBatch/'. $payroll_batch_process_number);
+		$this->tpl->assign("resource_edit", 'visitsinstub/'.$payroll_batch_process_number);  
+
+		$this->tpl->assign_include("filter_tpl", "payroll/history/batchdetails_header");
+
+		$this->tpl->assign('additional_buttons', 
+			array(
+				'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/history/byprocessdate/" . "'",				
+				// 'Print Payroll Process' => "document.location='" . $this->config->config['index_url'] . "payroll/history/printpayrollprocess/" . $payroll_batch_process_number . "'",				
+				'Print Payroll Process' => "window.open('" . $this->config->config['index_url'] . "payroll/history/printpayrollprocess/" . $payroll_batch_process_number . "')",				
+				'Add Visits to Payroll' => "addVisitsToPayroll('".$payroll_batch_process_number."');"				
+			));
+
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function gridStubsInBatch ($payroll_batch_process_number) {
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		/*$head->append($this->xml->Element("column", "width=11;align=center;type=link", "Process Date"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period From"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period End"));*/
+		$head->append($this->xml->Element("column", "width=*;align=left;type=link", "User"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Nbr of Payable Visits"));
+		$head->append($this->xml->Element("column", "width=11", "Check Amount"));
+		$head->append($this->xml->Element("column", "width=11", "Status"));
+		$head->append($this->xml->Element("column", "width=11;type=link;align=center", "Actions"));
+		$head->append($this->xml->Element("column", "width=11;type=link;align=center", "#cspan"));
+		$head->append($this->xml->Element("column", "width=11;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$data = $this->payrollbatchmdl->getByProcessNo($payroll_batch_process_number, null, 'C');
+		$batches = array();
+		foreach ($data as $payroll) {
+			$name = ($payroll->legal_name != "" ? $payroll->legal_name.' - ' : '' ). $payroll->last_name . " " . $payroll->first_name.' ('.$payroll->short_description.')'. $payroll->payroll_batch_id;
+
+			$batches[$name] = $payroll;
+		}
+
+		ksort($batches);
+
+		foreach ($batches as $payroll) {			
+			if ((@$payroll->sum_visit_amount + @$payroll->sum_mileage_amount == 0) AND $payroll->visit_count==0 ) {
+				continue;
+			}
+			
+			$cell = $this->xml->Element("row", "id=" . $payroll->payroll_batch_id);
+			/*$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_date), 'USA_DATE_TIME').'^'.$this->config->config['index_url'] . "payroll/history/visitsinstub/" . $payroll_batch_process_number . "/" . $payroll->payroll_batch_id ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_period_from))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_period_end))));*/
+			$cell->append($this->xml->Element("cell", null,( $payroll->legal_name != "" ? $payroll->legal_name.' - ' : '' ). $payroll->last_name . " " . $payroll->first_name.' ('.$payroll->short_description.')'.'^'.$this->config->config['index_url'] . "payroll/history/visitsinstub/" . $payroll_batch_process_number . "/" . $payroll->payroll_batch_id ));
+			$cell->append($this->xml->Element("cell", null, $payroll->visit_count));
+			$cell->append($this->xml->Element("cell", null, moneyformat(@$payroll->sum_visit_amount + @$payroll->sum_mileage_amount)));
+			$cell->append($this->xml->Element("cell", null,  (@$payroll->payment_status=='paid' ? 'Paid' : 'Not paid') ));
+			$cell->append($this->xml->Element("cell", null, "Detail".'^'.$this->config->config['index_url'] . "payroll/history/visitsinstub/" . $payroll_batch_process_number . "/" . $payroll->payroll_batch_id ));			
+			// $cell->append($this->xml->Element("cell", null, "Print".'^'.$this->config->config['index_url'] . "payroll/history/printit/" . $payroll->payroll_batch_id ));			
+			$cell->append($this->xml->Element("cell", null, "Print^javascript:print(" . $payroll->payroll_batch_id . ")" ));			
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function printpayrollprocess($payroll_batch_process_number){
+		$this->assignObject($this->payrollbatchprocessmdl->getOne($payroll_batch_process_number));
+		
+		$rows = array();
+
+		$data = $this->payrollbatchmdl->getByProcessNo($payroll_batch_process_number, null, 'C');
+        $rows = array();
+        foreach ($data as  $payroll) {
+            $name = ($payroll->legal_name != "" ? $payroll->legal_name.' - ' : '' ). $payroll->last_name . " " . $payroll->first_name.' ('.$payroll->short_description.')'. $payroll->payroll_batch_id;
+
+            $rows[$name] = $payroll;
+        }
+
+        ksort($rows);
+
+		foreach ($rows as $key=>$payroll) {			
+			$payroll->check_amount = moneyformat(@$payroll->sum_visit_amount + @$payroll->sum_mileage_amount);
+			$rows[$key] = $payroll;
+		}
+
+		$this->tpl->assign('rows', $rows);
+
+		$this->tpl->view("payroll/history/printpayrollprocess", $this->lang->language);
+	}
+	
+	function visitsinstub($payroll_batch_process_number, $stubId){
+   		$this->tpl->assign('payment_type_list', array (
+			null => null,
+			'check' => 'Check',
+			'directdepo' => 'Direct Deposit',
+			'other' => 'Other'
+		));
+
+   		/*$payment_type_list = array (
+								'check' => 'Check',
+								'directdepo' => 'Direct Deposit',
+								'other' => 'Other'
+							);*/
+
+   		$stub = $this->payrollbatchmdl->getOne($stubId);
+   		// echo "<pre>"; print_r($stub); echo "</pre>"; exit();
+		$this->assignObject($stub);
+
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridvisitsinstub/'. $stubId);
+		$this->tpl->assign("stubId", $stubId);
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/history/stubsinbatch_gfilter");
+
+		$this->tpl->assign('additional_buttons', 
+			array(
+				'Print Stub' => "print(".$stubId.")",
+				'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/history/stubsinbatch/" .$payroll_batch_process_number . "'"				
+			));
+
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+   }
+
+   function gridvisitsinstub($stubId){
+   		$tab_32_assess_type_lsit = $this->parametermdl->getByType(32);
+   		$loggedinUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+
+   		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10;align=center", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=14", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=10", "Invoice"));
+		// $head->append($this->xml->Element("column", "width=14;align=center", "Duration"));
+		// $head->append($this->xml->Element("column", "width=10;align=center", "Units"));
+		// $head->append($this->xml->Element("column", "width=5;type=ro", "Note"));
+		$head->append($this->xml->Element("column", "width=12;align=center", "Visit Amount \$"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Mileage \$"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name "));
+		$head->append($this->xml->Element("column", "width=9;type=ro", "Comments"));
+    	$head->append($this->xml->Element("column", "width=10;type=link;align=center", "Actions"));
+    	$head->append($this->xml->Element("column", "width=7;type=link;align=center", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->payrollbatchmdl->getHistoryDetail($stubId) as $visit_log) {
+			
+			$t1 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in);
+			$t2 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out);
+			$visit_unit = $this->visitunitmdl->get(($t2 - $t1) / 60);
+			
+			$visit_description = "";
+			if($visit_log->visit_type_id  == 10){
+				$this->load->model('ptevmdl');
+				$PTEV = $this->ptevmdl->get($visit_log->visit_log_id );        
+				$visit_description .= $visit_log->visit_description.' - '.@$tab_32_assess_type_lsit[$PTEV->tab_32_assess_type];
+			}else{
+				$visit_description .= $visit_log->visit_description;
+			}
+
+			if($visit_log->billable_YN == 0){
+				$visit_description .= " (NB)";
+				$visit_log->visit_amount = 0.00;
+				$visit_log->mileage_amount = 0.00;
+			}
+			$visit_log->visit_description = $visit_description;
+
+			$commentsCellStr = '<![CDATA[';
+		
+			if ($loggedinUser->agency_id == $visit_log->user_agency_id) {
+				$userComments = $visit_log->user_comments;
+				$userComments = str_replace("\n","<br>",$userComments );
+				$userComments = str_replace("\r","",$userComments );
+				$userComments = str_replace("'","\\'",$userComments );
+				if($userComments!="")
+				$commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$userComments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note.jpg" border="0" /></a>&nbsp;';
+
+				$cmComments = $visit_log->comments;
+				$cmComments = str_replace("\n","<br>",$cmComments );
+				$cmComments = str_replace("\r","",$cmComments );
+				$cmComments = str_replace("'","\\'",$cmComments );
+				if($cmComments!="")
+				$commentsCellStr.= '&nbsp;&nbsp;<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$cmComments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note_yellow.png" border="0" /></a>&nbsp;';
+
+				$payrollComments = $visit_log->payroll_comments;
+				$payrollComments = str_replace("\n","<br>",$payrollComments );
+				$payrollComments = str_replace("\r","",$payrollComments );
+				$payrollComments = str_replace("'","\\'",$payrollComments );
+				if($payrollComments!="")
+				$commentsCellStr.= '&nbsp;&nbsp;<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$payrollComments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note_orange.png" border="0" /></a>&nbsp;';
+			}
+			$commentsCellStr .= ']]>'; 
+
+
+			$cell = $this->xml->Element("row", "id=" . $visit_log->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit_log->visit_date_time), 'USA_DATE')));
+			$cell->append($this->xml->Element("cell", null, $visit_log->visit_description));
+			$cell->append($this->xml->Element("cell", null, $visit_log->invoice_no));
+			// $cell->append($this->xml->Element("cell", null, $visit_log->visit_duration));
+			// $cell->append($this->xml->Element("cell", null, @$visit_unit->unit_value));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->visit_amount)));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->mileage_amount)));
+			$cell->append($this->xml->Element("cell", null, $visit_log->first_name . " " . $visit_log->last_name));
+			$cell->append($this->xml->Element("cell", null, $commentsCellStr));
+      		$cell->append($this->xml->Element("cell", null, "Edit Payment^javascript:modalEditForm(" . $visit_log->visit_log_id . ")"));
+      		$cell->append($this->xml->Element("cell", null, "Revert^javascript:confirmRevert(" . $visit_log->visit_log_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+   }
+	/*function byuser () {
+		
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridUser');
+		$this->tpl->assign("resource_edit", 'paymentHistoryByUser');
+		
+
+        $this->tpl->assign('additional_buttons', array(
+            'Export To Excel' => 'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');', 
+        ));
+		
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/history/byuser_gfilter");
+		$this->tpl->assign("items_per_page", 99999);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+    function gridUser(){
+   		$this->load->model('usagydisciplinemdl');	
+   		
+   		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;align=left;type=link", "User"));
+		$head->append($this->xml->Element("column", "width=*;align=left", "Payroll Amount"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), null, null, null, true, false, null, array(), null, $this->input->post('status')) as $user) {
+			$disciplines = $this->usagydisciplinemdl->getByUser($user->us_agy_id);
+			$discipline_str = $user->short_description;
+			if (count($disciplines) > 1) {
+				$pieces = array();
+				foreach ($disciplines as $disc) {
+					$pieces[] = $disc->short_description; 
+				}
+				$discipline_str = implode(" and ", $pieces);
+			}
+
+			// print_r($user);exit();
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null,($user->legal_name != '' ? $user->legal_name.' - ' : ''). $user->last_name. ' '. $user->first_name .' ('.$discipline_str.')' .'^'.$this->config->config['index_url'] . "payroll/history/paymentHistoryByUser/" . $user->us_agy_id ));
+			$cell->append($this->xml->Element("cell", null, $user->sum_visit_amount));
+			
+			$document->append($cell);			
+		}
+		
+   }*/
+
+	function byuser () {
+		$this->tpl->assign_include("dynamic_tpl", "payroll/history/byuser/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	
+	function byuser_processdate () {
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridUserByProcessDate');
+		$this->tpl->assign("resource_edit", 'paymentHistoryByUser');
+		
+	
+		$this->tpl->assign('additional_buttons', array(
+			'Export To Excel' => 'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');', 
+		));
+		
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/history/byuser/processdate_gfilter");
+		$this->tpl->assign("items_per_page", 99999);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	function gridUserByProcessDate(){
+		$this->load->model('usagydisciplinemdl');	
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;align=left;type=link", "User"));
+		$head->append($this->xml->Element("column", "width=*;align=left", "Payroll Amount"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$date_filter = $this->input->post('date_filter');
+		$date_start = $this->input->post('date_start');
+		$date_end = $this->input->post('date_end');
+		
+		$pars = "/" . $date_filter . "/" . $date_start . "/" . $date_end;
+ 		
+		foreach ($this->payrollbatchmdl->get($this->getAgencyId(), NULL, 'C', $this->input->post('date_start'), $this->input->post('date_end')) as $user) {
+		//foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), null, null, null, true, false, null, array(), null, $this->input->post('status')) as $user) {
+			$disciplines = $this->usagydisciplinemdl->getByUser($user->us_agy_id);
+			$discipline_str = $user->short_description;
+			if (count($disciplines) > 1) {
+				$pieces = array();
+				foreach ($disciplines as $disc) {
+					$pieces[] = $disc->short_description; 
+				}
+				$discipline_str = implode(" and ", $pieces);
+			}
+		
+			// print_r($user);exit();
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null,($user->legal_name != '' ? $user->legal_name.' - ' : ''). $user->last_name. ' '. $user->first_name .' ('.$discipline_str.')' .'^'.$this->config->config['index_url'] . "payroll/history/paymentHistoryByUser/" . $user->us_agy_id . $pars));
+			$cell->append($this->xml->Element("cell", null, moneyformat(@$user->sum_visit_amount + @$user->sum_mileage_amount)));
+			
+			$document->append($cell);			
+		}
+		
+	}
+	function byuser_paymentdate () {
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridUserByPaymentDate');
+		$this->tpl->assign("resource_edit", 'paymentHistoryByUser');
+		
+		
+		$this->tpl->assign('additional_buttons', array(
+			'Export To Excel' => 'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');', 
+		));
+		
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/history/byuser/paymentdate_gfilter");
+		$this->tpl->assign("items_per_page", 99999);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+    function gridUserByPaymentDate(){
+   		$this->load->model('usagydisciplinemdl');	
+   		
+   		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;align=left;type=link", "User"));
+		$head->append($this->xml->Element("column", "width=*;align=left", "Payroll Amount"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$date_filter = $this->input->post('date_filter');
+		$date_start = $this->input->post('date_start');
+		$date_end = $this->input->post('date_end');
+		
+		$pars = "/" . $date_filter . "/" . $date_start . "/" . $date_end;
+		
+		foreach ($this->payrollbatchmdl->get($this->getAgencyId(), NULL, 'C', $this->input->post('date_start'), $this->input->post('date_end')) as $user) {
+		//foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), null, null, null, true, false, null, array(), null, $this->input->post('status')) as $user) {
+			$disciplines = $this->usagydisciplinemdl->getByUser($user->us_agy_id);
+			$discipline_str = $user->short_description;
+			if (count($disciplines) > 1) {
+				$pieces = array();
+				foreach ($disciplines as $disc) {
+					$pieces[] = $disc->short_description; 
+				}
+				$discipline_str = implode(" and ", $pieces);
+			}
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null,($user->legal_name != '' ? $user->legal_name.' - ' : ''). $user->last_name. ' '. $user->first_name .' ('.$discipline_str.')' .'^'.$this->config->config['index_url'] . "payroll/history/paymentHistoryByUser/" . $user->us_agy_id. $pars));
+			$cell->append($this->xml->Element("cell", null, moneyformat(@$user->sum_visit_amount + @$user->sum_mileage_amount)));
+			
+			$document->append($cell);			
+		}
+		
+   }
+
+   function paymentHistoryByUser($user_id, $date_filter = 'process', $start_date = NULL, $end_date = NULL){
+   		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridHistoryByUser/'.$user_id);
+		$this->tpl->assign("resource_edit", 'visitsinstubuser/'.$user_id);  
+		$this->tpl->assign_include("filter_tpl", "payroll/history/byuser_filter");
+	
+		if($date_filter == 'payment') {
+			$date_filter_label = "Process";
+			$this->tpl->assign('additional_buttons', array(
+				'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/history/byuser_paymentdate'",		
+			));
+		} else {
+			$date_filter_label = "Payment";
+			$this->tpl->assign('additional_buttons', array(
+				'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/history/byuser_processdate'",		
+			));
+		}
+		$user_data = $this->usagymdl->getByUsAgyId($user_id);
+		//echo "<pre>"; print_r($user_data); echo "</pre>";
+		$this->tpl->assign("user_data", $user_data);
+		$this->tpl->assign("date_filter", $date_filter);
+		$this->tpl->assign("start_date", $start_date);
+		$this->tpl->assign("end_date", $end_date);
+		$this->tpl->assign("date_filter_label", $date_filter_label);
+		
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+   }
+
+   function gridHistoryByUser ($user_id) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=11;align=left;type=link", "Process Date"));
+		$head->append($this->xml->Element("column", "width=11;align=left;type=link", "Payment Date"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period From"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period End"));
+		$head->append($this->xml->Element("column", "width=13;align=left", "User"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Nbr of Payable Visits"));
+		$head->append($this->xml->Element("column", "width=11", "Check Amount"));
+		// $head->append($this->xml->Element("column", "width=11", "Check Number"));
+		// $head->append($this->xml->Element("column", "width=11", "Date of Check"));
+		$head->append($this->xml->Element("column", "width=11", "Status"));
+		$head->append($this->xml->Element("column", "width=7;type=link;align=center", "Actions"));
+		$head->append($this->xml->Element("column", "width=*;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->payrollbatchmdl->get($this->getAgencyId(), $user_id, 'C', $this->input->post('period_from'), $this->input->post('period_thru')) as $payroll) {
+			
+			$cell = $this->xml->Element("row", "id=" . $payroll->payroll_batch_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_date), 'USA_DATE_TIME').'^'.$this->config->config['index_url'] . "payroll/history/visitsinstubuser/" . $user_id . "/" . $payroll->payroll_batch_id ));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->check_date), 'USA_DATE_TIME').'^'.$this->config->config['index_url'] . "payroll/history/visitsinstubuser/" . $user_id . "/" . $payroll->payroll_batch_id ));
+			// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_date), 'USA_DATE_TIME')));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_period_from))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_period_end))));
+			$cell->append($this->xml->Element("cell", null, $payroll->first_name . " " . $payroll->last_name . ($payroll->legal_name != '' ? ' - '.$payroll->legal_name : '') ));
+			$cell->append($this->xml->Element("cell", null, $payroll->visit_count));
+			$cell->append($this->xml->Element("cell", null, moneyformat(@$payroll->sum_visit_amount + @$payroll->sum_mileage_amount)));
+			// $cell->append($this->xml->Element("cell", null, $payroll->check_no));
+			// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->check_date))));
+			$cell->append($this->xml->Element("cell", null,  (@$payroll->payment_status=='paid' ? 'Paid' : 'Not paid') ));
+			
+			// $cell->append($this->xml->Element("cell", null, "Detail".'^'.$this->config->config['index_url'] . "payroll/history/visitsinstubuser/" . $user_id . "/" . $payroll->payroll_batch_id));
+			$cell->append($this->xml->Element("cell", null, "Print^javascript:print(" . $payroll->payroll_batch_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function visitsinstubuser($user_id, $stubId){
+		$stub = $this->payrollbatchmdl->getOne($stubId);
+   		// echo "<pre>"; print_r($stub); echo "</pre>";
+		$this->assignObject($stub);
+
+		$this->tpl->assign('payment_type_list', array (
+			'check' => 'Check',
+			'directdepo' => 'Direct Deposit',
+			'other' => 'Other'
+		));
+		$this->tpl->assign("stubId", $stubId);
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridvisitsinstub/'. $stubId);
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/history/stubsinbatch_gfilter");
+
+		$this->tpl->assign('additional_buttons', 
+			array(
+				'Print' => "print(".$stubId.")",
+				'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/history/paymentHistoryByUser/" .$user_id . "'"				
+			));
+
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function editStub($payroll_batch_id){
+		$payrollbatch = $this->payrollbatchmdl->getOne($payroll_batch_id);
+	    if (is_null($payrollbatch) ){
+	      echo "payroll not found";exit;
+	    } 
+
+	    $this->tpl->assign('payment_type_list', array (
+			'check' => 'Check',
+			'directdepo' => 'Direct Deposit',
+			'other' => 'Other'
+		));
+
+		$this->tpl->assign("payroll_batch_id", $payroll_batch_id);
+    
+		//echo "<pre>"; print_r($_POST); echo "</pre>";
+		if(isset($_POST['payment_type']) && $_POST['payment_type'] == 'directdepo') {
+			$rules = array (
+				'check_date' 	=> 'required'
+			);
+			
+			$fields = array (
+				'check_date' 	=> 'Date of Check'
+			); 		
+		} else {
+			$rules = array (
+				'check_no' 	=> 'required',
+				'check_date' 	=> 'required'
+			);
+			
+			$fields = array (
+				'check_no' 	=> 'Check No',
+				'check_date' 	=> 'Date of Check'
+			); 		
+		}
+		
+       
+            
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+    
+		if ($this->validation->run() == FALSE) {
+      
+      
+			// $this->tpl->assign('payrollbatch', $payrollbatch);
+			$this->assignObject($payrollbatch);
+			
+			$this->tpl->assign_include("dynamic_tpl", "payroll/history/edit_stub_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+	      $check_no = $this->input->post('check_no');      
+	      $check_date = $this->input->post('check_date');
+	      $notes = $this->input->post('notes');
+	      $payment_type = $this->input->post('payment_type');
+	      
+	      $check_date = standard_date(human_to_unix($this->input->post('check_date')), 'MYSQL_NOTIME');
+	      $this->payrollbatchmdl->updateFlex($payroll_batch_id, 
+	      			array( 'check_no'=>$check_no,'check_date'=>$check_date, 'notes'=>$notes, 'payment_type'=>$payment_type )
+	      		);
+	      $this->payrollbatchmdl->changeStatus($payroll_batch_id);
+	      
+	      echo "<SCRIPT>parent.window.location.reload();parent.dhxWins.unload()</SCRIPT>";
+				
+		}
+	
+	}
+	
+	/*function indexOld () {
+		
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'paymentHistory');
+		
+		$this->tpl->assign("user_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false));
+		$this->tpl->assign("period_list",  $this->payrollbatchmdl->getPeriods($this->getAgencyId()));
+		
+    $this->tpl->assign('additional_buttons', 
+			array(
+				'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/pending/'",		
+			));
+		
+    
+		$this->tpl->assign_include("filter_tpl", "payroll/history/gfilter");
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function paymentHistory () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=11;align=center", "Process Date"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period From"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period End"));
+		$head->append($this->xml->Element("column", "width=13;align=left", "User"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Nbr Visits"));
+		$head->append($this->xml->Element("column", "width=11", "Check Amount"));
+		$head->append($this->xml->Element("column", "width=11", "Check Number"));
+		$head->append($this->xml->Element("column", "width=11", "Date of Check"));
+		$head->append($this->xml->Element("column", "width=11;type=link;align=center", "Actions"));
+		$head->append($this->xml->Element("column", "width=*;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->payrollbatchmdl->get($this->getAgencyId(), $this->input->post('user_id'), 'C') as $payroll) {
+			
+			$cell = $this->xml->Element("row", "id=" . $payroll->payroll_batch_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->process_date_time), 'USA_DATE_TIME')));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->period_from))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->period_end))));
+			$cell->append($this->xml->Element("cell", null, $payroll->first_name . " " . $payroll->last_name));
+			$cell->append($this->xml->Element("cell", null, $payroll->visit_count));
+			$cell->append($this->xml->Element("cell", null, moneyformat(@$payroll->sum_visit_amount + @$payroll->sum_mileage_amount)));
+			$cell->append($this->xml->Element("cell", null, $payroll->check_no));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->check_date))));
+			$cell->append($this->xml->Element("cell", null, "Detail^javascript:modalDetail(" . $payroll->payroll_batch_id . ")"));
+			$cell->append($this->xml->Element("cell", null, "Print^javascript:print(" . $payroll->payroll_batch_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	*/
+	function detail ( $payroll_batch_id ) {
+		$payroll = $this->payrollbatchmdl->getOne($payroll_batch_id);    
+		$this->tpl->assign("period_from", standard_date(mysql_to_unix($payroll->payroll_batch_process_period_from)));
+		$this->tpl->assign("period_end", standard_date(mysql_to_unix($payroll->payroll_batch_process_period_end)));
+		$this->tpl->assign("user_name", $payroll->first_name . " " . $payroll->last_name);
+    
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'detailPaymentHistory/' . $payroll_batch_id);
+		
+    $this->tpl->assign('additional_buttons', 
+			array(
+				// 'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/pending/'",		
+				'Back' => "history.go(-1)",		
+			));
+		
+    $this->tpl->assign_include("filter_tpl", "payroll/history/detail_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function detailPaymentHistory ( $payroll_batch_id ) {
+		$tab_32_assess_type_lsit = $this->parametermdl->getByType(32);
+		$loggedinUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=14;align=center", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=18", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=14;align=center", "Duration"));
+		// $head->append($this->xml->Element("column", "width=5;type=ro", "Note"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Units"));
+		$head->append($this->xml->Element("column", "width=12;align=center", "Visit \$"));
+		$head->append($this->xml->Element("column", "width=12;align=center", "Mileage \$"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name "));
+		$head->append($this->xml->Element("column", "width=8;type=ro", "Comments"));
+    $head->append($this->xml->Element("column", "width=8;type=link;align=center", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->payrollbatchmdl->getHistoryDetail($payroll_batch_id) as $visit_log) {
+			
+			$t1 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in);
+			$t2 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out);
+			$visit_unit = $this->visitunitmdl->get(($t2 - $t1) / 60);
+			
+			$visit_description = "";
+			if($visit_log->visit_type_id  == 10){
+				$this->load->model('ptevmdl');
+				$PTEV = $this->ptevmdl->get($visit_log->visit_log_id );        
+				$visit_description .= $visit_log->visit_description.' - '.@$tab_32_assess_type_lsit[$PTEV->tab_32_assess_type];
+			}else{
+				$visit_description .= $visit_log->visit_description;
+			}
+
+			if($visit_log->billable_YN == 0){
+				$visit_description .= " (NB)";
+				$visit_log->visit_amount = 0.00;
+				$visit_log->mileage_amount = 0.00;
+			}
+			$visit_log->visit_description = $visit_description;
+
+			$commentsCellStr = '<![CDATA[';
+		
+			if ($loggedinUser->agency_id == $visit_log->user_agency_id) {
+				$userComments = $visit_log->user_comments;
+				$userComments = str_replace("\n","<br>",$userComments );
+				$userComments = str_replace("\r","",$userComments );
+				$userComments = str_replace("'","\\'",$userComments );
+				if($userComments!="")
+				$commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$userComments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note.jpg" border="0" /></a>&nbsp;';
+
+				$cmComments = $visit_log->comments;
+				$cmComments = str_replace("\n","<br>",$cmComments );
+				$cmComments = str_replace("\r","",$cmComments );
+				$cmComments = str_replace("'","\\'",$cmComments );
+				if($cmComments!="")
+				$commentsCellStr.= '&nbsp;&nbsp;<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$cmComments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note_yellow.png" border="0" /></a>&nbsp;';
+
+				$payrollComments = $visit_log->payroll_comments;
+				$payrollComments = str_replace("\n","<br>",$payrollComments );
+				$payrollComments = str_replace("\r","",$payrollComments );
+				$payrollComments = str_replace("'","\\'",$payrollComments );
+				if($payrollComments!="")
+				$commentsCellStr.= '&nbsp;&nbsp;<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$payrollComments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note_orange.png" border="0" /></a>&nbsp;';
+			}
+			$commentsCellStr .= ']]>'; 
+			
+
+
+			$cell = $this->xml->Element("row", "id=" . $visit_log->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit_log->visit_date_time), 'USA_DATE')));
+			$cell->append($this->xml->Element("cell", null, $visit_log->visit_description));
+			$cell->append($this->xml->Element("cell", null, $visit_log->visit_duration));
+			$cell->append($this->xml->Element("cell", null, @$visit_unit->unit_value));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->visit_amount)));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->mileage_amount)));
+			$cell->append($this->xml->Element("cell", null, $visit_log->first_name . " " . $visit_log->last_name));
+			$cell->append($this->xml->Element("cell", null, $commentsCellStr));
+      		$cell->append($this->xml->Element("cell", null, "Edit Payment^javascript:modalEditForm(" . $visit_log->visit_log_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function changePaymentStatus($payroll_batch_id, $status){
+		$stub = $this->payrollbatchmdl->getOne($payroll_batch_id);
+	   	if (!empty($payroll_batch_id)) {
+	   		switch ($status) {
+	   			case 'paid':
+					$this->payrollbatchmdl->updateFlex($payroll_batch_id, array( 'payment_status'=>'paid' ));	   				
+			   		echo "1";
+	   				break;
+	   			
+	   			case 'not':
+					$this->payrollbatchmdl->updateFlex($payroll_batch_id, array( 'payment_status'=>'not' ));	   				
+			   		echo "1";
+	   				break;
+	   			default:
+	   				echo "0";
+	   		}
+
+	   	}else{
+	   		echo "0";
+	   	}
+   		exit();
+	}
+
+	function revertVisit($visit_log_id){
+		$this->visitlogmdl->updateFlex($visit_log_id, 'payroll_status', 'P');
+		$this->visitlogmdl->updateFlex($visit_log_id, 'payroll_batch_id', null);
+		echo "1";
+   		exit();
+	}
+
+	function printit ( $payroll_batch_id ) {
+		
+		$data['payroll_batch'] = $this->payrollbatchmdl->getOne($payroll_batch_id);
+		$data['payroll_batch']->check_amount = moneyformat($data['payroll_batch']->sum_visit_amount + $data['payroll_batch']->sum_mileage_amount);
+		$data['payroll_batch']->visit_count = (int) $data['payroll_batch']->visit_count;
+		$data['agency'] = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$data['patients'] = $this->payrollbatchmdl->getHistoryDetail($payroll_batch_id, true);
+		$data['detail'] = $this->payrollbatchmdl->getHistoryDetail($payroll_batch_id);
+
+		$payment_type_list= array (
+					null => null,
+					'check' => 'Check',
+					'directdepo' => 'Direct Deposit',
+					'other' => 'Other'
+				);
+
+		$data['payroll_batch']->payment_type = $payment_type_list[$data['payroll_batch']->payment_type];
+
+		$html = $this->tpl->view('payroll/stub', $data, false);
+		
+		$this->load->library('tcpdf/tcpdf');
+		
+        $this->tcpdf->SetFont('helvetica', '', 8);
+
+        // add a page
+        $this->tcpdf->AddPage();
+
+        $this->tcpdf->writeHTML($html, true, false, true, false, '');
+        if ($data['payroll_batch']->contractor_or_employee == 'C') {
+        	$this->tcpdf->Output('Invoice: '.$data['payroll_batch']->last_name.', '.$data['payroll_batch']->first_name.'   Process Date: '.date("m-d-Y",strtotime($data['payroll_batch']->payroll_batch_process_date)).'.pdf', 'D');        	
+        }else{
+        	$this->tcpdf->Output('Payroll Stub: '.$data['payroll_batch']->last_name.', '.$data['payroll_batch']->first_name.'   Process Date: '.date("m-d-Y",strtotime($data['payroll_batch']->payroll_batch_process_date)).'.pdf', 'D');
+        	// $this->tcpdf->Output('documento_.pdf', 'D');
+        }
+		
+	}
+	
+ }

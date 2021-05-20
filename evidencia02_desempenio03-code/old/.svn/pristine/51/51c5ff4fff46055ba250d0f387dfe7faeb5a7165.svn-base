@@ -1,0 +1,102 @@
+<?php
+
+class UserAddressMdl extends Model {
+
+	var $user_address_id;
+	var $us_agy_id;
+	var $user_id;
+	var $street;
+	var $city;
+	var $state_id;
+	var $zipcode;
+	var $address_type;
+
+	function UserAddressMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $user_address_id ) {
+		$this->db->join('sta_states', 'sta_states.state_id = user_address.state_id', 'LEFT');	
+		$this->db->where('user_address_id', $user_address_id);		
+		$query = $this->db->get('user_address');	
+		$row = $query->row();
+		return $row;
+	}
+
+	function getByUsAgyId ( $us_agy_id ) {
+  	  $this->db->select("user_address.*, sta_states.*");
+    
+		$this->db->join('sta_states', 'sta_states.state_id = user_address.state_id', 'LEFT');	
+		
+		$this->db->where('user_address.us_agy_id', $us_agy_id);	
+		$this->db->order_by('user_address.user_address_id', 'ASC');
+
+		$query = $this->db->get('user_address');
+		return $query->result();
+	}
+
+	function getByUserId ( $user_id ) {
+  	  $this->db->select("user_address.*, sta_states.*");
+    
+		$this->db->join('sta_states', 'sta_states.state_id = user_address.state_id', 'LEFT');	
+		
+		$this->db->where('user_address.user_id', $user_id);	
+		
+		if ($search_city = $this->input->post('search_city')) {
+			$this->db->where("(user_address.city LIKE '%" . $search_city . "%' )");
+		}
+		$this->db->order_by('user_address.address_type', 'ASC');
+		$this->db->order_by('user_address.city', 'ASC');
+		
+		$query = $this->db->get('user_address');
+		return $query->result();
+	}
+
+	function searchUsersByAddress (  ) {
+  	  $this->db->select("user_address.us_agy_id, user_address.user_id, us1_user.last_name, us1_user.first_name, CONCAT(us1_user.last_name, ' ', us1_user.first_name) as complete_name, us_agy.estimated_monthly_patients, us_agy.score, us1_user.geo_lat, us1_user.geo_lng, us1_user.address, dis_discipline.short_description, sta_states.state_name_short");
+    
+		$this->db->join('us_agy', 'us_agy.us_agy_id = user_address.us_agy_id', 'LEFT');	
+		$this->db->join('us1_user', 'us1_user.user_id = user_address.user_id', 'LEFT');	
+		$this->db->join('sta_states', 'sta_states.state_id = us1_user.state_id', 'LEFT');	
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		
+		if ($search_city = $this->input->post('search_city')) {
+			$this->db->where("(user_address.city LIKE '%" . $search_city . "%' )");
+		}
+
+		if ($search_state = $this->input->post('search_state')) {
+			$this->db->where("user_address.state_id", $search_state);
+		}
+
+		$this->db->order_by('complete_name', 'ASC');
+		$this->db->order_by('user_address.city', 'ASC');
+		$this->db->group_by('user_address.user_id');
+		
+		$query = $this->db->get('user_address');
+		return $query->result();
+	}
+
+	function insert ($us_agy_id, $user_id) {
+		$this->us_agy_id = $us_agy_id;
+		$this->user_id = $user_id;
+		$this->db->insert('user_address', $this);
+		$this->user_address_id = $this->db->insert_id();
+		return $this->user_address_id;
+	}
+	
+	function update ( $user_address_id ) {
+		unset($this->us_agy_id); // while updating the record then unset the us_agy_id so it does not update it as null
+		unset($this->user_id); // while updating the record then unset the user_id so it does not update it as null
+		unset($this->user_address_id); // while updating the record then unset the user_address_id so it does not update it as null
+		$this->db->where('user_address_id', $user_address_id);
+		$this->db->update('user_address', $this);
+	}
+	
+	function delete ( $user_address_id ) {
+		$this->db->where('user_address_id', $user_address_id);
+		$this->db->delete('user_address');
+	}
+	
+ }

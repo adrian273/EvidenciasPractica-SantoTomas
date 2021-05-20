@@ -1,0 +1,120 @@
+<?
+
+ class EpisodeFrequency extends MY_Controller {
+
+	var $rules = array ('discipline_id'		   => 'required',
+						'freq_dura'			   => 'required',
+						'nbr_planned_visits'   => 'required|integer');
+
+	function EpisodeFrequency () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/episodefrequency");
+		
+		$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+		
+		$this->tpl->assign('tab_page', true);
+		
+	}
+	
+	function index ( $cms485_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		
+		$this->tpl->assign(array("add_sufix" => " Frequency/Duration"));
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function grid ( $cms485_id ) {
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=33", "Discipline"));
+		$head->append($this->xml->Element("column", "width=*", "Frequency Duration"));
+		$head->append($this->xml->Element("column", "width=*;align=center",  "Planned Nbr of Visits"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->episodefrequencymdl->get($cms485_id) as $frequency) {
+			
+			$cell = $this->xml->Element("row", "id=" . $frequency->cms_485_freq_dura_id);
+			$cell->append($this->xml->Element("cell", null, $frequency->description));
+			$cell->append($this->xml->Element("cell", null, $frequency->freq_dura));
+			$cell->append($this->xml->Element("cell", null, $frequency->nbr_planned_visits));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add ( $cms485_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);			
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/cms485/frequency_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->episodefrequencymdl);
+			$this->episodefrequencymdl->insert($cms485_id);
+			
+			$this->tpl->assign('gmessage', "Frequency/Duration" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($cms485_id);
+			
+		}
+		
+	}
+	
+	function edit ( $cms485_id, $cms_485_freq_dura_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("record_id", $cms_485_freq_dura_id);
+		$this->tpl->assign('faction', 'edit');
+		
+		$this->assignObject($this->episodefrequencymdl->getById($cms_485_freq_dura_id));
+						
+		$this->validation->set_rules($this->rules);			
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/cms485/frequency_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->episodefrequencymdl);
+			$this->episodefrequencymdl->update($cms485_id, $cms_485_freq_dura_id);
+			
+			$this->tpl->assign('gmessage', "Frequency/Duration" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($cms485_id);
+			
+		}
+		
+	}
+	
+	
+	function delete ( $cms485_id, $cms_485_freq_dura_id ) {
+		
+		$this->episodefrequencymdl->delete($cms_485_freq_dura_id);
+		
+		$this->tpl->assign('gmessage', "Frequency/Duration" . $this->lang->line('grl_del_msg'));
+
+		$this->index($cms485_id);
+		
+	}
+	
+ }

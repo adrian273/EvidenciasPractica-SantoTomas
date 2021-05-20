@@ -1,0 +1,96 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td>
+		<select name="search_type" onchange="switchDisplay('fd1');switchDisplay('fd2'); setValue('fd2', ''); setValue('fd1', '');">
+			<option value="1">User Name</option>
+			<option value="2">Visit/Task Name</option>
+		</select> &nbsp;
+		
+		<input type="text" name="keyword" id="fd1" style="width: 150px">
+		{html_options first_option='All Events' options=$visit_type_list id="fd2" style="display:none;width: 150px" selected=$visit_type_id name='visit_type_id' onchange="loadGrid()"}
+		
+		<input type="submit" value="Search">
+		<!--<input type="button" onclick="document.location = '{$index_url}{$resource_path}/add/{$entity_id}'" value="Assign User to Team">-->
+		
+    </td>
+    {*<td align="right">
+		{html_options first_option='All Status' options=$visit_status_list name='visit_status_id' onchange='loadGrid()'}
+    </td>*}
+  </tr>
+</table> 
+
+
+<script language="JavaScript" type="text/javascript">
+	function editRegister ( id ) {literal}{{/literal}
+			
+		if (id > 0){literal}{{/literal}		
+			{if $open_new_window eq 1}
+				//top.open_top_popup("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id+"/nw");						
+				window.open("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id+"/nw", "_blank");				
+			{else}
+				document.location = "{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id;
+			{/if}
+			
+			
+		}
+	  
+	{literal}}{/literal}
+
+	{literal}
+
+
+      //window.onload = loadCalendarSelector;
+            
+      function loadCalendarSelector() {
+		    mCal = new dhtmlxCalendarObject("date_filter");  
+		    mCal.setSkin('dhx_blue');  
+		    mCal.setDateFormat('%m-%d-%Y');
+		    mCal.setOnClickHandler(loadGrid);
+		    mCal.draw();
+       }
+       
+       
+       function reassignApprover () {
+       
+			if (grid.getCheckedRows(0)) {{/literal}
+				ajax('{$index_url}{$resource_path}/reassignApprover/' + grid.getCheckedRows(0), ajaxParseAction);
+{literal}
+			}
+       
+       }
+{/literal}
+
+	function movevisit(visit_log_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 650, 220);
+			w2.setText("Move this visit");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/{$resource_path}/move_visit/"+visit_log_id);
+			
+    	
+  {literal}}{/literal}
+
+ function restore(visit_log_id) {literal}{
+ 			if(confirm('Are you sure want to restore the visit?')){{/literal}
+     	ajax('{$index_url}{$resource_path}/restore_utility/' + visit_log_id, ajaxParseAction);
+{literal}
+			}
+    	
+  }{/literal}
+	
+	function restored(status) {literal}{
+			if(status==1)
+ 			$('.tbl_msg_ok').html("Visit has been restored").fadeIn(function(){ $(this).fadeOut(5000);});  
+ 			else if(status == 2)
+ 			alert('Warning: Visit Note can\'t be restored - Payroll and/or Billing has already been processed for this note.');
+			else
+ 			$('.tbl_msg').html("Visit Not restored").fadeIn(function(){ $(this).fadeOut(5000);});    				
+  }{/literal}
+</script>

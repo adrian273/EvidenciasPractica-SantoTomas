@@ -1,0 +1,171 @@
+<?php
+
+class Contacts extends MY_Controller {
+
+    public function Contacts() {
+        parent::MY_Controller();
+        $this->load->model('patientcontactsmdl');
+        $this->load->model('parametermdl');
+        $this->tpl->assign("resource_path", "patient/contacts");
+        $this->tpl->assign('tab_page', true);
+    }
+
+    public function index($patient_id) {
+        $this->tpl->assign("add_sufix", "Contacts");
+        $this->tpl->assign("entity_id", $patient_id);
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->assign_include("script_tpl", "patient/contacts/contact_script");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    public function grid($patient_id, $cms485_id=null) {
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+        
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*", "Cntact"));
+        $head->append($this->xml->Element("column", "width=10", "Last Name"));
+        $head->append($this->xml->Element("column", "width=10", "First Name"));
+        $head->append($this->xml->Element("column", "width=*", "Email"));
+        $head->append($this->xml->Element("column", "width=12;type=link", "Phone"));
+        $head->append($this->xml->Element("column", "width=5", "Ext"));
+        $head->append($this->xml->Element("column", "width=4", "Dft"));
+        $head->append($this->xml->Element("column", "width=*", "Note"));
+        $head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));
+        //$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+        $data = $this->patientcontactsmdl->getPatientContacts( $patient_id);
+        foreach ($data as $d) {
+            $cell = $this->xml->Element("row", "id=" . $d->contact_id );
+            $cell->append($this->xml->Element("cell", null, $d->tab_description));
+            $cell->append($this->xml->Element("cell", null, $d->last_name));
+            $cell->append($this->xml->Element("cell", null, $d->first_name));
+            $cell->append($this->xml->Element("cell", null, $d->email));
+            $cell->append($this->xml->Element("cell", null, $d->phone.'^tel:'.$d->phone));
+            $cell->append($this->xml->Element("cell", null, $d->phone_ext));
+
+            $img = '<![CDATA[';
+            $img.= '<img src="'.$this->config->config["base_url"].'style/images/drop-yes.gif" width="16" border="0"/>';
+            $img .= ']]>';
+            if($d->make_default == 1) {
+                $cell->append($this->xml->Element("cell", null, $img));
+            } else {
+                $cell->append($this->xml->Element("cell", null, null));
+            }
+            $cell->append($this->xml->Element("cell", null, $d->notes));
+            $cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "patient/contacts/edit/" . $d->contact_id. "/" .$patient_id ."/".$cms485_id ));
+            $document->append($cell);
+        }
+
+
+    }
+
+    public function add($patient_id, $cms485_id=null) {
+        // $contractor_id = $this->getAgencyId();
+        $this->tpl->assign('faction', 'add');
+        $this->tpl->assign("entity_id", $patient_id);
+        $this->tpl->assign("patient_id", $patient_id);
+        $this->tpl->assign("record_id", $cms485_id);
+        $this->tpl->assign('contact_tab112_list', $this->parametermdl->getByType(112));
+
+
+        $this->validation->set_fields(array(
+            'contact_tab112' => 'Contact',
+            'last_name' => 'Last Name',
+            'first_name' => 'First Name',
+            'email' => 'Email',
+            'phone' => 'Telephone'
+        ));
+
+        $this->validation->set_rules(array(
+            'contact_tab112' => 'required',
+            'last_name' => 'required',
+            'first_name' => 'required',
+            'email' => 'required|valid_email',
+            'phone' => 'required|valid_phone'
+        ));
+
+
+        if ($this->validation->run() == FALSE) {
+
+            $this->tpl->assign('back_url', 'patient/patient/demographic/'.$patient_id.'/'.$cms485_id.'?r='.time().'#section2');
+            $this->tpl->assign("form_title", "Add Patient Contact");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "patient/contacts/add_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        } else {
+            $this->assignPostData($this->patientcontactsmdl);
+
+            $this->patientcontactsmdl->insert();
+
+            $this->session->set_userdata('success_string', "Contacts has been created.");
+
+            // $config =& get_config();
+            redirect('/patient/patient/demographic/'.$patient_id.'/'.$cms485_id.'?r='.time().'#section2');
+
+            // $this->index($patient_id);
+        }
+    }
+
+    public function edit($id, $patient_id, $cms485_id=null) {
+        
+        $this->tpl->assign('faction', 'edit');
+        $this->tpl->assign("contact_id", $id);
+        $this->tpl->assign("record_id", $id.'/'.$patient_id.'/'.$cms485_id);
+
+        $contact = $this->patientcontactsmdl->getById($id);
+        $this->assignObject($contact);
+
+        $contact_tab112_list = $this->parametermdl->getByType(112);
+        $this->tpl->assign('contact_tab112_list', $contact_tab112_list);
+
+        $this->validation->set_fields(array(
+            'contact_tab112' => 'Contact',
+            'last_name' => 'Last Name',
+            'first_name' => 'First Name',
+            'email' => 'Email',
+            'phone' => 'Telephone'
+        ));
+
+        $this->validation->set_rules(array(
+            'contact_tab112' => 'required',
+            'last_name' => 'required',
+            'first_name' => 'required',
+            'email' => 'required|valid_email',
+            'phone' => 'required|valid_phone'
+        ));
+
+        if ($this->validation->run() == FALSE) {
+            $this->tpl->assign('back_url', 'patient/patient/demographic/'.$patient_id.'/'.$cms485_id.'?r='.time().'#section2');
+
+            // $this->tpl->assign('no_commit_form', FALSE);
+            $this->tpl->assign("form_title", "Edit Patient Contact");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "patient/contacts/edit_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        } else {
+
+            $this->assignPostData($this->patientcontactsmdl);
+            $this->patientcontactsmdl->update($id);
+            $this->tpl->assign('gmessage', "Contact" . $this->lang->line('grl_upd_msg'));
+
+            redirect('/patient/patient/demographic/'.$patient_id.'/'.$cms485_id.'?r='.time().'#section2');
+
+            // $this->index($patient_id);
+        }
+    }
+
+    public function delete($id, $patient_id, $cms485_id=null) {
+
+        $this->patientcontactsmdl->delete($id);
+        $this->tpl->assign('gmessage', "Contact " . $this->lang->line('grl_del_msg'));
+        redirect('/patient/patient/demographic/'.$patient_id.'/'.$cms485_id.'?r='.time().'#section2');
+        // $this->index($patient_id, $cms485_id);
+    }
+
+}

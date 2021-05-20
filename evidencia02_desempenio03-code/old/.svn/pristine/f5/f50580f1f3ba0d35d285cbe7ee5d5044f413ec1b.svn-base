@@ -1,0 +1,179 @@
+{if $filter}
+	<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>*}
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>*}
+	<script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+	{*<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/blitzer/jquery-ui.css" type="text/css" />*}
+	<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+
+  
+  <script>
+  {literal}
+	$(document).ready(function() {
+    $("input#keyword").autocomplete({
+    source: {/literal}{$name_source_obj}{literal}
+		});
+		
+		$('input#keyword').bind("keydown", function(e) {
+        
+        if (e.which == 13) 
+        { //Enter key
+          e.preventDefault(); //Skip default behavior of the enter key
+					return false;          
+        }
+      });
+			
+  });
+	function hmo_toggle(ins_type){
+	if(ins_type==2){$("#prim_insura_type_2_hmo").show();}else{$("#prim_insura_type_2_hmo").hide();}
+	}
+	
+	$(document).ready(function() {
+     $('input:text:first').focus();
+
+     
+  
+  });
+	
+	{/literal}
+  </script>
+
+{/if}
+<style>
+{literal}
+td{font-size: 12px;padding: 5px;}
+{/literal}
+{if $pdf}
+{literal}
+body{
+	font-size: 16px;
+}
+td{font-size: 16px;padding: 5px;}
+{/literal}
+{/if}
+</style>
+{if $pdf}
+<page backbottom="10mm">
+<page_footer style="text-align:right;font-size: 16px;">page [[page_cu]]/[[page_nb]]</page_footer> 
+{/if}
+<table border="0" width="100%" cellpadding="4" cellspacing="0"> 
+{if $pdf}
+<tr>
+	<td colspan="8" align="left"><h2>{$form_title}</h2></td>
+	<td align="right" style="padding-right:15px;"><h3>{$agency->agency_name}</h3></td>
+</tr>
+{/if}
+{if $filter}
+<tr>
+	<td colspan="9" align="left">
+		<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+		<tr>
+			<td nowrap>
+			Patient name: <input type="text" name="keyword" id="keyword" value="{$keyword}"> 
+			</td>
+			<td align="right" style="padding-left: 20px" nowrap>
+				Insurance Type 
+				{html_options first_option='All' options=$insurance_type_list name='tab_102_prim_insura_type' onchange='hmo_toggle(this.value)' selected=$tab_102_prim_insura_type}
+				{*<label><input type="radio" name="tab_102_prim_insura_type" value="All" /> All</label>
+				<label><input type="radio" name="tab_102_prim_insura_type" value="Medicare" /> Medicare</label>
+				<label><input type="radio" name="tab_102_prim_insura_type" value="Medicaid" /> Medicaid</label>
+				<label><input type="radio" name="tab_102_prim_insura_type" value="Other" /> Other</label>*}
+				
+				<label  {if $tab_102_prim_insura_type != 2}style="display:none;"{/if} id="prim_insura_type_2_hmo" ><select name="medicaid_hmo" id="medicaid_hmo"><option value="">Select all</option><option value="M" {if $medicaid_hmo=='M'}selected='selected'{/if}>Molina</option><option value="S" {if $medicaid_hmo=='S'}selected='selected'{/if}>Superior</option><option value="T" {if $medicaid_hmo=='T'}selected='selected'{/if}>Traditional</option></select></label>
+							
+			</td>		
+			<td align="right" style="padding-left: 20px" nowrap>
+			Patient Status {html_options first_option='All Status' options=$patient_status_list name='tab_013_status' selected=$tab_013_status}
+			</td>
+			<td align="right" style="padding-left: 20px" nowrap>
+			 Sort List By <select name="order_by"><option value="last_name" {if $order_by=='last_name'}selected='selected'{/if}>Patient Last Name</option><option value="episode_start_date" {if $order_by=='episode_start_date'}selected='selected'{/if}>Episode Start Date(disabled)</option></select>
+			</td>
+		</tr>
+		<tr>
+		<td align="left" nowrap colspan="4">
+			<label>Not authorized yet <input type="checkbox" name="not_auth_yet" value="1" {if $not_auth_yet eq 1}checked="checked"{/if} /></label> 
+			<input type="submit" value="Search" name="submit" onclick="document.getElementById('pdf_hidden').value='0';">
+			<input type="hidden" name="pdf" id="pdf_hidden" value="0" />
+		</td>
+		{* Filter by Medicaid Type : <select onchange="location.href='{$index_url}{$resource_path}/index/'+this.value;" name="medicaid_hmo" id="medicaid_hmo"><option value="">Select one</option><option value="M" {if $medicaid_hmo eq 'M'}selected="selected"{/if}>Molina</option><option value="S" {if $medicaid_hmo eq 'S'}selected="selected"{/if}>Superior</option><option value="T" {if $medicaid_hmo eq 'T'}selected="selected"{/if}>Traditional</option></select> *}
+		</tr>
+		</table>
+	</td>
+</tr>
+{else}
+<tr>
+	<td colspan="9" align="left">
+			{if $keyword}Patient name (Keyword): {$keyword}, {/if}
+			
+			Insurance Type : {if $tab_102_prim_insura_type eq 1}Medicare{elseif $tab_102_prim_insura_type eq 2}Medicaid{elseif $tab_102_prim_insura_type eq 3}Other/HMO{else}All{/if}
+				
+			{if $tab_102_prim_insura_type eq 2}({if $medicaid_hmo=='M'}MOL{elseif $medicaid_hmo=='S'}SUP{elseif $medicaid_hmo=='T'}TRA{else}All{/if}){/if}
+			
+			, Patient Status : {$patient_status_list[$tab_013_status]} 
+			
+			{if $not_auth_yet eq 1}, Not authorized yet : YES{/if}				
+	</td>
+</tr>
+{*<tr>
+	<td colspan="8" align="left">Medicaid Type : {if $medicaid_hmo eq 'M'}Molina{elseif $medicaid_hmo eq 'S'}Superior{elseif $medicaid_hmo eq 'T'}Traditional{/if}</td>
+</tr>*}
+{/if}
+{*<tr>
+	<td colspan="7" align="left"><h2 style="text-align:center; margin:0; padding:5px;">Current Patients</h2></td>
+</tr>*}
+<tr>
+	<td width="15%" colspan="2"></td>
+	<td colspan="5" align="left"><h4>A/ U/ R = Authorized / Used / Remaining</h4></td>
+	<td></td>
+	<td width="30%">{if $pdf}<h4>Date: {$smarty.now|date_format:"%m-%d-%Y":"":true}</h4>{/if}</td>
+</tr>
+<tr>
+	<td colspan="9"><hr /></td>
+</tr>	
+{foreach from=$patients key=k item=p}
+	<tr bgcolor="#DDD" height="30">
+	<td width="15%" colspan="2">
+		Patient:	{if $pdf}{$p->first_name} {$p->last_name}{else}<a href="{$index_url}/patient/patient/treatmentarea/{$p->patient_id}/{$p->cms485_id}/b7">{$p->first_name} {$p->last_name}</a>{/if}
+	</td>
+	<td colspan="2">SOC : {$p->soc->estimated_soc_date|date_format:"%m/%d/%Y":"":true}</td>
+	<td colspan="3">Cert Period: {$p->episode->episode_start_date|date_format:"%m/%d/%Y":"":true} &nbsp;{$p->episode->episode_end_date|date_format:"%m/%d/%Y":"":true}</td>
+	<td width="50">{if $p->tab_102_prim_insura_type eq 3}HMO {elseif $p->tab_102_prim_insura_type eq 2} {if $p->medicaid_hmo eq 'M'}MOL{elseif $p->medicaid_hmo eq 'S'}SUP{elseif $p->medicaid_hmo eq 'T'}TRA{/if}{/if}</td>		
+	<td width="30%"><i>Skill/Staff: {$p->team_users|wordwrap:40:"<br>"}</i></td>
+	</tr>
+
+	<tr>
+	<td width="12%"><b>Authorization ID</b></td>
+	<td width="13%"><b>Authorization Period:	</b></td>
+	<td><b>SN Visits Auth	</b></td>
+	<td><b>PT Visits Auth	</b></td>
+	<td><b>OT Visits Auth	</b></td>	
+	<td><b>ST Visits Auth	</b></td>		
+	<td><b>HHA Vis Auth	</b></td>		
+	<td width="10%" colspan="2"><b>Notes</b></td>
+	</tr>
+	{foreach from=$p->authvisits key=vk item=av}	
+		<tr>
+			<td>{$av->authorization_id}</td>
+			<td width="13%">{$av->author_from_date|date_format:"%m/%d/%Y":"":true} {$av->author_end_date|date_format:"%m/%d/%Y":"":true}</td>
+			<td>{$av->nbr_sn_visits} / {$av->sn_used} / {$av->sn_remain}</td>
+			<td>{$av->nbr_pt_visits} / {$av->pt_used} / {$av->pt_remain}</td>
+			<td>{$av->nbr_ot_visits} / {$av->ot_used} / {$av->ot_remain}</td>
+			<td>{$av->nbr_st_visits} / {$av->st_used} / {$av->st_remain}</td>
+			<td>{$av->hha_nbr_visits} / {$av->hha_used} / {$av->hha_remain}</td>
+			<td width="10%" colspan="2"> {if $pdf}{$av->authvisits_notes|wordwrap:50:"<br>"}{else}{$av->authvisits_notes|wordwrap:50:"<br />"}{/if}</td>
+		</tr>
+	{foreachelse}	
+	 <tr>
+	 	<td></td>
+		<td></td>
+	 	<td colspan="5" align="center">No authorize visits sets yet</td>
+		<td></td>
+		<td></td>
+	 </tr>	
+	{/foreach}		
+{/foreach}	
+<tr>
+	<td colspan="9"><hr /></td>
+</tr>	
+</table>
+{if $pdf}</page>{/if}

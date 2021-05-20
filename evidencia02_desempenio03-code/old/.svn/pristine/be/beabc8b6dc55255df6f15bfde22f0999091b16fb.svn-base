@@ -1,0 +1,97 @@
+<?
+
+ class MsVtMdl extends Model {
+
+	var $mis_visit_id;
+	var $visit_log_id;
+  var $primary_diag;
+	var $secondary_diag;
+  var $primary_diag_date;
+	var $secondary_diag_date;  
+	var $alter_caregiver;
+	var $patient_refused;
+	var $family_refused;
+	var $patient_requested;
+	var $no_answer;
+	var $other;
+	var $other_description;
+	var $plan;
+	var $superv_notified;
+	var $md_notified;
+	var $provider_sign_date;
+
+	function MsVtMdl () {
+
+		parent::Model();
+		
+	}
+
+	function getEmpty ( ) {
+		return (object)get_object_vars($this);
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt_missed_visit');
+		return $query->row();
+	
+	}
+
+	function insert ($visit_log_id) {
+		$this->visit_log_id = $visit_log_id;
+		$this->db->insert('vt_missed_visit', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->mis_visit_id);
+		$this->visit_log_id = $visit_log_id;
+
+		$this->db->where('visit_log_id', $visit_log_id);	
+		$this->db->update('vt_missed_visit', $this);
+	
+	}
+
+	function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+
+		$this->db->where($where, $visit_log_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('vt_missed_visit');
+
+	}
+
+	
+	function getPrevious ( $user_id, $previous_date, $episode_id ) {
+		
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt_missed_visit.visit_log_id');
+		
+		$this->db->where('visit_user_id', $user_id);
+		$this->db->where('visit_date_time <', $previous_date);
+		$this->db->where('cms485_id', $episode_id);
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt_missed_visit');
+		return $query->result();
+		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new SnPnMdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->mis_visit_id	    = $object1->mis_visit_id;
+		$object->visit_log_id 		= $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('vt_missed_visit', $object);
+		
+	}
+	
+ }

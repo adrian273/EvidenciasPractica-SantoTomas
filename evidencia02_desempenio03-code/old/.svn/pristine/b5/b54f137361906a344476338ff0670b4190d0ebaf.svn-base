@@ -1,0 +1,524 @@
+<?php
+
+class MyPatientV2 extends MY_Controller
+{
+    /**
+     * Agency or COntractor Information who logged in
+     * @var Array
+     */
+    private $loggedInAgency;
+
+    function MyPatientV2()
+    {
+
+        parent:: MY_Controller();
+        $this->tpl->assign("resource_path", "patient/mypatientv2");
+    }
+
+    function index()
+    {
+        $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+        $userprofile = $usAgy->profile_id;
+
+        $this->tpl->assign("no_grid_buttons", true);
+        
+        if ($this->getAgencyType() == 'C' && in_array($userprofile, array(3,9)) ) {
+            $agency_list = $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false);
+            $this->tpl->assign("agency_list", $agency_list);
+
+            $this->tpl->assign("default_pat_filter_agency", $usAgy->default_pat_filter_agency);
+            if (is_null($usAgy->default_pat_filter_status) OR !$usAgy->default_pat_filter_status) {
+                $this->tpl->assign("default_pat_filter_status", 2);
+            } else {
+                $this->tpl->assign("default_pat_filter_status", $usAgy->default_pat_filter_status);
+            }
+            
+        } else {
+            if (is_null($usAgy->default_pat_filter_status) OR !$usAgy->default_pat_filter_status) {
+                $this->tpl->assign("default_pat_filter_status", 2);
+            } else {
+                $this->tpl->assign("default_pat_filter_status", $usAgy->default_pat_filter_status);
+            }
+        }
+        //echo $this->getAgencyType();
+        $this->tpl->assign("resource_grid", ($this->getAgencyType() == 'C' && in_array($userprofile, array(3,9)) ) ? 'patient_list_grid_company' : 'patient_list_grid_agency');
+
+        
+        $this->tpl->assign(array("list_title" => "Patient List", "add_sufix" => "New Patient", "items_per_page" => 250));
+
+        if ($userprofile == 2) { // when user is clinician
+            $this->tpl->assign("list_title", 'My Patients');
+        }
+
+        $this->tpl->assign('additional_buttons', array(
+            'Print Patients' => 'printPatients()', 
+            'Export To Excel' => 'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');', 
+        ));
+
+        $show_my_pat_filter = FALSE;
+        if ($usAgy->discipline_id != 11) {
+            $show_my_pat_filter = TRUE;
+        }
+        if (in_array($userprofile, array(2,8,1))) {
+            $show_my_pat_filter = FALSE;
+        }
+
+        $this->tpl->assign("show_my_pat_filter", $show_my_pat_filter);
+
+        $this->tpl->assign_include("filter_tpl", "patient/reports/patient_list_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    function patient_list_grid_agency()
+    {
+
+        $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+        $agency_types = $this->lang->line('agency_type_list');
+        if ($usAgy->default_pat_filter_status != $this->input->post('tab_013_status')) {
+            $this->usagymdl->updateFlex($this->getUsAgyId(), 'default_pat_filter_status', $this->input->post('tab_013_status'));
+        }
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $userprofile = $this->getUserProfileId();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "SOC Date"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "Certif. Start"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "Certif. End"));
+        $head->append($this->xml->Element("column", "width=7;align=center;sort=int", "Days Left"));
+        $head->append($this->xml->Element("column", "width=10", "Status"));
+        /*$head->append($this->xml->Element("column", "width=7;type=img;align=center", "13/19"));*/
+        $head->append($this->xml->Element("column", "width=7;align=center", "Scheduled"));
+        $head->append($this->xml->Element("column", "width=7;align=center", "Performed"));
+        $head->append($this->xml->Element("column", "width=7;align=center", "Missing"));
+
+        if ($this->getAgencyType() == 'C') {
+            $head->append($this->xml->Element("column", "width=*", "Agency Name"));
+            $head->append($this->xml->Element("column", "width=*", "Agency Type"));
+            $head->append($this->xml->Element("column", "width=*", "PT"));
+            $head->append($this->xml->Element("column", "width=*", "PTA1"));
+            $head->append($this->xml->Element("column", "width=*", "PTA2"));
+            $head->append($this->xml->Element("column", "width=3", "M"));
+        }
+        if ($userprofile == 1) {
+            $head->append($this->xml->Element("column", "width=10;align=center;type=linkc", "Action"));
+        }
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        if ($this->input->post('my_patients') == 1) {
+            $data = $this->patientcontractormdl->getByUsAgyId($this->getUsAgyId(), $this->getAgencyType(), $this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+        } else {
+            if ($this->input->post('patient_type') == 'act' && $this->getUserDiscipline()) {
+                $data = $this->getPatients($this->input->post('keyword'), $this->input->post('tab_013_status'), true, $this->getUserDiscipline());
+            } else {
+                $data = $this->getPatients($this->input->post('keyword'), $this->input->post('tab_013_status'));
+            }
+        }
+
+        foreach ($data as $patient) {
+
+            $cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+            $cell->append($this->xml->Element("cell", null, $patient->last_name . ", " . $patient->first_name));
+
+            $episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix(@ $episode->estimated_soc_date))));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix(@ $episode->episode_start_date))));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix(@ $episode->episode_end_date, 'USA_DATE_TIME'))));
+            $cell->append($this->xml->Element("cell", null, @ $episode->expiration_days_left));
+
+            $cell->append($this->xml->Element("cell", null, $patient->tab_description));
+
+            /*if (!$episode || $this->app->validateCalendar($episode->cms485_id) || $patient->tab_102_prim_insura_type != 1) {
+                $cell->append($this->xml->Element("cell", null, $this->config->config["base_url"] . "style/images/no_img.gif"));
+            } else {
+                $cell->append($this->xml->Element("cell", null, $this->config->config["base_url"] . "style/images/exclamation.gif"));
+            }*/
+            if ($episode) {
+                $cell->append($this->xml->Element("cell", null, $this->visitlogmdl->getTotalTherapy($episode->cms485_id)));
+                $cell->append($this->xml->Element("cell", null, $this->visitlogmdl->getActual($episode->cms485_id)));
+                $cell->append($this->xml->Element("cell", null, $this->visitlogmdl->getShould($episode->cms485_id) - $this->visitlogmdl->getActual($episode->cms485_id)));
+            } else {
+                $cell->append($this->xml->Element("cell", null, null));
+                $cell->append($this->xml->Element("cell", null, null));
+                $cell->append($this->xml->Element("cell", null, null));
+            }
+
+            if ($this->getAgencyType() == 'C') {
+                $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+                $cell->append($this->xml->Element("cell", null, $agency->agency_name));
+                $cell->append($this->xml->Element("cell", null, $agency_types[$agency->agency_type]));
+                
+                // PT
+                $_POST['user_status'] = 'A';
+                $PTs = $this->teammdl->get($patient->patient_id, '', 2);
+                $PT = reset($PTs);
+                if ($PT) {
+                    $cell->append($this->xml->Element("cell", null, $PT->last_name . " " . $PT->first_name . " (" . $PT->short_description.")" ));
+                } else {
+                    $cell->append($this->xml->Element("cell", null, null));
+                }
+
+                // PTA1
+                $_POST['user_status'] = 'A';
+                $PTAs = $this->teammdl->get($patient->patient_id, '', 3);
+                $PTA1 = reset($PTAs);
+                if ($PTA1) {
+                    $cell->append($this->xml->Element("cell", null, $PTA1->last_name . " " . $PTA1->first_name . " (" . $PTA1->short_description.")" ));
+                } else {
+                    $cell->append($this->xml->Element("cell", null, null));
+                }
+
+                // PTA2
+                $PTA2 = next($PTAs);
+                if ($PTA2) {
+                    $cell->append($this->xml->Element("cell", null, $PTA2->last_name . " " . $PTA2->first_name . " (" . $PTA2->short_description.")" ));
+                } else {
+                    $cell->append($this->xml->Element("cell", null, null));
+                }
+
+                // is pat have medicare insurance
+                $commentsCellStr = '<![CDATA[';
+                $_POST['ins_type'] = 1;
+                $insurancees = $this->patientinsurancemdl->get($patient->patient_id);
+                if(count($insurancees) > 0) {
+                    $commentsCellStr.= '<img src="'.$this->config->config["base_url"].'style/images/drop-yes.gif" width="16" border="0" title="Medicare" />';
+                }
+                $commentsCellStr .= ']]>';              
+                $cell->append($this->xml->Element("cell", null, $commentsCellStr));
+                
+            }
+
+
+            if ($userprofile == 1 && !count($this->episodemdl->getCurrentByPatientId($patient->patient_id))) {
+                $cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "patient/reports/delete_patient/" . $patient->patient_id . "^Are you sure to delete this patient?"));
+            }
+            $document->append($cell);
+
+        }
+
+    }
+
+    function patient_list_grid_company()
+    {
+
+        $agency_types = $this->lang->line('agency_type_list');
+        // if ($this->input->post('agency_id')) {
+        $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+        if ($usAgy->default_pat_filter_agency != $this->input->post('agency_id')) {
+            $this->usagymdl->updateFlex($this->getUsAgyId(), 'default_pat_filter_agency', $this->input->post('agency_id'));
+        }
+        // }
+        if ($usAgy->default_pat_filter_status != $this->input->post('tab_013_status')) {
+            $this->usagymdl->updateFlex($this->getUsAgyId(), 'default_pat_filter_status', $this->input->post('tab_013_status'));
+        }
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $userprofile = $this->getUserProfileId();
+
+        $head = $this->xml->Element("head");
+        // $head->append($this->xml->Element("column", "width=5;align=center", ""));
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        // $head->append($this->xml->Element("column", "width=10;align=center", "SOC Date"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "Certif. Start"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "Certif. End"));
+        $head->append($this->xml->Element("column", "width=7;align=center;sort=int", "Days Left"));
+        $head->append($this->xml->Element("column", "width=7", "Status"));
+        /*$head->append($this->xml->Element("column", "width=7;type=img;align=center", "13/19"));*/
+        $head->append($this->xml->Element("column", "width=7;sort=int;align=center", "Scheduled"));
+        $head->append($this->xml->Element("column", "width=7;sort=int;align=center", "Performed"));
+        //$head->append($this->xml->Element("column", "width=7;sort=int;align=center", "Missing"));
+        $head->append($this->xml->Element("column", "width=*", "Agency Name"));
+        $head->append($this->xml->Element("column", "width=*", "PT"));
+        $head->append($this->xml->Element("column", "width=*", "PTA1"));
+        $head->append($this->xml->Element("column", "width=*", "PTA2"));
+        $head->append($this->xml->Element("column", "width=3", "M"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        if ($this->input->post('my_patients') == 1) {
+            $data = $this->patientcontractormdl->getByUsAgyId($this->getUsAgyId(), $this->getAgencyType(), $this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+        } else {
+            if ($this->input->post('patient_type') == 'act' && $this->getUserDiscipline()) {
+                $data = $this->patientcontractormdl->getActivatedByContractorId($this->getAgencyId(), $this->getUserDiscipline(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+            } else {
+                $data = $this->patientcontractormdl->getByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+            }
+        }
+
+        foreach ($data as $patient) {
+
+            $cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+
+            // // icon for new patient
+            // if (count($this->teammdl->get($patient->patient_id, null, null, $this->getAgencyId()))) {
+            //     $cell->append($this->xml->Element("cell", null, ""));
+            // } else {
+            //     $cell->append($this->xml->Element("cell", "type=img", $this->config->config['base_url'] . 'style/images/exclamation.gif'));
+            // }
+
+            $cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->last_name . ", " . $patient->first_name)));
+
+            $episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+            // $cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->estimated_soc_date)))));
+            $cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->episode_start_date)))));
+            $cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->episode_end_date, 'USA_DATE_TIME')))));
+            $cell->append($this->xml->Element("cell", null, $this->xml_entities(@ $episode->expiration_days_left)));
+            $cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->tab_description)));
+
+            /*          if (!$episode || $this->app->validateCalendar($episode->cms485_id) || $patient->tab_102_prim_insura_type != 1) {
+                            $cell->append($this->xml->Element("cell", null, $this->config->config["base_url"] . "style/images/no_img.gif"));
+                        } else {
+                            $cell->append($this->xml->Element("cell", null, $this->config->config["base_url"] . "style/images/exclamation.gif"));
+                        }
+            */
+            if ($episode) {
+                $cell->append($this->xml->Element("cell", null, $this->visitlogmdl->getTotalTherapy($episode->cms485_id)));
+                $cell->append($this->xml->Element("cell", null, $this->visitlogmdl->getActual($episode->cms485_id)));
+                // $cell->append($this->xml->Element("cell", null, $this->visitlogmdl->getShould($episode->cms485_id) - $this->visitlogmdl->getActual($episode->cms485_id)));
+            } else {
+                $cell->append($this->xml->Element("cell", null, null));
+                $cell->append($this->xml->Element("cell", null, null));
+                // $cell->append($this->xml->Element("cell", null, null));
+            }
+            
+
+            $cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->agency_name)));
+            
+            // PT
+            $_POST['user_status'] = 'A';
+            $PTs = $this->teammdl->get($patient->patient_id, '', 2);
+            $PT = reset($PTs);
+            if ($PT) {
+                $cell->append($this->xml->Element("cell", null, $PT->last_name . " " . $PT->first_name . " (" . $PT->short_description.")" ));
+            } else {
+                $cell->append($this->xml->Element("cell", null, null));
+            }
+
+            // PTA1
+            $_POST['user_status'] = 'A';
+            $PTAs = $this->teammdl->get($patient->patient_id, '', 3);
+            $PTA1 = reset($PTAs);
+            if ($PTA1) {
+                $cell->append($this->xml->Element("cell", null, $PTA1->last_name . " " . $PTA1->first_name . " (" . $PTA1->short_description.")" ));
+            } else {
+                $cell->append($this->xml->Element("cell", null, null));
+            }
+
+            // PTA2
+            $PTA2 = next($PTAs);
+            if ($PTA2) {
+                $cell->append($this->xml->Element("cell", null, $PTA2->last_name . " " . $PTA2->first_name . " (" . $PTA2->short_description.")" ));
+            } else {
+                $cell->append($this->xml->Element("cell", null, null));
+            }
+
+
+            // is pat have medicare insurance
+            $commentsCellStr = '<![CDATA[';
+            $_POST['ins_type'] = 1;
+            $insurancees = $this->patientinsurancemdl->get($patient->patient_id);
+            if(count($insurancees) > 0) {
+                $commentsCellStr.= '<img src="'.$this->config->config["base_url"].'style/images/drop-yes.gif" width="16" border="0" title="Medicare" />';
+            }
+            $commentsCellStr .= ']]>';              
+            $cell->append($this->xml->Element("cell", null, $commentsCellStr));
+            
+
+            $document->append($cell);
+
+        }
+
+    }
+
+    function pdf_patient_list($print = true)
+    {
+
+        $this->load->library('table');
+        $this->load->library('fpdf');
+        define('FPDF_FONTPATH', $this->config->item('fonts_path'));
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+        $this->fpdf->AddPage('L', // L - landscape, P - portrait
+            '', '', '', '',
+            30, // margin_left
+            30, // margin right
+            30, // margin top
+            30, // margin bottom
+            18, // margin header
+            12);
+
+        $x = 85;
+        $y = 152;
+
+        $this->fpdf->SetFont('Arial', 'B', 10);
+        $this->fpdf->Text($x + 20, 20, $agency->agency_name); // agency name
+
+        // date
+        $this->fpdf->Text($x + 20, 30, "Date:");
+
+        $this->fpdf->Text($x + 260, 50, "PATIENT LIST");
+
+        $this->fpdf->SetFont('Arial', '', 10);
+        $this->fpdf->Text($x + 450, 50, "Status: " . ($this->input->post('tab_013_status') ? $this->parametermdl->get(13, $this->input->post('tab_013_status'))->tab_description : 'All Status'));
+
+        $this->fpdf->Text($x + 50, 30, date('m-d-Y'));
+
+        $this->fpdf->SetDrawColor($x + 130, 100);
+
+        $this->fpdf->SetFont('Arial', 'B', 8);
+
+        $this->fpdf->Text($x + 20, 77, "Patient Name");
+        $this->fpdf->Text($x + 150, 77, "Med Rec Nbr");
+        $this->fpdf->Text($x + 215, 77, "Home Phone");
+        $this->fpdf->Text($x + 290, 77, "Address");
+        $this->fpdf->Text($x + 410, 77, "Days Left");
+        //$this->fpdf->Text(430, 77, "Physician");
+        //$this->fpdf->Text(525, 77, "SOC date");
+        $this->fpdf->Text($x + 450, 67, "SOC");
+        $this->fpdf->Text($x + 450, 77, "Physician");
+        $this->fpdf->Text($x + 495, 77, "Certification");
+        $this->fpdf->Text($x + 600, 77, "Scheduled");
+
+        $this->fpdf->Line($x + 20, 80, $y + 574, 80);
+
+        $this->fpdf->SetFont('Courier', '', 8);
+        $this->fpdf->SetLineWidth(0.3);
+
+        $eje_y = 90;
+        //commit by mamun
+        /*if ($this->getAgencyType() == 'A') {
+            $data = $this->getPatients($this->input->post('keyword'), $this->input->post('tab_013_status'));
+        } else {
+            $data = $this->patientcontractormdl->getByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+        }*/
+
+        if ($this->input->post('my_patients') == 1) {
+            $data = $this->patientcontractormdl->getByUsAgyId($this->getUsAgyId(), $this->getAgencyType(), $this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+        } else {
+            $userprofile = $this->getUserProfileId();
+            if($this->getAgencyType() == 'C' && in_array($userprofile, array(3,9)) ) {
+                if ($this->input->post('patient_type') == 'act' && $this->getUserDiscipline()) {
+                    $data = $this->patientcontractormdl->getActivatedByContractorId($this->getAgencyId(), $this->getUserDiscipline(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+                } else {
+                    $data = $this->patientcontractormdl->getByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+                }
+            } else {
+                if ($this->input->post('patient_type') == 'act' && $this->getUserDiscipline()) {
+                    $data = $this->getPatients($this->input->post('keyword'), $this->input->post('tab_013_status'), true, $this->getUserDiscipline());
+                } else {
+                    $data = $this->getPatients($this->input->post('keyword'), $this->input->post('tab_013_status'));
+                }
+            }
+        }
+
+
+        foreach ($data as $patient) {
+            $soc = $this->socmdl->getCurrent($patient->patient_id);
+            $doctorOffice = $this->agencymdl->getByAgencyId($patient->prim_doctor_office_id);
+            $agency2 = $this->agencymdl->getByAgencyId($patient->agency_id);
+            $episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+
+            $this->fpdf->Text($x + 20, $eje_y, substr($patient->last_name . " " . $patient->first_name, 0, 25));
+            if ($this->getAgencyType() != 'A') {
+                //$this->fpdf->Text(20, $eje_y+10, "Agency: ".$agency2->agency_name.", Physician: ".@$doctorOffice->agency_name);
+                $this->fpdf->SetFont('Courier', 'B', 8);
+                $this->fpdf->Text($x + 20, $eje_y + 10, "Agency: ");
+                $this->fpdf->SetFont('Courier', '', 8);
+                $this->fpdf->Text($x + 55, $eje_y + 10, $agency2->agency_name);
+            } else {
+                //$this->fpdf->Text(20, $eje_y+10, "Physician: ".@$doctorOffice->agency_name);
+            }
+            $this->fpdf->Text($x + 150, $eje_y, $patient->medical_rec_nbr);
+            $this->fpdf->Text($x + 215, $eje_y, $patient->phone_home);
+            $this->fpdf->Text($x + 290, $eje_y, $patient->address);
+            $this->fpdf->Text($x + 290, $eje_y + 10, $patient->city . ($patient->city ? ", " : "") . $patient->state_name_short . ". " . $patient->zip1);
+            //$this->fpdf->Text(430, $eje_y, @$doctorOffice->agency_name);
+            $this->fpdf->Text($x + 415, $eje_y, @$episode->expiration_days_left);
+            $this->fpdf->Text($x + 450, $eje_y, date("m/d/y", mysql_to_unix($soc->estimated_soc_date)));
+            $this->fpdf->Text($x + 450, $eje_y + 10, @$doctorOffice->agency_name);
+            $this->fpdf->Text($x + 495, $eje_y, date("m/d/y", mysql_to_unix(@ $episode->episode_start_date)) . " " . date("m/d/y", mysql_to_unix(@ $episode->episode_end_date, 'USA_DATE_TIME')));
+            $this->fpdf->Text($x + 605, $eje_y, ($this->visitlogmdl->getTotalTherapy($episode->cms485_id)));
+
+
+            $this->fpdf->Line($x + 20, $eje_y + 13, $y + 574, $eje_y + 13);
+
+            $eje_y += 20;
+
+            if ($eje_y > 810) {
+                $this->fpdf->AddPage('L', // L - landscape, P - portrait
+                    '', '', '', '',
+                    30, // margin_left
+                    30, // margin right
+                    30, // margin top
+                    30, // margin bottom
+                    18, // margin header
+                    12);
+                $eje_y = 30;
+                $this->fpdf->Line($x + 20, $eje_y - 7, $y + 574, $eje_y - 7);
+            }
+
+        }
+
+        $this->fpdf->Output('patient_list.pdf', 'D');
+
+    }
+
+    function edit($patient_id, $episode_id = null, $active_tab = null)
+    {
+
+        if ($this->hasPatientAccess($patient_id)) {
+
+            header("Location: " . $this->config->config["index_url"] . "patient/patient/treatmentarea/" . $patient_id . "/" . $episode_id . "/" . $active_tab);
+
+        }
+
+    }
+
+    function delete_patient($patient_id)
+    {
+
+        if ($this->getUserProfileId() == 1 && !count($this->episodemdl->getCurrentByPatientId($patient_id))) {
+            $this->patientmdl->delete($patient_id, $this->getAgencyId());
+        }
+
+        $this->patient_list();
+
+    }
+
+    function xml_entities($text, $charset = 'UTF-8')
+    {
+        // First we encode html characters that are also invalid in xml
+        $text = htmlentities($text, ENT_COMPAT, $charset, false);
+
+        // Note: &apos; is useless in UTF-8 or in UTF-16
+        $arr_xml_special_char = array(
+            "&quot;",
+            "&amp;",
+            "&apos;",
+            "&lt;",
+            "&gt;"
+        );
+
+        // Building the regex string to exclude all strings with xml special char
+        $arr_xml_special_char_regex = "(?";
+        foreach ($arr_xml_special_char as $key => $value) {
+            $arr_xml_special_char_regex .= "(?!$value)";
+        }
+        $arr_xml_special_char_regex .= ")";
+
+        // Scan the array for &something_not_xml; syntax
+        $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+
+        // Replace the &something_not_xml; with &amp;something_not_xml;
+        $replacement = '&amp;${1}';
+        return preg_replace($pattern, $replacement, $text);
+    }
+}

@@ -1,0 +1,178 @@
+<?php
+class Inbox extends My_Controller {
+
+	function Inbox() {
+
+		parent :: MY_Controller();
+		$this->tpl->assign("resource_path", "mail/inbox");
+
+		// setting tpl configuration
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('no_grid_buttons', true);
+
+	}
+
+	function index($msg_sent = 0) {
+
+		$this->session->set_userdata('task_return', "mail/inbox/index");
+		$user_id = $this->getUserId();
+		$user = $this->usermdl->getById($user_id); 
+		//echo "<pre>"; print_r($user); echo "</pre>";
+
+		// added by ksa to read a session set in the grid function, and used the session values to fill in the filter form
+		$mail_inbox_form_data = $this->session->userdata('mail_inbox_form_data');
+		
+		$email_type = isset($mail_inbox_form_data['email_type'])?$mail_inbox_form_data['email_type']:$user->default_internal_email_inbox_filter;
+		$keyword = isset($mail_inbox_form_data['keyword'])?$mail_inbox_form_data['keyword']:'';
+		$this->tpl->assign("email_type", $email_type);
+		$this->tpl->assign("keyword", $keyword);
+
+
+
+		if ($msg_sent == 1) {
+			$this->tpl->assign("gmessage", "Message sent");
+		}
+
+		$this->tpl->assign('additional_buttons', array (
+		'Create Internal Email' => 'window.location.href=\'' . $this->config->site_url() . '/mail/compose/index/\''));
+
+		$this->tpl->assign_include("filter_tpl", "mail/toolbar");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function grid() {
+
+		if (!is_null($this->input->post('msg_ids'))) {
+			$this->movetoTrash($this->input->post('msg_ids'));
+		}
+
+
+		$mail_inbox_form_data = $_POST;
+    	$this->session->set_userdata('mail_inbox_form_data', $mail_inbox_form_data);
+
+		$config = & get_config();
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=ch", " "));
+		$head->append($this->xml->Element("column", "width=3;type=img;align=center", ""));
+
+		$head->append($this->xml->Element("column", "width=20", "From"));
+		$head->append($this->xml->Element("column", "width=20", "Subject"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Date"));
+		$head->append($this->xml->Element("column", "width=15;type=link;align=center", "Attached file"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->messagemdl->getInbox($this->getUsAgyId()) as $msg) {
+			// $patient = $this->patientmdl->getById($msg->patient_id);
+
+			$bold = ($msg->msg_read == 0 ? "class=to_bold" : "");
+			$important = $config["base_url"] . "style/images/no_img.gif";
+			if ($msg->email_type == 1) {
+				$important = $config["base_url"] . "style/images/star-icon-yellow.png";
+			}
+
+			if ($msg->msg_important == 1) {
+				$important = $config["base_url"] . "style/images/star-icon-red.png";
+			}
+
+			//$attach		= (!is_null($msg->msg_attachment) > 0 ? $config["base_url"]."style/images/attach.png" : $config["base_url"] . "style/images/no_img.gif");
+			/*$attach_file = (!is_null($msg->msg_attachment) ? $config["base_url"] . "datastore/attachment/" . $msg->msg_attachment : '');
+
+			$attach = "";
+			if ($attach_file != "") {
+				$attach = htmlspecialchars('<a href=' . $attach_file . ' target="_blank">view</a>');
+			}*/
+
+			$cell = $this->xml->Element("row", "id=" . $msg->msg_id);
+			$cell->append($this->xml->Element("cell", null, "0"));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($important)));
+			if ($msg->user_from == 0) {
+				$cell->append($this->xml->Element("cell", $bold, $this->xml_entities('ADMIN')));
+			} else {
+				$cell->append($this->xml->Element("cell", $bold, $this->xml_entities($msg->sender_complete_name)));
+			}
+				
+
+			//$cell->append($this->xml->Element("cell", $bold, $this->xml_entities(@$patient->first_name." ".@$patient->last_name)));
+
+			$cell->append($this->xml->Element("cell", $bold, $this->xml_entities($msg->msg_subject)));
+			$cell->append($this->xml->Element("cell", $bold, $this->xml_entities(standard_date(mysql_to_unix($msg->msg_date), 'USA_DATE_TIME'))));
+			//$cell->append($this->xml->Element("cell", null, $attach));
+
+			$cdata = '<![CDATA[';
+			if ($msg->msg_attachment != "") {
+				$attachments = explode("||", $msg->msg_attachment);
+				foreach ($attachments as $key=>$file) {
+					$cdata .= '<a href="'.$this->config->config['base_url']."datastore/attachment/".$file.'" target="_blank">file '.($key+1).'</a> &nbsp; ';
+				}
+			}
+
+			$cdata .= ']]>';
+
+			$cell->append($this->xml->Element("cell", null, $cdata));
+
+			$document->append($cell);
+
+		}
+
+	}
+
+	function edit($msg_id) {
+
+		$config = & get_config();
+		header("Location: " . $config['index_url'] . "mail/read/msg/" . $msg_id . "/inbox");
+
+	}
+
+	function movetoTrash($msg_ids) {
+
+		$msg_ids = explode(",", $msg_ids);
+
+		foreach ($msg_ids as $id) {
+			$this->usermessagemdl->setMsgTrash($id, $this->getUsAgyId());
+		}
+
+	}
+
+	function messageTrash($msg_id) {
+
+		$this->usermessagemdl->setMsgTrash($msg_id, $this->getUsAgyId());
+		$this->index();
+
+	}
+
+	function xml_entities($text, $charset = 'UTF-8') {
+		// First we encode html characters that are also invalid in xml
+		$text = htmlentities($text, ENT_COMPAT, $charset, false);
+
+		// Note: &apos; is useless in UTF-8 or in UTF-16
+		$arr_xml_special_char = array (
+			"&quot;",
+			"&amp;",
+			"&apos;",
+			"&lt;",
+			"&gt;"
+		);
+
+		// Building the regex string to exclude all strings with xml special char
+		$arr_xml_special_char_regex = "(?";
+		foreach ($arr_xml_special_char as $key => $value) {
+			$arr_xml_special_char_regex .= "(?!$value)";
+		}
+		$arr_xml_special_char_regex .= ")";
+
+		// Scan the array for &something_not_xml; syntax
+		$pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+
+		// Replace the &something_not_xml; with &amp;something_not_xml;
+		$replacement = '&amp;${1}';
+		return preg_replace($pattern, $replacement, $text);
+	}
+
+}

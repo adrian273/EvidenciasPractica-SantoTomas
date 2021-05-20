@@ -1,0 +1,710 @@
+  {*<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>*}
+  <script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+
+  <input type="hidden" name="vt104_id" value="{$vt104_id}">
+  <input type="hidden" name="signature" value="{$signature}">
+  <input type="hidden" name="pt_signed_date" value="{$pt_signed_date|date_format:"%m-%d-%Y":"":true}">
+  <input type="hidden" name="clinician_signature" value="{$clinician_signature}">
+  <input type="hidden" name="clinician_signed_date" value="{$clinician_signed_date|date_format:"%m-%d-%Y":"":true}">
+
+  <input type="hidden" name="dsa_signature" value="{$dsa_signature}">
+  <input type="hidden" name="dsa_signed_date" value="{$dsa_signed_date|date_format:"%m-%d-%Y":"":true}">
+  <input type="hidden" name="visited_time_in_hm" id="visited_time_in_hm" value="{$visited_time_in|truncate:5:"":true}" size="5" maxlength="5"  readonly="" />
+  <input type="hidden" name="visit_duration" id="visit_duration" value="{$visit_duration}" size="2" maxlength="2" onchange="update_visit_time_out(event);"/>
+  <input type="hidden" name="visited_time_out_hm" id="visited_time_out_hm" value="{$visited_time_out|truncate:5:"":true}" size="5" maxlength="5"  readonly="" />
+  <input type="hidden" name="upload_document_name" value="{$upload_document_name}">
+
+
+    <table border="0" width="100%" cellpadding="0" cellspacing="4">
+    {* include file="task/documents/top_base_332b.tpl" *}
+    {if $upload_document_name != ''}
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+     <tr>
+      <td colspan="4" >
+        <h4>Visit have scanned document uploaded. <a href="{$base_url}datastore/quartsumm/{$upload_document_name}" target="_blank">Click to Open Docuemnt</a></h4>
+
+      </td>
+    </tr>
+    {/if}
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Quarterly Summary</td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <table width="100%">
+          <tr>
+            <td class="ftitle">Client</td>
+            <td>{$patient->first_name} {$patient->middle_initial} {$patient->last_name} </td>
+          </tr>
+        </table>
+      </td>
+      <td colspan="2">
+        <table width="100%">
+          <tr>
+            <td class="ftitle">Diagnosis</td>
+            <td>
+              <input type="text" name="diagnosis" value="{$diagnosis}" size="32" maxlength="32">
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <table width="100%">
+          <tr>
+            <td class="ftitle">Therapist</td>
+            <td>{$visit_user_id_name}</td>
+          </tr>
+        </table>
+      </td>
+      <td colspan="2">
+        <table width="100%">
+          <tr>
+            <td class="ftitle">Discipline</td>
+            <td>{$visit_user->mayor_discipline}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <table width="100%">
+          <tr>
+            <td class="ftitle">Date of Assessment</td>
+            <td>
+              <input type="text" id="visit_date_time" name="visit_date_time" value="{$visit_date_time}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+              <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_time'), document.getElementById('fecha_help'));return false;" >
+            </td>
+          </tr>
+        </table>
+      </td>
+      <td colspan="2">
+        <table width="100%">
+          <tr>
+            <td class="ftitle">Review Period (Quarter/Year)</td>
+            <td><input type="text" name="quarter_year" value="{$quarter_year}"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <table width="100%">
+          <tr>
+            <td class="ftitle">Visit Status</td>
+            <td>
+              <span style="margin-left:0; padding:5px; line-height: 26px; background-color:{$visit_tab_status_color}">{$tab_description}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+      <td colspan="2">
+      </td>
+    </tr>
+
+
+
+
+
+
+
+
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Initial/annual evaluation of deficits and needs. Taken from 8606A addendum</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="initial_annual_eval" style="width: 500px; height: 100px;">{$initial_annual_eval}</textarea> -->
+        <textarea id="initial_annual_eval" name="initial_annual_eval" cols="90" rows="6" onkeyup="chars_limit_notice('initial_annual_eval', 600)" maxlength="600">{$initial_annual_eval}</textarea>
+        {assign var="initial_annual_eval_length" value=$initial_annual_eval|count_characters:true}
+        {assign var="initial_annual_eval_left" value="`$initial_annual_eval_length-600`"}
+        <div style="font-size:9px;{if $initial_annual_eval_left gt 0}display:none;{/if}" id="initial_annual_eval_note">
+          <label id="initial_annual_eval_chars_left">{$initial_annual_eval_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Frequency AND Duration of visits</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="frequency_duration" style="width: 500px; height: 100px;">{$frequency_duration}</textarea> -->
+        <textarea id="frequency_duration" name="frequency_duration" cols="90" rows="1" onkeyup="chars_limit_notice('frequency_duration', 100)" maxlength="100">{$frequency_duration}</textarea>
+        {assign var="frequency_duration_length" value=$frequency_duration|count_characters:true}
+        {assign var="frequency_duration_left" value="`$frequency_duration_length-100`"}
+        <div style="font-size:9px;{if $frequency_duration_left gt 0}display:none;{/if}" id="frequency_duration_note">
+          <label id="frequency_duration_chars_left">{$frequency_duration_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Coordination of Care</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="coord_text" style="width: 500px; height: 100px;">{$coord_text}</textarea> -->
+        <textarea id="coord_text" name="coord_text" cols="90" rows="2" onkeyup="chars_limit_notice('coord_text', 145)" maxlength="145">{$coord_text}</textarea>
+        {assign var="coord_text_length" value=$coord_text|count_characters:true}
+        {assign var="coord_text_left" value="`$coord_text_length-145`"}
+        <div style="font-size:9px;{if $coord_text_left gt 0}display:none;{/if}" id="  coord_textcoord_text_note">
+          <label id="coord_text_chars_left">{$coord_text_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+
+
+
+    <tr><td colspan="4" height="10"><hr></td></tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> #1 Baseline Data</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="base_line1" name="base_line1" cols="90" rows="4" onkeyup="chars_limit_notice('base_line1', 484)" maxlength="484">{$base_line1}</textarea>
+        {assign var="base_line1_length" value=$base_line1|count_characters:true}
+        {assign var="base_line1_left" value="`$base_line1_length-484`"}
+        <div style="font-size:9px;{if $base_line1_left gt 0}display:none;{/if}" id="base_line1_note">
+          <label id="base_line1_chars_left">{$base_line1_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="base_line1" style="width: 500px; height: 100px;">{$base_line1}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Goal</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="goals1" name="goals1" cols="90" rows="3" onkeyup="chars_limit_notice('goals1', 200)" maxlength="200">{$goals1}</textarea>
+        {assign var="goals1_length" value=$goals1|count_characters:true}
+        {assign var="goals1_left" value="`$goals1_length-200`"}
+        <div style="font-size:9px;{if $goals1_left gt 0}display:none;{/if}" id="goals1_note">
+          <label id="goals1_chars_left">{$goals1_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="goals1" style="width: 500px; height: 100px;">{$goals1}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Measurable Objectives</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="objectives1" name="objectives1" cols="90" rows="3" onkeyup="chars_limit_notice('objectives1', 350)" maxlength="350">{$objectives1}</textarea>
+        {assign var="objectives1_length" value=$objectives1|count_characters:true}
+        {assign var="objectives1_left" value="`$objectives1_length-350`"}
+        <div style="font-size:9px;{if $objectives1_left gt 0}display:none;{/if}" id="objectives1_note">
+          <label id="objectives1_chars_left">{$objectives1_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="objectives1" style="width: 500px; height: 100px;">{$objectives1}</textare> -->
+      </td>
+    </tr>
+
+    <tr><td colspan="4" height="10"><hr></td></tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> #2 Baseline Data</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="base_line2" name="base_line2" cols="90" rows="4" onkeyup="chars_limit_notice('base_line2', 408)" maxlength="408">{$base_line2}</textarea>
+        {assign var="base_line2_length" value=$base_line2|count_characters:true}
+        {assign var="base_line2_left" value="`$base_line2_length-408`"}
+        <div style="font-size:9px;{if $base_line2_left gt 0}display:none;{/if}" id="adden_base_line2_note">
+          <label id="base_line2_chars_left">{$base_line2_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="base_line2" style="width: 500px; height: 100px;">{$base_line2}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Goal</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="goals2" name="goals2" cols="90" rows="3" onkeyup="chars_limit_notice('goals2', 200)" maxlength="200">{$goals2}</textarea>
+        {assign var="goals2_length" value=$goals2|count_characters:true}
+        {assign var="goals2_left" value="`$goals2_length-200`"}
+        <div style="font-size:9px;{if $goals2_left gt 0}display:none;{/if}" id="adden_goals2_note">
+          <label id="goals2_chars_left">{$goals2_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="goals2" style="width: 500px; height: 100px;">{$adden_goals2}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Measurable Objectives</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="objectives2" name="objectives2" cols="90" rows="3" onkeyup="chars_limit_notice('objectives2', 350)" maxlength="350">{$objectives2}</textarea>
+        {assign var="objectives2_length" value=$objectives2|count_characters:true}
+        {assign var="objectives2_left" value="`$objectives2_length-350`"}
+        <div style="font-size:9px;{if $objectives2_left gt 0}display:none;{/if}" id="objectives2_note">
+          <label id="objectives2_chars_left">{$objectives2_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="objectives2" style="width: 500px; height: 100px;">{$objectives2}</textarea> -->
+      </td>
+    </tr>
+    <tr><td colspan="4" height="10"><hr></td></tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> #3 Baseline Data</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="base_line3" name="base_line3" cols="90" rows="3" onkeyup="chars_limit_notice('base_line3', 408)" maxlength="408">{$base_line3}</textarea>
+        {assign var="base_line3_length" value=$base_line3|count_characters:true}
+        {assign var="base_line3_left" value="`$base_line3_length-408`"}
+        <div style="font-size:9px;{if $base_line3_left gt 0}display:none;{/if}" id="adden_base_line3_note">
+          <label id="base_line3_chars_left">{$base_line3_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="base_line3" style="width: 500px; height: 100px;">{$base_line3}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Goal</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="goals3" name="goals3" cols="90" rows="3" onkeyup="chars_limit_notice('goals3', 200)" maxlength="200">{$goals3}</textarea>
+        {assign var="goals3_length" value=$goals3|count_characters:true}
+        {assign var="goals3_left" value="`$goals3_length-200`"}
+        <div style="font-size:9px;{if $goals3_left gt 0}display:none;{/if}" id="adden_goals3_note">
+          <label id="goals3_chars_left">{$goals3_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="goals3" style="width: 500px; height: 100px;">{$goals3}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Measurable Objectives</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="objectives3" name="objectives3" cols="90" rows="3" onkeyup="chars_limit_notice('objectives3', 350)" maxlength="350">{$objectives3}</textarea>
+        {assign var="objectives3_length" value=$objectives3|count_characters:true}
+        {assign var="objectives3_left" value="`$objectives3_length-350`"}
+        <div style="font-size:9px;{if $objectives3_left gt 0}display:none;{/if}" id="objectives3_note">
+          <label id="objectives3_chars_left">{$objectives3_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="objectives3" style="width: 500px; height: 100px;">{$objectives3}</textarea> -->
+      </td>
+    </tr>
+
+    <tr><td colspan="4" height="10"><hr></td></tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Client Participation</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="client_participation" style="width: 500px; height: 100px;">{$client_participation}</textarea> -->
+        <textarea id="client_participation" name="client_participation" cols="90" rows="2" onkeyup="chars_limit_notice('client_participation', 160)" maxlength="160">{$client_participation}</textarea>
+        {assign var="client_participation_length" value=$client_participation|count_characters:true}
+        {assign var="client_participation_left" value="`$client_participation_length-160`"}
+        <div style="font-size:9px;{if $client_participation_left gt 0}display:none;{/if}" id="list_of_none_note">
+          <label id="client_participation_chars_left">{$client_participation_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> # of missed Visit</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <input type="text" name="missed_visits_nbr" value="{$missed_visits_nbr}" size="4" maxlength="3">
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Reason(s) for Missed Visit(s):(If the client missed multiple visits for a variety of reasons, then please document all the reasons.)</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="missed_visits_reason" style="width: 500px; height: 100px;">{$missed_visits_reason}</textarea> -->
+        <textarea id="missed_visits_reason" name="missed_visits_reason" cols="90" rows="2" onkeyup="chars_limit_notice('missed_visits_reason', 175)" maxlength="175">{$missed_visits_reason}</textarea>
+        {assign var="missed_visits_reason_length" value=$missed_visits_reason|count_characters:true}
+        {assign var="missed_visits_reason_left" value="`$missed_visits_reason_length-175`"}
+        <div style="font-size:9px;{if $missed_visits_reason_left gt 0}display:none;{/if}" id="list_of_none_note">
+          <label id="missed_visits_reason_chars_left">{$missed_visits_reason_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+
+    <tr><td colspan="4" height="10"><hr></td></tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Treatment provided to address identified needs for Goal #1</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="treatment_goal1" name="treatment_goal1" cols="90" rows="5" onkeyup="chars_limit_notice('treatment_goal1', 500)" maxlength="500">{$treatment_goal1}</textarea>
+        {assign var="treatment_goal1_length" value=$treatment_goal1|count_characters:true}
+        {assign var="treatment_goal1_left" value="`$treatment_goal1_length-500`"}
+        <div style="font-size:9px;{if $treatment_goal1_left gt 0}display:none;{/if}" id="treatment_goal1_note">
+          <label id="treatment_goal1_chars_left">{$treatment_goal1_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="treatment_goal1" style="width: 500px; height: 100px;">{$treatment_goal1}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <label><input type="radio" name="met_unmet_revised1" value="1" {if $met_unmet_revised1 eq '1'}checked="checked"{/if}> Met</label>
+        <label><input type="radio" name="met_unmet_revised1" value="2" {if $met_unmet_revised1 eq '2'}checked="checked"{/if}> Unmet</label>
+        <label><input type="radio" name="met_unmet_revised1" value="3" {if $met_unmet_revised1 eq '3'}checked="checked"{/if}> Revised</label>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Current Progress Goal #1</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="current_prog_goal1" name="current_prog_goal1" cols="90" rows="4" onkeyup="chars_limit_notice('current_prog_goal1', 250)" maxlength="250">{$current_prog_goal1}</textarea>
+        {assign var="current_prog_goal1_length" value=$current_prog_goal1|count_characters:true}
+        {assign var="current_prog_goal1_left" value="`$current_prog_goal1_length-250`"}
+        <div style="font-size:9px;{if $current_prog_goal1_left gt 0}display:none;{/if}" id="current_prog_goal1_note">
+          <label id="current_prog_goal1_chars_left">{$current_prog_goal1_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="current_prog_goal1" style="width: 500px; height: 100px;">{$current_prog_goal1}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Specify Revision</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="spec_revision1" style="width: 500px; height: 100px;">{$spec_revision1}</textarea> -->
+        <textarea id="spec_revision1" name="spec_revision1" cols="90" rows="1" onkeyup="chars_limit_notice('spec_revision1', 23)" maxlength="23">{$spec_revision1}</textarea>
+        {assign var="spec_revision1_length" value=$spec_revision1|count_characters:true}
+        {assign var="spec_revision1_left" value="`$spec_revision1_length-23`"}
+        <div style="font-size:9px;{if $spec_revision1_left gt 0}display:none;{/if}" id="list_of_none_note">
+          <label id="spec_revision1_chars_left">{$spec_revision1_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+
+    <tr><td colspan="4" height="10"><hr></td></tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Treatment provided to address identified needs for Goal #2</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="treatment_goal2" name="treatment_goal2" cols="90" rows="5" onkeyup="chars_limit_notice('treatment_goal2', 500)" maxlength="500">{$treatment_goal2}</textarea>
+        {assign var="treatment_goal2_length" value=$treatment_goal2|count_characters:true}
+        {assign var="treatment_goal2_left" value="`$treatment_goal2_length-500`"}
+        <div style="font-size:9px;{if $treatment_goal2_left gt 0}display:none;{/if}" id="treatment_goal2_note">
+          <label id="treatment_goal2_chars_left">{$treatment_goal2_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="treatment_goal2" style="width: 500px; height: 100px;">{$treatment_goal2}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <label><input type="radio" name="met_unmet_revised2" value="1" {if $met_unmet_revised2 eq '1'}checked="checked"{/if}> Met</label>
+        <label><input type="radio" name="met_unmet_revised2" value="2" {if $met_unmet_revised2 eq '2'}checked="checked"{/if}> Unmet</label>
+        <label><input type="radio" name="met_unmet_revised2" value="3" {if $met_unmet_revised2 eq '3'}checked="checked"{/if}> Revised</label>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Current Progress Goal #2</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="current_prog_goal2" name="current_prog_goal2" cols="90" rows="4" onkeyup="chars_limit_notice('current_prog_goal2', 250)" maxlength="250">{$current_prog_goal2}</textarea>
+        {assign var="adden_objectives3_length" value=$current_prog_goal2|count_characters:true}
+        {assign var="current_prog_goal2_left" value="`$current_prog_goal2_length-250`"}
+        <div style="font-size:9px;{if $current_prog_goal2_left gt 0}display:none;{/if}" id="current_prog_goal2_note">
+          <label id="current_prog_goal2_chars_left">{$current_prog_goal2_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="current_prog_goal2" style="width: 500px; height: 100px;">{$current_prog_goal2}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Specify Revision</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="spec_revision2" style="width: 500px; height: 100px;">{$spec_revision2}</textarea> -->
+        <textarea id="spec_revision2" name="spec_revision2" cols="90" rows="1" onkeyup="chars_limit_notice('spec_revision2', 23)" maxlength="23">{$spec_revision2}</textarea>
+        {assign var="spec_revision2_length" value=$spec_revision2|count_characters:true}
+        {assign var="spec_revision2_left" value="`$spec_revision2_length-23`"}
+        <div style="font-size:9px;{if $spec_revision2_left gt 0}display:none;{/if}" id="list_of_none_note">
+          <label id="spec_revision2_chars_left">{$spec_revision2_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+    <tr><td colspan="4" height="10"><hr></td></tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Treatment provided to address identified needs for Goal #3</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="treatment_goal3" name="treatment_goal3" cols="90" rows="5" onkeyup="chars_limit_notice('treatment_goal3', 500)" maxlength="500">{$treatment_goal3}</textarea>
+        {assign var="treatment_goal3_length" value=$treatment_goal3|count_characters:true}
+        {assign var="treatment_goal3_left" value="`$treatment_goal3_length-500`"}
+        <div style="font-size:9px;{if $treatment_goal3_left gt 0}display:none;{/if}" id="treatment_goal3_note">
+          <label id="treatment_goal3_chars_left">{$treatment_goal3_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="treatment_goal3" style="width: 500px; height: 100px;">{$treatment_goal3}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <label><input type="radio" name="met_unmet_revised3" value="1" {if $met_unmet_revised3 eq '1'}checked="checked"{/if}> Met</label>
+        <label><input type="radio" name="met_unmet_revised3" value="2" {if $met_unmet_revised3 eq '2'}checked="checked"{/if}> Unmet</label>
+        <label><input type="radio" name="met_unmet_revised3" value="3" {if $met_unmet_revised3 eq '3'}checked="checked"{/if}> Revised</label>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Current Progress Goal #3</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea id="current_prog_goal3" name="current_prog_goal3" cols="90" rows="4" onkeyup="chars_limit_notice('current_prog_goal3', 250)" maxlength="250">{$current_prog_goal3}</textarea>
+        {assign var="current_prog_goal3_length" value=$current_prog_goal3|count_characters:true}
+        {assign var="current_prog_goal3_left" value="`$current_prog_goal3_length-250`"}
+        <div style="font-size:9px;{if $current_prog_goal3_left gt 0}display:none;{/if}" id="current_prog_goal3_note">
+          <label id="current_prog_goal3_chars_left">{$current_prog_goal3_left|abs}</label>characters left.
+        </div>
+        <!-- <textarea name="current_prog_goal3" style="width: 500px; height: 100px;">{$current_prog_goal3}</textarea> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Specify Revision</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <!-- <textarea name="spec_revision3" style="width: 500px; height: 100px;">{$spec_revision3}</textarea> -->
+        <textarea id="spec_revision3" name="spec_revision3" cols="90" rows="1" onkeyup="chars_limit_notice('spec_revision3', 23)" maxlength="23">{$spec_revision3}</textarea>
+        {assign var="spec_revision3_length" value=$spec_revision3|count_characters:true}
+        {assign var="spec_revision3_left" value="`$spec_revision3_length-23`"}
+        <div style="font-size:9px;{if $spec_revision3_left gt 0}display:none;{/if}" id="spec_revision3_note">
+          <label id="spec_revision3_chars_left">{$spec_revision3_left|abs}</label>characters left.
+        </div>
+      </td>
+    </tr>
+
+    {*
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Signature</td>
+    </tr>
+    <tr>
+      <td>
+        <input class="btn" value="Patient Signature" onclick="capture_pt_signature({$visit_log_id})" type="button">
+      </td>
+      <td align="center">
+        {if $signature != ""}
+          <img src="{$base_url}upload/signatures/{$signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+        </td>
+        <td colspan="2" align="left">
+        {if $signature != ""}
+          <b>Date: </b> {$pt_signed_date|date_format:"%m-%d-%Y":"":true}
+        {/if}
+      </td>
+    </tr>
+    *}
+
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Therapist Signature</td>
+    </tr>
+    <tr>
+      <td>
+        <input class="btn" value="Therapist Signature" onclick="capture_clinician_signature({$visit_log_id})" type="button">
+      </td>
+      <td align="center">
+        {if $clinician_signature != ""}
+          <img src="{$base_url}upload/signatures/{$clinician_signature}?{$smarty.now}" style="height: 70px;"  />
+          <br>
+          {$visit_user_id_name}
+        {/if}
+      </td>
+      <td colspan="2" align="left">
+        {if $clinician_signature != ""}
+          <b>Date: </b> {$clinician_signed_date|date_format:"%m-%d-%Y":"":true}
+        {/if}
+      </td>
+    </tr>
+
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> DSA Representative Signature</td>
+    </tr>
+    <tr>
+      <td>
+        {if $can_sign_as_dsa}  
+          <input class="btn" value="DSA Representative Signature" onclick="capture_dsa_signature({$visit_log_id})" type="button">
+        {/if}
+      </td>
+      <td>
+        {if $dsa_signature != ""}
+          <img src="{$base_url}upload/signatures/{$dsa_signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+      </td>
+      <td colspan="2">
+        {if $dsa_signature != ""}
+          <b>Date:</b> {$dsa_signed_date|date_format:"%m-%d-%Y":"":true}
+        {/if}
+      </td>
+    </tr>
+
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Addendum</td>
+    </tr>
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <textarea name="addendum" cols="60" rows="5" wrap="auto">{$addendum}</textarea>
+        <br />    </td>
+      </tr>
+  </tbody>
+  </table>
+
+
+
+
+<script>
+{literal}
+var dhxWins;
+
+function chars_limit_notice(field, limit){
+		if(!field || !limit)
+		return;
+
+		if(document.getElementById(field).value.length >= limit){
+			document.getElementById(field+'_note').style.display='none';
+		}else{
+			document.getElementById(field+'_chars_left').innerHTML = limit - document.getElementById(field).value.length;
+			document.getElementById(field+'_note').style.display='';
+		}
+}
+{/literal}
+
+function capture_pt_signature(visit_log_id) {literal}{{/literal}
+  {if !$no_commit_form}
+    {if $visit_status_id eq 1}
+    setValue('visit_status_id', 2);
+    {/if}
+    autoSave();
+  {/if}
+  //alert(visit_log_id);
+  //alert(grid.getCheckedRows(0));
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+  var w2 = dhxWins.createWindow("w2", 10, 10, 750, 500);
+  w2.setText("Capture Patient Digital Signature");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove();
+  w2.button("close")._doOnClick = function() {literal}{{/literal}
+    w2.close();
+  {literal}}{/literal}
+
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}/task/quartsumm/capture_pt_signature/" + visit_log_id);
+{literal}}{/literal}
+
+function capture_clinician_signature(visit_log_id) {literal}{{/literal}
+  {if !$no_commit_form}
+    {if $visit_status_id eq 1}
+    setValue('visit_status_id', 2);
+    {/if}
+    autoSave();
+  {/if}
+  //alert(visit_log_id);
+  //alert(grid.getCheckedRows(0));
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+  var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+  w2.setText("Capture Clinician Digital Signature");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove();
+  w2.button("close")._doOnClick = function() {literal}{{/literal}
+    // loadGrid();
+    w2.close();
+  {literal}}{/literal}
+
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}/task/quartsumm/capture_clinician_signature/" + visit_log_id);
+{literal}}{/literal}
+
+function capture_dsa_signature(visit_log_id) {literal}{{/literal}
+  {if !$no_commit_form}
+    {if $visit_status_id eq 1}
+    setValue('visit_status_id', 2);
+    {/if}
+    autoSave();
+  {/if}
+
+  //alert(visit_log_id);
+  //alert(grid.getCheckedRows(0));
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+  var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+  w2.setText("Capture DSA Representative Signature");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove();
+  w2.button("close")._doOnClick = function() {literal}{{/literal}
+    w2.close();
+  {literal}}{/literal}
+
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}/task/quartsumm/capture_dsa_signature/" + visit_log_id);
+{literal}}{/literal}
+
+function uploadScannedDocument ( visit_log_id ) {literal}{{/literal}
+
+  dhxWins = new dhtmlXWindows();
+  dhxWins.enableAutoViewport(false);
+  dhxWins.attachViewportTo("vp_container");
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+  var w1 = dhxWins.createWindow("w1", 10, 10, 450, 150);
+  w1.setText('Upload Scanned Qrtly. Summary document');
+  w1.button("park").hide();
+  w1.button("minmax1").hide();
+    w1.denyResize(); // deny resizing
+    w1.denyMove();
+    dhxWins.window('w1').center();
+    dhxWins.window('w1').setModal(true);
+  w1.attachURL("{$index_url}task/quartsumm/upload_document/" + visit_log_id);
+
+  pos = dhxWins.window('w1').getPosition();
+  dhxWins.window('w1').setPosition(pos[0], 60);
+
+{literal}}{/literal}
+
+function removeScannedDocument(visit_log_id) {literal}{{/literal}
+  if (confirm('Are you sure want to remove scanned document?')) {literal}{{/literal}
+    var url = '{$index_url}task/quartsumm/remove_document/{$visit_log_id}';
+    var visit_url = '{$index_url}task/quartsumm/index/{$visit_log_id}';
+    {literal}
+    $.ajax({
+      type: "GET",
+      dataType: 'json',
+      url: url,
+      // data: params,
+      success: function(data){
+        if(data=='1'){
+          location.href=visit_url;
+        } else {
+          alert('document can\'t be removed!');
+        }
+      },
+      error: function (data, status, e)
+      {
+        alert('An error occured. check your internet connection');
+      }
+    });
+    {/literal}
+  {literal}}{/literal}
+{literal}}{/literal}
+
+</script>

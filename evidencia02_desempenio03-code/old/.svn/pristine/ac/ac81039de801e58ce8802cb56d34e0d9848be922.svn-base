@@ -1,0 +1,841 @@
+  <script src="{$base_url}style/jquery-2.1.4.min.js" type="text/javascript"></script>
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>*}
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>*}
+	<script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+	{*<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/blitzer/jquery-ui.css" type="text/css" />*}
+	<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+  <script type="text/javascript" src="{$base_url}style/jquery.maskedinput.min.js"></script>
+<style>
+{literal}
+.success-dialog .ui-widget-header{
+	background: #006600;
+	background-image: none;	
+}
+{/literal}
+</style>
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  {if $agency_type eq 'C'}
+    
+    {if $agency_list}
+    <tr>
+      <td class="ftitle">Agency Name:</td>
+      <td>{html_options options=$agency_list selected=$agency_id name='agency_id' onchange=selectAgency(this.value)} {if $agency_id_rquired}*{/if}</td>
+      <td></td>
+      <td></td>
+    </tr>
+    {else}
+    <input type="hidden" name="agency_id" value="{$agency_id}">
+    {/if}
+    {if $show_lob_selection}
+    {if $agency_products|@count >= 2}
+    <tr>
+      <td class="ftitle">Line of Business:</td>
+      <td>{html_options options=$agency_products name='pat_tab111_product_id' id='pat_tab111_product_id' selected=$LOB first_option='- Select Line of Business -' onchange=change_lob(this.value)} *</td>
+      <td></td>
+      <td></td>
+    </tr>
+    {elseif $agency_products|@count eq 1}
+    <tr>
+      <td>
+         {foreach from=$agency_products key="tab_value" item="tab_description"}
+            <input type="hidden" name="pat_tab111_product_id" value="{$tab_value}">
+         {/foreach}
+      </td>
+    </tr>
+    {/if}
+    {/if}
+  {/if}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Demographics</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">First Name</td>
+    <td><input type="text" name="first_name" value="{$first_name}"> *</td>
+    <td class="ftitle">Birth Date <img src="{$image_url}b_help.png" title="mm-dd-yyyy"></td>
+    <td>
+    	<input type="text" id="date_birth" name="date_birth" value="{$date_birth|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_birth'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Last Name</td>
+    <td><input type="text" name="last_name" value="{$last_name}"> *</td>
+    <td class="ftitle">Sex</td>
+    <td>{html_radios options=$sex_list selected=$tab_002_sex name='tab_002_sex'}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">MI</td>
+    <td><input type="text" name="middle_initial" value="{$middle_initial}"></td>
+    <td class="ftitle">S.S.N.</td>
+    <td><input type="text" name="soc_sec_nbr" value="{$soc_sec_nbr}"></td>
+  </tr>
+  {*<tr>
+    <td class="ftitle">Medicare Id or HIC </td>
+    <td><input type="text" name="medicare_id" value="{$medicare_id}"></td>
+  </tr>*}
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Address</td>
+    <td><input type="text" name="address" value="{$address}" maxlength="25"></td>
+    <td class="ftitle">Cell Phone</td>
+    <td><input type="text" name="phone_cell" id="phone_cell" value="{$phone_cell}" placeholder="123-456-7890"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Address 2</td>
+    <td><input type="text" name="address2" value="{$address2}" maxlength="25"></td>
+    <td class="ftitle">Home Phone</td>
+    <td><input type="text" name="phone_home" id="phone_home" value="{$phone_home}" placeholder="123-456-7890"></td>
+  </tr>
+
+  <tr>
+    <td class="ftitle">City</td>
+    <td><input type="text" name="city" value="{$city}"></td>
+    <td class="ftitle">Fax</td>
+    <td><input type="text" name="fax" id="fax" value="{$fax}" placeholder="123-456-7890"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">State</td>
+    <td>
+      {if $state_id}
+      {html_options options=$state_list selected=$state_id name='state_id'}
+      {else}
+      {html_options options=$state_list selected=$agency->state_id name='state_id'}
+      {/if}
+    </td>
+    <td class="ftitle">Email</td>
+    <td><input type="text" name="email" value="{$email}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Zip Code</td>
+    <td><input type="text" name="zip1" value="{$zip1}"></td>
+    <td class="ftitle">Caregiver Email</td>
+    <td><input type="text" name="caregiver_email" value="{$caregiver_email}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">(M0020) Patient ID Number</td>
+    <td><input type="text" name="medical_rec_nbr" value="{$medical_rec_nbr}"></td>
+    <td class="ftitle"></td>
+    <td></td>
+  </tr>  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Primary Insurance Type </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  {if $SPECIAL_THERAPY}
+  <tr>
+    <td class="ftitle">Client Program</td>
+    <td colspan="3">
+      <div>
+      {if $gov_program_read_only}
+        {html_options options=$gov_program_list selected=$gov_program name='gov_program' id='gov_program' onchange=gov_program_change(this.value) disabled="disabled"} *
+        <input type="hidden" name="gov_program" value="{$gov_program}" />
+      {else}
+        {html_options options=$gov_program_list selected=$gov_program name='gov_program' id='gov_program' onchange=gov_program_change(this.value)} *
+      {/if}
+        {if $show_gov_program_waiver}
+          {html_radios options=$gov_program_waiver_list selected=$gov_program_waiver name='gov_program_waiver'}
+        {/if}
+      </div>
+    </td>
+  </tr>
+  {if $agency->deals_with_groups}
+  <tr>
+    <td class="ftitle">Is this a Group Patient ?</td>
+    <td colspan="3">
+      <label><input type="radio" name="is_a_group_pt" value="1" class="is_a_group_pt" {if $is_a_group_pt eq '1'}checked="checked"{/if}> Yes</label>
+      <label><input type="radio" name="is_a_group_pt" value="0" class="is_a_group_pt" {if $is_a_group_pt neq '1'}checked="checked"{/if}> No</label>
+    </td>
+  </tr>
+  <tr id="wrap_group_flat_rate" {if $is_a_group_pt neq '1'}style="display: none;"{/if}>
+    <td class="ftitle">Group Rate Amount</td>
+    <td colspan="3">
+      <input type="text" id="group_flat_rate"  name="group_flat_rate" value="{$group_flat_rate}">  *
+    </td>
+  </tr>
+  {/if}
+  <tr {if $gov_program eq 'PRIVATE'}style="display: none;"{/if} id="insurance_type_tr">
+    <td colspan="4">
+      <table width="100%">
+        <tr>
+          <td class="ftitle">Insurance Type</td>
+          <td colspan="3">
+            <div>
+              {html_options options=$ins_type_list selected=$tab_107_ins_type name='tab_107_ins_type' id='tab_107_ins_type'} *
+            </div>
+          </td>
+        </tr>   
+        <tr id="prim_insura_type_1_id" class="prim_insura_type_ID">
+          <td class="ftitle">Insurance ID:</td>
+          <td colspan="3">
+             <input type="text" id="ins_id"  name="ins_id" value="{$ins_id}" maxlength="15">  *
+             <input type="hidden" id="tab_108_prim_sec"  name="tab_108_prim_sec" value="1"> 
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {else}
+  <tr>
+    <td class="ftitle">Insurance Type</td>
+    <td colspan="3">
+			<div>
+				{html_options options=$ins_type_list selected=$tab_107_ins_type name='tab_107_ins_type'} *
+			</div>
+		</td>
+	</tr>		
+	<tr id="prim_insura_type_1_id" class="prim_insura_type_ID">
+		<td class="ftitle">Insurance ID:</td>
+		<td colspan="3">
+			 <input type="text" id="ins_id"  name="ins_id" value="{$ins_id}" maxlength="15"> 	*
+			 <input type="hidden" id="tab_108_prim_sec"  name="tab_108_prim_sec" value="1"> 
+		</td>
+	</tr>
+  {/if}
+	
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency Referral Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Agency Referral Date</td>
+    <td>
+    	<input type="text" id="referral_date" name="referral_date" value="{$referral_date|date_format|default:$smarty.now|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('referral_date'), document.getElementById('fecha_help'));return false;" >
+      <span style="padding-left:5px;"><b>Time</b></span>
+      <label style="padding-left:10px;">
+      Hr { html_options options=$hours_list selected="08" name="hour" }
+      Min { html_options options=$minutes_list selected="00" name="minute"}
+      { html_radios options=$type_time selected=am name="meridian"}
+      </label>
+    </td>
+    {*<td class="ftitle">Referral Time</td>
+    <td>
+<!--
+    	<input type="text" id="referral_time" name="referral_time" value="{$referral_time|default:$smarty.now|date_format:"%I:%M"}" size="5">  
+    	{html_radios options=$time_type_list_c selected=$referral_time|date_format:"%p" name='referral_time_m'}
+-->
+    	{html_select_time display_seconds=false use_24_hours=false minute_interval=5 time=$referral_time_ut prefix='referral_time_'}
+    </td>*}
+  </tr>
+   
+  <tr>
+    <td class="ftitle">Referral Instructions</td>
+    <td colspan="3">
+    	<textarea name="referral_notes" rows="3" style="width: 350px" wrap="auto">{$referral_notes}</textarea>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Physician Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Referring Physician</td>
+    <td>
+    	{html_options options=$doctor_office_list name='prim_doctor_office_id' id='prim_doctor_office' selected=$prim_doctor_office_id} {if $loggedInAgency->provides_altern_therapy neq "Y"}*{/if} 
+      <img src="{$image_url}icon_add.png" onclick="addPhysician('prim_doctor_office')" title="Add New Doctor Office">
+    	<img src="{$image_url}search.png" onclick="findDoctor('prim_doctor_office')" title="Find Doctor">
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Doctor Office 2</td>
+    <td>
+    	{html_options options=$doctor_office_list name='second_doctor_office_id' id='second_doctor_office' selected=$second_doctor_office_id}
+    	<img src="{$image_url}icon_add.png" onclick="addPhysician('second_doctor_office')" title="Add New Doctor Office">
+      <img src="{$image_url}search.png" onclick="findDoctor('second_doctor_office')" title="Find Doctor">
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Diagnosis Information and <br>Physician Instructions</td>
+    <td colspan="3">
+    	<textarea name="diagnosis_info" rows="3" style="width: 350px" wrap="auto">{$diagnosis_info}</textarea>
+    </td>
+  </tr>
+  {if $SPECIAL_THERAPY}
+  <tr>
+    <td class="ftitle" valign="top">Diagnosis</td>
+    <td colspan="3" valign="top">
+      <input type="text" name="diagnosis" value="{$diagnosis}" maxlength="60" style="width: 350px;"> *
+    </td>
+  </tr>
+  {/if}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Disciplines Needed</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  
+  <tr>
+    <td colspan="4">
+      {if $SPECIAL_THERAPY && ($loggedInAgency->provides_altern_therapy eq "Y" || $LOB eq 3)}
+        <table width="100%">
+          <tr> 
+            <td>
+                <label> <input type="checkbox" name="dis_aqu" value="1" {if $dis_aqu}checked{/if}> Aquatic </label>
+            </td>
+            <td>
+                <label> <input type="checkbox" name="dis_beh" value="1" {if $dis_beh}checked{/if}> Behavioral </label>
+            </td>
+            <td>
+                <label> <input type="checkbox" name="dis_mas" value="1" {if $dis_mas}checked{/if}> Massage </label>
+            </td>
+            <td>
+                <label> <input type="checkbox" name="dis_mus" value="1" {if $dis_mus}checked{/if}> Music </label>
+            </td> 
+            <td> 
+                <label> <input type="checkbox" name="dis_rec" value="1" {if $dis_rec}checked{/if}> Rec </label> 
+            </td>
+            <td>
+                <label> <input type="checkbox" name="dis_hbr" value="1" {if $dis_hbr}checked{/if}> THBR Therapy </label>
+            </td>
+            <td>
+                <label> <input type="checkbox" name="dis_art" value="1" {if $dis_art}checked{/if}> Art Therapy </label>
+            </td>
+          </tr>
+        </table>
+      {else}
+    	  <table width="100%">
+    	    <tr> 
+    	      <td>
+                <label> <input type="checkbox" name="dis_sn" value="1" {if $dis_sn}checked{/if}> SN </label> 
+            </td>
+    	      <td>
+                <label> <input type="checkbox" name="dis_pt" value="1" {if $dis_pt}checked{/if}> PT </label> 
+            </td>
+    	      <td>
+                <label> <input type="checkbox" name="dis_ot" value="1" {if $dis_ot}checked{/if}> OT </label> 
+            </td>
+    	      <td>
+                <label> <input type="checkbox" name="dis_st" value="1" {if $dis_st}checked{/if}> ST </label>
+            </td>
+    	      <td>
+                <label> <input type="checkbox" name="dis_msgw" value="1" {if $dis_msgw}checked{/if}> MSW </label>
+            </td>
+    	    </tr>
+    	  </table>
+      {/if}
+    </td>
+  </tr>
+  {if $loggedInAgency->provides_altern_therapy eq "Y"}
+    {*
+    <!-- <tr>
+      <td class="ftitle">Participates in CLASS program</td>
+      <td colspan="3">
+        <label><input type="radio" name="participate_class" value="Y" {if $participate_class eq 'Y'}checked="checked"{/if}> Yes</label>
+        <label><input type="radio" name="participate_class" value="N" {if $participate_class eq 'N'}checked="checked"{/if}> No</label>      
+      </td>
+    </tr>   -->
+    *}
+  {/if}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Certification Info</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Agency Case Manager</td>
+    <td>{html_options options=$case_manager_list selected=$case_manager_user_id name='case_manager_user_id'} *</td>
+  </tr>
+  <tr>
+  	<td class="ftitle">Start of Care {if $loggedInAgency->provides_altern_therapy eq "Y"}(IPC){/if}</td>
+    <td>
+    	<input type="text" id="estimated_soc_date" name="estimated_soc_date" value="{$estimated_soc_date|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('estimated_soc_date'), document.getElementById('fecha_help'));return false;" > *
+    </td>
+    {if $SPECIAL_THERAPY}
+    <td class="ftitle" colspan="2">End of Care (IPC) &nbsp;&nbsp;
+      <input type="text" id="estimated_soc_end_date" name="estimated_soc_end_date" value="{$estimated_soc_end_date|date_format}" 
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)" style="width: 95px;">
+      <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('estimated_soc_end_date'), document.getElementById('fecha_help'));return false;" > *
+
+        <!-- this field only available for gov_program == 'CLASS'  -->
+        <div style="display: none;" id="schedule_qr_radio">
+          Schedule QR now ? 
+          <label><input type="radio" name="schedule_qr" id="schedule_qr_1" value="1" {if $schedule_qr eq '1'}checked{/if} > Yes</label> 
+          <label><input type="radio" name="schedule_qr" id="schedule_qr_0" value="0" {if $schedule_qr eq '0'}checked{/if}> No</label> 
+        </div>
+
+    </td>
+    {/if}
+  </tr>
+  <tr id="tr_qr_dates_err" style="display: none;">
+    <td id="td_qr_dates_err" colspan="2" style="color: red;"></td>
+  </tr>
+  {if $SPECIAL_THERAPY}
+  <!-- this field only available for gov_program == 'CLASS' AND schedule_qr == 1  -->
+  <tr style="display: none;" id="schedule_qr_tr">
+    <td colspan="4" class="ftitle">
+      <table width="100%">
+        <tr>
+          <td class="ftitle" colspan="2">
+            <b>Schedule QR/8606</b> &nbsp;&nbsp;
+            <b>Q1</b> 
+            <input size="11" type="text" id="qr1_date" name="qr1_date" value="{$qr1_date|date_format}" 
+              onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+            <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr1_date'), document.getElementById('fecha_help'));return false;" >
+            &nbsp;&nbsp;
+
+            <b>Q2</b> 
+            <input size="11" type="text" id="qr2_date" name="qr2_date" value="{$qr2_date|date_format}" 
+              onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+            <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr2_date'), document.getElementById('fecha_help'));return false;" >
+            &nbsp;&nbsp;
+
+            <b>Q3</b> 
+            <input size="11" type="text" id="qr3_date" name="qr3_date" value="{$qr3_date|date_format}" 
+              onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+            <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr3_date'), document.getElementById('fecha_help'));return false;" >
+            &nbsp;&nbsp;
+
+            <b>Q4</b> 
+            <input size="11" type="text" id="qr4_date" name="qr4_date" value="{$qr4_date|date_format}" 
+              onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+            <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('qr4_date'), document.getElementById('fecha_help'));return false;" >    
+          </td>
+        </tr> 
+        <tr>
+          <td class="ftitle"> Therapist</td>
+          <td> 
+            {html_options options=$team_list name='qr_therapist' id='qr_therapist
+qr_therapist' selected=$qr_therapist}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {/if}
+  
+  {if $agency_type eq 'C'}
+  <tr style="display: none;">
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Therapy Referral Form</td>
+  </tr> 
+  <tr style="display: none;">
+    <td colspan="4">
+      Check here if you want to send the Referral NOW <input type="checkbox" id="referral_to_contractor" />
+      <span id="agency_contractor_id_span" style="display:none;">
+        {if $agency_contractor_id!= ''}
+          {$contractor_list[$agency_contractor_id]}
+          <input type="hidden" name="agency_contractor_id" value="{$agency_contractor_id}" />
+        {else}
+          {html_options options=$contractor_list name='agency_contractor_id' id='agency_contractor_id' }
+        {/if}
+      </span>
+    </td>
+  </tr>
+  {/if}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Comments</td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Comments</td>
+    <td colspan="3">
+    	<textarea name="comments" rows="3" style="width: 350px" wrap="auto">{$comments}</textarea>
+    </td>
+  </tr>  	
+  <tr>
+    <td colspan="4" height="20"></td>
+  </tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+    var options_xml = {literal}{{/literal}
+            script:"{$index_url}referral/suggest/",
+            varname:"input",
+            callback: function (obj) {literal}{{/literal} setValue('referral_id', obj.id); {literal}}{/literal},
+            noinput: function () {literal}{{/literal} setValue('referral_id', ''); {literal}}{/literal}
+    {literal}}{/literal};
+
+    var as_xml = new AutoSuggest('referral_suggest', options_xml);
+    
+
+    var dhxWins;
+    
+    function addReferral () {literal}{{/literal}
+    
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 350);
+		w1.setText("New Referral Form");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}referral/modalAdd");
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    	
+    {literal}}{/literal}
+    
+    function refreshReferral ( referral_select, us_agy_id ) {literal}{{/literal}
+ 
+    	ajaxComboBox("{$index_url}referral/referralList", '', 'referral_suggest');
+    	setTimeout("selectOption('"+referral_select+"', '"+us_agy_id+"')", 500);
+    	
+    	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+
+    function refreshPhysician ( doctor_selected, doctor_office_id ) {literal}{{/literal}
+ 
+    	ajaxComboBox("{$index_url}agencydoctoroffice/agencyDoctorOfficeList/{$agency_id}", '', 'prim_doctor_office,second_doctor_office');
+    	setTimeout("selectOption('"+doctor_selected+"', '"+doctor_office_id+"')", 500);
+    	
+    	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+    
+    function addPhysician ( physician_select ) {literal}{{/literal}
+    
+      dhxWins = new dhtmlXWindows();
+      dhxWins.enableAutoViewport(false);
+      dhxWins.attachViewportTo("vp_container");
+      dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+      var w1 = dhxWins.createWindow("w1", 10, 10, 500, 400);
+      w1.setText("New Doctor Office Form");
+      w1.button("park").hide();
+      w1.button("minmax1").hide();
+      w1.denyResize(); // deny resizing
+      w1.denyMove(); 
+      dhxWins.window('w1').setModal(true);
+      dhxWins.window('w1').center();
+      w1.attachURL("{$index_url}agencydoctoroffice/quickadd/" + physician_select + "/{$agency_id}");
+
+      dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+        w1.hide();
+        w1.setModal(false);
+      {literal}}{/literal});
+      
+    {literal}}{/literal}
+
+    function findDoctor ( physician_select ) {literal}{{/literal}
+    
+      dhxWins = new dhtmlXWindows();
+      dhxWins.enableAutoViewport(false);
+      dhxWins.attachViewportTo("vp_container");
+      dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+      var w1 = dhxWins.createWindow("w1", 10, 10, 600, 400);
+      w1.setText("Find Doctor");
+      w1.button("park").hide();
+      w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+      w1.attachURL("{$index_url}agencydoctoroffice/finddoctor/yes/"+physician_select+ "/{$agency_id}");
+
+      dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+        w1.hide();
+        w1.setModal(false);
+	    {literal}}{/literal});
+    	
+    {literal}}{/literal}
+
+    function selectAgency(agency_id)  {literal}{{/literal}
+      location.href = '{$index_url}/patient/mypatient/quickadmit/'+agency_id;
+    {literal}}{/literal}
+
+    function change_lob(lob)  {literal}{{/literal}
+      {if $agency_id}
+        location.href = '{$index_url}/patient/mypatient/quickadmit/{$agency_id}/'+lob;
+      {else}
+        location.href = '{$index_url}/patient/mypatient/quickadmit/0/'+lob;
+      {/if}
+      
+    {literal}}{/literal}
+
+{literal}
+var d_continue = 0;
+var d_continue2 = 0;
+/*
+	function insur_type_id(tthis){
+				alert(tthis.getAttribute('id'));
+		//$('.prim_insura_type_ID').hide();
+		//$('#'+$(tthis).attr('id')+'_id').show();
+		document.getElementById(''+tthis.getAttribute('id')+'_id').style.display='';			
+		if($(tthis).attr('id').indexOf('type_2')>-1){
+			$('#'+$(tthis).attr('id')+'_hmo').show();	
+			document.getElementById(''+$(tthis).attr('id')+'_hmo').stye.display='';				
+		}else{
+			$('#prim_insura_type_2_hmo').hide();
+			document.getElementById('prim_insura_type_2_hmo').style.display='none';
+		}
+	};
+	*/
+
+  function gov_program_change(val){
+    if (val=='PRIVATE') {
+      $('#insurance_type_tr').hide();
+    } else {
+      $('#insurance_type_tr').show();
+    }
+
+    if (val == 'CLASS') {
+      // $("#schedule_qr_1").attr('checked', 'checked');
+      // $("#schedule_qr_1").trigger("change");
+      $('#tab_107_ins_type').val('2')
+    } else {
+      $('#schedule_qr_radio').hide();
+      $('#schedule_qr_tr').hide();
+    }
+  }
+
+
+$(document).ready(function() {
+  $("#phone_cell, #phone_home, #fax").mask("999-999-9999");
+	if($('.prim_insu_sel:radio:checked').length > 0){
+		var prim_insu_selcted = $('.prim_insu_sel:radio:checked').get(0)
+		console.log(prim_insu_selcted);
+		$('.prim_insura_type_ID').hide();
+		$('#'+$(prim_insu_selcted).attr('id')+'_id').show();
+		//document.getElementById(''+$(this).attr('id')+'_id').style.display='';			
+		if($(prim_insu_selcted).attr('id').indexOf('type_2')>-1){
+			$('#'+$(prim_insu_selcted).attr('id')+'_hmo').show();	
+			//document.getElementById(''+$(this).attr('id')+'_hmo').stye.display='';				
+		}else{
+			$('#prim_insura_type_2_hmo').hide();
+			//document.getElementById('prim_insura_type_2_hmo').style.display='none';
+		}		
+	}
+	
+  $('input[name=is_a_group_pt]').change(function(){
+    if($('input[name=is_a_group_pt]:checked').val() == '1') {
+      $('#wrap_group_flat_rate').show();
+    } else {
+      $('#wrap_group_flat_rate').val('').hide();
+    }
+  });
+
+  $('input[name=schedule_qr], #qr_therapist, #estimated_soc_date').change(function(){
+    load_qr_dates();
+    if ($(this).attr('id') == 'estimated_soc_date' && $('#estimated_soc_date').val() != '') {
+      var soc_date_str = $('#estimated_soc_date').val().replace(/-/g,'/');
+      // var parts = soc_date_str.split("-");
+      var d = new Date(soc_date_str);
+      // var newdate = addMonths(d,12);
+      // var newdate = addDays(d,364);
+      var newdate = new Date(d);
+
+      newdate.setDate(newdate.getDate() + 364);
+      
+      var dd = newdate.getDate();
+      var mm = newdate.getMonth()+1;
+      var y = newdate.getFullYear();
+      console.log(dd);
+      console.log(mm);
+      dd = ('0'+dd).slice(-2);
+      mm = ('0'+mm).slice(-2);
+      $('#estimated_soc_end_date').val(mm+'-'+dd+'-'+y);
+
+      if ($('#gov_program').val() == 'CLASS' && parts[1] != '01') {
+        alert('Start of Care (IPC) Date Invalid. The day should be the first day of the month.');
+      }
+    }
+  });
+
+
+	$('.prim_insu_sel').click(function(){
+		$('.prim_insura_type_ID').hide();
+		$('#'+$(this).attr('id')+'_id').show();
+		//document.getElementById(''+$(this).attr('id')+'_id').style.display='';			
+		if($(this).attr('id').indexOf('type_2')>-1){
+			$('#'+$(this).attr('id')+'_hmo').show();	
+			//document.getElementById(''+$(this).attr('id')+'_hmo').stye.display='';				
+		}else{
+			$('#prim_insura_type_2_hmo').hide();
+			//document.getElementById('prim_insura_type_2_hmo').style.display='none';
+		}
+	});
+	
+	$('#referral_to_contractor').click(function(){
+		$('#agency_contractor_id_span').toggle();
+	});
+	$('form#gform').submit(function() {
+  	d_continue = 0;
+  	d_continue2 = 0;
+
+			if( d_continue2 == 0 && $('#has_insu_other').attr('checked')==true){
+				if($('#insu_other_PT').val()=='' && $('#insu_other_OT').val()=='' && $('#insu_other_ST').val()==''){
+					var x = "You did not enter the no approved visits in any of the disciplines";
+					$('<div>' + x + '</div>').dialog({
+							title: "Other: Nbr of approved visits for!",
+							resizable: false,
+							width: 350,
+							buttons: {								
+									"Continue": function() {
+											$(this).dialog("close");	
+											d_continue2 = 1;							    
+											if(d_continue == 1 && d_continue2 == 1){
+												$('input[type="submit"]').trigger('click');										
+											}
+									},
+									No: function() {
+											$(this).dialog("close");
+											//return false;
+									}
+							}
+					});
+					
+				}else{
+					d_continue2 = 1;
+				}
+			}else{
+				d_continue2 = 1;
+			}
+
+			if(d_continue == 0 && $('#has_insu_medicaid').attr('checked')==true){
+				if($('#insu_medicaid_PT').val()=='' && $('#insu_medicaid_OT').val()=='' && $('#insu_medicaid_ST').val()==''){
+					var x = "You did not enter the no approved visits in any of the disciplines";
+					$('<div>' + x + '</div>').dialog({
+							title: "Medicaid: Nbr of approved visits for!",
+							resizable: false,
+							width: 350,
+							buttons: {								
+									"Continue": function() {
+											$(this).dialog("close");	
+											d_continue = 1;							    
+											if(d_continue == 1 && d_continue2 == 1){																			
+												$('input[type="submit"]').trigger('click');										
+											}
+									},
+									No: function() {
+											$(this).dialog("close");
+											//return false;
+									}
+							}
+					});
+					
+				}else{
+					d_continue = 1;							    
+				}
+			}else{
+					d_continue = 1;							    
+			}
+			
+			
+  	if(d_continue == 0 || d_continue2 == 0)
+  	return false;	
+  	else{
+  			$('<div>Please wait for a while. We are in Processing...</div>').dialog({
+  					title: "Please wait for a while!",
+  					resizable: false,
+  					width: 350,
+  					dialogClass: 'success-dialog'
+  			});
+  	}
+	
+	});
+
+  {/literal}
+  {if $gov_program neq ''}
+  gov_program_change('{$gov_program}');
+  {/if}
+  {literal}
+  
+});	
+
+  function load_qr_dates(){
+    if ($('input[name=schedule_qr]:checked').val()==1) {
+      $('#schedule_qr_tr').show();
+
+      var soc_date = $('#estimated_soc_date').val();
+      // console.log(soc_date);
+      // console.log($('input[name=schedule_qr]:checked').val());
+      if ( soc_date != '') {
+            {/literal}var url = '{$index_url}{$resource_path}/get_qr_dates/'+soc_date;{literal}
+            
+            $.ajax({
+              type: "GET",
+              dataType: 'json',
+              url: url,
+              // data: params,
+              success: function(data){
+                // if (data.qr1_date) {
+                  $('#qr1_date').val(data.qr1_date)
+                // }
+                // if (data.qr2_date) {
+                  $('#qr2_date').val(data.qr2_date)
+                // }
+                // if (data.qr3_date) {
+                  $('#qr3_date').val(data.qr3_date)
+                // }
+                // if (data.qr4_date) {
+                  $('#qr4_date').val(data.qr4_date)
+                // }
+
+                if (!data.qr1_date && !data.qr2_date && !data.qr3_date && !data.qr4_date ) {
+                  console.log('show qr  dates error');
+                  $('#td_qr_dates_err').html('Error: Calendar for Schedule QR/8606 not found');
+                  $('#tr_qr_dates_err').show();
+                } else{
+                  console.log('hide qr  dates error');
+                  $('#tr_qr_dates_err').hide();
+                }
+                  
+              },  
+              error: function (data, status, e)
+              {
+              }
+            });
+      }
+    } else {
+      $('#schedule_qr_tr').hide();
+    }
+  }
+
+  function addMonths(date, months) {
+    var d = date.getDate();
+    date.setMonth(date.getMonth() + +months);
+    if (date.getDate() != d) {
+      date.setDate(0);
+    }
+    return date;
+  }
+
+  function addDays(date, days) {
+    var result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+  }
+
+  // Add 12 months to 29 Feb 2016 -> 28 Feb 2017
+  // console.log(addMonths(new Date(2016,1,29),12).toString());
+
+  // Subtract 1 month from 1 Jan 2017 -> 1 Dec 2016
+  // console.log(addMonths(new Date(2017,0,1),-1).toString());
+
+  // Subtract 2 months from 31 Jan 2017 -> 30 Nov 2016
+  // console.log(addMonths(new Date(2017,0,31),-2).toString());
+
+  // Add 2 months to 31 Dec 2016 -> 28 Feb 2017
+  // console.log(addMonths(new Date(2016,11,31),2).toString());
+
+{/literal}
+</script>

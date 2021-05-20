@@ -1,0 +1,31 @@
+<?
+
+ class payrollsetting extends MY_Controller {
+
+	function payrollsetting () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("resource_path", "useragency/payrollsetting");
+		
+	}
+
+	function index ( $us_agy_id ) {
+
+		$this->tpl->assign('faction', 'index');
+		$this->tpl->assign('record_id', $us_agy_id);
+						
+		if ($this->validation->run() == TRUE) {
+
+			$this->usagymdl->updatePayrollSettings($us_agy_id, $this->input->post('payroll_visit_rate'), $this->input->post('payroll_mileage_rate'));
+			
+		}
+		
+		$this->assignObject($this->usagymdl->getByUsAgyId($us_agy_id));
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "useragency/payroll/setting_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+ }

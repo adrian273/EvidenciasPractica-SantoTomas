@@ -1,0 +1,26 @@
+<?
+ class Base extends MY_Controller {
+
+    function Base () {
+        parent::MY_Controller();
+    }
+    
+    function index ( $agency_id=null ) {
+        
+        $this->tpl->assign("module_path", "useragency/");
+       // if (!is_null($agency_id)) $this->tpl->assign("agency_id", $agency_id);
+        
+        //$this->tpl->assign("agency_name", $this->agencymdl->getByAgencyId((is_null($agency_id) ? $this->getAgencyId()  : $agency_id))->agency_name);
+        
+        $this->tpl->assign_include("dynamic_tpl", "useragency/authorizedusers/tbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+        
+    }
+    
+    function error () {
+        
+        echo "Not implemented";
+        
+    }
+
+ }

@@ -1,0 +1,195 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="doctor_order_id" value="{$doctor_order_id}">
+    
+ <input type="hidden" name="visited_time_in_hm" id="visited_time_in_hm" value="{$visited_time_in|truncate:5:"":true}" size="5" maxlength="5"  readonly="" /> 
+ <input type="hidden" name="visit_duration" id="visit_duration" value="{$visit_duration}" size="2" maxlength="2"/>
+ <input type="hidden" name="visited_time_out_hm" id="visited_time_out_hm" value="{$visited_time_out|truncate:5:"":true}" size="5" maxlength="5"  readonly="" />
+ <input type="hidden" name="visit_type_id" value="200">    
+ <input type="hidden" name="cms485_id" value="{$cms485_id}">
+ <input type="hidden" name="patient_id" value="{$patient->patient_id}">
+  <tr>
+    <td class="ftitle">Patient Name</td>
+    <td>{$patient->first_name} {$patient->last_name}</td>
+    <td></td>
+    <td></td>
+  </tr>
+{*  
+    <!-- <tr>
+      <td class="ftitle">Primary Dx</td>
+      <td>
+          <input name="primary_diag_tmp" type="text" value="{$primary_diag}" size="50" maxlength="50">
+      </td>
+      <td>Prim Dx Date</td>
+      <td>
+        <input type="text" id="primary_diag_date" name="primary_diag_date_tmp" value="{$primary_diag_date|date_format}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('primary_diag_date'), document.getElementById('fecha_help'));return false;" >
+      </td>
+    </tr>
+    <tr>
+      <td class="ftitle">Therapy Dx</td>
+      <td>
+          <input name="secondary_diag_tmp" type="text" value="{$secondary_diag}" size="50" maxlength="50">
+      </td>
+      <td>Ther Dx Date</td>
+      <td>
+        <input type="text" id="secondary_diag_date" name="secondary_diag_date_tmp" value="{$secondary_diag_date|date_format}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('secondary_diag_date'), document.getElementById('fecha_help'));return false;" >
+      </td>
+    </tr>
+
+    <tr>
+      <td class="ftitle">Doctor Status</td>
+      <td height="25">
+        <span style="padding:5px; background-color:{$visit_tab_status_color}">{$tab_description}</span>
+      </td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td colspan="4" height="20"></td>
+    </tr>  -->
+  *}
+  <tr>
+    <td class="ftitle">Ordered By</td>
+    <td>
+      {if $team_list}
+        {html_options options=$team_list selected=$visit_user_id name='visit_user_id'} *
+      {else}
+        {$first_name} {$last_name}
+        <input type="hidden" name="visit_user_id" value="{$us_agy_id}">
+      {/if}
+    </td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td class="ftitle" >Order Type</td>
+    <td>
+      {html_options options=$order_type_list name='order_type_id' selected=$order_type_id"} *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Order Date</td>
+    <td>
+      <input type="text" id="visit_date_time" name="visit_date_time" value="{$visit_date_time|default:$default_date}" 
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+      <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_time'), document.getElementById('fecha_help'));return false;" >
+
+      <!-- <input type="text" id="do_date" name="do_date" value="{if $do_date neq ""}{$do_date}{else}{$visit_date_time}{/if}" 
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+      <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('do_date'), document.getElementById('fecha_help'));return false;" > -->
+    </td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td class="ftitle"> Time </td>
+    <td>
+      {html_select_time display_seconds=false use_24_hours=false minute_interval=5 time=$time prefix='visit_time_'}
+    </td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td class="ftitle" valign="top">Order Description</td>
+    <td>
+      <textarea name="do_description" id="do_description" style="width:50%;" wrap="auto" rows="6">{$do_description}</textarea> *
+      <br><img src="{$image_url}document_add.png" style="vertical-align: middle"> <a href="javascript:addTemplate('do_description', 3, 200);">Template</a>
+    </td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td colspan="4" height="20"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Physician Name</td>
+    <td>
+      {html_options options=$physician_list id='phys_user_id' name='phys_user_id' selected=$phys_user_id} *
+    </td>
+    <td></td>
+    <td></td>
+  </tr>
+
+  <tr style="display:none;">
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle">
+    	Notes
+    </td>
+  </tr> 
+  <tr style="display:none;">
+    <td colspan="4" height="10"></td>
+  </tr>
+  
+  <tr style="display:none;">
+    <td class="ftitle" colspan="2">
+      Contractor Notes<br>
+      <textarea name="do_contractor_notes" id="do_contractor_notes" rows="4" cols="50" wrap="auto">{$do_contractor_notes}</textarea>     
+    </td>
+    <td colaspan="2">
+      Agency Notes<br>
+      <textarea name="do_agency_notes" id="do_agency_notes" rows="4" cols="50" wrap="auto">{$do_agency_notes}</textarea>     
+    </td>
+  </tr>
+  <tr style="display:none;">
+    <td class="ftitle" colspan="2">
+    	Doctor Notes<br>
+  		<textarea name="do_doctor_notes" id="do_doctor_notes" rows="4" cols="50" wrap="auto">{$do_doctor_notes}</textarea>  		
+    </td>
+    <td colaspan="2">
+    </td>
+  </tr>  
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+    var dhxWins;
+    
+    function addTemplate ( field, template_type, y_position ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", (getWindowWidht()/2)-250, y_position, 500, 340);
+		w2.setText("Select Template");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+	    w2.denyResize(); // deny resizing
+	    w2.denyMove(); 
+	    dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}systemtables/template/selectTemplate/" + template_type + "/" + field);
+		
+    {literal}}{/literal}
+    
+    function cancelModal2 () {literal}{{/literal}
+ 
+     	dhxWins.window('w2').close();
+    	
+    {literal}}{/literal}
+    
+    function submitCheck () {literal}{{/literal}
+      var msec = Date.parse("{$episode_start_date}");
+      var startdate = new Date(msec);
+      msec = Date.parse("{$episode_end_date}");
+      var enddate = new Date(msec);
+      
+      var str = getValue('visit_date_time').split("-");
+      msec = Date.parse(str[2]+'-'+str[0]+'-'+str[1]);
+      var orderdate = new Date(msec);
+      
+      if (orderdate>=startdate && orderdate<=enddate){literal}{{/literal}
+        tform.submit();
+      {literal}} else {{/literal}
+        // outside the episode period    
+        if (confirm('Warning: Doctor Order to be created outside this Episode')) {literal}{{/literal}          
+          tform.submit();
+        {literal}} else {{/literal}
+          return false;
+        {literal}}{/literal}
+      {literal}}{/literal}      
+    {literal}}{/literal}
+ </script>
+ 

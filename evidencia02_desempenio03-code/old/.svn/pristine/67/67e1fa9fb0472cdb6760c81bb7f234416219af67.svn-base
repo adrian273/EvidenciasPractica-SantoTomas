@@ -1,0 +1,288 @@
+<?
+
+ class Task extends MY_Controller {
+
+	function Task () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/task");
+		$this->tpl->assign(array("tab_page" => true));
+		
+	}
+
+	function index ( $user_id ) {
+
+		$this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+
+		$this->tpl->assign(array("noedit" => true));
+		$this->tpl->assign(array("no_grid_buttons" => true));
+		
+		$this->tpl->assign("entity_id",  $user_id);
+		$this->tpl->assign("items_per_page",  300);
+
+		$this->tpl->assign('additional_buttons', array(
+			'Reassign Therapist'=>'reassign_therapist()', 
+		));
+		
+//		$this->tpl->assign(array("date_filter" => standard_date(mktime(0, 0, 0, date("m")  , date("d")-7, date("Y")), 'USA_DATE')));
+		$this->tpl->assign_include("filter_tpl", "useragency/gfilter_task");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+	
+	}	
+	
+	function grid ( $user_id ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$visit_status_id = (is_null($this->input->post('visit_status_id')) ? null : array($this->input->post('visit_status_id')));
+
+		$gdata = $this->visitlogmdl->getVisitTaskList($user_id, null, null, $this->input->post('visit_type_id'), $visit_status_id, $this->input->post('keyword'));
+
+		if (count($gdata)) {
+		
+			$head = $this->xml->Element("head");
+			$head->append($this->xml->Element("column", "width=3;type=ch", " "));
+			$head->append($this->xml->Element("column", "width=10", "Date"));
+			$head->append($this->xml->Element("column", "width=*",  "Visit/Task Name"));
+			$head->append($this->xml->Element("column", "width=*",  "Status"));
+			$head->append($this->xml->Element("column", "width=*",  "Patient"));
+			$head->append($this->xml->Element("column", "width=*",  "Case Manager"));
+			$head->append($this->xml->Element("column", "width=*",  "Asigned By"));
+			$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+			$document->append($head);
+			
+			foreach ($gdata as $visit) {
+				
+				$cm = $this->usagymdl->getByUsAgyId($visit->case_manager_user_id);
+				$asigned_by = $this->usagymdl->getByUsAgyId($visit->visit_asigned_by);
+				
+				if ($visit->visit_status_id == 6) {
+					$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+				} else {
+					$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+				}
+				
+				$cell->append($this->xml->Element("cell", null, "0"));
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')));
+				$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+				$cell->append($this->xml->Element("cell", null, $visit->tab_description));
+				$cell->append($this->xml->Element("cell", null, $visit->first_name . " " . $visit->last_name));
+				$cell->append($this->xml->Element("cell", null, @$cm->first_name . " " . @$cm->last_name));
+				$cell->append($this->xml->Element("cell", null, $asigned_by->first_name . " " . $asigned_by->last_name));
+				$document->append($cell);
+				
+			}
+		
+		} else {
+			
+			$head = $this->xml->Element("head");
+			$head->append($this->xml->Element("column", "width=*", "No Data to Display"));
+			$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+			$document->append($head);
+			
+		}
+
+	}
+
+	function reassign_therapist($user_id, $record_ids = null){
+		if (is_null($record_ids)) {
+			exit('At least one Task/Visit must be selected');
+		}
+
+		$recods = explode(",", $record_ids);
+		$visits = array();
+		foreach ($recods as $visit_log_id) {
+			$visit_log = $this->visitlogmdl->getById($visit_log_id);
+			if($visit_log->visit_status_id != 1) {
+				exit('<font color="red">Can\'t reassign; some tasks/visits are not in Schedule Status</font>');		
+			}
+			$visits[$visit_log_id]  = $visit_log;
+		}
+
+		$user = $this->usagymdl->getByUsAgyId($user_id);
+
+		
+		$rules = array (
+          'clinician_id' 	=> 'required'
+        );
+	    $fields = array(
+	        'clinician_id' => 'New Therapist'
+	    );
+
+	    $this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == FALSE) {
+			$user_list = $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false, false, null, array(), null, 1, array(), $user->major_discip_id, array($user_id));
+
+			// print_r($user_list); exit();
+
+			$this->tpl->assign("user_id", $user_id);
+			$this->tpl->assign("record_ids", $record_ids);
+			$this->tpl->assign("user_list", $user_list);
+			
+			$this->tpl->assign_include("dynamic_tpl", "useragency/reassign_therapist");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$fromUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+			$newUser = $this->usagymdl->getByUsAgyId($this->input->post('clinician_id'));
+
+			$newUserVisitList = "";
+			foreach ($recods as $visit_log_id) {
+				$visit = $visits[$visit_log_id];
+				$patient = $this->patientmdl->getById($visit->patient_id);
+				$prevUser = $this->usagymdl->getByUsAgyId($visit->visit_user_id);
+
+				// checking new user already exist in Patient. If not need to add him/her
+				if (!$this->teammdl->exitInTeam($visit->patient_id, $this->input->post('clinician_id'))) {
+		            $this->teammdl->ppr_id = null;
+		            $this->teammdl->user_id = $this->input->post('clinician_id');
+		            $this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+		            $this->teammdl->insert($visit->patient_id);
+
+		            // sending internal message
+		            $assigned_by = $fromUser;
+		            $ppr = $this->teammdl->getByPPRId($this->teammdl->ppr_id);
+		            $notification_subject = "New Patient: " . $patient->first_name . " " . $patient->last_name .  ", " .
+		                      "Assigned by: " . @$assigned_by->complete_name . ", " .
+		                      "Assigned Date/Time: " . standard_date(mysql_to_unix($ppr->assigned_date), 'USA_DATE_TIME');
+		          
+		            $msg_text = @$assigned_by->complete_name . " assigned a new patient to you. Patient name: " . $patient->first_name . " " . $patient->last_name . ". Assigned Date/Time: " . standard_date(mysql_to_unix($ppr->assigned_date), 'USA_DATE_TIME');
+		          
+		            
+		            $this->messagemdl->user_from = $this->getUsAgyId();
+		            $this->messagemdl->msg_subject = $notification_subject;
+		            $this->messagemdl->msg_text = $msg_text;
+		            $this->messagemdl->insert();
+		            
+		            $this->usermessagemdl->insert($this->messagemdl->msg_id, $this->teammdl->user_id, 0);
+		            
+		            // sending personal email
+		            $user = $this->usagymdl->getByUsAgyId($this->teammdl->user_id);
+		              
+		            $this->load->library('email');
+		            $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+		            $this->email->to($user->user_email); 
+		            $this->email->subject($notification_subject);
+
+		            $body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$msg_text;
+		              // $this->email->set_mailtype("html"); 
+
+		            $this->email->message($body); 
+		            $this->email->send();        
+		        }
+
+				// update new visit user
+				$this->visitlogmdl->updateFlex($visit_log_id, 'visit_user_id', $newUser->us_agy_id);
+
+				$visit_details =  date("m/d h:i a", strtotime($visit->visit_date_time))." (".$visit->visit_description.")";
+
+				// send internal email
+				$msg_text = "Following Visit has been reassigned by {$fromUser->first_name} {$fromUser->last_name}<br><br>\n\n <b>From:</b> {$prevUser->first_name} {$prevUser->last_name}<br>\n<b>To:</b> {$newUser->first_name} {$newUser->last_name}<br>\n <b>Patient:</b> {$patient->first_name} {$patient->last_name}<br>\n<b>Visit:</b> {$visit_details}<br>\n";
+
+				$subject = "Visit has been reassigned by {$fromUser->first_name} {$fromUser->last_name}";
+				
+				$msg_imp = 0; // message importance "normal";
+				
+				// Send to Prev assignee user
+				$user_to = $prevUser->us_agy_id;
+
+				$this->messagemdl->msg_subject	= $subject;
+				$this->messagemdl->msg_text		= "\n".$msg_text;
+				$this->messagemdl->user_from = $this->getUsAgyId();
+				$msg_id = $this->messagemdl->insert();
+				$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+				// send to personal email if user have this settings ON
+				$usAgyInfo = $prevUser;
+				$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+				if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+					$this->load->library('email');
+					$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+					$this->email->to($userToInfo->user_email);
+					$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+					$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+
+            		$this->email->set_mailtype("html"); 
+					$this->email->message($body);      
+					$this->email->send();
+					//$this->email->print_debugger();
+					$this->email->clear(TRUE);
+				}
+
+
+
+				// Send to New assignee user
+				$newUserVisitList .= "<b>From:</b> {$prevUser->first_name} {$prevUser->last_name}<br>\n<b>To:</b> {$newUser->first_name} {$newUser->last_name}<br>\n <b>Patient:</b> {$patient->first_name} {$patient->last_name}<br>\n<b>Visit:</b> {$visit_details}<br>\n<hr>";
+			}
+
+			// Send to New assignee user
+			$subject = "Visit has been reassigned to you by {$fromUser->first_name} {$fromUser->last_name}";
+			$msg_text = "Following Visit has been reassigned by {$fromUser->first_name} {$fromUser->last_name}<br><br>\n\n {$newUserVisitList}";
+
+			$user_to = $newUser->us_agy_id;
+
+			$this->messagemdl->msg_subject	= $subject;
+			$this->messagemdl->msg_text		= "\n".$msg_text;
+			$this->messagemdl->user_from = $this->getUsAgyId();
+			$msg_id = $this->messagemdl->insert();
+			$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+			// send to personal email if user have this settings ON
+			$usAgyInfo = $newUser;
+			$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+			if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+				$this->load->library('email');
+				$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+				$this->email->to($userToInfo->user_email);
+				$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+				$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+
+        		$this->email->set_mailtype("html"); 
+				$this->email->message($body);      
+				$this->email->send();
+				//$this->email->print_debugger();
+				$this->email->clear(TRUE);
+			}
+
+			// Send a copy to assgined by user
+			$subject = "Visit has been reassigned to {$newUser->first_name} {$newUser->last_name}";
+			$msg_text = "Following Visit has been reassigned by you<br><br>\n\n {$newUserVisitList}";
+			$user_to = $fromUser->us_agy_id;
+
+			$this->messagemdl->msg_subject	= $subject;
+			$this->messagemdl->msg_text		= "\n".$msg_text;
+			$this->messagemdl->user_from = $this->getUsAgyId();
+			$msg_id = $this->messagemdl->insert();
+			$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+			// send to personal email if user have this settings ON
+			$usAgyInfo = $newUser;
+			$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+			if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+				$this->load->library('email');
+				$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+				$this->email->to($userToInfo->user_email);
+				$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+				$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+
+        		$this->email->set_mailtype("html"); 
+				$this->email->message($body);      
+				$this->email->send();
+				//$this->email->print_debugger();
+				$this->email->clear(TRUE);
+			}
+
+			$count = count($recods);
+			echo "<font color='green'>Successfully assigned {$count} tasks/visits to user {$newUser->first_name} {$newUser->last_name}</font>";
+			echo '<script>parent.loadGrid()</script>';
+		}
+	}
+	
+ }

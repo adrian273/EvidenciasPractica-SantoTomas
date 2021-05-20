@@ -1,0 +1,164 @@
+<?php 
+
+ class patientdoctorofficemdl extends Model {
+
+	var $pat_doctor_office_id;
+	var $patient_id;
+	var $doctor_office_id;
+	var $assigned_by;
+	var $date;
+
+	function patientdoctorofficemdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $pat_doctor_office_id ) {
+	
+		$this->db->where("pat_doctor_office_id", $pat_doctor_office_id);
+
+		$query = $this->db->get('pat_doctor_office');
+		return $query->row();
+
+	}
+	
+	function get ( $patient_id, $normal_result=true ) {
+	    
+		$this->db->join('agy_agency', 		 'agy_agency.agency_id = pat_doctor_office.doctor_office_id');
+		
+		$this->db->where("patient_id", $patient_id);
+		
+		$query = $this->db->get('pat_doctor_office');
+
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('doctor_office_id', 'agency_name');
+
+	}
+	
+	function getByContractorId ( $contractor_id, $keyword=null, $tab_013_status=null, $normal_result=true ) {
+		
+		$this->db->select("*, CONCAT_WS(' ', first_name, last_name) as complete_name");
+      
+		$this->db->join('agency_contractor', 	'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id');
+		$this->db->join('pat_patient', 			'pat_patient.patient_id = pat_contractor.patient_id');
+    $this->db->join('pat_patient_insurance1', 'pat_patient_insurance1.patient_id = pat_patient.patient_id');
+		$this->db->join('agy_agency', 			'agy_agency.agency_id = pat_patient.agency_id');
+		$this->db->join('tab_parameters', 		'tab_parameters.tab_type = 13 AND tab_013_status = tab_parameters.tab_value', 'LEFT');
+		$this->db->join('sta_states', 			'sta_states.state_id = pat_patient.state_id', 'LEFT');
+		
+		if (!is_null($keyword)) {
+			$this->db->like("CONCAT_WS(' ', first_name, last_name)", $keyword);
+		}
+		
+    if($this->input->post('tab_102_prim_insura_type')){
+      $this->db->where("tab_102_prim_insura_type", $this->input->post('tab_102_prim_insura_type'));
+    }
+    
+		if (!is_null($tab_013_status)) {
+			$this->db->where("tab_013_status", $tab_013_status);
+		}
+		$this->db->where("contractor_id", $contractor_id);
+		
+		$this->db->orderby("last_name, first_name");
+		
+		$query = $this->db->get('pat_contractor');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('patient_id', 'complete_name');
+		
+	}
+	
+	function getActivatedByContractorId ( $contractor_id, $discipline, $keyword=null, $tab_013_status=null, $normal_result=true ) {
+
+		$this->db->where('discharged_' . $discipline, 0);
+		
+		return $this->getByContractorId($contractor_id, $keyword, $tab_013_status, $normal_result);
+		
+	}
+    
+    
+    function getByContractorIdAndAgencyId ($agency_id, $contractor_id, $keyword=null, $tab_013_status=null, $normal_result=true ) {
+        
+        $this->db->select("*, CONCAT_WS(' ', first_name, last_name) as complete_name");
+      
+        $this->db->join('agency_contractor',     'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id');
+        $this->db->join('pat_patient',             'pat_patient.patient_id = pat_contractor.patient_id');
+        $this->db->join('agy_agency',             'agy_agency.agency_id = pat_patient.agency_id');
+        $this->db->join('tab_parameters',         'tab_parameters.tab_type = 13 AND tab_013_status = tab_parameters.tab_value', 'LEFT');
+        $this->db->join('sta_states',             'sta_states.state_id = pat_patient.state_id', 'LEFT');
+        
+        if (!is_null($keyword)) {
+            $this->db->like("CONCAT_WS(' ', first_name, last_name)", $keyword);
+        }
+        
+        if (!is_null($tab_013_status)) {
+            $this->db->where("tab_013_status", $tab_013_status);
+        }
+        $this->db->where("contractor_id", $contractor_id);
+        $this->db->where("agency_contractor.agency_id", $agency_id);
+        
+        $this->db->orderby("last_name, first_name");
+        
+        $query = $this->db->get('pat_contractor');
+        if ($normal_result == true)
+            return $query->result();
+        else
+            return $query->result2('patient_id', 'complete_name');
+        
+    }
+	
+	function getNot ( $agency_id, $patient_id , $keyword = "") {
+	
+
+		$this->db->select('agency_doctor_office.doctor_office_id, agency_name');
+	
+		$this->db->join('agency_doctor_office', 'agy_agency.agency_id = agency_doctor_office.doctor_office_id');
+		$this->db->join('pat_doctor_office', 	'pat_doctor_office.doctor_office_id = agency_doctor_office.doctor_office_id AND patient_id = ' . $patient_id, ' LEFT');
+
+		$this->db->where("agency_doctor_office.agency_id", $agency_id);
+		$this->db->where("pat_doctor_office_id IS NULL");
+		
+		if ($keyword != "") {
+			$this->db->like('agency_name', $keyword);
+		}
+		
+		$this->db->order_by('agency_name', 'asc');
+		
+		$query = $this->db->get('agy_agency');
+		return $query->result2('doctor_office_id', 'agency_name');			
+	
+	}
+		
+	function insert ( $patient_id ) {
+		
+		$this->pat_doctor_office_id = null;
+		$this->patient_id = $patient_id;
+		
+		$this->db->insert('pat_doctor_office', $this);
+		$this->pat_doctor_office_id = $this->db->insert_id();
+		
+	}	
+	
+	function delete ( $pat_doctor_office_id ) {
+		
+		$this->db->where('pat_doctor_office_id', $pat_doctor_office_id);
+		
+		$this->db->delete('pat_doctor_office'); 
+		
+	}
+
+  function updateFlex($pat_contractor_id, $attribute, $value, $where = 'pat_contractor_id') {
+
+		$this->db->where($where, $pat_contractor_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('pat_contractor');
+
+	}
+
+  
+ }

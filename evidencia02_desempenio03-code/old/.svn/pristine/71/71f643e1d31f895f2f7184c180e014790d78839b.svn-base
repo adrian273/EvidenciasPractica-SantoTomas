@@ -1,0 +1,53 @@
+</form>
+<script type="text/javascript" src="{$base_url}style/maskedinput.js"></script>
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/move_visit/{$visit_log_id}">
+
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+ <tr>
+	 <td colspan="4" height="20"><em>This utility allows you to move a visit to a different SOC/Certification:</em></td>
+ </tr>
+  <tr>		
+		<td height="10"><b>Visit Date: </b></td>
+    <td height="10">
+			{$visitlog->visit_date_time|date_format:"%m/%d/%Y":"":true}
+    </td>
+		<td height="10"><b>Type: </b></td>
+    <td height="10">
+			{$visit_type->visit_description}
+    </td>
+  </tr>	
+ <tr>
+	 <td colspan="4" height="10"></td>
+ </tr>
+ <tr>
+	 <td colspan="4"><b>Will be moved to the following location:</b></td>
+ </tr>
+  <tr>		
+		<td height="10"><b>SOC: </b></td>
+    <td height="10">
+			<select name="soc_id" onchange="document.location = '{$index_url}{$resource_path}/move_visit/{$visit_log_id}/' + this.value">
+				{foreach from=$soc_list item=soc}
+					<option value="{$soc->soc_id}" {if $soc_id == $soc->soc_id}selected{/if}>{$soc->estimated_soc_date|date_format}</option>
+				{/foreach}
+			</select>
+
+    </td>
+		<td height="10"><b>Certification: </b></td>
+    <td height="10">
+				<select name="cms485_id">
+					{foreach from=$episode_list item=episode}
+						<option value="{$episode->cms485_id}" {if $cms485_id == $episode->cms485_id}selected{/if}>
+							From: {$episode->episode_start_date|date_format}&nbsp;&nbsp;&nbsp;&nbsp;To: {$episode->episode_end_date|date_format}
+						</option>
+					{/foreach}
+				</select>
+    </td>
+  </tr>	 
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Move Visit">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>

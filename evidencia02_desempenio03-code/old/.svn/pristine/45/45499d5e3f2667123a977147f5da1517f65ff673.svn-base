@@ -1,0 +1,183 @@
+<?php
+/**
+ * Created by Md.Abdullah Al Mamun.
+ * Email: dev.mamun@gmail.com
+ * Date: 2/24/2019
+ * Time: 9:38 PM
+ * Year: 2019
+ */
+
+class Templates extends MY_Controller
+{
+    function Templates()
+    {
+        parent::MY_Controller();
+        $this->tpl->assign("resource_path", "user/templates");
+    }
+
+    function index()
+    {
+        $visit_type = array(
+            'ptev' => 'PTEV',
+            'ptpn' => 'PTPN',
+            'otev' => 'OTEV',
+            'otpn' => 'OTPN',
+            'stev' => 'STEV',
+            'stpn' => 'STPN',
+        );
+        $this->tpl->assign(array("list_title", "Template List", "add_sufix" => "Template"));
+        $this->tpl->assign('visit_type_list', $visit_type);
+        $this->tpl->assign_include("filter_tpl", "user/templates/gfilter");
+        $this->tpl->assign("resource_grid", "lists");
+        $this->tpl->assign("resource_add", 'add');
+        $this->tpl->assign("resource_edit", 'edit');
+        // $this->tpl->assign("no_grid_buttons", true);
+
+
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    function lists()
+    {
+        $user_id = $this->getUserId();
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*", "Name"));
+        $head->append($this->xml->Element("column", "width=10", "Type"));
+        $head->append($this->xml->Element("column", "width=10;align=left;type=link", "Action"));
+        $head->append($this->xml->Element("column", "width=*;align=left;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+        if ($this->input->post('visit_type_id')) {
+            $sql = "SELECT tpl_{$this->input->post('visit_type_id')}_id as tpl_id, tpl_{$this->input->post('visit_type_id')}_name as tpl_name, \"{$this->input->post('visit_type_id')}\" as tpl_type FROM tpl_{$this->input->post('visit_type_id')} as tpl WHERE tpl.user_id={$user_id}";
+        } elseif ($this->input->post('keyword')) {
+            $sql = "(SELECT tpl_ptev_id as tpl_id, tpl_ptev_name as tpl_name, \"ptev\" as tpl_type FROM tpl_ptev as ptev WHERE ptev.user_id={$user_id} AND ptev.tpl_ptev_name LIKE '%{$this->input->post('keyword')}%')
+                    union
+                    (SELECT tpl_ptpn_id as tpl_id, tpl_ptpn_name as tpl_name, \"ptpn\" as tpl_type FROM tpl_ptpn as ptpn WHERE ptpn.user_id={$user_id} AND ptpn.tpl_ptpn_name LIKE '%{$this->input->post('keyword')}%')
+                    union
+                    (SELECT tpl_otev_id as tpl_id, tpl_otev_name as tpl_name, \"otev\" as tpl_type FROM tpl_otev as otev WHERE otev.user_id={$user_id} AND otev.tpl_otev_name LIKE '%{$this->input->post('keyword')}%')
+                    union
+                    (SELECT tpl_otpn_id as tpl_id, tpl_otpn_name as tpl_name, \"otpn\" as tpl_type FROM tpl_otpn as otpn WHERE otpn.user_id={$user_id} AND otpn.tpl_otpn_name LIKE '%{$this->input->post('keyword')}%')
+                    union
+                    (SELECT tpl_stev_id as tpl_id, tpl_stev_name as tpl_name, \"stev\" as tpl_type FROM tpl_stev as stev WHERE stev.user_id={$user_id} AND stev.tpl_stev_name LIKE '%{$this->input->post('keyword')}%')
+                    union
+                    (SELECT tpl_stpn_id as tpl_id, tpl_stpn_name as tpl_name, \"stpn\" as tpl_type FROM tpl_stpn as stpn WHERE stpn.user_id={$user_id} AND stpn.tpl_stpn_name LIKE '%{$this->input->post('keyword')}%')
+                    ;";
+        } else {
+            $sql = "SELECT tpl_ptev_id as tpl_id, tpl_ptev_name as tpl_name, \"ptev\" as tpl_type FROM tpl_ptev WHERE tpl_ptev.user_id={$user_id} 
+                union
+                SELECT tpl_ptpn_id as tpl_id, tpl_ptpn_name as tpl_name, \"ptpn\" as tpl_type FROM tpl_ptpn WHERE tpl_ptpn.user_id={$user_id}
+                union
+                SELECT tpl_otev_id as tpl_id, tpl_otev_name as tpl_name, \"otev\" as tpl_type FROM tpl_otev WHERE tpl_otev.user_id={$user_id}
+                union
+                SELECT tpl_otpn_id as tpl_id, tpl_otpn_name as tpl_name, \"otpn\" as tpl_type FROM tpl_otpn WHERE tpl_otpn.user_id={$user_id}
+                union
+                SELECT tpl_stev_id as tpl_id, tpl_stev_name as tpl_name, \"stev\" as tpl_type FROM tpl_stev WHERE tpl_stev.user_id={$user_id}
+                union
+                SELECT tpl_stpn_id as tpl_id, tpl_stpn_name as tpl_name, \"stpn\" as tpl_type FROM tpl_stpn WHERE tpl_stpn.user_id={$user_id}
+                ;";
+        }
+        
+        $query = $this->db->query($sql);
+
+        foreach ($query->result() as $key => $item) {
+            $cell = $this->xml->Element("row", "id=" . strtoupper($item->tpl_type)."-".$item->tpl_id);
+            $cell->append($this->xml->Element("cell", null, $this->xml_entities($item->tpl_name)));
+            $cell->append($this->xml->Element("cell", null, strtoupper($item->tpl_type)));
+            $cell->append($this->xml->Element("cell", null, "Edit Name^" . $this->config->config['index_url'] . "user/templates/edit/" . $item->tpl_type."/".$item->tpl_id));
+            $cell->append($this->xml->Element("cell", null, "Edit Template^" . $this->config->config['index_url'] . "user/templates/edit_data/" . $item->tpl_type. "/" . $item->tpl_id));
+            
+            $document->append($cell);
+        }
+    }
+
+    function edit($tpl_type, $tpl_id)
+    {
+        $tpl_type = strtolower($tpl_type);
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $this->tpl->assign("entity_id", $tpl_type);
+        $this->tpl->assign("record_id", $tpl_id);
+        $this->tpl->assign("faction", 'edit');
+        $this->tpl->assign("no_delete_form", true);
+        
+        $this->validation->set_rules(array('template_name' => 'required'));
+        $this->validation->set_fields(array('template_name' => 'Template Name'));
+        
+        $template_field = "tpl_{$tpl_type}_name";
+        if ($this->validation->run() == FALSE) {
+            $template = $this->visitformtplmdl->get($tpl_id);
+            $this->tpl->assign("template_name", $template->$template_field);
+            
+            $this->tpl->assign("form_title", "Edit Template Name");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "user/templates/edit_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        } else {
+            $this->visitformtplmdl->updateFlex($tpl_id, $template_field, $this->input->post('template_name'));
+            $this->tpl->assign('gmessage', ucfirst($tpl_type) . " template name has been updated");           
+            $this->index();         
+        }
+    }
+
+    function edit_data($tpl_type, $tpl_id)
+    {
+        $tpl_type = strtolower($tpl_type);
+        $config =& get_config();
+        
+        $this->session->set_userdata('task_return', 'user/templates');               
+        
+        header("Location: " . $config["index_url"] . "task/" . $tpl_type . "/edit_template/" . $tpl_id);
+
+    }
+
+    function add()
+    {
+        $visit_type = array(
+            'ptev' => 'PTEV',
+            'ptpn' => 'PTPN',
+            'otev' => 'OTEV',
+            'otpn' => 'OTPN',
+            'stev' => 'STEV',
+            'stpn' => 'STPN',
+        );
+        $this->tpl->assign('visit_type_list', $visit_type);
+
+        $this->tpl->assign("faction", 'add');
+        // $this->tpl->assign("no_delete_form", true);
+        
+        $this->validation->set_rules(array(
+            'template_type' => 'required',
+            'template_name' => 'required',
+        ));
+        $this->validation->set_fields(array(
+            'template_type' => 'Template Type',
+            'template_name' => 'Template Name',
+        ));
+        
+        if ($this->validation->run() == FALSE) {
+            $this->tpl->assign("form_title", "Add Template");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "user/templates/add_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        } else {
+            $tpl_type = strtolower($this->input->post('template_type'));
+            
+            if (!isset($visit_type[$tpl_type])) {
+                exit('Invalid Template Type!');
+            }
+
+            $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+
+            $tpl_id = $this->visitformtplmdl->insert($this->getUserId(), $this->input->post('template_name'));
+
+            if ($tpl_id) {
+                $this->edit_data($tpl_type, $tpl_id);
+            }
+        }
+    }
+            
+}

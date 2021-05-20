@@ -1,0 +1,92 @@
+<table border="0" width="100%" cellpadding="2" cellspacing="0"> 
+  <input type="hidden" name="visit_log_id" value="{$visit_log_id}">
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> visit log</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr> 
+    <td class="ftitle">visit_log_number</td>
+    <td>
+    	<input type="text" name="visit_log_number" value="{$visit_log_number}">
+    </td>
+    <td class="ftitle">visit_date_time</td>
+    <td><input type="text" name="visit_date_time" value="{$visit_date_time}"></td>
+  </tr>
+  <tr> 
+    <td class="ftitle">visit_status_id</td>
+    <td>
+    	{html_options name='visit_status_id' options=$tab_83_list selected=$visit_status_id}
+    </td>
+    <td class="ftitle">visited_date</td>
+    <td><input type="text" name="visited_date" id="visited_date" value="{$visited_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visited_date'), document.getElementById('fecha_help'));return false;" ></td>
+  </tr>
+  <tr> 
+    <td class="ftitle">user_approver</td>
+    <td>
+    	{html_options name='user_approver' options=$approver_list selected=$user_approver}
+    </td>
+    <td class="ftitle">sent_to_approve_date</td>
+    <td><input type="text" name="sent_to_approve_date" id="sent_to_approve_date" value="{$sent_to_approve_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('sent_to_approve_date'), document.getElementById('fecha_help'));return false;" ></td>
+  </tr>
+  <tr> 
+    <td class="ftitle">approve_date</td>
+    <td>
+    	<input type="text" name="approve_date" id="approve_date" value="{$approve_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('approve_date'), document.getElementById('fecha_help'));return false;" >
+    </td>
+    <td class="ftitle">superv_user_id</td>
+    <td>{html_options options=$supervisor_list selected=$superv_user_id name='superv_user_id'}</td>
+  </tr>
+  <tr> 
+    <td class="ftitle">superv_approval_date</td>
+    <td>
+    	<input type="text" name="superv_approval_date" id="superv_approval_date" value="{$superv_approval_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('superv_approval_date'), document.getElementById('fecha_help'));return false;" >
+    </td>
+    <td class="ftitle">agency_approv_user_id</td>
+    <td>{html_options options=$agency_approv_user_list selected=$agency_approv_user_id name='agency_approv_user_id'}</td>
+  </tr>
+  <tr> 
+    <td class="ftitle">agency_approv_date</td>
+    <td>
+    	<input type="text" name="agency_approv_date" id="agency_approv_date" value="{$agency_approv_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('agency_approv_date'), document.getElementById('fecha_help'));return false;" >
+    </td>
+    <td class="ftitle">agency_or_company</td>
+    <td><label><input type="radio" name="agency_or_company" value="1" {if $agency_or_company eq '1'} checked="checked"{/if} />Agency</label> <label><input type="radio" name="agency_or_company" value="0" {if $agency_or_company eq '0'} checked="checked"{/if} />Company</label>	</td>
+  </tr>		
+  <tr> 
+    <td class="ftitle">visit_amount</td>
+    <td>
+    	<input type="text" name="visit_amount" id="visit_amount" value="{$visit_amount}" size="6">
+    </td>
+    <td class="ftitle">mileage_amount</td>
+    <td>
+    	<input type="text" name="mileage_amount" id="mileage_amount" value="{$mileage_amount}" size="6">
+    </td>
+  </tr>			
+  <tr> 
+    <td class="ftitle">payroll_confirmed</td>
+    <td>
+    	<label><input type="radio" name="payroll_confirmed" value="1" {if $payroll_confirmed eq '1'} checked="checked"{/if} />Yes</label> <label><input type="radio" name="payroll_confirmed" value="0" {if $payroll_confirmed eq '0'} checked="checked"{/if} />No</label>
+    </td>
+    <td class="ftitle">payroll_status</td>
+    <td>
+    	<select name="payroll_status" id="payroll_status">
+				<option value="R"{if $payroll_status eq 'R'} selected="selected"{/if}>R</option>
+				<option value="P"{if $payroll_status eq 'P'} selected="selected"{/if}>P</option>
+				<option value="N"{if $payroll_status eq 'N'} selected="selected"{/if}>N</option>
+			</select>
+    </td>
+  </tr>				
+  <tr> 
+    <td class="ftitle" valign="top">payroll_comments</td>
+    <td>
+			<textarea name="payroll_comments" id="payroll_comments" rows="5" cols="50">{$payroll_comments}</textarea>
+    </td>
+    <td class="ftitle" valign="top">payroll_batch_id</td>
+    <td valign="top">
+    	{html_options options=$payroll_batch_id_list selected=$payroll_batch_id name='payroll_batch_id'}
+    </td>
+  </tr>					
+</table> 
+{$hidden_fields}

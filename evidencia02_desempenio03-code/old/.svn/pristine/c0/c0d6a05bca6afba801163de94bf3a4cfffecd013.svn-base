@@ -1,0 +1,89 @@
+<?
+
+class cms485mcaidpavisitsmdl extends Model {
+
+	var $cms_485_mcaid_pa_visits_id;
+	var $cms485_id;
+	var $author_from_date;
+	var $approve_end_date;
+	var $authorization_id;
+	var $author_end_date;	
+	var $hha_nbr_visits;
+	var $nbr_sn_visits;
+	var $nbr_pt_visits;
+	var $nbr_ot_visits;
+	var $nbr_st_visits;
+	var $notes;
+	var $create_user_id;
+	var $create_date;
+	var $modify_user_id;
+	var $modify_date;
+
+	function cms485mcaidpavisitsmdl() {
+		
+		parent::Model();
+		
+	}
+
+	function get ( $patient_id, $cms485_id=null ) {
+    $this->db->select("*, cms_485_mcaid_pa_visits.notes as authvisits_notes, cms_485_mcaid_pa_visits.create_user_id as pavisit_create_user_id, cms_485_mcaid_pa_visits.create_date as pavisit_create_date, cms_485_mcaid_pa_visits.modify_date as pavisit_modify_date, CONCAT_WS(' ', usr1.first_name, usr1.last_name) as created_by, CONCAT( usr2.first_name, ' ', usr2.last_name) as changed_by");
+    
+		$this->db->join('cms_485', 'cms_485.cms485_id = cms_485_mcaid_pa_visits.cms485_id');				
+    $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');			
+    $this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');			
+    
+    $this->db->join('us_agy usagy1', 'usagy1.us_agy_id = cms_485_mcaid_pa_visits.create_user_id','LEFT');
+		$this->db->join('us1_user usr1', 'usr1.user_id = usagy1.user_id','LEFT');
+    
+    $this->db->join('us_agy usagy2', 'usagy2.us_agy_id = cms_485_mcaid_pa_visits.modify_user_id' , 'LEFT');
+		$this->db->join('us1_user usr2', 'usr2.user_id = usagy2.user_id','LEFT');
+    
+    
+		$this->db->where("pat_patient.patient_id", $patient_id);
+    if (!is_null($cms485_id)) {
+      $this->db->where("cms_485_mcaid_pa_visits.cms485_id", $cms485_id);
+    }
+		$this->db->order_by("author_from_date","DESC");
+		$query = $this->db->get("cms_485_mcaid_pa_visits");
+		return $query->result();		
+	}
+
+	function getById ( $cms_485_mcaid_pa_visits_id ) {
+    $this->db->select("*, cms_485_mcaid_pa_visits.notes as authvisits_notes, cms_485_mcaid_pa_visits.create_user_id as pavisit_create_user_id,  cms_485_mcaid_pa_visits.create_date as pavisit_create_date, cms_485_mcaid_pa_visits.modify_date as pavisit_modify_date, CONCAT_WS(' ', usr1.first_name, usr1.last_name) as created_by, CONCAT( usr2.first_name, ' ', usr2.last_name) as changed_by");
+    
+		$this->db->join('cms_485', 'cms_485.cms485_id = cms_485_mcaid_pa_visits.cms485_id');				
+    $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');			
+    $this->db->join('pat_patient ', 'pat_patient.patient_id = soc_start_of_care.patient_id');			
+    
+    $this->db->join('us_agy usagy1', 'usagy1.us_agy_id = cms_485_mcaid_pa_visits.create_user_id','LEFT');
+		$this->db->join('us1_user usr1', 'usr1.user_id = usagy1.user_id','LEFT');
+    
+    $this->db->join('us_agy usagy2', 'usagy2.us_agy_id = cms_485_mcaid_pa_visits.modify_user_id' , 'LEFT');
+		$this->db->join('us1_user usr2', 'usr2.user_id = usagy2.user_id','LEFT');
+		
+		$this->db->where("cms_485_mcaid_pa_visits_id", $cms_485_mcaid_pa_visits_id);
+		$query = $this->db->get("cms_485_mcaid_pa_visits");
+
+		return $query->row();
+	}
+
+	function insert () {
+
+		$this->db->insert("cms_485_mcaid_pa_visits", $this);
+	}
+
+  function update ( $cms_485_mcaid_pa_visits_id ) {		
+		$this->cms_485_mcaid_pa_visits_id = $cms_485_mcaid_pa_visits_id;		
+		$this->db->where("cms_485_mcaid_pa_visits_id", $cms_485_mcaid_pa_visits_id);
+		
+		$this->db->update("cms_485_mcaid_pa_visits", $this);
+		
+	}
+
+	function delete ( $cms_485_mcaid_pa_visits_id ) {
+	
+		$this->db->delete("cms_485_mcaid_pa_visits", array("cms_485_mcaid_pa_visits_id" => $cms_485_mcaid_pa_visits_id));
+	
+	}
+
+}

@@ -1,0 +1,54 @@
+
+<form name="edit_event_form" id="edit_event_form" method="POST" onsubmit="return false">
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="6"> 
+		<tr>
+			<td class="ftitle">Event Type:</td>
+			<td>
+				{html_options options=$type_list selected=$tab106_event_type name='tab106_event_type'}
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle" nowrap valign="top">Comments:</td>
+			<td nowrap>
+				<textarea name="event_comment" style="width:100%;" wrap="auto" rows="6">{$event_comment}</textarea>
+			</td>
+		</tr>
+		{if $creator}
+		<tr>
+			<td class="ftitle">Visibility:</td>
+			<td>
+				{html_radios options=$visibility_list selected=$visibility name='visibility'}
+			</td>
+		</tr>
+		{/if}
+		<tr>
+			<td class="ftitle">Created by User:</td>
+			<td>
+				{$creator_name} 
+			</td>
+		</tr>
+		<tr>
+			<td nowrap height="100%" colspan="2" valign="bottom">
+			  	<div style="float: left">
+				  	{if $creator}
+				  		<input type="button" class="btn" value="{$grl_save}" onclick="ajax('{$index_url}{$resource_path}/editEvent', ajaxParseAction, 'edit_event_form');">
+				  	{/if}
+				  	<input type="button" class="btn" value="{$grl_close}" onclick="tt_HideInit()">
+					{if $open_new_window eq 1}
+				  		<!-- <input type="button" class="btn" value="Open Document" onclick="window.open('{$index_url}patient/calendar/opendocument/{$visit_log_id}/nw','_blank');"> -->
+					{else}
+						<!-- <input type="button" class="btn" value="Open Document" onclick="document.location='{$index_url}patient/calendar/opendocument/{$visit_log_id}'"> -->
+					{/if}
+				    <input type="hidden" name="visit_log_id" value="{$visit_log_id}">
+				    <input type="hidden" name="visit_date__" value="{$visit_date_time|date_format}">
+				</div>
+				<div style="float: right">
+					{if $creator}
+						<input type="button" class="btn" value="{$grl_delete}" onclick="if (confirm('Are you sure to delete this event?'))ajax('{$index_url}{$resource_path}/delete/{$visit_log_id}', ajaxParseAction);">
+					{/if}	 
+				</div>    
+				<div style="clear:both;"></div> 	
+			</td>
+		</tr>			
+	</table>
+</form>

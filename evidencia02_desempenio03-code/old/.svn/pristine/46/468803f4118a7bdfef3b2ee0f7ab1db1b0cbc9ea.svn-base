@@ -1,0 +1,2678 @@
+<?
+
+ class Calendar extends MY_Controller {
+
+	function Calendar () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/calendar");
+		$this->tpl->assign(array("tab_page" => true));
+
+    $this->loggedinUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+		
+	}
+
+	function index ( $patient_id, $cms_485, $visit_type_id=null, $year=null, $month=null) {
+	$us_agy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+	$patient = $this->patientmdl->getById($patient_id);
+	
+	//$agency_contract_detail = $this->agencycontractormdl->getAgencyContractorById($this->getAgencyId(), $patient->agency_id);
+	$pat_contractor = $this->patientcontractormdl->get($patient_id, $this->getAgencyId());
+
+    // remove eventsOnly cookie to uncheck it default
+    unset($_COOKIE['eventsOnly']);
+    setcookie('eventsOnly', null, -1, '/');
+
+    $loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+    $this->tpl->assign('loggedInAgency', $loggedInAgency);
+
+
+		if ((bool)preg_match( '/^[0-9]+$/', $visit_type_id) == false) $visit_type_id = null;
+
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign(array("patient_id" => $patient_id, "cms_485" => $cms_485, "visit_type_id" => $visit_type_id));
+	
+		$episode = $this->episodemdl->getById($cms_485);
+		
+		$this->tpl->assign("cms_events", $this->visitlogmdl->getByEpsodeId($cms_485, $visit_type_id));
+
+		$this->load->library('calendar', array('template', 'patient_template'));
+
+    // Finding the certification length in days
+    $date1 = new DateTime($episode->episode_start_date); //inclusive
+    $date2 = new DateTime($episode->episode_end_date); //exclusive
+    $diff = $date2->diff($date1);
+    
+    if ($diff->format("%a") > 60) {
+		//echo "in if";
+		//echo "asdf";
+      $year = $year ? $year : date('Y');
+      $month =$month ? $month: date('n');
+      
+      $this->tpl->assign('cal_month', sprintf("%02d", $month));
+      $this->tpl->assign('cal_year', $year);
+      $this->tpl->assign('calendar_table', $this->calendar->generate3($year, $month, array('start_date' => $episode->episode_start_date, 'end_date' => $episode->episode_end_date, 'us_agy' => $us_agy, 'pat_contractor' => $pat_contractor[0])));
+
+      // calendar headers
+      $this->tpl->assign('cal_header_month', $this->calendar->get_month_name($month));
+      $this->tpl->assign('cal_header_year', $year);
+      // calendar navegation links
+      $date_prev_month = $this->calendar->adjust_date($month-1, $year);
+      $date_next_month = $this->calendar->adjust_date($month+1, $year);
+      
+      $this->tpl->assign('cal_prev_link', $patient_id . "/" . $cms_485 . "/" . (int)$visit_type_id . "/" . $date_prev_month['year'] . "/" . $date_prev_month['month'] );
+      $this->tpl->assign('cal_next_link', $patient_id . "/" . $cms_485 . "/" . (int)$visit_type_id . "/" . $date_next_month['year'] . "/" . $date_next_month['month'] );
+      
+      $this->tpl->assign_include("dynamic_tpl", "patient/calendar/calendar_by_month");
+    } else {
+		//echo "in else";
+		//echo "else asdf";
+		  $this->tpl->assign('calendar_table', $this->calendar->generate2($episode->episode_start_date, $episode->episode_end_date));
+      $this->tpl->assign_include("dynamic_tpl", "patient/calendar/calendar");
+    }
+		
+		$patient = $this->patientmdl->getById($patient_id);
+    $this->tpl->assign("tab_102_prim_insura_type", $patient->tab_102_prim_insura_type);
+    $this->tpl->assign("gov_program", $patient->gov_program);
+    $this->tpl->assign("qr4_scheduled", $episode->qr4_scheduled);
+        if ($patient->pat_tab111_product_id == 1) {
+            $this->tpl->assign('can_freq_dur', 1);
+        }
+    if ($episode->qr4_scheduled != 1 AND $patient->gov_program == 'CLASS' AND $patient->pat_tab111_product_id == '3') {
+		  $this->tpl->assign("can_qr4_schedule", 1);      
+    }
+		
+	    $this->load->helper('url');
+	    $current_url = site_url($this->uri->uri_string());
+	    $base_url = base_url().'index.php/';
+	    $current_url = str_replace($base_url, "", $current_url);
+	    
+	    $this->session->set_userdata('task_return', $current_url);
+
+	    $us_agy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+		$agency = $this->agencymdl->getByAgencyId($us_agy->agency_id);
+
+	    if (  	$this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) 
+		{
+			$this->tpl->assign('task_elimination_enable', true);
+		}    
+		// $this->tpl->assign_include("dynamic_tpl", "patient/calendar/calendar");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+	
+	}
+	
+	function addSettings ( $patient_id ) {
+		
+		if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $this->hasPermission(1)) { // only schedulers can schedule event to other users
+		
+//		 	$this->tpl->assign('team_list', 	  $this->teammdl->getAll($patient_id));
+		 	
+      $this->tpl->assign('team_list', $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false, false, null, array(4), 1 )); // without profile id 4 (the physician)
+		 
+		} else {
+			
+			$this->assignObject($this->usermdl->getById($this->getUserId()));
+			$this->tpl->assign('us_agy_id', 	  $this->getUsAgyId());
+			$this->tpl->assign('visit_type_list', $this->visittypemdl->getByDisciplineId($this->getUserDisciplineId()));
+			
+		}
+		
+	}
+	
+	function addEventForm ( $patient_id, $cms485_id, $visit_date ) {
+    $agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+    
+    if($this->getAgencyType() == 'C')  {
+      $contractor = $this->patientcontractormdl->get($patient_id, $this->getAgencyId());
+      if ($contractor[0]->company_patient_status == 7) {
+        if (isset($agency_settings->block_pt_new_visit_on_hold_cert_end) AND $agency_settings->block_pt_new_visit_on_hold_cert_end == 1) {
+          $document = $this->xml->Document();
+          $document->append($this->xml->ElementCData("divContent", null, 'Patient status is On Hold. You can\'t add visit to this patient.'));
+          exit();
+          # code...
+        }
+      }
+    }
+
+    $episode = $this->episodemdl->getById($cms485_id);
+    $visit_date_std = standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME');
+
+    if (strtotime($episode->episode_end_date) >= strtotime($visit_date_std)) {
+      // certification not expired so continue....
+    } else {
+      if (isset($agency_settings->block_pt_new_visit_on_hold_cert_end) AND $agency_settings->block_pt_new_visit_on_hold_cert_end == 1) {
+        $document = $this->xml->Document();
+        $document->append($this->xml->ElementCData("divContent", null, 'Patient certification has been expired. You can\'t add visit to this patient.'));
+        exit();
+      }
+    }
+ 
+    // assign values for visit type event
+    $this->tpl->assign('event_type_list', $this->parametermdl->getByType(106));
+
+    $visibility_list = array('public'=>'Public', 'private'=>'Private');
+
+    if ($this->getAgencyType() == 'C' AND $this->getUserProfileId() == 3) {
+      $visibility_list['private-admins'] = 'Admin';
+    }
+
+    $this->tpl->assign('visibility_list', $visibility_list);    
+
+		$this->addSettings($patient_id);		
+		$this->tpl->assign('visit_date', 	  $visit_date);		
+		$this->tpl->assign(array("patient_id" => $patient_id, "cms485_id" => $cms485_id));
+		
+    // assign usagy id and his name for DocOrder
+    $this->assignObject($this->usermdl->getById($this->getUserId()));
+    $this->tpl->assign('us_agy_id',     $this->getUsAgyId());
+
+    $physician_list = array();
+    foreach ($this->patientdoctorofficemdl->get($patient_id, false) as $doctor_office_id => $name) {
+      $doctorOfficeUsers = $this->usagymdl->getByAgencyId($doctor_office_id, null, null, 7);
+      
+      if (count($doctorOfficeUsers)) {
+        $doctorOfficeAdmin = $doctorOfficeUsers[0];
+        $physician_list[$doctorOfficeAdmin->us_agy_id] = $name;       
+      }
+    }
+    $this->tpl->assign('physician_list',  $physician_list);
+
+    // Default Physician to select from Plan of care
+    // filter by profile ID 7 ( Doctor Office )
+    $episode = $this->episodemdl->getById($cms485_id);
+    $doctorOfficeUsers = $this->usagymdl->getByAgencyId($episode->doctor_office_id, null, null, 7);
+    if (count($doctorOfficeUsers)) {
+      $doctorOfficeAdmin = $doctorOfficeUsers[0];
+      $this->tpl->assign('phys_user_id',  $doctorOfficeAdmin->us_agy_id);
+    }
+    $this->load->model('docdoctorordertypemdl');
+    $this->tpl->assign('order_type_list', $this->docdoctorordertypemdl->getAdd());
+
+    $this->tpl->assign('team_list',        $this->teammdl->getAll($patient_id, null, true, array(11), 'A'));
+
+		$document = $this->xml->Document();
+		$document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("patient/calendar/add_event_form", $this->lang->language, false)));
+		
+	}
+	
+  function confirmSingleScheduleOverlap($confirmed = false){
+    // $rules = array ('visit_user_id'     => 'required');
+    
+    // $this->validation->set_rules($rules);
+    
+    if (!$confirmed) {
+      $_POST = $this->session->userdata('user_post_data');
+      if (!$this->input->post('visit_user_id')) {
+        exit('Visit User not selected. Please select viist user.');
+      }
+      // var_dump($this->input->post('visit_date'));
+      $visit_date = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME');
+      $visit_date_time_hour = ((int) ($this->input->post('visit_time_Hour') == 12 ? 0 : $this->input->post('visit_time_Hour')) + ($this->input->post('visit_time_Meridian') == 'am' ? 0 : 12));
+      $visit_date_time = $visit_date . " " . $visit_date_time_hour . ":" . $this->input->post('visit_time_Minute');
+
+      $patient = null;
+      $target_patient = null;
+      $patient_agency = null;
+      $mark_patient_as_red = false;
+      $mark_agency_as_red = false;
+      $target_patient_id = null;
+      $target_agency_id = null;
+      $target_patient_agency = null;
+
+      $cms485 = $this->cms485mdl->getById($this->input->post('cms485_id'));
+      $cms_485_mcaid_pa_visits_id = null;
+      if(count($cms485) > 0){
+        $soc = $this->socmdl->getById($cms485->soc_id);
+        if(count($soc) > 0){
+          $target_patient_id = $soc->patient_id;
+                     
+          $target_patient = $this->patientmdl->getById($target_patient_id);
+          $target_agency_id = $target_patient->agency_id;
+          $target_patient_agency = $this->agencymdl->getByAgencyId($target_patient->agency_id);          
+        }
+      }
+
+
+      if (!$this->validateNewVisitTime($this->input->post('cms485_id'), $visit_date_time)) {
+        $patient = $target_patient; 
+        
+        $patient_agency = $target_patient_agency;
+      }else{
+        // shceduled time overlapping
+        $conflict_visit_log_id = $this->getOverlappingConflictedVisitId($this->input->post('visit_user_id'), $visit_date_time);
+
+        $visitlog = $this->visitlogmdl->getById($conflict_visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+        
+        $patient_agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+        
+      }
+
+      if ($target_patient_id == $patient->patient_id) {
+        $mark_patient_as_red = true;
+      }
+
+      if ($target_agency_id == $patient->agency_id) {
+        $mark_agency_as_red = true;
+      }
+      
+      
+      $this->tpl->assign('mark_patient_as_red', $mark_patient_as_red);
+      $this->tpl->assign('mark_agency_as_red', $mark_agency_as_red);
+      $this->tpl->assign('patient', $patient);
+      $this->tpl->assign('agency', $patient_agency);
+      $this->tpl->assign('scheduled_at', date("m/d/Y h:i a", strtotime($this->visitlogmdl->visit_date_time)));
+
+      // "WARNING - Conflict with Clinician's other Visit scheduled for Patient '". $patient->first_name. " ". $patient->last_name. "' at: ".date("h:i a", strtotime($this->visitlogmdl->visit_date_time));
+
+      $this->tpl->assign_include("dynamic_tpl", "patient/calendar/confirm_single_schedule_overlap");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    
+    } else {
+      $post_arr = $this->session->userdata('user_post_data');
+      $post_arr['schedule_overlap_confirmed'] = 1;
+      $_POST = $post_arr;
+      if($this->addEvent()){
+        $this->session->unset_userdata('user_post_data');
+        $document = $this->xml->Document();
+        $document->append($this->xml->ElementCData("js", "script=confirmSingleScheduleOverlapSucceded()"));
+        exit();
+      } else {
+        $document = $this->xml->Document();
+        $document->append($this->xml->ElementCData("alert", null, "An error occured. Try again or contact with administrator."));
+        exit();
+      }
+    }
+    
+  }
+
+	function addEvent () {
+    $create_type = $this->input->post('create_type');
+    $loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+    switch ($create_type) {
+      case 'event':
+          // create vt event
+          $this->load->model('vteventsmdl');
+          $rules = array(
+		  	'tab106_event_type'     => 'required'
+		  );
+          $fields = array(
+		  	'tab106_event_type'      => 'Event Type'
+		  );
+		  
+		  if($this->input->post('action_required') == 'YES') {
+		  	  $rules['action_date'] = 'required';
+		  	  $fields['action_date'] = 'Action Required Date ';
+		  }
+		  
+          $this->validation->set_rules($rules);
+          $this->validation->set_fields($fields);
+          if ($this->validation->run() == FALSE) {
+            $error_string = $this->tpl->get_template_vars('error_string');
+            $error_string = str_replace("<br>", "\n", $error_string);
+            $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, $error_string));
+            exit;
+          }else{
+            // Visit type "Event"
+            $visit_type_id = 400;
+            $event_date = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME');    
+            $cms485_id = $this->input->post('cms485_id');  
+
+            $this->visitlogmdl->visit_log_id = null;
+            $this->visitlogmdl->cms485_id = $cms485_id;
+            $this->visitlogmdl->visit_type_id = $visit_type_id;
+            $this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+            $this->visitlogmdl->visit_user_id = $this->visitlogmdl->visit_asigned_by;
+            $this->visitlogmdl->visit_date_time = $event_date;
+            // $this->visitlogmdl->visit_status_id = 9; 
+            
+            $visittype = $this->visittypemdl->getById($visit_type_id);
+            $this->visitlogmdl->insert($visittype->billable_yn);
+            $visit_log_id = $this->visitlogmdl->visit_log_id;
+            // Event should be created with visit_status="Event"
+            $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 9);
+
+            $this->assignPostData($this->vteventsmdl);
+
+            if (count($this->vteventsmdl->get($visit_log_id))) {        
+              $this->vteventsmdl->created_by_user_id = $this->getUsAgyId();
+              $this->vteventsmdl->modified_by_user_id = $this->vteventsmdl->created_by_user_id;
+              $this->vteventsmdl->create_datetime = date("c");
+              $this->vteventsmdl->update($visit_log_id);
+            } else {
+              $this->vteventsmdl->created_by_user_id = $this->getUsAgyId();
+              $this->vteventsmdl->modified_by_user_id = $this->vteventsmdl->created_by_user_id;
+              $this->vteventsmdl->create_datetime = date("c");            
+              $this->vteventsmdl->insert($visit_log_id);
+            }
+            $this->updateCellEvents($cms485_id);
+          }
+        break;      
+      case 'docorder':
+          $rules = array(
+              // "visit_user_id" => "required",
+              "order_type_id" => "required",
+              "do_description" => "required",
+              "phys_user_id"   => "required"
+              );
+
+  
+          $fields = array(
+              // "visit_user_id"   => "Ordere By",
+              "order_type_id"  => "Order Type",
+              "do_description"  => "Order Description",
+              "phys_user_id"    => "Physician Name"
+              );
+
+          $this->validation->set_rules($rules);
+          $this->validation->set_fields($fields);
+          if ($this->validation->run() == FALSE) {
+            $error_string = $this->tpl->get_template_vars('error_string');
+            $error_string = str_replace("<br>", "\n", $error_string);
+            $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, $error_string));
+            exit;
+          }else{
+            $this->load->model('dordermdl');
+            // insert doctor order
+            $patient_id = null;
+            $cms485 = $this->cms485mdl->getById($this->input->post('cms485_id'));
+            if(count($cms485) > 0){
+              $soc = $this->socmdl->getById($cms485->soc_id);
+              if(count($soc) > 0){
+                $patient_id = $soc->patient_id;
+              }
+            }
+            $this->assignPostData($this->visitlogmdl);
+
+            $this->visitlogmdl->visit_date_time = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME');
+            $this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+            // $visittype = $this->visittypemdl->getById($this->input->post('visit_type_id'));
+            $visittype = $this->visittypemdl->getById(200);
+            $this->visitlogmdl->insert('N');
+            $visit_log_id = $this->visitlogmdl->visit_log_id;
+            $this->visitlogmdl->updateFlex($visit_log_id, 'co_billing_deleted', 1 );
+            $this->app->updateEpisodeVisitNumber($this->visitlogmdl->cms485_id); // reordering visit number
+            $visitlog = $this->visitlogmdl->getById($visit_log_id);
+            $episode = $this->episodemdl->getById($visitlog->cms485_id);      
+
+            if (!$this->teammdl->exitInTeam($episode->patient_id, $this->input->post('visit_user_id'))) {
+              $this->teammdl->user_id = $this->input->post('visit_user_id');
+              $this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+              $this->teammdl->insert($episode->patient_id);
+            }
+
+            $this->assignPostData($this->dordermdl);
+
+            if (count($this->dordermdl->get($visitlog->visit_log_id))) {        
+              $this->dordermdl->update($visitlog->visit_log_id);
+              if ($this->input->post('phys_user_id') !== FALSE) {         
+                $this->visitlogmdl->updateFlex($visitlog->visit_log_id, 'phys_user_id', $this->input->post('phys_user_id') );
+                $doctor_office_user = $this->usagymdl->getByUsAgyId($this->input->post('phys_user_id'));          
+                $this->visitlogmdl->updateFlex($visitlog->visit_log_id, 'doctor_office_id', $doctor_office_user->agency_id );
+              }
+            } else {              
+              $this->dordermdl->insert($visitlog->visit_log_id);
+              if ($this->input->post('phys_user_id') !== FALSE) {         
+                $this->visitlogmdl->updateFlex($visitlog->visit_log_id, 'phys_user_id', $this->input->post('phys_user_id') );
+                $doctor_office_user = $this->usagymdl->getByUsAgyId($this->input->post('phys_user_id'));          
+                $this->visitlogmdl->updateFlex($visitlog->visit_log_id, 'doctor_office_id', $doctor_office_user->agency_id );
+              }
+            }
+            
+            // submit for approval
+            if ($this->input->post('submit_for_approval') == 1) {              
+              $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_approve_date', standard_date(now(), 'MYSQL'));
+              // $this->updateFormEdition($visit_log_id);
+
+              $visitlog = $this->visitlogmdl->getById($visit_log_id);
+              $patient = $this->patientmdl->getById($visitlog->patient_id);
+
+              $payroll_visit_rate = 0.00;
+              $this->visitlogmdl->updateStatus($visit_log_id, 3);
+              $us_agy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+              $us_agy->payroll_mileage_rate = 0;
+              $this->visitlogmdl->updateFlex($visit_log_id, 'billable_YN', 0);
+              $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_approve_date', $visitlog->visit_date_time);
+              $this->visitlogmdl->updateRates($visit_log_id, $payroll_visit_rate, $us_agy->payroll_mileage_rate);
+
+              $visit_type_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, $visitlog->approver_type_id);
+              $cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+
+              if (count($visit_type_approver) && $visit_type_approver[0]->agency_id == $this->getAgencyId()) { // assigning to visit type approver
+          
+                $this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+                $user_approver = $visit_type_approver[0]->us_agy_id;
+              } else if (count($cm_approver) && !count($visit_type_approver) && $cm_approver[0]->agency_id == $this->getAgencyId()) { // assigning to CM approver
+                $this->visitlogmdl->updateUserApprover($visit_log_id, $cm_approver[0]->us_agy_id);
+                $user_approver = $cm_approver[0]->us_agy_id;
+              } else {
+                $agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+                $this->visitlogmdl->updateUserApprover($visit_log_id, ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver));
+                $user_approver = ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver);
+              }
+
+              if ($this->getAgencyType() == 'C') {
+                $this->visitlogmdl->updateStatus($visit_log_id, 8);
+                $this->visitlogmdl->updateFlex($visit_log_id, 'superv_user_id', $user_approver);
+                $this->visitlogmdl->updateFlex($visit_log_id, 'superv_approval_date', $visitlog->sent_to_approve_date);
+              }
+              if ($this->getAgencyType() == 'A') {
+                $this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_user_id', $user_approver);
+                $this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_date', $visitlog->sent_to_approve_date);
+              }
+
+              // An internal (and personal) email have to be sent to the “Approver”.
+              // send internal email
+              $subject = "** Doctor Order for Patient {$patient->first_name} {$patient->last_name} has been created **";
+              $msg_text = "A Doctor Order for patient {$patient->first_name} {$patient->last_name}  has been sent to you for your review and submission to physician.";
+              $msg_imp = 0; // message importance "normal";
+              $user_to = $user_approver;
+
+              $this->messagemdl->msg_subject  = $subject;
+              $this->messagemdl->msg_text   = "\n".$msg_text;
+              $this->messagemdl->user_from = $this->getUsAgyId();
+              $msg_id = $this->messagemdl->insert();
+              $this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+              // send to personal email if user have this settings ON
+              $usAgyInfo = $this->usagymdl->getByUsAgyId($user_to);
+              $userToInfo = $this->usermdl->getById($usAgyInfo->user_id);       
+              if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+                $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+                $this->email->to($userToInfo->user_email);
+                $this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+                
+                $body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+                // $this->email->set_mailtype("html"); 
+                
+                $this->email->message($body);      
+                $this->email->send();
+                //$this->email->print_debugger();
+                $this->email->clear(TRUE);
+              }
+
+            }
+            $this->updateCellEvents($visitlog->cms485_id);
+          }
+          break;
+      case 'visit':          
+      default:          
+          // validations
+          if ($this->input->post('visit_user_id') == null) {
+            $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, "You must indicate User/Clinician."));
+            exit;
+          }
+          if ($this->input->post('visit_type_id') == null) {
+            $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, "You must indicate visit type."));
+            exit;
+          }
+          
+          $patient_id = null;
+          $cms485 = $this->cms485mdl->getById($this->input->post('cms485_id'));
+          $visit_type_id   = $this->input->post('visit_type_id');    
+          $cms_485_mcaid_pa_visits_id = null;
+
+          if(count($cms485) > 0){
+            $soc = $this->socmdl->getById($cms485->soc_id);
+            if(count($soc) > 0){
+              $patient_id = $soc->patient_id;
+              $patient = $this->patientmdl->getById($patient_id);    
+              /********* Check auth visit for tab_102_prim_insura_type = 2 (Medicaid) ********/
+              // if($patient->tab_102_prim_insura_type == 2){
+              /********* Check auth visit for patients ********/
+              if(TRUE){
+                $this->load->model('cms485mcaidpavisitsmdl');
+                $cms485_id = $this->input->post('cms485_id');
+                $visit_date_time_hour = ((int) ($this->input->post('visit_time_Hour') == 12 ? 0 : $this->input->post('visit_time_Hour')) + ($this->input->post('visit_time_Meridian') == 'am' ? 0 : 12));
+                $visit_date_time = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME') . " " . $visit_date_time_hour . ":" . $this->input->post('visit_time_Minute');
+                                
+                $authvisits = $this->cms485mcaidpavisitsmdl->get($patient->patient_id, $cms485_id);
+                /*
+                 * Check Authorize visits when there is a record defined for it
+                */
+                if (count($authvisits) > 0) {            
+                  //echo $visit_date.'::'. $patient_id.'::' .$cms485_id.'::'.$visit_type_id ;
+                  foreach ($authvisits as $authvisit) {          
+                      //print_r($authvisit);exit;
+                      if($authvisit->patient_id == $patient_id AND $authvisit->cms485_id == $cms485_id){
+                        $author_from_date = strtotime($authvisit->author_from_date);
+                        $author_end_date = strtotime($authvisit->author_end_date.' 23:59:59');
+                        if(strtotime($visit_date_time) >= $author_from_date AND strtotime($visit_date_time) <= $author_end_date){
+                          // fall in auth visit period
+                          
+                          if($visit_type_id){
+                            switch($visit_type_id){
+                              case 10:
+                              case 12:  // PT
+                                $authvisit->pt_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(10,12), true); // PT used        
+                                $authvisit->pt_remain = ($authvisit->nbr_pt_visits - $authvisit->pt_used);
+                                //$authvisit->pt_remain = 0;
+                                if($authvisit->pt_remain > 0){
+                                  $cms_485_mcaid_pa_visits_id = $authvisit->cms_485_mcaid_pa_visits_id;
+                                }else{                
+                                  $document = $this->xml->Document();
+                                  $document->append($this->xml->ElementCData("alert", null, "Error: Trying to add more visits than authorized PT Visits for Authorization ID."));
+                                  exit;                          
+                                }
+                                break;
+                                
+                              case 40:  
+                              case 42:  // OT
+                                $authvisit->ot_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(40,42), true); // OT used
+                                $authvisit->ot_remain = ($authvisit->nbr_ot_visits - $authvisit->ot_used);
+                          
+                                //$authvisit->ot_remain = 0;
+                                
+                                if($authvisit->ot_remain > 0){
+                                  $cms_485_mcaid_pa_visits_id = $authvisit->cms_485_mcaid_pa_visits_id;
+                                }else{                
+                                  $document = $this->xml->Document();
+                                  $document->append($this->xml->ElementCData("alert", null, "Error: Trying to add more visits than authorized OT Visits for Authorization ID."));
+                                  exit;                          
+                                }
+                                break;
+                                
+                              case 60:  
+                              case 62:  // ST  
+                                $authvisit->st_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(60,62),true); // ST used
+                                $authvisit->st_remain = ($authvisit->nbr_st_visits - $authvisit->st_used);
+                          
+                                if($authvisit->st_remain > 0){
+                                  $cms_485_mcaid_pa_visits_id = $authvisit->cms_485_mcaid_pa_visits_id;
+                                }else{                
+                                  $document = $this->xml->Document();
+                                  $document->append($this->xml->ElementCData("alert", null, "Error: Trying to add more visits than authorized ST Visits for Authorization ID."));
+                                  exit;                          
+                                }
+                                break;
+                                
+                              case 20:  
+                              case 22:  // SN
+                                $authvisit->sn_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(20,22),true); // SN used
+                                $authvisit->sn_remain = ($authvisit->nbr_sn_visits - $authvisit->sn_used);  
+                                if($authvisit->sn_remain > 0){
+                                  $cms_485_mcaid_pa_visits_id = $authvisit->cms_485_mcaid_pa_visits_id;
+                                }else{ 
+                                  $document = $this->xml->Document();
+                                  $document->append($this->xml->ElementCData("alert", null, "Error: Trying to add more visits than authorized SN Visits for Authorization ID."));
+                                  exit;                          
+                                }
+                                break;
+                              
+                              case 80:  // HHA used
+                                $authvisit->hha_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(80),true); // HHA used
+                                $authvisit->hha_remain = ($authvisit->hha_nbr_visits - $authvisit->hha_used);
+                          
+                                if($authvisit->hha_remain > 0){
+                                  $cms_485_mcaid_pa_visits_id = $authvisit->cms_485_mcaid_pa_visits_id;
+                                }else{                
+                                  $document = $this->xml->Document();
+                                  $document->append($this->xml->ElementCData("alert", null, "Error: Trying to add more visits than authorized HHA Visits for Authorization ID."));
+                                  exit;                          
+                                }
+                                break;
+                                
+                            }
+                          }
+                        }
+                      }
+                  }
+                  
+                  if(!$cms_485_mcaid_pa_visits_id){
+                    $document = $this->xml->Document();
+                    $document->append($this->xml->ElementCData("alert", null, "Error: Trying to add visit(s) outside date range for Authorization ID."));
+                    exit;                  
+                  }
+                }
+              }
+            }
+          }
+          
+          $visit_date = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME');
+
+          $visittype = $this->visittypemdl->getById($this->input->post('visit_type_id'));
+          
+          $this->assignPostData($this->visitlogmdl);
+          $visit_date_time_hour = ((int) ($this->input->post('visit_time_Hour') == 12 ? 0 : $this->input->post('visit_time_Hour')) + ($this->input->post('visit_time_Meridian') == 'am' ? 0 : 12));
+          $this->visitlogmdl->visit_date_time = $visit_date . " " . $visit_date_time_hour . ":" . $this->input->post('visit_time_Minute');
+
+          // make sure the visit date is not outside the certification. 
+          // Visit types=101 and 104 - these can be created outside the certification period
+          // if (!in_array($visit_type_id, array(101,104))) {
+          // Now For alternative therapies, allow the creation of visits/tasks before the cms_485.start_date
+          // if ($loggedInAgency->provides_altern_therapy != 'Y') {
+            if(strtotime($visit_date) >= strtotime($cms485->episode_start_date) 
+              AND strtotime($visit_date) <= strtotime($cms485->episode_end_date)) {              
+              
+            } else {
+              $document = $this->xml->Document();
+              $document->append($this->xml->ElementCData("alert", null, "Visit date ".date("m-d-Y", strtotime($visit_date))." is not in the certification period!"));
+              exit;
+            }
+          // }
+          
+          // progress note (PT, OT and ST) validate that the visit date of the visit is not greater than 29 days from the date of the last evaluation  in SOC  
+          if (!$this->input->post('confirm_last_ev_date')) {               
+            if (in_array($visit_type_id, array(12,42,62)) AND !$this->visitlogmdl->validateLastEvaluationDate($cms485->soc_id, $this->visitlogmdl->visit_date_time)) {
+              $document = $this->xml->Document();
+              $document->append($this->xml->ElementCData("js", "script=confirmLastEvaluationDate()"));
+              exit;  
+            }
+          }
+           
+          if ($visittype->billable_yn == 'Y' AND $this->input->post('schedule_overlap_confirmed') != 1) 
+          {
+            // check shcedule overlapping patient level
+            if (!$this->validateNewVisitTime($this->input->post('cms485_id'), $this->visitlogmdl->visit_date_time)) {
+                $this->session->set_userdata('user_post_data', $_POST);
+                $document = $this->xml->Document();
+                $document->append($this->xml->ElementCData("js", "script=confirmSingleScheduleOverlap()"));
+
+                // shceduled time overlapping
+                // $document = $this->xml->Document();
+                //     $document->append($this->xml->ElementCData("alert", null, "WARNING - Conflict with other Visit scheduled at: ".date("h:i a", strtotime($this->visitlogmdl->visit_date_time))));
+                    exit;     
+            }
+            
+            // check schedule overlapping user level
+            if (!$this->validateNewVisitTimeForUser($this->input->post('visit_user_id'), $this->visitlogmdl->visit_date_time)) {
+                $this->session->set_userdata('user_post_data', $_POST);
+                // shceduled time overlapping
+                // $conflict_visit_log_id = $this->getOverlappingConflictedVisitId($this->input->post('visit_user_id'), $this->visitlogmdl->visit_date_time);
+
+                // $visitlog = $this->visitlogmdl->getById($conflict_visit_log_id);
+                // $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+                $document = $this->xml->Document();
+                $document->append($this->xml->ElementCData("js", "script=confirmSingleScheduleOverlap()"));
+                // $document->append($this->xml->ElementCData("alert", null, "WARNING - Conflict with Clinician's other Visit scheduled for Patient '". $patient->first_name. " ". $patient->last_name. "' at: ".date("h:i a", strtotime($this->visitlogmdl->visit_date_time))));
+                    exit;     
+            }
+            
+          }
+          
+          
+          $this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+          if($cms_485_mcaid_pa_visits_id){
+            $this->visitlogmdl->cms_485_mcaid_pa_visits_id = $cms_485_mcaid_pa_visits_id;
+          }
+          
+          if ($this->input->post('visit_user_disc') != '') {
+            $this->visitlogmdl->visit_discipline_id = $this->input->post('visit_user_disc');
+          } else {
+            $user = $this->usagymdl->getByUsAgyId($this->input->post('visit_user_id'));
+            $this->visitlogmdl->visit_discipline_id = $user->discipline_id;
+          }
+
+          $this->visitlogmdl->insert($visittype->billable_yn);
+          
+
+          // change patient status to current if status is Non-Assigned
+          $patient = $this->patientmdl->getById($patient_id); 
+          if ($patient->tab_013_status == 6) {
+            $this->patientmdl->updateFlex($patient_id, 'tab_013_status', 2);
+
+            $pat_contractor = $this->patientcontractormdl->get($patient_id);
+            $pat_contractor_id = null;
+            if(sizeof($pat_contractor) > 0){
+              $pat_contractor = $pat_contractor[0];          
+              $pat_contractor_id  = $pat_contractor->pat_contractor_id;
+            } else {
+              $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+              $pat_contractor_id  = $contractor->pat_contractor_id;
+            }
+            if ($pat_contractor_id) {
+               $this->patientcontractormdl->updateFlex($pat_contractor_id, 'company_patient_status', 2 );
+            }
+          }
+          
+          $this->app->updateEpisodeVisitNumber($this->visitlogmdl->cms485_id); // reordering visit number
+          $visitlog = $this->visitlogmdl->getById($this->visitlogmdl->visit_log_id);
+          $episode = $this->episodemdl->getById($visitlog->cms485_id);
+
+          if (!$this->teammdl->exitInTeam($episode->patient_id, $this->input->post('visit_user_id'))) {
+            $this->teammdl->user_id = $this->input->post('visit_user_id');
+            $this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+            $this->teammdl->insert($episode->patient_id);
+            // sending internal message
+            if(!isset($patient )){
+              $patient = $this->patientmdl->getById($episode->patient_id);    
+            }  
+            @$assigned_by = $this->usagymdl->getByUsAgyId($this->teammdl->assigned_by_user_id);
+            $ppr = $this->teammdl->getByPPRId($this->teammdl->ppr_id);
+            $notification_subject = "New Patient: " . $patient->first_name . " " . $patient->last_name .  ", " .
+                      "Assigned by: " . @$assigned_by->complete_name . ", " .
+                      "Assigned Date/Time: " . standard_date(mysql_to_unix($ppr->assigned_date), 'USA_DATE_TIME');
+          
+            $msg_text = @$assigned_by->complete_name . " assigned a new patient to you. Patient name: " . $patient->first_name . " " . $patient->last_name . ". Assigned Date/Time: " . standard_date(mysql_to_unix($ppr->assigned_date), 'USA_DATE_TIME');
+          
+            
+            $this->messagemdl->user_from = $this->getUsAgyId();
+            $this->messagemdl->msg_subject = $notification_subject;
+            $this->messagemdl->msg_text = $msg_text;
+            $this->messagemdl->insert();
+            
+            $this->usermessagemdl->insert($this->messagemdl->msg_id, $this->teammdl->user_id, 0);
+            
+            // sending personal email
+            $user = $this->usagymdl->getByUsAgyId($this->teammdl->user_id);
+              
+            $this->load->library('email');
+            $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+            $this->email->to($user->user_email); 
+            $this->email->subject($notification_subject);
+
+            $body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$msg_text;
+              // $this->email->set_mailtype("html"); 
+
+            $this->email->message($body); 
+            $this->email->send();        
+          }
+          $month = date("m", strtotime($visit_date));
+          $year = date("Y", strtotime($visit_date));
+
+          if ($this->input->post('schedule_overlap_confirmed')) {
+            return true;
+          } else {
+            $this->updateCellEvents($visitlog->cms485_id, $year, $month);
+          }
+        break;
+    }
+		
+	}
+	
+
+  function confirmMultiScheduleOverlap($confirmed, $patient_id, $cms485_id, $visit_time_Hour, $visit_time_Minute, $visit_user_id, $visit_date, $cms_485_mcaid_pa_visits_id=null){
+    if (!$confirmed) {
+      $_POST = $this->session->userdata('user_post_data');
+
+      $this->tpl->assign('__visit_time_Hour', $visit_time_Hour);
+      $this->tpl->assign('__visit_time_Minute', $visit_time_Minute);
+      $this->tpl->assign('patient_id', $patient_id);
+      $this->tpl->assign('cms485_id', $cms485_id);
+      $this->tpl->assign('visit_date', $visit_date);
+      $this->tpl->assign("visit_user_id", $visit_user_id);
+      $this->tpl->assign("cms_485_mcaid_pa_visits_id", $cms_485_mcaid_pa_visits_id);
+
+
+      $visit_time_hour = $this->input->post('visit_time_hour');
+      $visit_time_min  = $this->input->post('visit_time_min');
+      //$time_type       = $this->input->post('time_type');
+      $visit_type_id   = $this->input->post('visit_type_id');
+      $visit_user_id   = $this->input->post('visit_user_id');
+      $visit_dates   = $this->input->post('visit_date');
+      
+
+      $cms485 = $this->cms485mdl->getById($cms485_id);
+      $target_patient_id = null;
+      $target_patient = null;
+      $target_agency_id = null;
+      $target_patient_agency = null;
+
+      if(count($cms485) > 0){
+        $soc = $this->socmdl->getById($cms485->soc_id);
+        if(count($soc) > 0){
+          $target_patient_id = $soc->patient_id;
+                     
+          $target_patient = $this->patientmdl->getById($target_patient_id);
+          $target_agency_id = $target_patient->agency_id;
+          $target_patient_agency = $this->agencymdl->getByAgencyId($target_patient->agency_id);          
+        }
+      }
+
+      $rows = array();
+      if (is_array($visit_dates)) {
+        foreach ($visit_dates as $event_id => $visit_date) {
+          $tmp = array();
+          
+          $visittype = $this->visittypemdl->getById($visit_type_id[$event_id]);
+
+          $visit_date_time = standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME') . " " . $visit_time_hour[$event_id] . ":" . $visit_time_min[$event_id];
+
+          if ($visittype->billable_yn == 'Y') {
+            // shceduled time overlapping
+            if (!$this->validateNewVisitTime( $cms485_id, $visit_date_time )) {          
+              $tmp = array(
+                'patient' => $target_patient,
+                'mark_patient_as_red' => true,
+                'agency' => $target_patient_agency,
+                'mark_agency_as_red' => true,
+                'visit_time' => date("m/d/Y h:i a", strtotime($visit_date_time)),
+                'description' => 'Conflict with other Visit of this patient',
+              );
+              $rows[] = (object) $tmp;
+              continue;
+            }
+
+            // check schedule overlapping user level
+            if (!$this->validateNewVisitTimeForUser($visit_user_id[$event_id], $visit_date_time)) {
+              // shceduled time overlapping
+
+                $conflict_visit_log_id = $this->getOverlappingConflictedVisitId($visit_user_id[$event_id], $visit_date_time);
+
+                $visitlog = $this->visitlogmdl->getById($conflict_visit_log_id);
+                $patient = $this->patientmdl->getById($visitlog->patient_id); 
+                
+                $patient_agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+                $mark_patient_as_red = false;
+                $mark_agency_as_red = false;
+
+                if ($target_patient_id == $patient->patient_id) {
+                  $mark_patient_as_red = true;
+                }
+
+                if ($target_agency_id == $patient->agency_id) {
+                  $mark_agency_as_red = true;
+                }
+
+                $tmp = array(
+                  'patient' => $patient,
+                  'mark_patient_as_red' => $mark_patient_as_red,
+                  'agency' => $patient_agency,
+                  'mark_agency_as_red' => $mark_agency_as_red,
+                  'visit_time' => date("m/d/Y h:i a", strtotime($visit_date_time)),
+                  'description' => 'Conflict with Clinician\'s other Visit',
+                );
+                $rows[] = (object) $tmp;
+                continue;            
+            }
+          }
+          
+        }
+      }
+      $this->tpl->assign('conflicted_records', $rows);
+      $this->tpl->assign('conflicted_message', $this->session->userdata('user_conflict_message'));
+
+      $this->tpl->assign("cancel_url", "patient/calendar/index/{$patient_id}/{$cms485_id}");
+
+      $this->tpl->assign_include("dynamic_tpl", "patient/calendar/confirm_multiple_schedule_overlap");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    } else {
+      $post_arr = $this->session->userdata('user_post_data');
+      $post_arr['schedule_overlap_confirmed'] = 1;
+      $_POST = $post_arr;
+      if($this->multipleadd($patient_id, $cms485_id, $visit_time_Hour, $visit_time_Minute, $visit_user_id, $visit_date, $cms_485_mcaid_pa_visits_id)){
+        $this->session->unset_userdata('user_post_data');
+        $document = $this->xml->Document();
+        $document->append($this->xml->ElementCData("js", "script=confirmSingleScheduleOverlapSucceded()"));
+        exit();
+      } else {
+        $document = $this->xml->Document();
+        $document->append($this->xml->ElementCData("alert", null, "An error occured. Try again or contact with administrator."));
+        exit();
+      }
+    }
+  }
+
+	/******
+   params was ($patient_id, $cms485_id, $visit_time_Hour, $visit_time_Minute, $visit_time_Meridian, $visit_user_id, $visit_date ) 
+      *******/
+	function multipleadd ( $patient_id, $cms485_id, $visit_time_Hour, $visit_time_Minute, $visit_user_id, $visit_date, $cms_485_mcaid_pa_visits_id=null ) { 
+
+		$rules = array ('visit_date' 	=> 'callback_checkMultiAdd['.$patient_id.', '.$cms485_id.']');
+		//$fields = array ('visit_date' 	=> 'Visit Date and Time', 'cms_485_mcaid_pa_visits_id'=>'Authorization Id');
+		
+		$patient = $this->patientmdl->getById($patient_id);    
+		$this->tpl->assign("tab_102_prim_insura_type", $patient->tab_102_prim_insura_type);
+		/********* Check auth visit for tab_102_prim_insura_type = 2 (Medicaid) ********/
+		/*if($patient->tab_102_prim_insura_type == 2 AND is_null($cms_485_mcaid_pa_visits_id)){
+		$rules['cms_485_mcaid_pa_visits_id'] = 'required|callback_checkmultiaddauthvisit['.$patient_id.', '.$cms485_id.']';
+		//$rules['cms_485_mcaid_pa_visits_id'] = 'required';
+		//$fields['cms_485_mcaid_pa_visits_id'] = 'Authorization Id';
+		$this->load->model('cms485mcaidpavisitsmdl');
+		}else if($patient->tab_102_prim_insura_type == 2){
+		$rules['cms_485_mcaid_pa_visits_id'] = 'required|callback_checkmultiaddauthvisit['.$patient_id.', '.$cms485_id.']';        
+		$this->load->model('cms485mcaidpavisitsmdl');
+		}
+		*/
+		
+		/*
+		* Check auth visit for all patients if there is a record found for auth visit
+		*/
+		$this->load->model('cms485mcaidpavisitsmdl');
+		$authvisits = $this->cms485mcaidpavisitsmdl->get($patient_id, $cms485_id);
+		if (count($authvisits) > 0) {      
+			$rules['cms_485_mcaid_pa_visits_id'] = 'required|callback_checkmultiaddauthvisit['.$patient_id.', '.$cms485_id.']';        
+		}
+    
+    
+ 		$this->validation->set_rules($rules);
+		//$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+		
+			$user = $this->usagymdl->getByUsAgyId($visit_user_id);
+			
+			$this->tpl->assign('faction', 'multipleadd');
+			$this->tpl->assign('entity_id', $patient_id);
+			//$this->tpl->assign('record_id', $cms485_id . "/" .$visit_time_Hour . "/" . $visit_time_Minute . "/" . $visit_time_Meridian . "/" . $visit_user_id . "/" . $visit_date);
+			$this->tpl->assign('record_id', $cms485_id . "/" .$visit_time_Hour . "/" . $visit_time_Minute . "/" . $visit_user_id . "/" . $visit_date."/".$cms_485_mcaid_pa_visits_id);
+			$this->tpl->assign('cancelbtn', true);
+      $this->tpl->assign("cancel_url", "patient/calendar/index/{$patient_id}/{$cms485_id}");
+
+			$this->tpl->assign('user', $user);
+			if (!count($_POST)) {
+        $discipline = $this->disciplinemdl->getById($this->session->userdata('visit_user_disc_selected'));
+        $this->tpl->assign('default_visit_type', $discipline->default_visit_type);
+      } 
+			
+			$this->tpl->assign('__visit_time_Hour', $visit_time_Hour);
+      $this->tpl->assign('__visit_time_Minute', $visit_time_Minute);
+      $this->tpl->assign('patient_id', $patient_id);
+      $this->tpl->assign('cms485_id', $cms485_id);
+			$this->tpl->assign('visit_date', $visit_date);
+      $this->tpl->assign("visit_user_id", $visit_user_id);
+      $this->tpl->assign("cms_485_mcaid_pa_visits_id", $cms_485_mcaid_pa_visits_id);
+      $this->tpl->assign("visit_user_disc_selected", $this->session->userdata('visit_user_disc_selected'));
+			//if ($this->request->is_get()) $this->tpl->assign('__visit_time_Meridian', $visit_time_Meridian);
+			
+      $contractor_id = $this->getAgencyId();
+      $us_agy_id = $this->getUsAgyId();
+      $LOB = null;
+
+      if ($us_agy_id) {
+        $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+        if (isset($usAgy->user_tab111_product_id)) {
+          $LOB = $usAgy->user_tab111_product_id;
+        }
+      }
+
+      $visit_type_ids = array();
+      $contractor = $this->agencymdl->getByAgencyId($contractor_id);
+      if (!empty($contractor)) {
+        if ($contractor->provides_altern_therapy == 'Y' OR $LOB == 3) {
+          $visit_type_ids = array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119);
+
+          // if ($contractor_id == 32 ) {
+          // if ($contractor_id == 9521 ) {
+          if ($contractor->state_id == 6 ) {
+            $visit_type_ids = array(116, 120, 121, 122, 123);
+          }
+        }
+      }
+
+      $visit_type_list = array();
+      foreach ($this->visittypemdl->getByDisciplineId($this->session->userdata('visit_user_disc_selected')) as $visit_type_id => $visit_description) {
+        if (!empty($visit_type_ids)) {
+          if (!in_array($visit_type_id, $visit_type_ids)) {
+            continue;
+          }
+        }
+        $visit_type_list[$visit_type_id] = $visit_description;
+      }
+
+			$this->tpl->assign('visit_type_list', $visit_type_list);
+      // $this->tpl->assign('visit_type_list', $this->visittypemdl->getByDisciplineId($this->session->userdata('visit_user_disc_selected')));
+			
+			//$this->addSettings($patient_id);
+			$this->tpl->assign('team_list', $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false, false, null, array(4)));
+			
+      $this->tpl->assign("event_dates", explode(",", $visit_date));
+      
+      $this->load->model('usagydisciplinemdl');
+      if (!isset($user_discipline_lists[$visit_user_id])) {
+        $user_discipline_lists = $this->usagydisciplinemdl->getByUser($visit_user_id, TRUE);
+      }
+
+      $aux_dates = array();
+      $visit_user_ids = array();
+
+      foreach(explode(",", $visit_date) as $date) {
+        $aux_dates[] = standard_date(human_to_unix($date), 'VIS_LIST_2');
+        $visit_user_ids[] = $visit_user_id;
+      }
+      $this->tpl->assign("event_dates_fixed", $aux_dates);
+
+      $this->tpl->assign("user_discipline_lists", $user_discipline_lists);
+      $this->tpl->assign("visit_user_ids", $visit_user_ids);
+			$this->tpl->assign("visit_type_id", $this->input->post('visit_type_id'));
+
+			$this->tpl->assign("form_title", "Add Visits");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+			$this->tpl->assign_include("dynamic_form", "patient/calendar/madd_event_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			$visit_dates	 = $this->input->post('visit_date');
+			$visit_time_hour = $this->input->post('visit_time_hour');
+			$visit_time_min  = $this->input->post('visit_time_min');
+			//$time_type	     = $this->input->post('time_type');
+			$visit_type_id   = $this->input->post('visit_type_id');
+			$visit_user_id   = $this->input->post('visit_user_id');
+//			$visit_comments  = $this->input->post('visit_comments');
+
+			foreach ($visit_dates as $event_id => $visit_date) {
+          
+			  	$this->visitlogmdl->visit_log_id = null;
+			  	$this->visitlogmdl->cms485_id = $cms485_id;
+			  	$this->visitlogmdl->visit_type_id = $visit_type_id[$event_id];
+			  	$this->visitlogmdl->visit_user_id = $visit_user_id[$event_id];
+//			  	$this->visitlogmdl->visit_comments = $visit_comments[$event_id];
+			  	$this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+          $this->visitlogmdl->visit_discipline_id = $this->session->userdata('visit_user_disc_selected');
+          
+          //$this->visitlogmdl->visit_date_time = standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME') . " " . ($visit_time_hour[$event_id] + $time_type[$event_id]) . ":" . $visit_time_min[$event_id];
+          $this->visitlogmdl->visit_date_time = standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME') . " " . $visit_time_hour[$event_id] . ":" . $visit_time_min[$event_id];
+          
+
+        $this->visitlogmdl->cms_485_mcaid_pa_visits_id = $cms_485_mcaid_pa_visits_id;
+          		
+    		$visittype = $this->visittypemdl->getById($visit_type_id[$event_id]);
+          		
+        $this->visitlogmdl->insert($visittype->billable_yn);
+        
+				//echo $this->db->last_query()."<br>";
+				if (!$this->teammdl->exitInTeam($patient_id, $visit_user_id[$event_id])) {
+					
+					$this->teammdl->user_id = $visit_user_id[$event_id];
+					$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+					$this->teammdl->insert($patient_id);
+          
+          // sending internal message
+          if(!isset($patient )){
+            $patient = $this->patientmdl->getById($patient_id);    
+          }  
+          @$assigned_by = $this->usagymdl->getByUsAgyId($this->teammdl->assigned_by_user_id);
+          $ppr = $this->teammdl->getByPPRId($this->teammdl->ppr_id);
+          $notification_subject = "New Patient: " . $patient->first_name . " " . $patient->last_name .  ", " .
+                    "Assigned by: " . @$assigned_by->complete_name . ", " .
+                    "Assigned Date/Time: " . standard_date(mysql_to_unix($ppr->assigned_date), 'USA_DATE_TIME');
+        
+          $msg_text = @$assigned_by->complete_name . " assigned a new patient to you. Patient name: " . $patient->first_name . " " . $patient->last_name . ". Assigned Date/Time: " . standard_date(mysql_to_unix($ppr->assigned_date), 'USA_DATE_TIME');
+        
+          
+          $this->messagemdl->user_from = $this->getUsAgyId();
+          $this->messagemdl->msg_subject = $notification_subject;
+          $this->messagemdl->msg_text = $msg_text;
+          $this->messagemdl->insert();
+          
+          $this->usermessagemdl->insert($this->messagemdl->msg_id, $this->teammdl->user_id, 0);
+          
+          // sending personal email
+          $user = $this->usagymdl->getByUsAgyId($this->teammdl->user_id);
+    				
+          $this->load->library('email');
+          $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+          $this->email->to($user->user_email); 
+          $this->email->subject($notification_subject);
+
+          $body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$msg_text;
+              // $this->email->set_mailtype("html"); 
+
+          $this->email->message($body);	
+          $this->email->send();
+					
+				}
+				
+			}
+
+      $this->session->unset_userdata('visit_user_disc_selected');
+      // change patient status to current if status is Non-Assigned
+      $patient = $this->patientmdl->getById($patient_id); 
+      if ($patient->tab_013_status == 6) {
+        $this->patientmdl->updateFlex($patient_id, 'tab_013_status', 2);
+
+        $pat_contractor = $this->patientcontractormdl->get($patient_id);
+        $pat_contractor_id = null;
+        if(sizeof($pat_contractor) > 0){
+          $pat_contractor = $pat_contractor[0];          
+          $pat_contractor_id  = $pat_contractor->pat_contractor_id;
+        } else {
+          $contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+          $pat_contractor_id  = $contractor->pat_contractor_id;
+        }
+        if ($pat_contractor_id) {
+           $this->patientcontractormdl->updateFlex($pat_contractor_id, 'company_patient_status', 2 );
+        }
+      }
+			
+			$this->app->updateEpisodeVisitNumber($cms485_id); // reordering visit number
+			
+			// $_POST = array();
+
+      if ($this->input->post('schedule_overlap_confirmed') == 1) {
+        return true;
+      } else {
+			 $this->index($patient_id, $cms485_id);
+      }
+			
+		}
+		
+	}
+	
+	function checkMultiAdd ( $visit_dates, $params) {
+    $loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+    list($patient_id, $cms485_id) = explode(",", $params);
+    $cms485 = $this->cms485mdl->getById($cms485_id);
+
+		$visit_time_hour = $this->input->post('visit_time_hour');
+		$visit_time_min  = $this->input->post('visit_time_min');
+		//$time_type	     = $this->input->post('time_type');
+		$visit_type_id   = $this->input->post('visit_type_id');
+		$visit_user_id   = $this->input->post('visit_user_id');
+		
+    $have_ev_here = false;
+    $verify_prev_ev_failed = false;
+    $verify_prev_ev_failed_date = false;
+		foreach ($visit_dates as $event_id => $visit_date) {
+			
+			/*if ($visit_time_hour[$event_id] == '' || $visit_time_hour[$event_id] < 0 || $visit_time_hour[$event_id] > 12 || 
+				$visit_time_min[$event_id] == '' || $visit_time_min[$event_id] < 0 || $visit_time_min[$event_id] > 59 ||
+				$visit_type_id[$event_id] == '' || $visit_user_id == '') {
+				$this->validation->set_message('checkMultiAdd', "Event details incomplete.");
+				return FALSE;
+			}
+      */
+      if ($visit_time_hour[$event_id] == '' || $visit_time_hour[$event_id] < 0 || $visit_time_hour[$event_id] > 23 || 
+				$visit_time_min[$event_id] == '' || $visit_time_min[$event_id] < 0 || $visit_time_min[$event_id] > 59 ||
+				$visit_type_id[$event_id] == '' || $visit_user_id == '') {
+				$this->validation->set_message('checkMultiAdd', "Event details incomplete.");
+				return FALSE;
+			}
+
+      if (in_array($visit_type_id[$event_id], array(10, 40, 60))) {
+        $have_ev_here = true;
+      }
+
+      if (!$this->input->post('confirm_last_ev_date')) {   
+        $visit_date_time = standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME');            
+        if (in_array($visit_type_id[$event_id], array(12,42,62)) AND !$this->visitlogmdl->validateLastEvaluationDate($cms485->soc_id, $visit_date_time)) {
+          if (!$have_ev_here) {
+            $verify_prev_ev_failed = true;
+            $verify_prev_ev_failed_date = $visit_date;
+          }
+        }
+      }
+			
+		}
+		
+    // progress note (PT, OT and ST) validate that the visit date of the visit is not greater than 29 days from the date of the last evaluation  in SOC  
+    if ($verify_prev_ev_failed) {               
+        $this->validation->set_message('checkMultiAdd', "Warning: 30 day re-eval is needed before adding visit on ".$verify_prev_ev_failed_date);
+        $this->tpl->assign('verify_prev_ev_failed', $verify_prev_ev_failed);
+        $this->tpl->assign('verify_prev_ev_failed_msg', "Warning: 30 day re-eval is needed before adding visit on ".$verify_prev_ev_failed_date);
+        return FALSE;
+    }
+
+    if ($this->input->post('schedule_overlap_confirmed') != 1){
+      foreach ($visit_dates as $event_id => $visit_date) {
+        $visit_date_time = standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME') . " " . $visit_time_hour[$event_id] . ":" . $visit_time_min[$event_id];
+
+        // make sure the visit date is not outside the certification. 
+        // Visit types=101 and 104 - these can be created outside the certification period
+        // if (!in_array($visit_type_id[$event_id], array(101,104))) {
+        // Now For alternative therapies, allow the creation of visits/tasks before the cms_485.start_date
+        if ($loggedInAgency->provides_altern_therapy != 'Y') {
+          if(strtotime(standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME')) >= strtotime($cms485->episode_start_date) 
+            AND strtotime(standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME')) <= strtotime($cms485->episode_end_date)) {
+            
+          } else {
+            $err_msg = "Visit date ".date("m-d-Y", strtotime(standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME')))." is not in the certification period!<br>";
+            $this->validation->set_message('checkMultiAdd', $err_msg);
+            
+            return FALSE;
+          }        
+        }
+
+        $visittype = $this->visittypemdl->getById($visit_type_id[$event_id]);
+        if ($visittype->billable_yn == 'Y' AND !$this->validateNewVisitTime( $cms485_id, $visit_date_time )) {
+          // shceduled time overlapping
+          // $err_msg = "WARNING - Conflict with other Visit scheduled for this patient at: ".date("m/d/Y h:i a", strtotime($visit_date_time))."<br>"; 
+          $err_msg = "WARNING - Conflict with other Visit scheduled for this patient<br>"; 
+          $this->validation->set_message('checkMultiAdd', $err_msg);
+          $this->tpl->assign('confirm_multi_schedule_overlap', 1);
+
+          $this->session->set_userdata('user_conflict_message', $err_msg);
+          $this->session->set_userdata('user_post_data', $_POST);
+          return FALSE;
+        }
+
+        // check schedule overlapping user level
+        if ($visittype->billable_yn == 'Y' AND !$this->validateNewVisitTimeForUser($visit_user_id[$event_id], $visit_date_time)) {
+          // shceduled time overlapping
+            // $err_msg = "WARNING - Conflict with Clinician's other Visit scheduled at: ".date("m/d/Y h:i a", strtotime($visit_date_time))."<br>"; 
+            $err_msg = "WARNING - Conflict with Clinician's other Visit scheduled<br>"; 
+            $this->validation->set_message('checkMultiAdd', $err_msg);
+            $this->session->set_userdata('user_conflict_message', $err_msg);
+            $this->tpl->assign('confirm_multi_schedule_overlap', 1);
+
+            $this->session->set_userdata('user_post_data', $_POST);
+            return FALSE;
+        }
+      }
+    }
+
+		return TRUE;
+		
+	}
+	
+	function dayfree ( $patient_id, $cms485_id, $visit_dates ) {
+		
+    if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ){
+  		if ($visit_dates != 'all') {
+  			
+  			$visit_dates = explode(",", $visit_dates);
+  			
+  			foreach ($visit_dates as $visit_date) {
+  				
+  				$this->visitlogmdl->dayfree($cms485_id, standard_date(human_to_unix($visit_date), 'MYSQL_NOTIME'));
+  				
+  			}
+  			
+  		} else if ($visit_dates == 'all') {
+  			
+  			$visits = $this->visitlogmdl->getByEpsodeId($cms485_id, null, 1);
+  			
+  			foreach ($visits as $visit) {
+          if ($visit->visit_status_id == 1 OR $visit->visit_type_id == 320) {
+            /*// when tasks are "delete" they should be copied to the vt_pt_evaluation_copy table
+            $this->db->query("REPLACE INTO vis_visit_log_copy SELECT * FROM `vis_visit_log` WHERE visit_log_id = {$visit->visit_log_id}");
+            $this->db->query("REPLACE INTO vt_pt_evaluation_copy SELECT * FROM `vt_pt_evaluation` WHERE visit_log_id = {$visit->visit_log_id}");
+            $this->db->query("REPLACE INTO vt12_pt_progress_note_copy SELECT * FROM `vt12_pt_progress_note` WHERE visit_log_id = {$visit->visit_log_id}");
+            $this->db->query("REPLACE INTO vt_ot_evaluation_copy SELECT * FROM `vt_ot_evaluation` WHERE visit_log_id = {$visit->visit_log_id}");
+            $this->db->query("REPLACE INTO vt_ot_progress_note_copy SELECT * FROM `vt_ot_progress_note` WHERE visit_log_id = {$visit->visit_log_id}");
+            $this->db->query("REPLACE INTO vt_st_evaluation_copy SELECT * FROM `vt_st_evaluation` WHERE visit_log_id = {$visit->visit_log_id}");
+            $this->db->query("REPLACE INTO vt_st_progress_note_copy SELECT * FROM `vt_st_progress_note` WHERE visit_log_id = {$visit->visit_log_id}");*/				  
+            $this->visitlogmdl->delete($visit->visit_log_id);
+          }
+          
+  			}
+  			
+  		}
+    }
+    
+		
+		$this->app->updateEpisodeVisitNumber($cms485_id); // reordering visit number
+		
+		$this->index($patient_id, $cms485_id);
+		
+	}
+	
+	function opendocument ( $visit_log_id, $window='self' ) {
+		
+		$config =& get_config();
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+    $task_return = "patient/calendar/index/" . $visitlog->patient_id . "/" . $visitlog->cms485_id;
+    
+    $this->load->library('user_agent');
+    if ($this->agent->is_referral()){
+      $task_return = str_replace($config["index_url"],'', $this->agent->referrer());        
+    }
+		
+		
+		$this->session->set_userdata('task_return', $task_return);
+		
+    if($window=='nw'){      
+      header("Location: " . $config["index_url"] . "task/task/edit/" . $visit_log_id."/nw");
+    }
+    else{
+      header("Location: " . $config["index_url"] . "task/task/edit/" . $visit_log_id);
+    }
+    
+		
+		
+	}
+	
+	function editEventForm ( $visit_log_id ) {
+		//echo "test";
+		
+		$agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+		//echo "<pre>"; print_r($agency_settings); echo "</pre>";
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		//echo "<pre>"; print_r($visitlog->visit_type_id); echo "</pre>";
+		$discipline_id = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id)->discipline_id;		
+		$this->assignObject($visitlog);
+		$this->assignObject($this->usagymdl->getByUsAgyId($visitlog->visit_user_id));
+		$future_visit = 'no';
+		//echo $visitlog->visit_date_time; exit;
+		if($visitlog->visit_type_id != 101 && $visitlog->visit_type_id != 104) { // only strcit to see the future visits if the visit_type_id is not 101 and 104
+			if($agency_settings->allow_future_dated_visits != 1) {
+				if((strtotime(date('Y-m-d', strtotime($visitlog->visit_date_time))) - strtotime(date('Y-m-d'))) > 0) {
+					$future_visit = 'yes';
+				}
+			}
+		}
+		$this->tpl->assign('future_visit', $future_visit); 
+		//echo "<pre>"; print_r($visitlog); echo "</pre>"; exit;
+		
+		$document = $this->xml->Document();
+    switch ($visitlog->visit_type_id) {
+      // Visit type "Communication NOte"
+      case 350:
+          $comm_note = $this->messagemdl->getByVisitId($visit_log_id);    
+          if (empty($comm_note)) {
+            $document->append($this->xml->ElementCData("divContent", null, "Communication Note Found!"));
+            exit();
+          }
+
+          $this->assignObject($comm_note);        
+
+          if ($comm_note->msg_attachment != "") {  
+            $attachment_file = $this->config->config['base_url']."datastore/attachment/".$comm_note->msg_attachment;          
+            $this->tpl->assign("attachment_file", $attachment_file);
+          }
+          // $recipients = $this->usermessagemdl->getByMessageId($comm_note->msg_id);
+
+          // $creator = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+          
+          $document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("patient/calendar/view_comm_note", $this->lang->language, false)));
+        break;
+      // Visit type "Event"
+      case 400:
+          $this->load->model('vteventsmdl');
+          $event = $this->vteventsmdl->get($visit_log_id);    
+          // When "Event Visibility"=Private, only the user from the contractor or agency that created the Event can see the event 
+          if ($event->visibility == 'private' AND $this->loggedinUser->agency_id != $event->agency_id) {
+            $document->append($this->xml->ElementCData("divContent", null, "You don't have permission to view this event."));
+            exit();
+          }
+
+          // When event visibility ="Private Admins", only users with profile=Company can see the event
+          if ($event->visibility == 'private-admins' AND $this->loggedinUser->profile_id != 3) {
+            $document->append($this->xml->ElementCData("divContent", null, "You don't have permission to view this event."));
+            exit();
+          }
+
+          // Events can only be deleted or modified by the user that created the Event.
+          if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+            $this->tpl->assign('creator', TRUE);    
+          }
+          
+          $this->assignObject($event);        
+          $creator = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+          $this->tpl->assign('creator_name', $creator->first_name." ".$creator->last_name);   
+          $this->tpl->assign('creation_time', date("h:i a", strtotime($event->create_datetime)));   
+          $this->tpl->assign('creation_date', date("m/d/Y", strtotime($event->create_datetime)));   
+          $this->tpl->assign('type_list', $this->parametermdl->getByType(106));   
+
+          $visibility_list = array('public'=>'Public', 'private'=>'Private');
+
+          // if ($this->getAgencyType() == 'C' AND $this->getUserProfileId() == 3) {
+            $visibility_list['private-admins'] = 'Admin';
+          // }
+
+          $this->tpl->assign('visibility_list', $visibility_list);  
+          
+
+          $document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("patient/calendar/edit_visittype_event_form", $this->lang->language, false)));
+        break;
+      // Visit type "Doctor Order"
+      case 200:
+          $this->load->model('dordermdl');
+          $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+          $query = $this->db->get('color_lengend_mycalendar');
+          $row = $query->row();
+          $visit_tab_status_color = $row->color_backg;
+          $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+          if (is_null($visitlog->phys_user_id)) {     
+            $cms485 = $this->episodemdl->getById($visitlog->cms485_id);
+            $visitlog->phys_user_id = $cms485->phys_user_id;      
+          }
+          $this->assignObject($visitlog);
+          $this->tpl->assign('visit_user_id_name', $visitlog->first_name." ".$visitlog->last_name);
+
+          $physician_list = array();
+          foreach ($this->patientdoctorofficemdl->get($visitlog->patient_id, false) as $doctor_office_id => $name) {
+            $doctorOfficeUsers = $this->usagymdl->getByAgencyId($doctor_office_id, null, null, 7);
+            
+            if (count($doctorOfficeUsers)) {
+              $doctorOfficeAdmin = $doctorOfficeUsers[0];
+              $physician_list[$doctorOfficeAdmin->us_agy_id] = $name;       
+            }
+          }          
+          $this->tpl->assign('physician_list',  $physician_list);
+          
+          $this->load->model('docdoctorordertypemdl');
+          $this->tpl->assign('order_type_list', $this->docdoctorordertypemdl->getAdd());
+
+          $DO = $this->dordermdl->get($visit_log_id);
+          $this->assignObject($DO);
+
+          $this->tpl->assign('task_elimination_enable', FALSE);   
+          $this->tpl->assign('task_can_save', FALSE);   
+          // Events can only be deleted or modified by the user that created the Event.
+          if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+            $this->tpl->assign('task_can_save', true);   
+            // $this->tpl->assign('creator', TRUE);              
+            if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2) {
+                $this->tpl->assign('task_elimination_enable', TRUE);   
+            } elseif ($visitlog->visit_status_id == 5) {
+              if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ){
+                $this->tpl->assign('task_elimination_enable', TRUE);   
+              }
+            } 
+            if (!in_array($visitlog->visit_status_id, array(1,2))) {
+              $this->tpl->assign('task_can_save', FALSE);   
+            }
+          } else if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) {
+            if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+              $this->tpl->assign('task_elimination_enable', TRUE);   
+            }
+          }
+
+          $document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("patient/calendar/edit_doc_order_form", $this->lang->language, false)));
+        break;
+      default:
+        /**
+          *Get visit open settings. Will it open in new window or not.
+        */          
+        $user_id = $this->session->userdata('user_id');
+        $user_info = $this->usermdl->getById($user_id);    
+        $this->tpl->assign('open_new_window', $user_info->open_new_window);
+        $this->tpl->assign('logged_in_usagy_id', $this->getUsAgyId());
+
+        if ($visitlog->visit_status_id == 1 && 
+          ($this->hasPermission(1) || $visitlog->visit_asigned_by == $this->getUsAgyId() || 
+          $visitlog->visit_user_id == $this->getUsAgyId() ||
+          $this->getUserProfileId() == 1 || ($this->getUserProfileId() == 3 && $visitlog->agency_id == $this->getAgencyId()))) $this->tpl->assign('scheduler', true);
+
+        $this->tpl->assign('team_list',        $this->teammdl->getAll($visitlog->patient_id, null, true, array(11)));
+        $this->tpl->assign('visit_type_list',    $this->visittypemdl->get(false));
+        $this->tpl->assign('visit_date_time_ut', mysql_to_unix($visitlog->visit_date_time));
+        
+        $this->tpl->assign('visit_type_list', $this->visittypemdl->getByDisciplineId($discipline_id));
+        
+        $us_agy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+        $agency = $this->agencymdl->getByAgencyId($us_agy->agency_id);
+
+        // enabling task elimnation action
+        // Delete tasks, should only be available to users with Profile=Agency Manager or (Company and Agency Type=SA)
+        /*if (($visitlog->visit_status_id == 1 || $visitlog->visit_status_id == 2) && ($visitlog->visit_asigned_by == $this->getUsAgyId()  ||
+          $this->hasPermission(2) == true || $this->getUserProfileId() == 1 || ($this->getUserProfileId() == 3 && $visitlog->agency_id == $this->getAgencyId()))) {*/
+        
+
+        if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+          if ($visitlog->visit_type_id == 320) {
+            $this->tpl->assign('task_elimination_enable', true);
+          } else if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2) {
+            $this->tpl->assign('task_elimination_enable', true);
+            $this->tpl->assign('task_missed_visit_enable', true);
+          } else if ($visitlog->visit_status_id == 5) {
+            if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ){
+              $this->tpl->assign('task_elimination_enable', true);
+              $this->tpl->assign('task_missed_visit_enable', true);
+            }
+          }
+        } else if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) {
+          if ($visitlog->visit_type_id == 320) {
+            $this->tpl->assign('task_elimination_enable', true);
+          } else if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            $this->tpl->assign('task_elimination_enable', true);
+            $this->tpl->assign('task_missed_visit_enable', true);
+          }
+        }
+
+        if(isset($visitlog->cms_485_mcaid_pa_visits_id) AND $visitlog->cms_485_mcaid_pa_visits_id > 0){
+          $this->load->model('cms485mcaidpavisitsmdl');
+          $authvisit = $this->cms485mcaidpavisitsmdl->getById($visitlog->cms_485_mcaid_pa_visits_id);
+          
+          if (!empty($authvisit)) {
+            $authorization_id = $authvisit->authorization_id;
+            $this->tpl->assign('authorization_id', $authorization_id);
+            
+            if($visitlog->visit_type_id){
+                $visit_type_id = $visitlog->visit_type_id;
+                $cms485_id = $visitlog->cms485_id;
+                switch($visit_type_id){
+                  case 10:
+                  case 12:  // PT
+                    $authvisit->pt_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(10,12), true); // PT used        
+                    $authvisit->pt_remain = ($authvisit->nbr_pt_visits - $authvisit->pt_used);
+                    $author_used_remain = $authvisit->nbr_pt_visits.'/'.$authvisit->pt_used.'/'.$authvisit->pt_remain;
+                    $this->tpl->assign('author_used_remain', $author_used_remain);
+                    break;
+                  case 40:  
+                  case 42:  // OT
+                    $authvisit->ot_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(40,42), true); // OT used
+                    $authvisit->ot_remain = ($authvisit->nbr_ot_visits - $authvisit->ot_used);
+                    $author_used_remain = $authvisit->nbr_ot_visits.'/'.$authvisit->ot_used.'/'.$authvisit->ot_remain;
+                    $this->tpl->assign('author_used_remain', $author_used_remain);
+                    break;
+                    
+                  case 60:  
+                  case 62:  // ST  
+                    $authvisit->st_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(60,62),true); // ST used
+                    $authvisit->st_remain = ($authvisit->nbr_st_visits - $authvisit->st_used);
+                    $author_used_remain = $authvisit->nbr_st_visits.'/'.$authvisit->st_used.'/'.$authvisit->st_remain;
+                    $this->tpl->assign('author_used_remain', $author_used_remain);
+                    break;
+                    
+                  case 20:  
+                  case 22:  // SN
+                    $authvisit->sn_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(20,22),true); // SN used
+                    $authvisit->sn_remain = ($authvisit->nbr_sn_visits - $authvisit->sn_used);  
+                    $author_used_remain = $authvisit->nbr_sn_visits.'/'.$authvisit->sn_used.'/'.$authvisit->sn_remain;
+                    $this->tpl->assign('author_used_remain', $author_used_remain);
+                    break;
+                  
+                  case 80:  // HHA used
+                    $authvisit->hha_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(80),true); // HHA used
+                    $authvisit->hha_remain = ($authvisit->hha_nbr_visits - $authvisit->hha_used);
+                    $author_used_remain = $authvisit->hha_nbr_visits.'/'.$authvisit->hha_used.'/'.$authvisit->hha_remain;
+                    $this->tpl->assign('author_used_remain', $author_used_remain);
+                    break;
+                    
+                }
+              }
+
+          }
+            
+        }
+
+		    $document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("patient/calendar/edit_event_form", $this->lang->language, false)));
+        
+      break;
+    }
+		
+	}
+	
+	function editEvent () {
+    $loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		$visit_log_id = $this->input->post('visit_log_id');
+		$visitlog = $this->visitlogmdl->getById($this->input->post('visit_log_id'));
+    $cms485 = $this->cms485mdl->getById($visitlog->cms485_id);
+		
+    switch ($visitlog->visit_type_id) {
+      // Visit type "Event"
+      case 400: 
+          // Events can only be modified by the user that created the Event.
+          if ($visitlog->visit_user_id == $this->getUsAgyId()) { 
+            $this->load->model('vteventsmdl');
+            $rules = array(
+              // "visit_date_time"     => "required",
+              "tab106_event_type" => "required",
+            );
+
+            $fields = array(
+              // "visit_date_time"      => "Event Date",
+              "tab106_event_type"  => "Event Type",
+            );
+            $this->validation->set_rules($rules);
+            $this->validation->set_fields($fields); 
+            if ($this->validation->run() == TRUE) {
+              $this->vteventsmdl->updateFlex($visit_log_id, 'modified_by_user_id', $this->getUsAgyId());
+              $this->vteventsmdl->updateFlex($visit_log_id, 'tab106_event_type', $this->input->post('tab106_event_type'));
+              $this->vteventsmdl->updateFlex($visit_log_id, 'event_comment', $this->input->post('event_comment'));
+              if ($this->input->post('visibility') !== FALSE) {                
+                $this->vteventsmdl->updateFlex($visit_log_id, 'visibility', $this->input->post('visibility'));
+              }
+              
+              $this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number        
+            }else{
+              $error_string = $this->tpl->get_template_vars('error_string');
+              $error_string = str_replace("<br>", "\n", $error_string);
+              $document = $this->xml->Document();
+              $document->append($this->xml->ElementCData("alert", null, $error_string));
+              exit;
+            }
+          }
+          $this->updateCellEvents($visitlog->cms485_id);
+        break;
+      // Visit Type "Doctor Order"
+      case 200:
+          $rules = array(
+              "visit_date_time"     => "required",
+              "do_description" => "required",
+              "phys_user_id"   => "required",
+              "order_type_id"   => "required",
+            );
+
+          $fields = array(
+              "visit_date_time"     => "Order Date",
+              "do_description"  => "Order Description",
+              "phys_user_id"    => "Physician Name",
+              "order_type_id"    => "Order Type",
+            );
+          
+          $this->validation->set_rules($rules);
+          $this->validation->set_fields($fields);
+          if ($this->validation->run() == TRUE) {
+            $this->load->model('dordermdl');
+            $this->visitlogmdl->updateFlex($visit_log_id, 'visit_date_time', standard_date(human_to_unix($this->input->post('visit_date_time')), 'MYSQL_NOTIME') );
+            $this->dordermdl->updateFlex($visit_log_id, 'do_date', standard_date(human_to_unix($this->input->post('visit_date_time')), 'MYSQL_NOTIME') );
+            $this->dordermdl->updateFlex($visit_log_id, 'do_description', $this->input->post('do_description') );
+            $this->dordermdl->updateFlex($visit_log_id, 'order_type_id', $this->input->post('order_type_id') );
+            if ($this->input->post('phys_user_id') !== FALSE) {         
+              $this->visitlogmdl->updateFlex($visit_log_id, 'phys_user_id', $this->input->post('phys_user_id') );
+              $doctor_office_user = $this->usagymdl->getByUsAgyId($this->input->post('phys_user_id'));          
+              $this->visitlogmdl->updateFlex($visit_log_id, 'doctor_office_id', $doctor_office_user->agency_id );
+            }
+            
+            // change status "In Progress" from "Scheduled"
+            if ($visitlog->visit_status_id == 1) {
+              $this->visitlogmdl->updateStatus($visit_log_id, 2);
+            }
+
+            $this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+            $this->updateCellEvents($visitlog->cms485_id);
+          }else{
+            $error_string = $this->tpl->get_template_vars('error_string');
+            $error_string = str_replace("<br>", "\n", $error_string);
+            $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, $error_string));
+            exit;
+          }
+        break;
+      default:        
+    		// validations
+    		$visit_date_time_hour = ((int) ($this->input->post('visit_time_Hour') == 12 ? 0 : $this->input->post('visit_time_Hour')) + ($this->input->post('visit_time_Meridian') == 'am' ? 0 : 12));
+    		$visit_date_time = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME') . " " . $visit_date_time_hour . ":" . $this->input->post('visit_time_Minute');
+
+        if(isset($visitlog->cms_485_mcaid_pa_visits_id) AND $visitlog->cms_485_mcaid_pa_visits_id > 0){
+          $this->load->model('cms485mcaidpavisitsmdl');
+          $authvisit = $this->cms485mcaidpavisitsmdl->getById($visitlog->cms_485_mcaid_pa_visits_id);
+          if (!empty($authvisit)) {
+            $author_from_date = strtotime($authvisit->author_from_date);
+            $author_end_date = strtotime($authvisit->author_end_date.' 23:59:59');
+            if(strtotime($visit_date_time) >= $author_from_date AND strtotime($visit_date_time) <= $author_end_date){
+            }else{
+              $document = $this->xml->Document();
+              $document->append($this->xml->ElementCData("alert", null, "Error: Trying to add visit(s) outside date range for Authorization ID."));
+              exit;                              
+            }  
+          }
+        }
+
+        // Now For alternative therapies, allow the creation of visits/tasks before the cms_485.start_date
+        if ($loggedInAgency->provides_altern_therapy != 'Y') {
+          $visit_date = standard_date(human_to_unix($this->input->post('visit_date')), 'MYSQL_NOTIME');
+          if(strtotime($visit_date) >= strtotime($cms485->episode_start_date) 
+            AND strtotime($visit_date) <= strtotime($cms485->episode_end_date)) {              
+            
+          } else {
+            $document = $this->xml->Document();
+            $document->append($this->xml->ElementCData("alert", null, "Visit date ".date("m-d-Y", strtotime($visit_date))." is not in the certification period!"));
+            exit;
+          }
+        }
+
+        // If updating by shceduler and updating visit_date_time need to validate  
+        if ($this->input->post('scheduler')) {
+          // Check visit overlapping
+          if ($visitlog->billable_YN == 1 AND $this->input->post('schedule_overlap_confirmed') != 1) {
+            // check shcedule overlapping patient level
+            if (!$this->validateNewVisitTime($visitlog->cms485_id, $visit_date_time, null, 45, $visit_log_id)) {
+                $msg = "WARNING - Conflict with other Visit scheduled at: ".date("m-d-Y h:i a", strtotime($visit_date_time));
+
+                $document = $this->xml->Document();
+                $document->append($this->xml->ElementCData("js", "script=shedule_overlap_confirm('".$msg."')"));
+                exit;
+            }
+          }
+
+
+          // check schedule overlapping user level
+          if (!$this->validateNewVisitTimeForUser($visitlog->visit_user_id, $visit_date_time, null, 45, $visit_log_id)) {
+              
+              // shceduled time overlapping
+              $conflict_visit_log_id = $this->getOverlappingConflictedVisitId($visitlog->visit_user_id, $visit_date_time, null, 45, $visit_log_id);
+
+              $conflicted_visitlog = $this->visitlogmdl->getById($conflict_visit_log_id);
+              
+              if ($conflicted_visitlog->patient_id != $visitlog->patient_id) {
+                $conflicted_patient = $this->patientmdl->getById($conflicted_visitlog->patient_id); 
+                $conflicted_agency = $this->agencymdl->getByAgencyId($conflicted_patient->agency_id); 
+
+                $msg =  "WARNING - Conflict with Clinician\'s other Visit scheduled for Patient ". $conflicted_patient->first_name. " ". $conflicted_patient->last_name. " (Agency: ".$conflicted_agency->agency_name.") at: ".date("m-d-Y h:i a", strtotime($visit_date_time));
+
+                $document = $this->xml->Document();
+                  $document->append($this->xml->ElementCData("js", "script=shedule_overlap_confirm('".$msg."')"));
+                  exit;
+              }
+          }
+        }
+        
+    		$this->visitlogmdl->updateDateTime($this->input->post('visit_log_id'), $visit_date_time);
+    		
+    		$this->visitlogmdl->updateFlex($this->input->post('visit_log_id'), 'visit_type_id', $this->input->post('visit_type_id'));
+    		$this->visitlogmdl->updateFlex($this->input->post('visit_log_id'), 'visit_comments', $this->input->post('visit_comments'));  
+    		
+    		$this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+    		
+    		$this->updateCellEvents($visitlog->cms485_id);
+  		break;
+    }
+	}
+	
+	function updateCellEvents ( $cms485_id, $year=null, $month=null  ) {	
+    	$this->load->model('vteventsmdl');
+
+		$xmldoc = $this->xml->Document();		
+		$episode = $this->episodemdl->getById($cms485_id);
+		
+    // Finding the certification length in days
+    $date1 = new DateTime($episode->episode_start_date); //inclusive
+    $date2 = new DateTime($episode->episode_end_date); //exclusive
+    $diff = $date2->diff($date1);
+    $visits = array();
+
+    if ($diff->format("%a") > 60) {
+      $year = $year ? $year : date('Y');
+      $month =$month ? $month: date('m');
+      $start_date = $year."-".$month."-"."01";
+      $day = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+      $end_date = $year."-".$month."-".$day;
+      
+      for ($cal_date = mysql_to_unix($start_date); $cal_date <= mysql_to_unix($end_date); $cal_date += 86400) {
+        $xmldoc->append($this->xml->ElementCData("js", "script=resizeCell('" . standard_date($cal_date) . "'):::setInner('ctt_" . standard_date($cal_date) . "', ''):::tt_HideInit():::"));
+        
+      }
+      $visits = $this->visitlogmdl->getByEpisodeDate($cms485_id, null, $start_date, $end_date);
+    } else {
+      for ($cal_date = mysql_to_unix($episode->episode_start_date); $cal_date <= mysql_to_unix($episode->episode_end_date); $cal_date += 86400) {
+        $xmldoc->append($this->xml->ElementCData("js", "script=resizeCell('" . standard_date($cal_date) . "'):::setInner('ctt_" . standard_date($cal_date) . "', ''):::tt_HideInit():::"));
+        
+      }
+      $visits = $this->visitlogmdl->getByEpisodeDate($cms485_id);
+    }
+    
+    $this->load->helper('general');
+    foreach ($visits as $i => $visitlog) {
+      
+      if(isset($_COOKIE["eventsOnly"]) AND $_COOKIE["eventsOnly"] == "yes"){
+        if ($visitlog->visit_type_id != 400) {
+          continue;
+        }
+      }
+
+      if ($visitlog->visit_type_id == 400) {
+          $event = $this->vteventsmdl->get($visitlog->visit_log_id); 
+          // When "Event Visibility"=Private, only the user from the contractor or agency that created the Event can see the event 
+          if ($event->visibility == 'private' AND $this->loggedinUser->agency_id != $event->agency_id) {
+            continue;
+          }
+
+          // When "Event Visibility"=Private Admins, only user with profile Company can see the event 
+          if ($event->visibility == 'private-admins' AND $this->loggedinUser->profile_id != 3) {
+            continue;
+          }
+      }
+
+      $visit_comments = $this->xml_entities($visitlog->visit_comments);  
+      $visit_comments = str_replace('"','',$visit_comments);
+      $visit_comments = str_replace("'",'',$visit_comments);
+      $visit_comments = str_replace("=",'',$visit_comments);
+          
+      $visitlog->visit_abbrev = $visitlog->visit_abbrev . ($visitlog->legal_name != '' ? ' - '.$visitlog->legal_name : '');
+      $visitlog->visit_abbrev = str_replace('"','',$visitlog->visit_abbrev);
+      $visitlog->visit_abbrev = str_replace("'",'',$visitlog->visit_abbrev);
+      $visitlog->visit_abbrev = str_replace("=",'',$visitlog->visit_abbrev);
+      
+
+      $qstr = calculate_q_text($visitlog);
+		  
+      $celltext = $visitlog->first_name . " " . $visitlog->last_name  . ", " . $visitlog->visit_abbrev;
+      $tooltip = standard_date(mysql_to_unix($visitlog->visit_date_time), 'USA_TIME_CAL') . " " . $visitlog->first_name . " " . $visitlog->last_name  . ", " . $visitlog->visit_abbrev . "{br}" . $visitlog->visit_description . " " . $qstr . "{br}Status: " . $visitlog->tab_description . "{br}Comments: " . $visit_comments. "{br} {a}";
+      $day_id = standard_date(mysql_to_unix($visitlog->visit_date_time));
+      /*if ($diff->format("%a") > 60) {
+        $day_id = date("d",mysql_to_unix($visitlog->visit_date_time));
+      }*/
+      $bcolor = (!is_null($visitlog->visit_type_color) ? $visitlog->visit_type_color : $visitlog->cal_backcolor);
+      $fcolor = $visitlog->cal_forecolor;
+  
+      if ($visitlog->visit_type_id == 400) {
+        $this->load->model('vteventsmdl');
+        $event = $this->vteventsmdl->get($visitlog->visit_log_id);    
+        $ev_types = $this->parametermdl->getByType(106);
+        if (isset($event->event_comment)) {
+          $event->event_comment = $this->xml_entities($event->event_comment);
+          $event->event_comment = str_replace('"','',$event->event_comment);
+          $event->event_comment = str_replace("'",'',$event->event_comment);
+          $event->event_comment = str_replace("=",'',$event->event_comment);
+        }
+
+        $celltext = $visitlog->visit_abbrev . ": " . $ev_types[$event->tab106_event_type];
+        $tooltip = "Type: " . $ev_types[$event->tab106_event_type] . "{br}Comments: " . (isset($event->event_comment) ? $event->event_comment : '')."{br}Created By: ".$visitlog->first_name . " " . $visitlog->last_name;          
+      } else if ($visitlog->visit_type_id == 200) {
+        $this->load->model('dordermdl');
+        $DO = $this->dordermdl->get($visitlog->visit_log_id);
+        $celltext = 'Doctor Order';
+        if (isset($DO->do_description)) {
+          $DO->do_description = str_replace('"','',$DO->do_description);
+          $DO->do_description = str_replace("'",'',$DO->do_description);
+          $DO->do_description = str_replace("=",'',$DO->do_description);
+        }
+        $tooltip = "Doctor Order{br}Order By: ".$visitlog->first_name." ".$visitlog->last_name."{br}Status : " . $visitlog->tab_description."{br}Description: ".(isset($DO->do_description) ? $DO->do_description : ''); 
+      }  else if ($visitlog->visit_type_id == 350) {
+        $comm_note = $this->messagemdl->getByVisitId($visitlog->visit_log_id);            
+        $subject = "";
+        $msg_text = "";
+        $from = $visitlog->first_name." ".$visitlog->last_name;
+        if (empty($comm_note)) {
+          $subject = "Comm Not message not found!";
+        } else {
+          $from = $comm_note->sender_complete_name;
+          $subject = "Subject: ".$comm_note->msg_subject;        
+          $msg_text = strlen($comm_note->msg_text) > 60 ? substr($comm_note->msg_text, 0, 60)."..." : $comm_note->msg_text;
+        }
+
+        $subject = str_replace('"','',$subject);
+        $subject = str_replace("'",'',$subject);
+        $subject = str_replace("=",'',$subject);
+
+        $msg_text = str_replace('"','',$msg_text);
+        $msg_text = str_replace("'",'',$msg_text);
+        $msg_text = str_replace("=",'',$msg_text);
+
+        $celltext = $visitlog->visit_description;        
+        $tooltip = $visitlog->visit_description."{br}From: ".$from."{br}" . $subject."{br}Description: ".$msg_text; 
+      }	else if ($visitlog->visit_log_number) {
+        $celltext = "(" . $visitlog->visit_log_number . ")" . $visitlog->first_name . " " . $visitlog->last_name  . ", " . $visitlog->visit_abbrev;       
+      }			
+      
+      $tooltip = $this->xml_entities($tooltip);  
+      $xmldoc->append($this->xml->ElementCData("js", "script=addEventToCalendar('" . $celltext . "', '" . $tooltip . "', '" . $day_id ."', ". $visitlog->visit_log_id . ", " . $visitlog->visit_type_id . ", '" .$bcolor ."', '" . $fcolor . "'):::"));
+			
+		}
+		
+	}
+	
+	function delete ( $visit_log_id ) {
+		
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		
+    switch ($visitlog->visit_type_id) {
+      case 400:
+          if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+            $this->visitlogmdl->delete($visit_log_id);
+          }
+        break;
+      case 350:
+          $this->visitlogmdl->delete($visit_log_id);
+        break;
+      case 200:
+          if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+            if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2) {
+                $this->visitlogmdl->delete($visit_log_id);
+            } elseif ($visitlog->visit_status_id == 5) {
+              if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ){
+                $this->visitlogmdl->delete($visit_log_id);
+              }
+            }             
+                
+          } else if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) {
+            if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+              $this->visitlogmdl->delete($visit_log_id);
+            }
+          }
+        break;
+      default:
+          if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+            if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_type_id == 320) {
+              /*if ($visitlog->visit_status_id != 1) {
+                // when tasks are "delete" they should be copied to the vt_pt_evaluation_copy table
+                $this->db->query("REPLACE INTO vis_visit_log_copy SELECT * FROM `vis_visit_log` WHERE visit_log_id = {$visit_log_id}");
+                $this->db->query("REPLACE INTO vt_pt_evaluation_copy SELECT * FROM `vt_pt_evaluation` WHERE visit_log_id = {$visit_log_id}");
+                $this->db->query("REPLACE INTO vt12_pt_progress_note_copy SELECT * FROM `vt12_pt_progress_note` WHERE visit_log_id = {$visit_log_id}");
+                $this->db->query("REPLACE INTO vt_ot_evaluation_copy SELECT * FROM `vt_ot_evaluation` WHERE visit_log_id = {$visit_log_id}");
+                $this->db->query("REPLACE INTO vt_ot_progress_note_copy SELECT * FROM `vt_ot_progress_note` WHERE visit_log_id = {$visit_log_id}");
+                $this->db->query("REPLACE INTO vt_st_evaluation_copy SELECT * FROM `vt_st_evaluation` WHERE visit_log_id = {$visit_log_id}");
+                $this->db->query("REPLACE INTO vt_st_progress_note_copy SELECT * FROM `vt_st_progress_note` WHERE visit_log_id = {$visit_log_id}");
+              }*/
+              
+              $this->visitlogmdl->delete($visit_log_id);
+              
+            } elseif ($visitlog->visit_status_id == 5) {
+              if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ){
+                $this->visitlogmdl->delete($visit_log_id);
+              }
+            } 
+
+          } else if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) {
+            if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5 OR $visitlog->visit_type_id == 320) {
+              $this->visitlogmdl->delete($visit_log_id);
+            }
+          }
+        break;
+    }
+
+		$this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+		
+		$this->updateCellEvents($visitlog->cms485_id);
+		
+	}
+	
+  function preMultiAdd ( $patient_id, $cms485_id, $visit_date ) {
+    $agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+    $patient = $this->patientmdl->getById($patient_id);
+    
+    if($this->getAgencyType() == 'C')  {
+      $contractor = $this->patientcontractormdl->get($patient_id, $this->getAgencyId());
+      if ($contractor[0]->company_patient_status == 7) {
+        if (isset($agency_settings->block_pt_new_visit_on_hold_cert_end) AND $agency_settings->block_pt_new_visit_on_hold_cert_end == 1)  {
+          exit('Patient status is On Hold. You can\'t add visit to this patient.');
+        }
+      }
+    }
+
+    $episode = $this->episodemdl->getById($cms485_id);
+
+    $visit_date_arr = explode(",", $visit_date);
+
+    foreach ($visit_date_arr as $visit_date_str) {
+      $visit_date_std = standard_date(human_to_unix($visit_date_str), 'MYSQL_NOTIME');
+      if (strtotime($episode->episode_end_date) >= strtotime($visit_date_std)) {
+        // certification not expired so continue....
+      } else {
+        if (isset($agency_settings->block_pt_new_visit_on_hold_cert_end) AND $agency_settings->block_pt_new_visit_on_hold_cert_end == 1) {
+          exit('Patient certification has been expired. You can\'t add visit to this patient.');
+        }
+      }
+    }
+
+    $rules = array (
+      'visit_user_id'     => 'required',
+      'visit_user_disc'     => 'required',
+    );
+    
+    $this->tpl->assign("tab_102_prim_insura_type", $patient->tab_102_prim_insura_type);
+    /********* Check auth visit for tab_102_prim_insura_type = 2 (Medicaid) ********/
+    // if($patient->tab_102_prim_insura_type == 2){
+    /********* Check auth visit for all patients if there is a record found of auth visit ********/
+    if(TRUE){
+      // commented the following code below because it creates notes always for last episode
+      /*$soc = $this->socmdl->getCurrent($patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $cms485_id = $episode->cms485_id;*/     
+      
+      $this->load->model('cms485mcaidpavisitsmdl');
+      $authvisits = $this->cms485mcaidpavisitsmdl->get($patient_id, $cms485_id);
+      //print_r($authvisits);
+      $this->tpl->assign_by_ref('authvisits', $authvisits);       
+      //$this->tpl->assign('authvisits', $authvisits);       
+      
+      if (count($authvisits) > 0) {        
+        $rules['cms_485_mcaid_pa_visits_id'] = 'required|callback_checkauthvisit['.$visit_date.', '.$patient_id.', '.$cms485_id.']';
+      }
+    }
+
+    $this->validation->set_rules($rules);
+    
+    if ($this->validation->run() == FALSE) {
+      
+      if ($this->input->post('visit_user_id') != '') {
+        $this->load->model('usagydisciplinemdl');
+    
+        $user_discipline_lists = $this->usagydisciplinemdl->getByUser($this->input->post('visit_user_id'), TRUE);
+        $this->tpl->assign('user_discipline_lists', $user_discipline_lists);
+      }
+
+      $patient = $this->patientmdl->getById($patient_id);
+      $patient_agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+      if($patient_agency->state_id == 45){
+        $this->tpl->assign('time', time()+(2*60*60));
+      }
+      else{
+        $this->tpl->assign('time', time());
+      }
+      $this->tpl->assign('team_list',        $this->teammdl->getAll($patient_id, null, true, array(11), 'A'));
+      
+      // $this->tpl->assign('team_list', $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false, false, null, array(4))); // without profile id 4 (the physician)
+      
+      $this->tpl->assign_include("dynamic_tpl", "patient/calendar/pre_add_event_form");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    
+    } else {
+      $this->session->set_userdata('visit_user_disc_selected', $this->input->post('visit_user_disc'));
+
+      $cms_485_mcaid_pa_visits_id = null; 
+      /********* Check auth visit for tab_102_prim_insura_type = 2 (Medicaid) ********/
+      // if($patient->tab_102_prim_insura_type == 2){  
+      /********* Check auth visit for all ********/
+      if(TRUE){  
+        $cms_485_mcaid_pa_visits_id = $this->input->post('cms_485_mcaid_pa_visits_id');
+      }
+    
+      $visit_time_Hour = $this->input->post('visit_time_Hour');
+      $visit_time_Minute = $this->input->post('visit_time_Minute');
+      //$visit_time_Meridian = $this->input->post('visit_time_Meridian');
+      $visit_user_id = $this->input->post('visit_user_id');
+      
+      //echo "<SCRIPT>parent.document.location='" . $this->config->config['index_url'] . "/patient/calendar/multipleadd/".$patient_id."/".$cms485_id."/".$visit_time_Hour."/".$visit_time_Minute."/".$visit_time_Meridian."/".$visit_user_id."/".$visit_date."';" .
+      echo "<SCRIPT>parent.document.location='" . $this->config->config['index_url'] . "/patient/calendar/multipleadd/".$patient_id."/".$cms485_id."/".$visit_time_Hour."/".$visit_time_Minute."/".$visit_user_id."/".$visit_date."/".$cms_485_mcaid_pa_visits_id."';" .
+        "parent.cancelModal()</SCRIPT>";
+      
+      //      $this->multipleadd(
+      //              $patient_id, 
+      //              $cms485_id, 
+      //              $visit_date, 
+      //              $this->input->post('visit_time_Hour'), 
+      //              $this->input->post('visit_time_Minute'),
+      //              $this->input->post('visit_time_Meridian'),
+      //              $this->input->post('visit_user_id')
+      //      );
+      
+    }
+    
+  }
+
+  function getUserDisciplineList($us_agy_id) 
+  {
+    $this->load->model('usagydisciplinemdl');
+    
+    $user_discipline_lists = $this->usagydisciplinemdl->getByUser($us_agy_id, TRUE);
+    
+
+    $document = $this->xml->Document();
+    //$document->append($this->xml->Option("", "Select Option"));
+
+    foreach ($user_discipline_lists as $dis_id => $dis_name) {
+        $document->append($this->xml->Option($dis_id, $dis_name));
+    }
+  }
+
+	function addVtEvents ( $patient_id, $cms485_id, $visit_date ) {
+    if($this->getAgencyType() == 'C')  {
+      $contractor = $this->patientcontractormdl->get($patient_id, $this->getAgencyId());
+      if ($contractor[0]->company_patient_status == 7) {
+        exit('Patient status is On Hold. You can\'t add visit to this patient.');
+      }
+    }
+
+    $agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+    $episode = $this->episodemdl->getById($cms485_id);
+
+    $visit_date_arr = explode(",", $visit_date);
+    
+    foreach ($visit_date_arr as $visit_date_str) {
+      $visit_date_std = standard_date(human_to_unix($visit_date_str), 'MYSQL_NOTIME');
+      if (strtotime($episode->episode_end_date) >= strtotime($visit_date_std)) {
+        // certification not expired so continue....
+      } else {
+        if (isset($agency_settings->block_pt_new_visit_on_hold_cert_end) AND $agency_settings->block_pt_new_visit_on_hold_cert_end == 1) {
+          exit('Patient certification has been expired. You can\'t add visit to this patient.');
+        }
+      }
+    }
+
+    $this->load->model('vteventsmdl');
+    $rules = array('tab106_event_type'     => 'required');
+    $fields = array('tab106_event_type'     => 'Event Type');
+    if($this->input->post('action_required') === "YES") {
+      $rules['action_date'] = 'required';
+      $fields['action_date'] = 'action date';
+    }
+    $this->validation->set_rules($rules);
+    $this->validation->set_fields($fields);
+    
+    $patient = $this->patientmdl->getById($patient_id);    
+    if ($this->validation->run() == FALSE) {      
+      $this->tpl->assign('type_list', $this->parametermdl->getByType(106));
+      $this->tpl->assign('visibility', 'public'); // default visibility is 'private'
+
+      $visibility_list = array('public'=>'Public', 'private'=>'Private');
+
+      if ($this->getAgencyType() == 'C' AND $this->getUserProfileId() == 3) {
+        $visibility_list['private-admins'] = 'Admin';
+      }
+      $this->tpl->assign('visibility_list', $visibility_list);
+      
+      $this->tpl->assign_include("dynamic_tpl", "patient/calendar/add_visittype_event_form");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    } else {
+      // create evvents
+      $aux_dates = array();
+      foreach(explode(",", $visit_date) as $date) {
+        $aux_dates[] = standard_date(human_to_unix($date), 'MYSQL');
+      }
+      // print_r($aux_dates);
+      // var_dump(date("c"));
+      // var_dump(date("Y-m-d H:i:s"));
+      // exit();
+      $visit_type_id = 400;
+      foreach ($aux_dates as $event_date) {          
+          $this->visitlogmdl->visit_log_id = null;
+          $this->visitlogmdl->cms485_id = $cms485_id;
+          $this->visitlogmdl->visit_type_id = $visit_type_id;
+          $this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+          $this->visitlogmdl->visit_user_id = $this->visitlogmdl->visit_asigned_by;
+          $this->visitlogmdl->visit_date_time = $event_date;
+          // Event should be created with visit_status="Event"
+          $this->visitlogmdl->visit_status_id = 9; 
+          
+          $visittype = $this->visittypemdl->getById($visit_type_id);
+          $this->visitlogmdl->insert($visittype->billable_yn);
+            
+          $visit_log_id = $this->visitlogmdl->visit_log_id;
+          // Event should be created with visit_status="Event"
+          $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 9);
+
+          $this->assignPostData($this->vteventsmdl);
+
+          if (count($this->vteventsmdl->get($visit_log_id))) {        
+            $this->vteventsmdl->created_by_user_id = $this->getUsAgyId();
+            $this->vteventsmdl->modified_by_user_id = $this->vteventsmdl->created_by_user_id;
+            $this->vteventsmdl->create_datetime = date("c");
+            $this->vteventsmdl->update($visit_log_id);
+          } else {
+            $this->vteventsmdl->created_by_user_id = $this->getUsAgyId();
+            $this->vteventsmdl->modified_by_user_id = $this->vteventsmdl->created_by_user_id;
+            $this->vteventsmdl->create_datetime = date("c");            
+            $this->vteventsmdl->insert($visit_log_id);
+          }
+      }
+      echo "<SCRIPT>parent.updateCellEvents(); parent.cancelModal()</SCRIPT>";
+    }
+    
+  }
+
+	function qr_schedule ( $patient_id, $cms485_id ) {
+		$rules = array();
+		$fields = array();
+		
+		$rules['qr_therapist'] = 'required';
+		$fields['qr_therapist'] = 'Therapist';
+		
+		//  At least one QR date required
+		if ($this->input->post('qr1_date') != '' OR $this->input->post('qr2_date') != '' OR $this->input->post('qr3_date') != '' OR $this->input->post('qr4_date') != '') {
+			# code...
+		} else {
+			$rules['qr_date'] = 'required';
+			$fields['qr_date'] = 'QR Dates';
+		}
+		
+		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		$patient = $this->patientmdl->getById($patient_id);    
+		$episode = $this->episodemdl->getById($cms485_id);
+		if ($episode->qr4_scheduled == 1) {
+			exit('QR already scheduled!');
+		}
+		
+		$soc = $this->socmdl->getById(@$episode->soc_id);
+		$episode_end_date = $episode->episode_end_date;
+		if ($this->validation->run() == FALSE) {
+			$this->load->helper('general');
+			$q_dates = calculate_q_months($soc->estimated_soc_date);
+			$this->tpl->assign('qr1_date', $q_dates['q1']);
+			$this->tpl->assign('qr2_date', $q_dates['q2']);
+			$this->tpl->assign('qr3_date', $q_dates['q3']);
+			$this->tpl->assign('qr4_date', $q_dates['q4']);
+			 
+			$this->tpl->assign('estimated_soc_date', date("m-d-Y", strtotime($soc->estimated_soc_date)));
+			// $this->tpl->assign('estimated_soc_date', "2017-09-01");
+			//$this->tpl->assign('team_list', $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false, false, null, array(4), null, null, array(11) ));
+            $this->tpl->assign('team_list', $this->teammdl->getAll($patient_id));
+			$this->tpl->assign_include("dynamic_tpl", "patient/calendar/qr_schedule_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			
+      $today = new DateTime('today');
+			
+			$qr_scheduled = FALSE;
+			
+			// schedule 4 visits for this patient
+			$visit_dates = array();
+			
+			// Logic to skip QR dates
+      // IF (ACTUAL_QR_DATE +14 day >= TODAY) [dropeed]
+      // AND IF (GIVEN_QR_DATE between ACTUAL_QR_DATE and (ACTUAL_QR_DATE+14 days) ) [dropped]
+      // AND IF (GIVEN_QR_DATE < EPISODE_END_DATE)
+      // THEN PROCEED, 
+      // ELSE SKIP.
+			
+			
+			if ($this->input->post('qr1_date') != '') {
+        $qr1_date = standard_date(human_to_unix($this->input->post('qr1_date')), 'MYSQL');
+      
+        if ($this->input->post('submit') == 'Schedule All QR') {
+          $visit_dates[] = $qr1_date;
+        } else {
+          if( strtotime($qr1_date) <= strtotime($episode_end_date) ){
+            $visit_dates[] = $qr1_date;
+          }
+        }
+      }
+      
+      if ($this->input->post('qr2_date') != '') {
+        $qr2_date = standard_date(human_to_unix($this->input->post('qr2_date')), 'MYSQL');
+        
+        if ($this->input->post('submit') == 'Schedule All QR') {
+          $visit_dates[] = $qr2_date;
+        } else {
+          if( strtotime($qr2_date) <= strtotime($episode_end_date) ){
+            $visit_dates[] = $qr2_date;
+          }
+        }
+      }
+      
+      if ($this->input->post('qr3_date') != '') {
+        $qr3_date = standard_date(human_to_unix($this->input->post('qr3_date')), 'MYSQL');
+        
+        if ($this->input->post('submit') == 'Schedule All QR') {
+          $visit_dates[] = $qr3_date;
+        } else {
+          if( strtotime($qr3_date) <= strtotime($episode_end_date) ){
+            $visit_dates[] = $qr3_date;
+          }
+        }
+      }
+		
+		
+			// if (empty($visit_dates)) {
+			//   exit("Please assign QR schedule dates.");
+			// }
+			
+			// Start Database operation with transaction
+			$this->db->trans_start();
+			
+			foreach ($visit_dates as $visit_date) {          
+				$this->visitlogmdl->visit_log_id = null;
+				$this->visitlogmdl->visit_date_time = $visit_date;
+				$this->visitlogmdl->visit_user_id = $this->input->post('qr_therapist');
+				$this->visitlogmdl->visit_type_id = 104; // Qrtly. Summary
+				$this->visitlogmdl->cms485_id = $cms485_id; 
+				$this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+				
+				$visittype = $this->visittypemdl->getById($this->visitlogmdl->visit_type_id);
+				$this->visitlogmdl->insert($visittype->billable_yn);
+				
+				$qr_scheduled = TRUE;
+			}
+			
+			if ($this->input->post('qr4_date') != '') {
+				$qr4_date = standard_date(human_to_unix($this->input->post('qr4_date')), 'MYSQL');
+        $create_qr4 = FALSE;
+        if ($this->input->post('submit') == 'Schedule All QR') {
+          $create_qr4 = TRUE;
+        } else {
+          if( strtotime($qr4_date) <= strtotime($episode_end_date) ){
+            $create_qr4 = TRUE;
+          }
+        }
+			
+				if ($create_qr4) {
+					$this->visitlogmdl->visit_log_id = null;
+					$this->visitlogmdl->visit_date_time = $qr4_date;
+					$this->visitlogmdl->visit_user_id = $this->input->post('qr_therapist');
+					$this->visitlogmdl->visit_type_id = 101; // 8606A
+					$this->visitlogmdl->cms485_id = $cms485_id; 
+					$this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+					
+					$visittype = $this->visittypemdl->getById($this->visitlogmdl->visit_type_id);
+					$this->visitlogmdl->insert($visittype->billable_yn);
+					$qr_scheduled = TRUE;
+				}
+			}
+			
+			if ($qr_scheduled) {
+				// Check user already in patient team list.
+				$already_in_team = false;
+				foreach ($this->teammdl->get($patient_id, $this->input->post('keyword'), $this->input->post('discipline_id')) as $user) {
+					if ($this->input->post('qr_therapist') == $user->us_agy_id) {
+						$already_in_team = true;
+						break;
+					}
+				}
+			
+				//  add user to patient team
+				if (!$already_in_team) {
+					$this->teammdl->user_id = $this->input->post('qr_therapist');
+					$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+					$this->teammdl->insert($patient_id);
+				}
+			}
+			
+			
+			// Database operation Comleted
+			$this->db->trans_complete();
+			
+			if($this->db->trans_status() === TRUE){
+				if ($qr_scheduled) {
+					$this->episodemdl->updateFlex($cms485_id, 'qr4_scheduled', 1);
+					// change patient status to current if status is Non-Assigned
+					$patient = $this->patientmdl->getById($patient_id); 
+					if ($patient->tab_013_status == 6) {
+						$this->patientmdl->updateFlex($patient_id, 'tab_013_status', 2);
+						
+						$pat_contractor = $this->patientcontractormdl->get($patient_id);
+						$pat_contractor_id = null;
+						if(sizeof($pat_contractor) > 0){
+							$pat_contractor = $pat_contractor[0];          
+							$pat_contractor_id  = $pat_contractor->pat_contractor_id;
+						} else {
+							$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+							$pat_contractor_id  = $contractor->pat_contractor_id;
+						}
+						if ($pat_contractor_id) {
+							$this->patientcontractormdl->updateFlex($pat_contractor_id, 'company_patient_status', 2 );
+						}
+					}
+					echo "<SCRIPT>parent.updateCellEvents(); parent.cancelModal()</SCRIPT>";
+				} else {
+					exit('QR not scheduled!');
+				}
+			
+			} else {
+				exit('Operation Failed!');
+			}
+		}
+	
+	}
+
+	function checkauthvisit ( $auth_visits_id, $params) {
+    list($visit_date, $patient_id, $cms485_id) = explode(",", $params);
+    list($M, $D, $Y) = explode("-", $visit_date);
+    
+    $visit_date = $Y.'-'.$M.'-'.$D;
+    
+    
+    $visit_time_Hour = $this->input->post('visit_time_hour');    
+		$visit_time_Minute  = $this->input->post('visit_time_min');
+    
+    if(!$visit_time_Hour)  
+    $visit_time_Hour = $this->input->post('visit_time_Hour');
+    if(!$visit_time_Minute)  
+    $visit_time_Minute = $this->input->post('visit_time_Minute');
+      
+    $visit_type_id   = $this->input->post('visit_type_id');    
+		//echo $visit_date.'::'. $patient_id.'::' .$cms485_id.'::'.$visit_type_id ;
+    $authvisit = $this->cms485mcaidpavisitsmdl->getById($auth_visits_id);
+    //print_r($authvisit);exit;
+    if (!empty($authvisit)) {
+      if($authvisit->patient_id == $patient_id AND $authvisit->cms485_id == $cms485_id){
+        $author_from_date = strtotime($authvisit->author_from_date);
+        $author_end_date = strtotime($authvisit->author_end_date.' 23:59:59');
+        if(strtotime($visit_date.' '.$visit_time_Hour.':'.$visit_time_Minute.':00') >= $author_from_date AND strtotime($visit_date.' '.$visit_time_Hour.':'.$visit_time_Minute.':00') <= $author_end_date){
+          // fall in auth visit period
+          
+          if($visit_type_id){
+            switch($visit_type_id){
+              case 10:
+              case 12:  // PT
+                $authvisit->pt_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(10,12), true); // PT used        
+                $authvisit->pt_remain = ($authvisit->nbr_pt_visits - $authvisit->pt_used);
+                //$authvisit->pt_remain = 0;
+                if($authvisit->pt_remain > 0){
+                
+                }else{                
+                  $this->validation->set_message('checkauthvisit', "Error: Trying to add more visits than authorized PT Visits for Authorization ID.");
+                  return FALSE;
+                }
+                break;
+                
+              case 40:  
+              case 42:  // OT
+                $authvisit->ot_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(40,42), true); // OT used
+                $authvisit->ot_remain = ($authvisit->nbr_ot_visits - $authvisit->ot_used);
+          
+                if($authvisit->ot_remain > 0){
+                
+                }else{                
+                  $this->validation->set_message('checkauthvisit', "Error: Trying to add more visits than authorized OT Visits for Authorization ID.");
+                  return FALSE;
+                }
+                break;
+                
+              case 60:  
+              case 62:  // ST  
+                $authvisit->st_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(60,62),true); // ST used
+                $authvisit->st_remain = ($authvisit->nbr_st_visits - $authvisit->st_used);
+          
+                if($authvisit->st_remain > 0){
+                
+                }else{                
+                  $this->validation->set_message('checkauthvisit', "Error: Trying to add more visits than authorized ST Visits for Authorization ID.");
+                  return FALSE;
+                }
+                break;
+                
+              case 20:  
+              case 22:  // SN
+                $authvisit->sn_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(20,22),true); // SN used
+                $authvisit->sn_remain = ($authvisit->nbr_sn_visits - $authvisit->sn_used);  
+                if($authvisit->sn_remain > 0){
+                
+                }else{                
+                  $this->validation->set_message('checkauthvisit', "Error: Trying to add more visits than authorized SN Visits for Authorization ID.");
+                  return FALSE;
+                }
+                break;
+              
+              case 80:  // HHA used
+                $authvisit->hha_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(80),true); // HHA used
+                $authvisit->hha_remain = ($authvisit->hha_nbr_visits - $authvisit->hha_used);
+          
+                if($authvisit->hha_remain > 0){
+                
+                }else{                
+                  $this->validation->set_message('checkauthvisit', "Error: Trying to add more visits than authorized HHA Visits for Authorization ID.");
+                  return FALSE;
+                }
+                break;
+                
+            }
+          }
+        }else{           
+          //echo 'visit_date=>'.($visit_date.' '.$visit_time_Hour.':'.$visit_time_Minute.':00<br>').'author_from_date => '.$authvisit->author_from_date.'<br>author_end_date=>'.$authvisit->author_end_date;
+          
+          $this->validation->set_message('checkauthvisit', "Trying to add visit(s) outside date range for Authorization ID.");
+  				return FALSE;
+        }
+      }
+    }
+		
+		return TRUE;
+		
+	}
+  
+  function checkmultiaddauthvisit ( $auth_visits_id, $params) {
+    list($patient_id, $cms485_id) = explode(",", $params);
+    
+    $visit_dates = $this->input->post('visit_date');
+    $visit_time_hour = $this->input->post('visit_time_hour');
+		$visit_time_min  = $this->input->post('visit_time_min');
+		//$time_type	     = $this->input->post('time_type');
+		$visit_type_ids   = $this->input->post('visit_type_id');
+		$visit_user_id   = $this->input->post('visit_user_id');
+		
+    $counterPT = 0;
+    $counterOT = 0;
+    $counterST = 0;
+    $counterSN = 0;
+    $counterHHA = 0;
+		foreach ($visit_dates as $event_id => $visit_date) {
+      list($M, $D, $Y) = explode("-", $visit_date);
+      $visit_date = $Y.'-'.$M.'-'.$D;
+      
+      $visit_time_Hour = $visit_time_hour[$event_id];
+      $visit_time_Minute = $visit_time_min[$event_id];
+      $visit_type_id = $visit_type_ids[$event_id];
+      
+      // echo $visit_date.'::'. $patient_id.'::' .$cms485_id.'::'.$visit_type_id ;
+      $authvisit = $this->cms485mcaidpavisitsmdl->getById($auth_visits_id);
+      // print_r($authvisit);exit;
+      if (!empty($authvisit)) {
+        if($authvisit->patient_id == $patient_id AND $authvisit->cms485_id == $cms485_id){
+          $author_from_date = strtotime($authvisit->author_from_date);
+          $author_end_date = strtotime($authvisit->author_end_date.' 23:59:59');
+            if(strtotime($visit_date.' '.$visit_time_Hour.':'.$visit_time_Minute.':00') >= $author_from_date AND strtotime($visit_date.' '.$visit_time_Hour.':'.$visit_time_Minute.':00') <= $author_end_date){
+              // fall in auth visit period
+              
+              if($visit_type_id){
+                switch($visit_type_id){
+                  case 10:
+                  case 12:  // PT
+                    $authvisit->pt_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(10,12), true); // PT used        
+                    $authvisit->pt_remain = ($authvisit->nbr_pt_visits - ($authvisit->pt_used+$counterPT));
+                    if($authvisit->pt_remain > 0){
+                      $counterPT++;
+                    }else{                
+                      $this->validation->set_message('checkmultiaddauthvisit', "Error: Trying to add more visits than authorized PT Visits for Authorization ID.");
+                      return FALSE;
+                    }
+                    break;
+                    
+                  case 40:  
+                  case 42:  // OT
+                    $authvisit->ot_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(40,42), true); // OT used
+                    $authvisit->ot_remain = ($authvisit->nbr_ot_visits - ($authvisit->ot_used+$counterOT));
+              
+                    if($authvisit->ot_remain > 0){
+                     $counterOT++;
+                    }else{                
+                      $this->validation->set_message('checkmultiaddauthvisit', "Error: Trying to add more visits than authorized OT Visits for Authorization ID.");
+                      return FALSE;
+                    }
+                    break;
+                    
+                  case 60:  
+                  case 62:  // ST  
+                    $authvisit->st_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(60,62),true); // ST used
+                    $authvisit->st_remain = ($authvisit->nbr_st_visits - ($authvisit->st_used+$counterST));
+              
+                    if($authvisit->st_remain > 0){
+                      $counterST++;
+                    }else{                
+                      $this->validation->set_message('checkmultiaddauthvisit', "Error: Trying to add more visits than authorized ST Visits for Authorization ID.");
+                      return FALSE;
+                    }
+                    break;
+                    
+                  case 20:  
+                  case 22:  // SN
+                    $authvisit->sn_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(20,22),true); // SN used
+                    $authvisit->sn_remain = ($authvisit->nbr_sn_visits - ($authvisit->sn_used+$counterSN));  
+                    if($authvisit->sn_remain > 0){
+                      $counterSN++;      
+                    }else{                
+                      $this->validation->set_message('checkmultiaddauthvisit', "Error: Trying to add more visits than authorized SN Visits for Authorization ID.");
+                      return FALSE;
+                    }
+                    break;
+                  
+                  case 80:  // HHA used
+                    $authvisit->hha_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(80),true); // HHA used
+                    $authvisit->hha_remain = ($authvisit->hha_nbr_visits - ($authvisit->hha_used+$counterHHA));
+              
+                    if($authvisit->hha_remain > 0){
+                      $counterHHA++;
+                    }else{                
+                      $this->validation->set_message('checkmultiaddauthvisit', "Error: Trying to add more visits than authorized HHA Visits for Authorization ID.");
+                      return FALSE;
+                    }
+                    break;
+                    
+                }
+              }
+            }else{           
+              //echo 'visit_date=>'.($visit_date.' '.$visit_time_Hour.':'.$visit_time_Minute.':00<br>').'author_from_date => '.$authvisit->author_from_date.'<br>author_end_date=>'.$authvisit->author_end_date;
+              
+              $this->validation->set_message('checkmultiaddauthvisit', "Trying to add visit(s) outside date range for Authorization ID.");
+      				return FALSE;
+            }
+        }
+      }
+      
+    }
+    
+		
+		return TRUE;
+		
+	}
+  
+	function validate ( $cms485_id ) {
+		
+		$document = $this->xml->Document();
+		
+		if (!$this->app->validateCalendar($cms485_id)) {
+			$document->append($this->xml->Element("js", "script=alert('Warning: Therapy Schedule not complying with 13th and 19th visit rules. Please review and correct.')"));
+		} else {
+			$document->append($this->xml->Element("js", "script=alert('Patient Calendar Validation Successful.')"));
+		}
+		
+	}
+  
+  function xml_entities($text, $charset = 'UTF-8'){
+    $text=str_replace("&","",$text);
+    $text=str_replace("&","",$text);
+    $text=str_replace(";","",$text);
+    return $text;
+  }
+
+  function listFrecDur($patient_id,$cms_485) {
+    $visit_type = array(10, 40, 60);
+    $assesment_types_list = $this->parametermdl->getByType(32);
+    $data = $this->visitlogmdl->getByEpsodeId($cms_485, $visit_type);
+    $freq_data = array();
+    $ident = 0;
+    foreach( $data as $vis) {
+
+      $visit_task_name = "";
+      $freq_dur = "";
+      if($vis->visit_program=='ptev'){
+        $this->load->model('ptevmdl');
+        $ptev = $this->ptevmdl->get($vis->visit_log_id);
+        if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+          $visit_task_name = $vis->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type];
+        }else{
+          $visit_task_name = $vis->visit_description;         
+        }
+        if (isset($ptev->freq_duration)) {
+            $freq_dur = $ptev->freq_duration;
+        }
+      }
+      else if($vis->visit_program=='stev'){
+        $this->load->model('stevmdl');
+        $stev = $this->stevmdl->get($vis->visit_log_id);
+        if(isset($assesment_types_list[@$stev->tab_32_assess_type])){
+          $visit_task_name = $vis->visit_description.' - '.$assesment_types_list[@$stev->tab_32_assess_type];
+        }else{
+          $visit_task_name = $vis->visit_description;
+        }
+        if (isset($stev->frequency_duration)) {
+          $freq_dur = $stev->frequency_duration;
+        }
+      }
+      else if($vis->visit_program=='otev'){
+        $this->load->model('otevmdl');
+        $otev = $this->otevmdl->get($vis->visit_log_id); 
+        if(isset($assesment_types_list[@$otev->tab_32_assess_type])){
+          $visit_task_name = $vis->visit_description.' - '.$assesment_types_list[@$otev->tab_32_assess_type];
+        }else{
+          $visit_task_name = $vis->visit_description;
+        }
+        if (isset($otev->freq_duration)) {
+          $freq_dur = $otev->freq_duration;
+        }
+      }
+      $freq_data[$ident] = array(
+        'visit_date_time' =>$vis->visit_date_time, 
+        'visit_task_name' => $visit_task_name, 
+        'freq_dur' => $freq_dur
+      );
+      $ident++;
+      
+    }
+    
+    /*$data = $this->visitlogmdl->getFrecDuration($cms_485, $visit_type); */
+    $this->tpl->assign('data', $freq_data);
+    $this->tpl->assign_include("dynamic_tpl", "patient/calendar/frec_dur");
+    $this->tpl->view("parts/ibase", $this->lang->language);
+  }
+
+  function getSelectDiscipline($us_agy_id) 
+  {
+    $this->load->model('usagydisciplinemdl');
+    $user_discipline_lists = $this->usagydisciplinemdl->getByUser($us_agy_id, TRUE);
+    $document = $this->xml->Document();
+    $document->append($this->xml->Option("", "Select Option"));
+
+    foreach ($user_discipline_lists as $dis_id => $dis_name) {
+        $document->append($this->xml->Option($dis_id, $dis_name));
+    }
+  }
+
+ }

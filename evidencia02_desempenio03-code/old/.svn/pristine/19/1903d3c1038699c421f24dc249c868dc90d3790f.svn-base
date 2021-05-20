@@ -1,0 +1,82 @@
+<?
+
+ class EpisodeSupplyMdl extends Model {
+
+	var $cms_485_supply_id;
+	var $cms485_id;
+	var $supp_description;
+	var $tab_085_type;
+	var $supp_billable;
+	var $supp_quantity;
+	var $supp_cost;
+	var $supp_date;
+
+	function EpisodeSupplyMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $cms485_id, $supp_description=null ) {
+	
+		$this->db->join('tab_parameters', 'tab_parameters.tab_value = cms_485_supply.tab_085_type AND tab_parameters.tab_type = 85', 'LEFT');
+		
+		if (!is_null($supp_description)) {
+			$this->db->like("supp_description", $supp_description);
+		}
+		
+		$this->db->where("cms485_id", $cms485_id);
+		
+		$query = $this->db->get('cms_485_supply');
+		return $query->result();
+
+	}
+	
+	function getById ( $cms_485_supply_id ) {
+		
+		$this->db->join('tab_parameters', 'tab_parameters.tab_value = cms_485_supply.tab_085_type AND tab_parameters.tab_type = 85', 'LEFT');
+		$this->db->where('cms_485_supply_id', $cms_485_supply_id);
+		
+		$query = $this->db->get('cms_485_supply');
+		return $query->row();
+		
+	}
+	
+	function getTotalCost ( $cms485_id ) {
+
+		$this->db->select_sum('supp_cost');
+		
+		$this->db->where("cms485_id", $cms485_id);
+		
+		$query = $this->db->get('cms_485_supply');
+		$result = $query->row();
+		return $result->supp_cost;
+		
+	}
+	
+	function insert () {
+		
+		$this->db->insert('cms_485_supply', $this);
+		$this->cms_485_supply_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $cms_485_supply_id ) {
+		
+		$this->cms_485_supply_id = $cms_485_supply_id;
+		
+		$this->db->where('cms_485_supply_id', $cms_485_supply_id);
+		
+		$this->db->update('cms_485_supply', $this);
+		
+	}
+	
+	function delete ( $cms_485_supply_id ) {
+		
+		$this->db->where('cms_485_supply_id', $cms_485_supply_id);
+		
+		$this->db->delete('cms_485_supply'); 
+		
+	}
+	
+ }

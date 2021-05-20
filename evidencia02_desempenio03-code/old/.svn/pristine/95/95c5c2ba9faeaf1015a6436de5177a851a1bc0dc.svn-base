@@ -1,0 +1,123 @@
+
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr id="lala"> 
+    <td width="16%">
+		<input type="text" name="keyword" id="keyword" value="{$keyword}" />
+		<input type="submit" value="Search">
+    </td>
+	<td align="left">
+		<label>Select: </label>	
+		<label><input type="radio" name="email_type" value=""  onchange="loadGrid();" {if $email_type == ''} checked="checked" {/if} /> All Emails</label>
+		<label><input type="radio" name="email_type" value="1" onchange="loadGrid();" {if $email_type == 1} checked="checked" {/if} /> Important</label>
+		<label><input type="radio" name="email_type" value="2" onchange="loadGrid();" {if $email_type == 2} checked="checked" {/if} /> High Priority</label>
+		<label><input type="radio" name="email_type" value="3" onchange="loadGrid();" {if $email_type == 3} checked="checked" {/if} /> General / System Emails</label>
+	</td>
+  </tr>
+  <tr>
+  	<td colspan="2">
+		<div id="toolbarObj" style="float: left"></div>
+		<div id="toolbarObj2" style="float: right"></div>
+		<div id="toolbarObj3" style="position:absolute; left:0; bottom:0;"></div>	
+
+		<input type="hidden" value="" name="msg_ids" id="msg_ids">
+  	</td>
+  </tr>
+</table> 
+
+
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+	function setTrash() {literal}{{/literal}
+
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('msg_ids', grid.getCheckedRows(0));
+			loadGrid();
+		{literal}}{/literal}
+
+	{literal}}{/literal}
+	
+	function emptyTrash() {literal}{{/literal}
+
+		msg = confirm("This action will permanently delete all messages in this folder\nAre you sure you want to continue?");
+		if(msg)
+			document.location.href="{$index_url}mail/trash/emptyTrash";
+
+
+	{literal}}{/literal}
+
+</script>
+
+<script language="JavaScript" type="text/javascript">
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+	webBar.addButton("none", 2, "None");
+	webBar.addSeparator('sp1', 3);
+	{if $resource_path == "mail/trash"}
+		webBar.addButton("delete", 4, "Delete Forever", "mail_delete.png");
+    	webBar.addButton("empty", 5, "Empty Trash", "edittrash.png");
+    {else}
+    	webBar.addButton("delete", 4, "Delete", "mail_delete.png");
+    {/if}
+    
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;
+		case 'delete':
+		  setTrash()
+		  break;
+		case 'empty':
+		  emptyTrash()
+		  break;
+		{literal}}{/literal}
+    {literal}}{/literal});
+    
+    
+    var webBar2 = new dhtmlXToolbarObject("toolbarObj2", "standard");
+    webBar2.setIconsPath("{$base_url}style/images/");
+    webBar2.addButton("new", 1, " Create Internal Email", "pen0.png");
+    
+    webBar2.attachEvent("onClick", function(eid){literal}{{/literal}
+		parent.document.location.href='{$index_url}mail/compose/index/{$back_path}';
+		{literal}}{/literal});
+		/*
+    var webBar3 = new dhtmlXToolbarObject("toolbarObj3", "standard");
+    webBar3.setIconsPath("{$base_url}style/images/");
+    webBar3.addButton("new", 1, " Create Communication", "pen0.png");
+    
+    webBar3.attachEvent("onClick", function(eid){literal}{{/literal}
+		parent.document.location.href='{$index_url}mail/compose/index/{$back_path}';
+		
+    {literal}}{/literal});*/
+	
+</script>

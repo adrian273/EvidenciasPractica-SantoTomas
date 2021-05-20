@@ -1,0 +1,164 @@
+{literal}
+<style type="text/css">
+	.error{
+		border: 1px solid red;
+	}
+	table.custom-grid-table{
+	}
+	table.custom-grid-table th{
+		border-color: #FDFDFD #93AFBA #93AFBA #FDFDFD;
+		background-color: transparent;
+		font-family: Tahoma;
+		font-size: 11px;
+		font-weight: bold;
+		color: #055A78;
+		vertical-align: top;
+		text-align: left;
+		margin: 0;
+		padding: 5px 0px 5px 10px;
+	}	
+
+	.grid-header{ background-image: url('style/grid/imgs/skin_light_header.png'); }
+	.odd_light{ background-color: #f4f9fc; }
+
+	table.custom-grid-table tr td{
+		font-family: Tahoma;
+		font-size: 11px;
+		padding: 5px 0px 5px 10px;
+		vertical-align: middle;
+		height: 25px;
+		border-bottom: 1px solid #c2d5dc;
+		border-width: 0px 0px 1px 0px;
+	}
+</style>
+{/literal}
+<table border="0" height="100%" width="100%" cellpadding="4" cellspacing="6" align="center"> 
+	<!-- <tr> 
+	    <td valign="top" nowrap class="title" colspan="3">
+	    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> Agencies Receivables
+	    </td>
+	</tr> -->
+	<tr height="30"> 
+    	<td nowrap style="padding-top: 5px" valign="bottom" colspan="3">
+    		{foreach from=$additional_buttons key=label item=action}
+				<input type="button" class="btn" value="{$label}" onclick="{$action}">
+			{/foreach}
+    		<div style="clear: both;"></div>
+    	</td>
+    </tr>
+	<tr> 
+	    <td colspan="3" height="100%" valign="top" style="vertical-align: top">
+			
+				<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="0"> 
+				  	<tr> 
+					    <td height="100%" valign="top" style="vertical-align: top">
+					    	<div id="grid_area" style="height: 99%; width: 100%; border: 1px solid #c2d5dc; overflow: auto;">
+								
+								<table class="custom-grid-table" cellspacing="0" cellpadding="0" width="100%">
+									<tr class="grid-header">
+											<th>Agency / Invoice Number</th>
+											<th>Inv. Date</th>
+											<th>Due Date</th>
+											<th>Total Due</th>
+											<th>1-30 Days</th>
+											<th>31-60 Days</th>
+											<th>61-90 Days</th>
+											<th>Older</th>
+									</tr>
+									<tr>
+										<th colspan="3" style="text-align: right;">TOTAL</th>
+										<th>$ {$TOTAL}</th>
+										<th>$ {$due_days_1_30_total}</th>
+										<th>$ {$due_days_31_60_total}</th>
+										<th>$ {$due_days_61_90_total}</th>
+										<th>$ {$due_days_older_total}</th>
+									</tr>
+									{foreach from=$agencies item=agency name=agency_balance}
+									<tr>
+										<td><b><a href="javascript:showagencyinfo({$agency->agency_id})">
+											{$agency->agency_name}
+										</a></b></td>
+										<td></td>
+										<td></td>
+										<td><b>$ {$agency->total_balance}</b></td>
+										<td><b>$ {$agency->due_days_1_30_total}</b></td>
+										<td><b>$ {$agency->due_days_31_60_total}</b></td>
+										<td><b>$ {$agency->due_days_61_90_total}</b></td>
+										<td><b>$ {$agency->due_days_older_total}</b></td>
+									</tr>
+										{foreach from=$agency->invoices item=invoice name=agency_invoice}
+										<tr class="{cycle values='odd_light,ev_light'}">
+											<td>&nbsp;&nbsp;&nbsp;&nbsp; {$invoice->invoice_no}</td>
+											<td>{$invoice->invoice_date|date_format}</td>
+											<td>{$invoice->invoice_due_date|date_format}</td>
+											<td> - </td>
+											<td>{if $invoice->due_days_1_30 eq 1}$ {$invoice->balance}{else} - {/if}</td>
+											<td>{if $invoice->due_days_31_60 eq 1}$ {$invoice->balance}{else} - {/if}</td>
+											<td>{if $invoice->due_days_61_90 eq 1}$ {$invoice->balance}{else} - {/if}</td>
+											<td>{if $invoice->due_days_older eq 1}$ {$invoice->balance}{else} - {/if}</td>
+										</tr>
+										{/foreach}
+									{/foreach}
+									<tfoot>
+										<tr>
+											<th colspan="3" style="text-align: right;">TOTAL</th>
+											<th>$ {$TOTAL}</th>
+											<th>$ {$due_days_1_30_total}</th>
+											<th>$ {$due_days_31_60_total}</th>
+											<th>$ {$due_days_61_90_total}</th>
+											<th>$ {$due_days_older_total}</th>
+										</tr>
+									</tfoot>
+								</table>
+							</div>
+					    </td>
+				  	</tr>
+				</table>
+			
+	    </td>
+	</tr>	
+	<tr height="30"> 
+    	<td nowrap style="padding-top: 5px" valign="bottom" colspan="3">
+    		{foreach from=$additional_buttons key=label item=action}
+				<input type="button" class="btn" value="{$label}" onclick="{$action}">
+			{/foreach}
+    		<div style="clear: both;"></div>
+    	</td>
+    </tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	function showagencyinfo (agency_id) {literal}{{/literal}
+    
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+        
+        var w1 = dhxWins.createWindow("w1", 0, 0, 350, 250);
+        w1.setText("Agency Details");
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').setModal(true);
+        dhxWins.window('w1').center();
+        w1.attachURL("{$index_url}contractor/invoices/agencydetails/" + agency_id);
+        
+        dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+            
+            w1.hide();
+            w1.setModal(false);
+            
+        {literal}}{/literal});
+        
+    {literal}}{/literal}
+
+	function downloadToExcell(){literal}{{/literal}
+	  	location.href= "{$index_url}contractor/invoices/agencies_receivables/1";
+  {literal}}{/literal}
+
+
+</script>
+

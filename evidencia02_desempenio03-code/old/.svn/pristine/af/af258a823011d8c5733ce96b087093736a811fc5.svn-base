@@ -1,0 +1,82 @@
+<?php
+
+class AgencyServiceAreaMdl extends Model {
+
+    var $id;
+    var $agency_id;
+    var $city;
+    var $general_area;
+    var $state_id;
+
+    function AgencyServiceAreaMdl() {
+        parent::Model();
+    }
+
+    function getCity($city = null, $result = false) {
+        if (!is_null($city)) {
+            $this->db->where('city', $city);
+        }
+        $query=  $this->db->get('agency_service_area');
+        if ($result)
+            return $query->row();
+        else 
+            return $query->result2('city', 'city');
+    }
+
+    function getFilterCity($user_id, $type = null, $agency_id) {
+        if ($type === 'serv') {
+            $this->db->where('city NOT IN (SELECT city from user_address WHERE user_id = '.$user_id.') ');
+        }
+        $this->db->where('agency_id', $agency_id);
+        $this->db->order_by('city', 'ASC');
+        $query = $this->db->get('agency_service_area');
+        $rows = array();
+        foreach ($query->result() as $key => $as) {
+            $rows[$as->city] = $as->city;
+        }
+        return $rows;
+    }
+
+    function getCitiesByAgency($agency_id, $row = true) {
+        $this->db->where('agency_id', $agency_id);
+        if ($search_city = $this->input->post('search_city')) {
+			$this->db->where("(agency_service_area.city LIKE '%" . $search_city . "%' )");
+		}
+        $this->db->order_by('city', 'ASC');
+        $query = $this->db->get('agency_service_area');
+        $rows = array();
+        foreach ($query->result() as $key => $as) {
+            $rows[$as->id] = $as->city;
+        }
+        if ($row)
+            return $rows;
+        else 
+            return $query->result();
+    }
+
+    function getCityDetail($id) {
+        $this->db->join('sta_states', 'sta_states.state_id=agency_service_area.state_id');
+        $this->db->where('id', $id);
+        $query = $this->db->get('agency_service_area');
+        return $query->row();
+    }
+
+    function insert () {
+		$this->db->insert('agency_service_area', $this);
+		$this->id = $this->db->insert_id();
+		return $this->id;
+    }
+    
+    function update ( $city_id ) {
+        unset($this->id);
+		$this->db->where('id', $city_id);
+		$this->db->update('agency_service_area', $this);
+	}
+	
+	function delete ( $city_id ) {
+		$this->db->where('id', $city_id);
+		$this->db->delete('agency_service_area');
+	}
+
+    
+}

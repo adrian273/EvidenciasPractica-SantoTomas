@@ -1,0 +1,166 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="agency_id" value="{$entity_id}">
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Personal Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">First Name</td>
+    <td><input type="text" name="first_name" value="{$first_name}"> *</td>
+    <td class="ftitle">Birth Date <img src="{$image_url}b_help.png" title="mm-dd-yyyy"></td>
+    <td>
+    	<input type="text" id="date_birth" name="date_birth" value="{$date_birth|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_birth'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Last Name</td>
+    <td><input type="text" name="last_name" value="{$last_name}"> *</td>
+    <td class="ftitle">Sex</td>
+    <td>{html_radios options=$sex_list selected=$tab_002_sex name='tab_002_sex'}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">MI</td>
+    <td><input type="text" name="middle_initial" value="{$middle_initial}"></td>
+    <td class="ftitle">S.S.N.</td>
+    <td><input type="text" name="soc_sec_nbr" value="{$soc_sec_nbr}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Medicare Id or HIC </td>
+    <td><input type="text" name="medicare_id" value="{$medicare_id}"></td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Address and Contact</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Address</td>
+    <td><input type="text" name="address" value="{$address}"></td>
+    <td class="ftitle">Cell Phone</td>
+    <td><input type="text" name="phone_cell" value="{$phone_cell}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">City</td>
+    <td><input type="text" name="city" value="{$city}"></td>
+    <td class="ftitle">Home Phone</td>
+    <td><input type="text" name="phone_home" value="{$phone_home}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">State</td>
+    <td>{html_options options=$state_list selected=$state_id name='state_id'}</td>
+    <td class="ftitle">Fax</td>
+    <td><input type="text" name="fax" value="{$fax}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Zip Code</td>
+    <td><input type="text" name="zip1" value="{$zip1}"></td>
+    <td class="ftitle">Email</td>
+    <td><input type="text" name="email" value="{$email}"></td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> SOC Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+  	<td class="ftitle">Estimated SOC Date</td>
+    <td>
+    	<input type="text" id="estimated_soc_date" name="estimated_soc_date" value="{$estimated_soc_date|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('estimated_soc_date'), document.getElementById('fecha_help'));return false;" > 
+    </td>
+  </tr>
+  
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+    var options_xml = {literal}{{/literal}
+            script:"{$index_url}referral/suggest/",
+            varname:"input",
+            callback: function (obj) {literal}{{/literal} setValue('referral_id', obj.id); {literal}}{/literal},
+            noinput: function () {literal}{{/literal} setValue('referral_id', ''); {literal}}{/literal}
+    {literal}}{/literal};
+
+    var as_xml = new AutoSuggest('referral_suggest', options_xml);
+    
+    function refreshReferral ( referral_name, referral_id ) {literal}{{/literal}
+ 
+    	setValue('referral_suggest', referral_name);
+    	setValue('referral_id', referral_id);
+    	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+
+    var dhxWins;
+    
+    function addReferral () {literal}{{/literal}
+    
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 350);
+		w1.setText("New Referral Form");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}referral/modalAdd");
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    	
+    {literal}}{/literal}
+    
+    function refreshPhysician ( physician_select, us_agy_id ) {literal}{{/literal}
+ 
+    	ajaxComboBox("{$index_url}useragency/user/physicianList", '', 'prim_doctor_user_id,second_doctor_user_id');
+    	setTimeout("selectOption('"+physician_select+"', '"+us_agy_id+"')", 500);
+    	
+    	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+    
+    function addPhysician ( physician_select ) {literal}{{/literal}
+    
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 350);
+		w1.setText("New Physician Form");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}useragency/user/modalAddPhysician/" + physician_select);
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    	
+    {literal}}{/literal}
+
+</script>

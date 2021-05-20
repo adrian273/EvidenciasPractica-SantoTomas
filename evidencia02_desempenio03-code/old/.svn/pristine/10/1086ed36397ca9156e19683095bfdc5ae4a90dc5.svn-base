@@ -1,0 +1,47 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Doctor Office</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td>{html_options options=$doctor_office_list name='doctor_office_id' id='doctor_office_id'}
+    	<img style="vertical-align: middle;" src="{$image_url}search.png" onclick="findDoctorOffice()" title="Find Doctor Office">
+    </td>
+  </tr>
+  
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+  var dhxWins;
+  function selectDoctorOffice (  id ) {literal}{{/literal}
+    setTimeout("selectOption('doctor_office_id', '"+id+"')", 100);      
+    dhxWins.window('w1').close();
+  {literal}}{/literal}
+  
+	function findDoctorOffice (  ) {literal}{{/literal}
+    
+      dhxWins = new dhtmlXWindows();
+      dhxWins.enableAutoViewport(false);
+      dhxWins.attachViewportTo("vp_container");
+      dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+      var w1 = dhxWins.createWindow("w1", 10, 10, 600, 400);
+      w1.setText("Find Doctor Office");
+      w1.button("park").hide();
+      w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+      w1.attachURL("{$index_url}patient/doctoroffice/findDoctorOffice/{$entity_id}");
+
+      dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+        w1.hide();
+        w1.setModal(false);
+	    {literal}}{/literal});
+    	
+    {literal}}{/literal}
+
+</script>

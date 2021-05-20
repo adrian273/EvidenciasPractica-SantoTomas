@@ -1,0 +1,84 @@
+<?php
+
+ class Referral extends MY_Controller {
+ 	
+ 	function Referral () {
+ 		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "agencyprofile/referral");
+		
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+ 		
+ 	}
+ 	
+ 	function index ( $agency_id=null ) {
+ 		
+ 		$this->tpl->assign('referral_list', $this->referralmdl->getList($this->getAgencyId()));
+ 		if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+ 		
+ 		$this->tpl->assign_include("filter_tpl", "agencyprofile/referral_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+ 		
+ 	}
+ 	
+ 	function grid ( $agency_id=null ) {
+ 		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=12", "Referral Date"));
+		$head->append($this->xml->Element("column", "width=*",  "Referral Source"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=10", "Disch. From"));
+		$head->append($this->xml->Element("column", "width=10", "Disch. Date"));
+		$head->append($this->xml->Element("column", "width=15", "Physician"));
+		$head->append($this->xml->Element("column", "width=10", "Case Manager"));
+		$head->append($this->xml->Element("column", "width=10", "Disch. from Agency"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Disciplines"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->socmdl->getByAgencyId((is_null($agency_id) ? $this->getAgencyId()  : $agency_id)) as $referral) {
+
+			$cell = $this->xml->Element("row", "id=" . $referral->soc_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($referral->referral_date_time), 'USA_DATE_TIME')));
+			$cell->append($this->xml->Element("cell", null, $referral->referral_name));
+			$cell->append($this->xml->Element("cell", null, $referral->first_name . " " . $referral->last_name));
+			$cell->append($this->xml->Element("cell", null, $referral->tab_description));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($referral->date_disch_from_hospital))));
+			
+			if ($referral->prim_doctor_user_id) {
+				$physician = $this->usagymdl->getByUsAgyId($referral->prim_doctor_user_id);
+				$cell->append($this->xml->Element("cell", null, @$physician->first_name . " " . @$physician->last_name));
+			} else {
+				$cell->append($this->xml->Element("cell"));
+			}
+			
+			if ($referral->case_manager_user_id) {
+				$case_manager = $this->usagymdl->getByUsAgyId($referral->case_manager_user_id);
+				$cell->append($this->xml->Element("cell", null, $case_manager->first_name . " " . $case_manager->last_name));
+			} else {
+				$cell->append($this->xml->Element("cell"));
+			}
+			
+			$cell->append($this->xml->Element("cell")); // falta este campo
+			
+			$disciplines = array();
+			if ($referral->dis_sn) array_push($disciplines, "SN");
+			if ($referral->dis_pt) array_push($disciplines, "PT");
+			if ($referral->dis_ot) array_push($disciplines, "OT");
+			if ($referral->dis_st) array_push($disciplines, "ST");
+			if ($referral->dis_msgw) array_push($disciplines, "MSGW");
+			$cell->append($this->xml->Element("cell", null, implode("-", $disciplines)));
+
+			$document->append($cell);
+			
+		}
+ 		
+ 	}
+ 	
+ }

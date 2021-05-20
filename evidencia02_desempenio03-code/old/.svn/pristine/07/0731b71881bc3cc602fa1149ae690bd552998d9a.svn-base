@@ -1,0 +1,1037 @@
+<?php  
+
+class AgencyContractor extends MY_Controller {
+
+    function AgencyContractor () {
+
+        parent::MY_Controller();
+        $this->tpl->assign("resource_path", "agencycontractor");
+
+        $this->load->model('companyinvoicemdl');
+        $this->load->model('invoiceotherchargesmdl');
+    }
+
+    function index () {
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+        $this->tpl->assign("resource_edit", 'contractor');    
+        $this->tpl->assign("no_grid_buttons", true);
+        //$this->tpl->assign("resource_grid", "agencies_grid");
+        //$this->tpl->assign('noedit', true);
+        $this->tpl->assign(array("list_title" => "Contractors", "add_sufix" => " Contractor"));
+        $this->tpl->assign_include("filter_tpl", "agencycontractor/contractor_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    function grid () {
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=*;type=link", "Contractor"));
+        $head->append($this->xml->Element("column", "width=20", "Address"));
+        $head->append($this->xml->Element("column", "width=15", "City"));
+        $head->append($this->xml->Element("column", "width=15", "Contact Name"));
+        $head->append($this->xml->Element("column", "width=15", "Phone"));
+        $head->append($this->xml->Element("column", "width=15", "Fax"));
+        // $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actions"));
+
+        // $head->append($this->xml->Element("column", "width=6;align=center;type=link", "#cspan"));  
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach ($this->agencycontractormdl->get($this->getAgencyId()) as $contractor) {
+
+            $cell = $this->xml->Element("row", "id=" . $contractor->agency_contractor_id);
+            $cell->append($this->xml->Element("cell", null, "0"));
+            //$cell = $this->xml->Element("row", "id=" . $contractor->contractor_id);
+            $cell->append($this->xml->Element("cell", null, $contractor->agency_name."^" . $this->config->config['index_url'] . "agencycontractor/contractor/" . $contractor->agency_contractor_id));
+            $cell->append($this->xml->Element("cell", null, $contractor->address));
+            $cell->append($this->xml->Element("cell", null, $contractor->city));
+            $cell->append($this->xml->Element("cell", null, $contractor->contact_name));
+            $cell->append($this->xml->Element("cell", null, $contractor->phone_primary));
+            $cell->append($this->xml->Element("cell", null, $contractor->fax));
+            
+            //$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "agencycontractor/delete/" . $contractor->agency_contractor_id . "^Are you sure to delete this contractor?"));
+            
+            // $cell->append($this->xml->Element("cell", null, "Details^" . $this->config->config['index_url'] . "agencycontractor/contractor/" . $contractor->agency_contractor_id));          
+            
+            // $cell->append($this->xml->Element("cell", null, ""));          
+            $document->append($cell); 
+        }
+
+    }
+
+    function print_contractors(){
+      if (!is_null($this->input->post('record_ids'))) {
+        //$this->load->library('Wick');
+        
+        //var_dump($this->input->post('record_ids'));exit;
+        $record_ids = $this->input->post('record_ids');
+        $records = explode(",", $record_ids);        
+        foreach ($this->agencycontractormdl->getByAgencyContractorIds($records, "agency") as $contractor) {
+          $data['contractors'][] = $contractor;
+        }        
+        // $content = $this->load->view('contractor/invoices/print_invoice',$data,true);
+        $content = $this->load->view('agencycontractor/print_contractors',$data,true);
+        // echo $content;exit;
+        
+        // convert in PDF
+        require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+        try
+        {
+            $html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+            //$html2pdf = new HTML2PDF('P', 'A4', 'en');
+    //        $html2pdf->setModeDebug();
+            //$html2pdf->pdf->SetDisplayMode('fullpage');
+            $html2pdf->setTestTdInOnePage(false);
+            $html2pdf->setDefaultFont('Arial');
+            $html2pdf->writeHTML($content);
+            $html2pdf->Output('contractors.pdf', 'D');                    
+        }
+        catch(HTML2PDF_exception $e) {
+            echo $e;
+            exit;
+        }    
+
+      }
+    }
+    
+    function add () {
+
+        $this->tpl->assign('faction', 'add');
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        $this->tpl->assign('contractor_list', $this->agencycontractormdl->getNot($agency->agency_id, $agency->state_id));
+
+        $this->validation->set_rules(array ('contractor_id'	=> 'required'));
+
+        if ($this->validation->run() == FALSE) {
+
+            $this->tpl->assign("form_title", "Add Contractor");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "agencycontractor/form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        } else {
+
+            $this->assignPostData($this->agencycontractormdl);
+            $this->agencycontractormdl->insert($this->getAgencyId());
+
+            $this->tpl->assign('gmessage', "Contractor" . $this->lang->line('grl_add_msg'));
+
+            $this->index();
+
+        }
+
+    }
+
+    function delete ( $agency_contractor_id ) {
+
+        $this->agencycontractormdl->delete($agency_contractor_id);
+
+        $this->tpl->assign('gmessage', "Contractor" . $this->lang->line('grl_del_msg'));
+        $this->index();
+
+    }      
+    
+    function contractor($agency_contractor_id){      
+      $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+      
+      $contrator_id = $data->contractor_id;
+      $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+      
+      $this->tpl->assign('contrator_name', $contrator_name);
+      $this->tpl->assign('agency_contractor_id', $agency_contractor_id);
+      $this->tpl->assign('contrator_id', $contrator_id);
+      
+      $this->tpl->assign('credentials_tab', true);
+      if($this->getAgencyType() == 'A')      
+      $this->tpl->assign('credentials_tab', false);
+      
+      $this->tpl->assign_include("dynamic_tpl", "agencycontractor/tbase");
+  		$this->tpl->view("parts/ibase", $this->lang->language);
+    }
+    
+    //
+
+    function patients($agency_contractor_id) {
+        $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);      
+        $contrator_id = $data->contractor_id;        
+        $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+		//$this->tpl->assign(array("list_title" => "Patients for Contractor: ".$contrator_name, "noedit" => false, "no_grid_buttons" => true));  
+        $this->tpl->assign('tab_13_list', $this->parametermdl->getByType(13));
+		$this->tpl->assign(array("list_title" => "", "noedit" => false, "no_grid_buttons" => true));  
+        $this->tpl->assign_include("filter_tpl", "agencycontractor/patients_gfilter");
+        $this->tpl->assign('resource_grid', 'selectPatientGrid/'.$contrator_id);  
+        $this->tpl->assign("resource_edit", 'patient_edit');    
+        $this->tpl->assign('contrator_id', $contrator_id);
+        $this->tpl->assign("no_grid_buttons", true);  
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language); 
+        
+    }
+    
+    function patient_edit ( $patient_id, $episode_id=null, $active_tab=null ) {
+            
+        if ($this->hasPatientAccess($patient_id)) {
+            
+            header("Location: " . $this->config->config["index_url"] . "patient/patient/treatmentarea/" . $patient_id . "/" . $episode_id . "/" . $active_tab);
+        }
+    }
+    
+                 
+    function selectPatientGrid ($contrator_id) {
+        
+        $agency_types = $this->lang->line('agency_type_list');
+        
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();        
+        $userprofile = $this->getUserProfileId();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=5;align=center", ""));
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=*", "Home Phone"));
+        $head->append($this->xml->Element("column", "width=*;align=center", "SOC Date"));
+        $head->append($this->xml->Element("column", "width=*;align=center", "Certif. Start"));
+        $head->append($this->xml->Element("column", "width=*;align=center", "Certif. End"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "Days Left"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "PT visits"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "OT visits"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "ST visits"));
+        $head->append($this->xml->Element("column", "width=*", "Status"));       
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+                                                   
+        foreach ($this->patientcontractormdl->getByContractorIdAndAgencyId($this->getAgencyId(), $contrator_id, $this->input->post('keyword'), $this->input->post('tab_013_status')) as $patient) {            
+            $episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+            if ($this->input->post('soc_date') !== FALSE AND $this->input->post('soc_date') != "") {
+                if (isset($episode->estimated_soc_date)) {
+                    /*var_dump(standard_date(human_to_unix($this->input->post('soc_date')), 'MYSQL_NOTIME'));
+                    var_dump($episode->estimated_soc_date);*/
+                    if( $episode->estimated_soc_date != standard_date(human_to_unix($this->input->post('soc_date')), 'MYSQL_NOTIME')){
+                        continue;
+                    }
+                }
+            }
+
+            if ($this->input->post('cert_start_date') !== FALSE AND $this->input->post('cert_start_date') != "") {
+                if (isset($episode->episode_start_date)) {
+                    if( strtotime($episode->episode_start_date) < strtotime(standard_date(human_to_unix($this->input->post('cert_start_date')), 'MYSQL_NOTIME')) ){
+                        continue;
+                    }
+                }
+            }
+
+            if ($this->input->post('cert_end_date') !== FALSE AND $this->input->post('cert_end_date') != "") {
+                if (isset($episode->episode_end_date)) {
+                    if( strtotime($episode->episode_end_date) > strtotime(standard_date(human_to_unix($this->input->post('cert_end_date')), 'MYSQL_NOTIME')) ){
+                        continue;
+                    }
+                }
+            }
+
+            if ($this->input->post('days_left') !== FALSE AND $this->input->post('days_left') != "") {
+                if (isset($episode->expiration_days_left)) {
+                    if( $episode->expiration_days_left != $this->input->post('days_left')){
+                        continue;
+                    }
+                }
+            }
+            
+            $cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+            
+            $cell->append($this->xml->Element("cell", null, "0"));
+
+            if (count($this->teammdl->get($patient->patient_id, null, null, $this->getAgencyId()))) {
+                $cell->append($this->xml->Element("cell", null, ""));
+            } else {
+                $cell->append($this->xml->Element("cell", "type=img", $this->config->config['base_url'] . 'style/images/exclamation.gif'));
+            }
+            
+            $cell->append($this->xml->Element("cell", null, $patient->first_name . " " . $patient->last_name));
+            $cell->append($this->xml->Element("cell", null, $patient->phone_home));
+            
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix(@$episode->estimated_soc_date))));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix(@$episode->episode_start_date))));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix(@$episode->episode_end_date, 'USA_DATE_TIME'))));
+            $cell->append($this->xml->Element("cell", null, @$episode->expiration_days_left));
+            
+
+            $ptvisits = 0;
+            $otvisits = 0;
+            $stvisits = 0;
+            if (isset($episode->cms485_id)) {                
+                $ptvisits = $this->visitlogmdl->getByEpisodeDatePeriod($episode->cms485_id,null,null,array(10,12), true);
+                $otvisits = $this->visitlogmdl->getByEpisodeDatePeriod($episode->cms485_id,null,null,array(40,42), true);
+                $stvisits = $this->visitlogmdl->getByEpisodeDatePeriod($episode->cms485_id,null,null,array(60,62), true);
+            }
+            $cell->append($this->xml->Element("cell", null, $ptvisits)); 
+            $cell->append($this->xml->Element("cell", null, $otvisits)); 
+            $cell->append($this->xml->Element("cell", null, $stvisits)); 
+
+            $cell->append($this->xml->Element("cell", null, $patient->tab_description)); 
+            
+            $document->append($cell);
+            
+        }
+        
+    }
+    /////
+    
+    function print_patients($contrator_id){
+      if (!is_null($this->input->post('record_ids'))) {
+        //$this->load->library('Wick');            
+        $data['contrator_name'] = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+
+        //var_dump($this->input->post('record_ids'));exit;
+        $record_ids = $this->input->post('record_ids');
+        $records = explode(",", $record_ids);      
+        $data['patients'] = array();
+        foreach ($this->patientmdl->getByIds($records) as $patient) {
+            $episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+            $episode->estimated_soc_date = standard_date(mysql_to_unix(@$episode->estimated_soc_date));
+            $episode->episode_start_date = standard_date(mysql_to_unix(@$episode->episode_start_date));
+            $episode->episode_end_date = standard_date(mysql_to_unix(@$episode->episode_end_date, 'USA_DATE_TIME'));
+
+            $ptvisits = 0;
+            $otvisits = 0;
+            $stvisits = 0;
+            if (isset($episode->cms485_id)) {                
+                $ptvisits = $this->visitlogmdl->getByEpisodeDatePeriod($episode->cms485_id,null,null,array(10,12), true);
+                $otvisits = $this->visitlogmdl->getByEpisodeDatePeriod($episode->cms485_id,null,null,array(40,42), true);
+                $stvisits = $this->visitlogmdl->getByEpisodeDatePeriod($episode->cms485_id,null,null,array(60,62), true);
+            }
+
+            $patient->episode = $episode;
+            $patient->ptvisits = $ptvisits;
+            $patient->otvisits = $otvisits;
+            $patient->stvisits = $stvisits;
+            $data['patients'][] = $patient;
+        }        
+        // $data['tab_13_list'] = $this->parametermdl->getByType(13);
+        // $content = $this->load->view('contractor/invoices/print_invoice',$data,true);
+        $content = $this->load->view('agencycontractor/print_patients',$data,true);
+        // echo $content;exit;
+        
+        // convert in PDF
+        require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+        try
+        {
+            $html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+            //$html2pdf = new HTML2PDF('P', 'A4', 'en');
+    //        $html2pdf->setModeDebug();
+            //$html2pdf->pdf->SetDisplayMode('fullpage');
+            $html2pdf->setTestTdInOnePage(false);
+            $html2pdf->setDefaultFont('Arial');
+            $html2pdf->writeHTML($content);
+            $html2pdf->Output('contractor-'.$data['contrator_name'].'-patients.pdf', 'D');                    
+        }
+        catch(HTML2PDF_exception $e) {
+            echo $e;
+            exit;
+        }    
+
+      }
+    }
+  function invoices($agency_contractor_id) {
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contrator_id = $data->contractor_id;
+    
+    $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+    
+    $this->tpl->assign("no_grid_buttons", true);
+	$this->tpl->assign('noedit', true);
+    $this->tpl->assign("resource_edit", 'edit_invoice');    
+    $this->tpl->assign("resource_grid", "invoices_grid");
+    
+    $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+    $this->tpl->assign("entity_id", $agency_contractor_id);
+    
+    //$this->tpl->assign("resource_grid", "invoices_grid/".$agency_contractor_id);
+    
+    //$this->tpl->assign('additional_buttons', array('Back' => 'window.location.href=\''.$this->config->site_url().'/contractor/invoices/index\''));
+    
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);		
+    if($this->getAgencyId() == $data->agency_id){
+      $co_balance = $this->companyinvoicemdl->getTotalAgencyBalance($agency_contractor_id);  
+	  $co_balance = number_format($co_balance, 2);   
+      if(is_null($co_balance)){
+        $co_balance = '0.00';      
+      }
+            
+      $this->tpl->assign('co_balance', $co_balance);
+      $this->tpl->assign('agency_name', $data->agency_name);      
+    } 
+    
+    $current_url = site_url($this->uri->uri_string());
+    $base_url = base_url().'index.php/';
+    $current_url = str_replace($base_url, "", $current_url);
+    
+    //$this->session->set_userdata('back', $current_url);
+    $this->tpl->assign("back", preg_replace('"/"', '-', $current_url));
+  
+
+    $this->tpl->assign_include("filter_tpl", "agencycontractor/invoices_gfilter");
+		//$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/invoices_gbase");
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+        
+  }
+
+  function invoices_grid($agency_contractor_id){
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contrator_id = $data->contractor_id;
+    
+    $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+  
+    
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=link", "Invoice #"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Invoice Date"));
+    $head->append($this->xml->Element("column", "width=*;type=ro", "Sent Date"));
+		$head->append($this->xml->Element("column", "width=5;type=ro", "Note"));
+		$head->append($this->xml->Element("column", "width=*", "Due date"));
+		$head->append($this->xml->Element("column", "width=*", "Bill Amount"));
+    $head->append($this->xml->Element("column", "width=*", "Payment"));
+		$head->append($this->xml->Element("column", "width=*", "Balance"));		
+		//$head->append($this->xml->Element("column", "width=*", "Status"));
+		//$head->append($this->xml->Element("column", "width=5;align=left;type=link", "Actions"));		
+    //$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		
+		$data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+		
+    if($this->getAgencyId() == $data->agency_id){
+      $invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id);
+      foreach($invoices as $invoice){
+          $show_detail_link = true;
+          $balance_in_red = false;  
+          if($invoice->credit_invoice == 1){              
+            $invoice->balance = number_format($invoice->balance, 2).' (CR)';
+            $invoice->total_payment = number_format($invoice->total_payment, 2);
+            $show_detail_link = false;
+          }
+          else{
+            if(@$invoice->balance > 0.00)
+            $balance_in_red = true;  
+            $invoice->balance = number_format($invoice->balance, 2);
+          }
+          
+          
+            
+          if($invoice->total_payment ){
+            $invoice->total_payment = number_format($invoice->total_payment, 2);
+          }
+
+          if($invoice->invoice_amount){
+            $invoice->invoice_amount = number_format($invoice->invoice_amount, 2);          }          
+            
+          /*$balance_in_red = false;  
+          if($invoice->invoice_status == 'PA'){
+          }
+          else if($invoice->invoice_amount > $invoice->total_payment){
+            $balance_in_red = true; 
+          }
+          else if($invoice->invoice_status == 'NP'){
+            $balance_in_red = true; 
+          }          
+          */
+          
+          $comments = $invoice->agency_notes;
+          $comments = str_replace("\n","<br>",$comments );
+          $comments = str_replace("\r","",$comments );
+          $comments = str_replace("'","\\'",$comments );
+          $commentsCellStr = '<![CDATA[';
+          if($comments!="")
+            $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$comments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note.jpg" border="0" /></a>&nbsp;';
+          $commentsCellStr .= ']]>';  
+          
+    			$cell = $this->xml->Element("row", "id=" . $invoice->invoice_id);    
+          $cell->append($this->xml->Element("cell", null, $invoice->invoice_no."^javascript:detailInvoice(" . $invoice->invoice_id . ")"));
+    			$cell->append($this->xml->Element("cell", null, date("m/d/Y",mysql_to_unix($invoice->invoice_date))));
+          $cell->append($this->xml->Element("cell", null, is_null($invoice->sent_date) ? "" : (date("m/d/Y",mysql_to_unix($invoice->sent_date))) ));
+    			$cell->append($this->xml->Element("cell", null, $commentsCellStr));
+    			$cell->append($this->xml->Element("cell", null, date("m/d/Y",mysql_to_unix($invoice->invoice_due_date))));
+    			$cell->append($this->xml->Element("cell", null, ($invoice->invoice_amount ? '$  '.$invoice->invoice_amount : '')));			
+          $cell->append($this->xml->Element("cell", null, '$  '.$invoice->total_payment));			
+          if($balance_in_red){
+            $cell->append($this->xml->Element("cell", null, htmlentities('$  <font color="red">'.$invoice->balance.'</font>')));
+          }else{
+            $cell->append($this->xml->Element("cell", null, '$  '.$invoice->balance));
+          }
+    			
+    			//$cell->append($this->xml->Element("cell", null, ($invoice->invoice_status == 'PA' ? 'Paid' : 'Not Paid')));			
+    			
+          //$cell->append($this->xml->Element("cell", null, ""));
+          //$cell->append($this->xml->Element("cell", null, "Update^javascript:editInvoice(" . $invoice->invoice_id . ")"));
+          /*if($show_detail_link){
+            $cell->append($this->xml->Element("cell", null, "Detail^javascript:detailInvoice(" . $invoice->invoice_id . ")"));
+          }*/
+    			$document->append($cell);
+      }
+      
+  		
+		}
+  }
+  
+  function invoice_detail($invoice_id, $back=null){
+    if(is_null($back)){
+      $agency_contractor_id = 0;
+      foreach ($this->agencycontractormdl->get($this->getAgencyId()) as $contractor) {
+        $agency_contractor_id = $contractor->agency_contractor_id;
+        break;
+      }
+      if($agency_contractor_id > 0){
+        $back='agencycontractor-contractor-'.$agency_contractor_id;
+      }
+    }
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    $invoice->balance_in_red = false;  
+    if($invoice->credit_invoice == 1){
+      $invoice->balance = $invoice->balance.' (CR)';
+      // $invoice->total_payment = $invoice->total_payment * (-1.00);
+      $invoice->total_payment = number_format($invoice->total_payment, 2);      
+    }
+    else{
+      if($invoice->balance > 0.00)
+      $invoice->balance_in_red = true;  
+    }
+    
+    $invoice->balance = '$'.number_format($invoice->balance, 2);
+    $invoice->amount = '$'.number_format($invoice->invoice_amount, 2); 
+    $invoice->agency_balance = '$'.number_format($invoice->agency_balance, 2); 
+    $this->assignObject($invoice);
+    
+    
+    $this->tpl->assign("invoice_id", $invoice_id);
+    //$this->tpl->assign_include("dynamic_tpl", "payroll/tbase");
+		$this->tpl->assign_include("dynamic_tpl", "agencycontractor/invoices_detail_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+  }
+  
+  function detail_visits($invoice_id, $back=null){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);    
+    if(!$invoice){
+      show_404();
+    }
+    
+    if($invoice->agency_id != $this->getAgencyId()){
+      show_404();
+    }
+    
+    if(is_null($back)){
+      $agency_contractor_id = 0;
+      foreach ($this->agencycontractormdl->get($this->getAgencyId()) as $contractor) {
+        $agency_contractor_id = $contractor->agency_contractor_id;
+        break;
+      }
+      if($agency_contractor_id > 0){
+        $back='agencycontractor-invoices-'.$invoice->agency_contractor_id;
+      }
+    }
+    
+    
+    $invoice->balance = number_format($invoice->balance, 2);
+    
+    $this->tpl->assign("invoice_id", $invoice_id);
+    
+    if($invoice->credit_invoice == 1){
+      show_404();
+    }else{       
+      $this->tpl->assign("no_grid_buttons", true);
+      $this->tpl->assign('noedit', true);
+      
+      //$this->tpl->assign("resource_edit", 'edit_invoice');    
+      $this->tpl->assign("resource_grid", "visits_grid");
+      
+      $this->tpl->assign("invoice_id", $invoice_id);
+      $this->tpl->assign("entity_id", $invoice_id);
+      
+      //$this->tpl->assign('additional_buttons', array('Back' => 'window.location.href=\''.$this->config->site_url().'/contractor/invoices/index\''));
+      $this->tpl->assign('additional_buttons', array('Print Invoice'=>'document.print_form.submit();', 'Back' => 'parent.location.href=\''.$this->config->site_url().'/'.preg_replace('"-"','/',$back).'\''));
+      
+      
+      $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);		
+      if($this->getAgencyId() == $data->agency_id){
+        $this->assignObject($invoice);        
+        $this->tpl->assign('agency_name', $data->agency_name);        
+      }
+      
+      $this->tpl->assign_include("filter_tpl", "agencycontractor/visits_gfilter");
+  		//$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/visits_gbase");
+  		$this->tpl->assign_include("dynamic_tpl", "agencycontractor/visits_gbase");
+  		$this->tpl->view("parts/ibase", $this->lang->language);
+       
+    }
+  }
+
+  function visits_grid($invoice_id){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    $this->xml->root_name = "rows";
+	$document = $this->xml->Document();
+	$head = $this->xml->Element("head");
+	$head->append($this->xml->Element("column", "width=20;type=ro", "Visit Date"));
+	$head->append($this->xml->Element("column", "width=*", "Type of Visit"));
+	$head->append($this->xml->Element("column", "width=*", "Clinician"));
+	$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+	$head->append($this->xml->Element("column", "width=*", "Visit Status"));
+	$head->append($this->xml->Element("column", "width=5;align=left;type=link", "Actions"));		
+	$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+	$document->append($head);
+	
+    if($invoice){
+        $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);
+  		
+        if($this->getAgencyId() == $data->agency_id){
+            $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+            foreach($patients as $patient){
+          
+                $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, $patient->patient_id);
+              
+                if(count($visits) ==0 )
+                continue;
+              
+                $cell = $this->xml->Element("row", "");
+                $cell->append($this->xml->Element("cell", "colspan=3;aligh=center", '<![CDATA[<b>Patient: <font color="#0000FF">'.$patient->complete_name.'</font></b>]]>'));		
+                $document->append($cell);
+          
+                foreach ($visits as $visit) {
+                    $visit_rate = $this->visitlogmdl->getSingleVisitBillAmount($visit);
+
+                    $visit->co_final_rate = number_format($visit_rate, 2);  
+
+                  	$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+          			//$cell->append($this->xml->Element("cell", null, $visit->visit_log_id."::".$visit->patient_id."::".$patient->patient_id."::".standard_date(mysql_to_unix($visit->visited_date), 'VIS_LIST')));
+                    if($visit->billable_YN == 0)
+              			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date)).' (Non Billable)' ));
+                    else
+              			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date))));
+        
+                    switch($visit->visit_program){
+                      case 'ptev':
+                      case 'stev':                
+                        $visit->assessment_type = '  '.@$tab_32_list[$visit_eval->tab_32_assess_type];
+                        break;
+                      case 'otev':
+                        $visit->assessment_type = '  '.@$tab_32_list[$visit_eval->tab_92_assess_type];
+                        break;                
+                    }
+
+                    $cell->append($this->xml->Element("cell", null, $visit->visit_description.@$visit->assessment_type));
+                	$cell->append($this->xml->Element("cell", null, $visit->clinician));
+          			$cell->append($this->xml->Element("cell", null, '$'.$visit->co_final_rate));			
+          			$cell->append($this->xml->Element("cell", null, $visit->tab_description));			
+                    $cell->append($this->xml->Element("cell", null, ""));
+                    //$cell->append($this->xml->Element("cell", null, "Edit^javascript:editVisit(" . $visit->visit_log_id . ")"));
+          			$document->append($cell);
+          			
+      		    }
+            }
+
+            $other_charges = $this->invoiceotherchargesmdl->getOtherAmount($invoice_id);
+            if ($other_charges > 0) {
+                $cell = $this->xml->Element("row", "");
+                $cell->append($this->xml->Element("cell", "colspan=3;aligh=center", '<![CDATA[<b>Additional Charges</b>]]>'));   
+                $document->append($cell);
+
+                foreach ($this->invoiceotherchargesmdl->get($invoice_id) as $other) {
+                    $description = $this->xml_entities($other->description);  
+                    $description = str_replace('"','',$description);
+                    $description = str_replace("'",'',$description);
+                    $description = str_replace("=",'',$description);
+
+                    $cell = $this->xml->Element("row", "");
+                    $cell->append($this->xml->Element("cell", null, (($other->service_date != '0000-00-00') ? date("m/d/Y",mysql_to_unix($other->service_date)) : '' ) ));   
+                    $cell->append($this->xml->Element("cell", null, $description));   
+                    $cell->append($this->xml->Element("cell", null, ''));      
+                    $cell->append($this->xml->Element("cell", null, '$'.$other->amount));      
+                    $cell->append($this->xml->Element("cell", null, ''));      
+                    $cell->append($this->xml->Element("cell", null, ''));
+                    $cell->append($this->xml->Element("cell", null, ''));            
+                    $cell->append($this->xml->Element("cell", null, ''));            
+                    $document->append($cell);
+
+                }
+            }
+  		}
+    }
+  }
+  
+  function payments($invoice_id, $back=null){
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(is_null($back)){
+      $agency_contractor_id = 0;
+      foreach ($this->agencycontractormdl->get($this->getAgencyId()) as $contractor) {
+        $agency_contractor_id = $contractor->agency_contractor_id;
+        break;
+      }
+      if($agency_contractor_id > 0){
+        $back='agencycontractor-invoices-'.$invoice->agency_contractor_id;
+      }
+    }
+
+    
+    //$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());  
+    $this->tpl->assign("no_grid_buttons", true);    
+    $this->tpl->assign("noedit", true);    
+		$this->tpl->assign(array("add_sufix" => "Payment"));
+    $this->tpl->assign("resource_grid", "payments_grid");
+    $this->tpl->assign("resource_index", 'payments'); 
+    //$this->tpl->assign('resource_add', 'payments_add');
+    //$this->tpl->assign('resource_edit', 'payments_edit');
+    //$this->tpl->assign("resource_delete", "payments_delete");
+        
+    $this->tpl->assign("entity_id", $invoice_id);
+    
+    $invoice->balance_in_red = false;  
+    if($invoice->credit_invoice == 1){
+      $invoice->balance = $invoice->balance.' (CR)';
+      // $invoice->total_payment = $invoice->total_payment * (-1.00);
+      $invoice->total_payment = number_format($invoice->total_payment, 2);      
+    }
+    else{
+      if($invoice->balance > 0.00)
+      $invoice->balance_in_red = true;  
+    }
+    
+    $invoice->balance = '$'.number_format($invoice->balance, 2);
+    $invoice->amount = '$'.number_format($invoice->invoice_amount, 2); 
+    $this->assignObject($invoice);
+    
+    $this->tpl->assign('additional_buttons', array( 'Back' => 'parent.location.href=\''.$this->config->site_url().'/'.preg_replace('"-"','/',$back).'\''));
+      
+      
+		$this->tpl->assign_include("filter_tpl", "agencycontractor/payment_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function payments_grid($invoice_id){
+    $this->load->model('invoicepaymentsmdl');
+    
+    
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Payment Amount"));
+		$head->append($this->xml->Element("column", "width=*", "Payment Date"));
+		$head->append($this->xml->Element("column", "width=*", "Notes"));
+		//$head->append($this->xml->Element("column", "width=25;align=left;type=link", "Actions"));	
+        // $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$data = $this->invoicepaymentsmdl->get($invoice_id);
+		
+		foreach ($data as $tran) {	
+      $amount = '$'.number_format($tran->payment_amount, 2); 
+      
+			$cell = $this->xml->Element("row", "id=" . $tran->invoice_payment_id);
+			$cell->append($this->xml->Element("cell", null, $amount));
+      $cell->append($this->xml->Element("cell", null, ($tran->payment_date != '0000-00-00') ? date("m/d/Y",mysql_to_unix($tran->payment_date)) : '' ));
+			$cell->append($this->xml->Element("cell", null, $tran->payment_notes));			
+      
+      //$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "contractor/invoices/delete_payment/" . $tran->invoice_payment_id . "/".$invoice_id."^Are you sure to delete this payment?"));
+      
+      
+      $document->append($cell);
+			
+		}		
+  }
+
+    function clinicians($agency_contractor_id){
+        $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+        $contrator_id = $data->contractor_id;        
+        $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+
+        //echo 'getAgencyId = '.$this->getAgencyId()." : contractor_id = ".$data->contractor_id." : agency_id=".$data->agency_id;exit;
+
+        $this->tpl->assign('type_employee_list', $this->parametermdl->getByType(6));
+        $this->tpl->assign("profile_list", $this->profilemdl->getByType(($this->getAgencyType() == 'C' ? 'profile_contractor' : 'profile_agency'), false));
+        $this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+        $this->tpl->assign("user_status_list", $this->parametermdl->getByType(21));
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+        $this->tpl->assign('resource_grid', 'clinicians_grid/'.$agency_contractor_id);  
+        $this->tpl->assign("resource_edit", 'credentials/'.$agency_contractor_id);    
+        $this->tpl->assign("no_grid_buttons", true);
+
+        $this->tpl->assign(array("list_title" => "Clinicians", "add_sufix" => "User"));
+        // $this->tpl->assign_include("filter_tpl", "administrator/useragency/gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    } 
+
+    function clinicians_grid ($agency_contractor_id) {
+        $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+        $contrator_id = $data->contractor_id;        
+        $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+    
+        $agency_id = $this->session->userdata('agency_id'); 
+        $agency_types = $this->lang->line('agency_type_list');
+        $status       = $this->lang->line('agency_status_list');
+        
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        // $head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+        $head->append($this->xml->Element("column", "width=*", "Clinician  Name "));      
+        $head->append($this->xml->Element("column", "width=10;type=link;align=center",  "Credentials"));
+        //end
+        //$head->append($this->xml->Element("column", "width=10;type=linkc;align=center", "Actions"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+        
+        foreach ($this->usagymdl->getCliniciansOnlyAssociatedToPatients($contrator_id, $agency_id, true) as $user) {            
+            $cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+            // $cell->append($this->xml->Element("cell", null, $user->us_agy_id));
+            $cell->append($this->xml->Element("cell", null, $user->complete_name));
+            
+            $cell->append($this->xml->Element("cell", null, "Credentials^" . $this->config->config['index_url'] . "agencycontractor/credentials/" . $agency_contractor_id . "/" . $user->us_agy_id ));
+
+            //$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "useragency/user/delete/" . $user->us_agy_id . "^Are you sure to delete this user?"));
+            $document->append($cell);
+            
+        }
+        
+    }
+  
+
+    function users($agency_contractor_id){
+        $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+        $contrator_id = $data->contractor_id;        
+        $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+
+        //echo 'getAgencyId = '.$this->getAgencyId()." : contractor_id = ".$data->contractor_id." : agency_id=".$data->agency_id;exit;
+
+        $this->tpl->assign('type_employee_list', $this->parametermdl->getByType(6));
+        $this->tpl->assign("profile_list", $this->profilemdl->getByType(($this->getAgencyType() == 'C' ? 'profile_contractor' : 'profile_agency'), false));
+        $this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+        $this->tpl->assign("user_status_list", $this->parametermdl->getByType(21));
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+        $this->tpl->assign('resource_grid', 'users_grid/'.$agency_contractor_id);  
+        $this->tpl->assign("resource_edit", 'credentials/'.$agency_contractor_id);    
+        $this->tpl->assign("no_grid_buttons", true);
+
+        $this->tpl->assign(array("list_title" => "Authorized Users", "add_sufix" => "User"));
+        $this->tpl->assign_include("filter_tpl", "administrator/useragency/gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }  
+  
+    function users_grid ($agency_contractor_id) {
+		$data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+        $contrator_id = $data->contractor_id;        
+        $contrator_name = $this->agencycontractormdl->getContractorName($contrator_id, $this->getAgencyId());        
+    
+		$agency_id = $this->session->userdata('agency_id'); 
+		$agency_types = $this->lang->line('agency_type_list');
+		$status		  = $this->lang->line('agency_status_list');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		// $head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=16", "Employee Name"));		
+		$head->append($this->xml->Element("column", "width=*", "Discipline"));
+		//vanlt add
+		$head->append($this->xml->Element("column", "width=*", "Phone"));
+		$head->append($this->xml->Element("column", "width=*", "Email"));
+        $head->append($this->xml->Element("column", "width=10;type=link;align=center",  "Credentials"));
+		//end
+		//$head->append($this->xml->Element("column", "width=10;type=linkc;align=center", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->usagymdl->getByAgencyId($contrator_id, $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, null, array(), $this->input->post('status')) as $user) {
+			
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			// $cell->append($this->xml->Element("cell", null, $user->us_agy_id));
+			$cell->append($this->xml->Element("cell", null, $user->first_name." ".$user->last_name));
+			$cell->append($this->xml->Element("cell", null, $user->description));
+			//vanlt add
+			$cell->append($this->xml->Element("cell", null, $user->phone_home));
+			$cell->append($this->xml->Element("cell", null, $user->email));
+			//end
+			
+            $cell->append($this->xml->Element("cell", null, "Credentials^" . $this->config->config['index_url'] . "agencycontractor/credentials/" . $agency_contractor_id . "/" . $user->us_agy_id ));
+
+			//$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "useragency/user/delete/" . $user->us_agy_id . "^Are you sure to delete this user?"));
+			$document->append($cell);
+			
+		}
+		
+	}
+  
+  function credentials ( $agency_contractor_id, $us_agy_id ) {
+        $user = $this->usagymdl->getByUsAgyId($us_agy_id);
+    
+        $this->tpl->assign("list_title", $user->first_name." ".$user->last_name);
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign("add_sufix", "Credential");
+        $this->tpl->assign('resource_grid', 'credentials_grid');  
+        $this->tpl->assign("no_grid_buttons", true);
+        $this->tpl->assign("noedit", true);
+
+        // $this->tpl->assign('additional_buttons',array('Back'=> "location.href='".$this->config->config['index_url'] . "agencycontractor/users/".$agency_contractor_id."'"));
+        $this->tpl->assign('additional_buttons',array('Back'=> "history.go(-1)"));
+    
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+
+    function credentials_grid ( $us_agy_id ) {
+        $this->load->model('us1usercredentialsmdl');
+
+        $userUsAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+        $credentials = $this->us1usercredentialsmdl->getById($userUsAgy->user_id, null, 'Active', $userUsAgy->agency_id);
+        // $credentials = $this->usagycredentialmdl->getByUsAgyId($us_agy_id);
+        $now = time();    
+        
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=7;align=center", "Alert"));
+		$head->append($this->xml->Element("column", "width=20", "Credential Type"));
+		$head->append($this->xml->Element("column", "width=20", "Credential Id"));
+		$head->append($this->xml->Element("column", "width=15;align=center",  "Expiration Date"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Days to expire"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Attachment"));
+		$head->append($this->xml->Element("column", "width=*", "Notes"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($credentials as $credential) {
+			$cell = $this->xml->Element("row", "id=" . $credential->user_credential_id);
+            if($this->__needto_alert($credential)){
+                //$cell->append($this->xml->Element("cell", "title=alert..", $this->config->config["base_url"] . "style/images/exclamation.gif"));
+                //$cell->append($this->xml->Element("cell", null, base_url().'style/images/exclamation.gif'));
+
+                $cell->append($this->xml->Element("cell", null, htmlspecialchars('<img src="'.base_url().'style/images/exclamation.gif" />')));
+            }
+            else
+              $cell->append($this->xml->Element("cell", null, ''));
+      
+            $days_left = $this->__daysLeft($credential->expiration_date);
+            if($days_left < 0)
+              $days_left = 0;
+      
+			$cell->append($this->xml->Element("cell", null, $credential->tab_description));
+			$cell->append($this->xml->Element("cell", null, $credential->credential_id));
+			$cell->append($this->xml->Element("cell", null, (!is_null($credential->expiration_date)) ? standard_date(mysql_to_unix($credential->expiration_date)) : null));
+            $cell->append($this->xml->Element("cell", null, $days_left));
+      
+            if($credential->attachment_id > 0 AND $credential->attachment!=""){
+                $cell->append($this->xml->Element("cell", null, htmlspecialchars('<a href="'.base_url().'datastore/credential/'.$credential->attachment.'" target="_blank" title="View credential">View credential</a>')));
+            }else{
+              $cell->append($this->xml->Element("cell", null, ''));
+            }
+      
+            if($credential->notes!="")
+            	$cell->append($this->xml->Element("cell", null, htmlspecialchars('<img src="'.base_url().'style/images/icon_note.jpg" title="'.$credential->notes.'" alt="'.$credential->notes.'" />')));
+            else
+            	$cell->append($this->xml->Element("cell", null, ''));
+      
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function edit_invoice($invoice_id){
+		$invoice = $this->companyinvoicemdl->getById($invoice_id);
+		//echo "<pre>"; print_r($invoice); echo "</pre>"; exit;
+		if(!$invoice){
+			echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";exit;
+		}
+		
+		$invoice->balance = number_format($invoice->balance, 2);
+		
+		$this->tpl->assign("invoice_id", $invoice_id);
+		
+		//$this->validation->set_rules(array ('agency_notes' => 'required'));	
+
+		if ($this->validation->run() == FALSE) {
+			$this->assignObject($invoice);
+			
+			$this->tpl->assign_include("dynamic_tpl", "agencycontractor/edit_invoice_form");			  
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		
+		} else {
+			
+			$agency_paid_status = $this->input->post('agency_paid_status');
+			$agency_notes = $this->input->post('agency_notes'); 
+			
+            $this->companyinvoicemdl->updateFlex($invoice_id, 'agency_paid_status', $agency_paid_status);
+			$this->companyinvoicemdl->updateFlex($invoice_id, 'agency_notes', $agency_notes);
+            
+            echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+		}
+	}
+
+    function __daysLeft($expiration_date=null){
+        if(!$expiration_date)
+        return 0;
+
+        $expiration_time = strtotime($expiration_date);    
+        $now = time();        
+        $days_left = floor(($expiration_time-$now)/86400);            
+        return $days_left;
+    }
+  
+    function __needto_alert($credential){
+        if(!$credential->expiration_date)
+        return false;
+        
+        if ($credential->verify_expiration == 'no') {
+            return false;
+        }
+
+        $now = time();
+        $alert = false;
+        $expiration_time = strtotime($credential->expiration_date);
+        
+        if($expiration_time < $now)
+            $alert = true;    
+        else{
+            $days_left = $this->__daysLeft($credential->expiration_date);
+            if($days_left <= $credential->alert_days)
+                $alert = true;    
+        }
+        return $alert;
+    }
+
+    function xml_entities($text, $charset = 'UTF-8'){
+        $text=str_replace("&","",$text);
+        $text=str_replace("&","",$text);
+        $text=str_replace(";","",$text);
+        return $text;
+    }    
+    
+}

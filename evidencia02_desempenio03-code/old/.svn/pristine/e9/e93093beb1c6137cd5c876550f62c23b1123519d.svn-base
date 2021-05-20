@@ -1,0 +1,122 @@
+<?php
+ include('visitform.php');
+
+  class Aidepn extends VisitForm {
+
+	function Aidepn () {
+		
+		parent::VisitForm();
+
+//		$this->load->model('ptpnmdl');
+		$this->load->model('aidepnmdl');
+
+		$this->tpl->assign("resource_path", "task/aidepn");
+		$this->tpl->assign(array("tab_page" => true));
+		
+		$this->tpl->assign('tab_024_list_values',  array_keys($this->parametermdl->getByType(24)));
+		$this->tpl->assign('tab_024_list_options', $this->parametermdl->getByType(24));
+		$this->tpl->assign('tab_048_list_options', $this->parametermdl->getByType(48));
+		$this->tpl->assign('tab_075_pain_level_list', $this->parametermdl->getByType(75));
+		
+	}
+
+	function index ( $visit_log_id, $action='task' ) {
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		
+		$this->assignObject($visitlog);
+		
+		// si aun no está guardado aidePN debo tomar el aidePOC correspondiente y guardarlo
+		
+		$regAidepn = $this->aidepnmdl->get($visit_log_id);
+		
+		if (!count($regAidepn)) {
+			
+			$this->load->model('aidepocmdl');
+			
+			$regAidepn = $this->aidepocmdl->getPreviousPoc($visitlog->cms485_id, $visitlog->visit_date_time);
+			
+			if (!count($regAidepn)) {
+				
+				if (count($this->aidepocmdl->getPreviousPocSoc($visitlog->soc_id, $visitlog->cms485_id, $visitlog->visit_date_time))) {
+					$this->tpl->assign("show_previous_in_soc", true);
+				}
+				
+				$this->tpl->assign_include("dynamic_form", "task/documents/aidepn_error");
+				$this->setfbase($visit_log_id, $action);
+				$this->tpl->assign("visit_status_id", 10);
+				$this->tpl->view("parts/ibase", $this->lang->language);
+				
+				return;
+				
+			}
+			
+			$regAidepn->visit_log_id = $visitlog->visit_log_id;
+			
+			$this->assignPostData($this->aidepnmdl, $regAidepn);
+			$this->aidepnmdl->insert();
+			
+		}
+		
+		$this->assignObject($regAidepn);		
+		
+
+		if ($this->validation->run() == TRUE) {
+
+			$this->updateFormEdition($visit_log_id);
+			
+			$this->assignPostData($this->aidepnmdl);
+			
+			if (count($this->aidepnmdl->get($visit_log_id))) {
+				$this->aidepnmdl->update($visit_log_id);
+			} else {
+				$this->aidepnmdl->insert($visit_log_id);
+			}
+			
+			$this->formRedirection($visit_log_id);
+			
+		}
+		
+		$user = $this->usermdl->getById($this->session->userdata('user_id'));
+		$us_agy = $this->usagymdl->getByUserId($this->session->userdata('user_id'));
+		
+		$this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(2, 3)));
+		$this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array(2)));
+		
+		$this->getPatientInfo($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/aidepn");
+		$this->setfbase($visit_log_id, $action);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+	
+	function pdf($cms485_id,$hha_progress_note_id){
+
+		//echo "salut";
+
+		$__FONT['PDF']['SIZE'] = 8;
+		$__FONT['PDF']['FORM_LARGE'] = 9;	
+		$__FONT['PDF']['FORM_MEDIUM'] = 8;		
+		$__FONT['PDF']['FORM_SMALL'] = 6;
+
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+		$pdf = $this->fpdf;
+
+		$pdf->AddPage();
+
+		$cero_x = 11;
+		$cero_y = 28;		
+
+		$pdf->SetDrawColor(130,100);				
+		$pdf->SetFont('Arial', 'B', 6.5);		
+		$pdf->Text(11, 28, "Department of Health and Human Services");
+		$pdf->Text(11, 34, "Centers for Medicare & Medicaid Services");
+
+		$this->fpdf->Output('test.pdf','D');
+
+	}
+
+ }

@@ -1,0 +1,313 @@
+<?
+class DocDoctorOrderMdl extends Model {
+
+	var $doc_doctor_order_id;
+	var $patient_id;
+	var $doc_doctor_order_type_id;
+	var $order_date;
+	var $order_by_user_id;
+	var $doctor_office_id;
+	var $tab_023_order_status;
+	var $tab_094_expected_time_sign;
+	var $sent_date;
+	var $signed_date;
+	var $rejected_date;
+	var $electronic_signed;
+	var $electronic_date;
+	var $electronic_doctor_sign;
+	var $user_notes;
+	var $physician_notes;
+
+	function DocDoctorOrderMdl () {
+		
+		parent::Model();
+		
+	}
+
+	function getById ( $doc_doctor_order_id ) {
+
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+
+		$this->db->where("doc_doctor_order_id", $doc_doctor_order_id);
+		
+		$query = $this->db->get("doc_doctor_order");
+		return $query->row();
+		
+	}
+	
+	function getByPatient ( $patient_id ) {
+
+		$this->db->select("doc_doctor_order.*, tab_parameters.*, doc_doctor_order_type.*");
+		
+		$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 		 'tab_parameters.tab_value = doc_doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		
+		$this->db->where("doc_doctor_order.patient_id", $patient_id);
+		$this->db->orderby("doc_doctor_order_id", "DESC");
+		
+		$query = $this->db->get("doc_doctor_order");
+		return $query->result();
+		
+	}
+	
+	function getByUserOrderId ( $order_by_user_id=null, $keyword=null, $tab_023_order_status=null, $type=null ) {
+
+		$this->db->select("doc_doctor_order.*, tab_parameters.*, doc_doctor_order_type.*");
+		
+		$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 		 'tab_parameters.tab_value = doc_doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		
+		if (!is_null($tab_023_order_status)) {
+			$this->db->where("tab_023_order_status", $tab_023_order_status);
+		}
+    if (!is_null($type)) {
+      $this->db->where("doc_doctor_order.doc_doctor_order_type_id", $type);
+      if ($this->input->post('order_owner') == 'MV'){
+        $this->db->join('doctor_order_ptev', 'doctor_order_ptev.doc_doctor_order_id = doc_doctor_order.doc_doctor_order_id');
+        $this->db->join('vt_pt_evaluation', 'vt_pt_evaluation.visit_log_id = doctor_order_ptev.visit_log_id AND (vt_pt_evaluation.verbal_doctor_order != 1 OR vt_pt_evaluation.verbal_doctor_order IS NULL)');
+        $this->db->select("vt_pt_evaluation.verbal_doctor_order");
+        //$this->db->where("( vt_pt_evaluation.verbal_doctor_order = NULL OR vt_pt_evaluation.verbal_doctor_order = 0 )");        
+      }			
+		}
+		
+		if (!is_null($keyword)) {
+			$this->db->join('us_agy as order_by',  'order_by.us_agy_id = doc_doctor_order.order_by_user_id', 'LEFT');
+			$this->db->join('agy_agency', 'agy_agency.agency_id = doc_doctor_order.doctor_office_id', 'LEFT');
+			
+			$this->db->where("(order_by.first_name LIKE '%{$keyword}%' OR order_by.last_name LIKE '%{$keyword}%' OR " .
+							 "agy_agency.agency_name LIKE '%{$keyword}%')");
+		}
+		
+		if (!is_null($order_by_user_id)) {
+			$this->db->where("order_by_user_id", $order_by_user_id);
+		}
+		
+		$this->db->orderby("doc_doctor_order_id", "DESC");
+		
+		$query = $this->db->get("doc_doctor_order");
+    return $query->result();
+		
+	}
+	
+	function getByPhysician ( $physician_id=null, $tab_023_order_status=null, $keyword=null ) {
+
+		$this->db->select("doc_doctor_order.*, tab_parameters.*, doc_doctor_order_type.*");
+		
+		$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 		 'tab_parameters.tab_value = doc_doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		
+		if (!is_null($tab_023_order_status)) {
+			$this->db->where_in("tab_023_order_status", $tab_023_order_status);
+		}
+		
+		if (!is_null($keyword)) {
+			$this->db->join('us_agy as order_by',  'order_by.us_agy_id = doc_doctor_order.order_by_user_id', 'LEFT');
+			$this->db->join('us_agy as physician', 'physician.us_agy_id = doc_doctor_order.physician_id', 'LEFT');
+			
+			$this->db->where("(order_by.first_name LIKE '%{$keyword}%' OR order_by.last_name LIKE '%{$keyword}%' OR " .
+							 "physician.first_name LIKE '%{$keyword}%' OR physician.last_name LIKE '%{$keyword}%')");
+		}
+		
+		if (!is_null($physician_id)) {
+			$this->db->where("doc_doctor_order.physician_id", $physician_id);
+		}
+		
+		$this->db->orderby("doc_doctor_order_id", "DESC");
+		
+		$query = $this->db->get("doc_doctor_order");
+		return $query->result();
+		
+	}
+	
+	function getByDoctorOffice ( $doctor_office_id=null, $tab_023_order_status=null, $keyword=null, $order='DESC' ) {
+
+		$this->db->select("doc_doctor_order.*, tab_parameters.*, doc_doctor_order_type.*, agy_agency.*");
+		
+		$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 		 'tab_parameters.tab_value = doc_doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		$this->db->join('agy_agency', 			 'agy_agency.agency_id = pat_patient.agency_id');
+		
+		if (!is_null($tab_023_order_status)) {
+			$this->db->where_in("tab_023_order_status", $tab_023_order_status);
+		}
+		
+		if (!is_null($keyword)) {
+			$this->db->join('us_agy as order_by',  'order_by.us_agy_id = doc_doctor_order.order_by_user_id', 'LEFT');
+			$this->db->join('us_agy as physician', 'physician.us_agy_id = doc_doctor_order.physician_id', 'LEFT');
+			
+			$this->db->where("(order_by.first_name LIKE '%{$keyword}%' OR order_by.last_name LIKE '%{$keyword}%' OR " .
+							 "physician.first_name LIKE '%{$keyword}%' OR physician.last_name LIKE '%{$keyword}%')");
+		}
+		
+		if (!is_null($doctor_office_id)) {
+			$this->db->where("doc_doctor_order.doctor_office_id", $doctor_office_id);
+		}
+		
+		$this->db->orderby("order_date", $order);
+		
+		$query = $this->db->get("doc_doctor_order");
+		return $query->result();
+		
+	}
+	
+	function getByAgencyId ( $agency_id, $us_agy_id=null, $keyword=null, $tab_023_order_status=null ) {
+
+		$this->db->where("pat_patient.agency_id", $agency_id);
+		
+		if (!is_null($us_agy_id)) {
+			$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id');
+			$this->db->join('ppr_patient_provider', 'ppr_patient_provider.patient_id = pat_patient.patient_id');
+			$this->db->where("ppr_patient_provider.user_id", $us_agy_id);
+		}
+		
+		return $this->getByUserOrderId(null, $keyword, $tab_023_order_status);
+		
+	}
+	
+	function getByContractorId ( $contractor_id, $us_agy_id=null, $keyword=null, $tab_023_order_status=null, $type=NULL ) {
+
+		$this->db->select("doc_doctor_order.*, tab_parameters.*, doc_doctor_order_type.*");
+		
+		$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 		 'tab_parameters.tab_value = doc_doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order.doc_doctor_order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		$this->db->join('pat_contractor', 		 'pat_contractor.patient_id = pat_patient.patient_id');
+		$this->db->join('agency_contractor', 	 'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id');
+		
+		$this->db->where("agency_contractor.contractor_id", $contractor_id);
+		
+		if (!is_null($us_agy_id)) {
+			$this->db->join('pat_patient',    		 'doc_doctor_order.patient_id = pat_patient.patient_id');
+			$this->db->join('ppr_patient_provider', 'ppr_patient_provider.patient_id = pat_patient.patient_id');
+			$this->db->where("ppr_patient_provider.user_id", $us_agy_id);
+		}
+		
+		
+		if (!is_null($tab_023_order_status)) {
+			$this->db->where("tab_023_order_status", $tab_023_order_status);
+		}
+		
+    if (!is_null($type)) {
+      $this->db->where("doc_doctor_order.doc_doctor_order_type_id", $type);
+      if ($this->input->post('order_owner') == 'AV'){
+        $this->db->join('doctor_order_ptev', 'doctor_order_ptev.doc_doctor_order_id = doc_doctor_order.doc_doctor_order_id');
+        $this->db->join('vt_pt_evaluation', 'vt_pt_evaluation.visit_log_id = doctor_order_ptev.visit_log_id AND (vt_pt_evaluation.verbal_doctor_order != 1 OR vt_pt_evaluation.verbal_doctor_order IS NULL)');           
+      }			
+		}
+    
+		if (!is_null($keyword)) {
+			$this->db->join('us_agy as order_by',  'order_by.us_agy_id = doc_doctor_order.order_by_user_id', 'LEFT');
+			$this->db->join('us_agy as physician', 'physician.us_agy_id = doc_doctor_order.physician_id', 'LEFT');
+			
+			$this->db->where("(order_by.first_name LIKE '%{$keyword}%' OR order_by.last_name LIKE '%{$keyword}%' OR " .
+							 "physician.first_name LIKE '%{$keyword}%' OR physician.last_name LIKE '%{$keyword}%')");
+		}
+		
+		$this->db->orderby("doc_doctor_order_id", "DESC");
+		
+		$query = $this->db->get("doc_doctor_order");
+		return $query->result();		
+	}
+
+	function insert ( $patient_id, $tab_023_order_status=1 ) {
+
+		$this->patient_id  			= $patient_id;
+		$this->tab_023_order_status = $tab_023_order_status;
+		
+//		if ($tab_023_order_status == 2) {
+//			$this->sent_date = date('Y-m-d');
+//		}
+
+		$this->db->insert("doc_doctor_order", $this);
+		$this->doc_doctor_order_id = $this->db->insert_id();
+		
+	}
+
+	function update ( $doc_doctor_order_id, $tab_023_order_status=1  ) {
+
+		$doctor_order = null;
+		$doctor_order->tab_023_order_status = $tab_023_order_status;
+		$doctor_order->order_date = $this->order_date;
+		$doctor_order->doc_doctor_order_type_id = $this->doc_doctor_order_type_id;
+		$doctor_order->doctor_office_id = $this->doctor_office_id;
+		$doctor_order->tab_094_expected_time_sign = $this->tab_094_expected_time_sign;
+		$doctor_order->user_notes = $this->user_notes;
+		
+		$this->db->where("doc_doctor_order_id", $doc_doctor_order_id);
+
+		$this->db->update("doc_doctor_order", $doctor_order);
+		
+	}
+	
+	function updatePhysician ( $doc_doctor_order_id, $doctor_office_id ) {
+
+		$doctor_order = null;
+		$doctor_order->doctor_office_id = $doctor_office_id;
+		
+		$this->db->where("doc_doctor_order_id", $doc_doctor_order_id);
+
+		$this->db->update("doc_doctor_order", $doctor_order);
+		
+	}
+	
+	function updateOrderBy ( $doc_doctor_order_id, $order_by_user_id ) {
+
+		$doctor_order = null;
+		$doctor_order->order_by_user_id = $order_by_user_id;
+		
+		$this->db->where("doc_doctor_order_id", $doc_doctor_order_id);
+
+		$this->db->update("doc_doctor_order", $doctor_order);
+		
+	}
+	
+	function updateFlex ( $doc_doctor_order_id, $attribute, $value ) {
+	
+		$this->db->where('doc_doctor_order_id', $doc_doctor_order_id);
+		$this->db->set($attribute, $value);
+	
+		$this->db->update('doc_doctor_order');
+	
+	}	
+
+	function delete ( $doc_doctor_order_id ) {
+
+		$this->db->where("doc_doctor_order_id", $doc_doctor_order_id);
+		
+		$this->db->delete("doc_doctor_order");
+		
+	}
+	
+	function report1 ( $agency_id ) {
+		
+		$this->db->join('cms_485',   			'cms_485.cms485_id = doctor_order.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('tab_parameters', 		'tab_parameters.tab_value = doctor_order.tab_023_order_status AND tab_parameters.tab_type = 23', 'LEFT');
+		
+		$this->db->where("agency_id", $agency_id);
+		
+		if ($doctororder_date_ini = $this->input->post('doctororder_date_ini')) {
+			$this->db->where("order_date >=", standard_date(human_to_unix($doctororder_date_ini), 'MYSQL_NOTIME'));
+		}
+		
+		if ($doctororder_date_fin = $this->input->post('doctororder_date_fin')) {
+			$this->db->where("order_date <=", standard_date(human_to_unix($doctororder_date_fin), 'MYSQL_NOTIME'));
+		}
+		
+		if ($tab_013_status = $this->input->post('tab_013_status')) {
+			$this->db->where("tab_013_status", $tab_013_status);
+		}
+		
+		$this->db->orderby("order_date", "DESC");
+		
+		$query = $this->db->get("doctor_order");
+		return $query->result();
+		
+	}
+
+}

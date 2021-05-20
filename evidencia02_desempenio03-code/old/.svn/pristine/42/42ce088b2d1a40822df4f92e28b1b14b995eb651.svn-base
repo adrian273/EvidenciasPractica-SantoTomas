@@ -1,0 +1,365 @@
+<?php
+
+class Menu_model extends Model {
+  
+  function Menu_model () {
+
+		parent::Model();
+		
+	}
+  
+	function get_menus($col_id){
+		$this->db->where('column_id', $col_id);
+		$this->db->order_by("position", "asc"); 
+        $query = $this->db->get('report_group');
+        $menu = '';
+        if($query->num_rows()>0){
+        	
+        	foreach ($query->result() as $row)
+			{
+				$menu.='<li><h4>'.$row->name.'</h4></li>';
+				$this->db->where('group_id', $row->id);
+				$this->db->order_by("position", "asc"); 
+        		$report_query = $this->db->get('report_name');
+        		if($report_query->num_rows()>0){
+        			foreach ($report_query->result() as $report)
+					{
+						$menu.='<li><a href="'.$report->link.'">'.$report->name.'</a></li>';
+					}
+        		}
+			   
+			}
+        }
+        return $menu;
+	}
+	function add_group($data)
+    {
+    	$column_id = $data['column_id'];
+    	$query = $this->db->query("SELECT * FROM report_group WHERE column_id = $column_id");
+		$data['position'] = $query->num_rows()+1;
+		
+        $query = $this->db->insert('report_group', $data);
+
+        return $query;
+    }
+    function add_report($data)
+    {
+    	$group_id = $data['group_id'];
+    	$query = $this->db->query("SELECT * FROM report_name WHERE group_id = $group_id");
+		$data['position'] = $query->num_rows()+1;
+        $query = $this->db->insert('report_name', $data);
+
+        return $query;
+    }
+	function get_groups(){
+		$query = $this->db->get('report_group');
+		$options = '<option value="">---</option>';
+		if($query->num_rows()>0){
+        	
+        	foreach ($query->result() as $row)
+			{
+				$options.= '<option value="'.$row->id.'">'.$row->name.'</option>';
+			}
+		}
+		return $options;
+	}
+	function get_all_groups(){
+		$query = $this->db->query("SELECT * FROM report_group order by column_id, position");
+		if($query->num_rows()>0){
+			return $query->result();
+		}
+	}
+	
+	function get_all_reports(){
+		$query = $this->db->query("SELECT * FROM report_name order by group_id, position");
+		if($query->num_rows()>0){
+			$results = $query->result();
+			foreach($results as $result){
+				$this->db->where('id', $result->group_id);
+      			$group_query = $this->db->get('report_group');
+      			if($group_query->num_rows()>0){
+      				$res = $group_query->row_array();
+      				$result->group = $res['name'];
+      			}
+      			else{
+      				$result->group = 'no Name';
+      			}
+			}
+		}
+		else{
+			$results = null;
+		}
+		return $results;
+	}
+	
+	
+	function get_columns(){
+		$query = $this->db->get('report_column');
+		$options = '<option value="">---</option>';
+		if($query->num_rows()>0){
+        	
+        	foreach ($query->result() as $row)
+			{
+				$options.= '<option value="'.$row->id.'">'.$row->id.'</option>';
+			}
+		}
+		return $options;
+	}
+	function get_columns_with_selected($id){
+		$query = $this->db->get('report_column');
+		$options = '<option value="">---</option>';
+		if($query->num_rows()>0){
+        	
+        	foreach ($query->result() as $row)
+			{
+				if($row->id==$id){
+					$options.= '<option value="'.$row->id.'" selected="selected">'.$row->id.'</option>';
+				}
+				else
+				$options.= '<option value="'.$row->id.'">'.$row->id.'</option>';
+			}
+		}
+		return $options;
+	}
+	function get_positions_with_selected($group){
+    
+		$this->db->where('column_id', $group['column_id']); 
+		$this->db->order_by("position", "asc"); 
+		$query = $this->db->get('report_group');
+		$options = '<option value="">---</option>';
+		if($query->num_rows()>0){
+        	$count = 1;
+        	foreach ($query->result() as $row)
+			{
+				if($row->id==$group['id']){
+					$options.= '<option value="'.$row->position.'" selected="selected">'.$count++.'</option>';
+				}
+				else
+				$options.= '<option value="'.$row->position.'">'.$count++.'</option>';
+			}
+		}
+    
+		return $options;
+	}
+	
+	
+	function get_report_positions_with_selected($report){
+		$this->db->where('group_id', $report['group_id']);
+		$this->db->order_by("position", "asc");  
+		$query = $this->db->get('report_name');
+		$options = '<option value="">---</option>';
+		if($query->num_rows()>0){
+        	$count = 1;
+        	foreach ($query->result() as $row)
+			{
+				if($row->id==$report['id']){
+					$options.= '<option value="'.$row->position.'" selected="selected">'.$count++.'</option>';
+				}
+				else
+				$options.= '<option value="'.$row->position.'">'.$count++.'</option>';
+			}
+		}
+		return $options;
+	}
+	
+	
+	
+	function get_group_data($id)
+    {
+        $this->db->where('id', $id);
+        $query = $this->db->get('report_group');
+        
+        return $query->row_array();        
+    }
+ 	function update_group_positions($id,$old_position,$group){
+ 		$this->db->where('column_id', $group['column_id']);
+ 		$this->db->order_by("position", "asc");  
+        $query = $this->db->get('report_group');
+        if($query->num_rows()>0){
+        	
+        	foreach ($query->result() as $row)
+			{
+				if(($row->position>=$group['position'])&&($row->position<$old_position)){
+					$pos= $row->position+1;
+					$data = array('position'=>$pos);
+					$this->db->where('id', $row->id);
+		  			$this->db->update('report_group', $data);
+				}
+				elseif($row->position>$old_position&&$row->position<=$group['position']){
+					$pos= $row->position-1;
+					$data = array('position'=>$pos);
+					$this->db->where('id', $row->id);
+		  			$this->db->update('report_group', $data);
+				}
+				elseif($row->position==$group['position']){
+					
+				}
+			
+			}
+			
+		
+		}
+		$this->db->where('id', $id);
+		$this->db->update('report_group', $group);
+	if($this->db->affected_rows()>0){
+       	
+       	return true;
+       }
+       
+      		 
+       
+       else 
+       
+       		return false;
+		
+ 	}
+	
+   function edit_group($group, $id)
+   {
+    	$old_data = $this->get_group_data($id);
+     	$this->update_group_positions($id,$old_data['position'],$group);       	
+      return true;     
+   }
+   
+   function delete_group($groupdata, $id)
+   {
+   	
+   	$this->db->where('id', $id);
+   	
+   	$this->db-> delete ('report_group');
+   	
+   	if($this->db->affected_rows()>0)
+   {
+   	$this->db->where('group_id', $id);
+   	
+   	$this->db-> delete ('report_name');
+   		return true;
+   	}
+   	
+   	else
+   	
+   		return false;
+   	
+   }
+   
+   function get_report_data($id)
+   {
+   	    $this->db->where('id', $id);
+   	    
+        $query = $this->db->get('report_name');
+        
+        return $query->row_array();          	
+   }
+   
+   function check_available_report_in_group($id){
+   		$this->db->where('group_id', $id);
+   	    
+        $query = $this->db->get('report_name');
+        if($query->num_rows()>0)
+		{
+			return true;
+		}
+		else{
+			return false;
+		}
+   }
+   
+   function get_groups_with_selected($id)
+   {
+		$query = $this->db->get('report_group');
+		
+		$options = '<option value="">---</option>';
+		
+		if($query->num_rows()>0)
+		{
+        	
+        	foreach ($query->result() as $row)
+			{
+				if($row->id==$id)
+				{
+					$options.= '<option value="'.$row->id.'" selected="selected">'.$row->name.'</option>';
+				}
+				
+				else
+				
+				$options.= '<option value="'.$row->id.'">'.$row->name.'</option>';
+			}
+		}
+		
+		return $options;
+	}
+	
+
+	
+	
+	
+	function edit_report($report, $id)
+   {
+   		
+	$old_data = $this->get_report_data($id);
+ 	$this->update_report_positions($id,$old_data['position'],$report);
+       	
+       	return true;	   
+   }
+   
+   function update_report_positions($id,$old_position,$report){
+ 		$this->db->where('group_id', $report['group_id']);
+ 		$this->db->order_by("position", "asc");  
+        $query = $this->db->get('report_name');
+        if($query->num_rows()>0){
+        	
+        	foreach ($query->result() as $row)
+			{
+				if(($row->position>=$report['position'])&&($row->position<$old_position)){
+					$pos= $row->position+1;
+					$data = array('position'=>$pos);
+					$this->db->where('id', $row->id);
+		  			$this->db->update('report_name', $data);
+				}
+				elseif($row->position>$old_position&&$row->position<=$report['position']){
+					$pos= $row->position-1;
+					$data = array('position'=>$pos);
+					$this->db->where('id', $row->id);
+		  			$this->db->update('report_name', $data);
+				}
+				elseif($row->position==$report['position']){
+					
+				}
+			
+			}
+			
+		
+		}
+		$this->db->where('id', $id);
+		$this->db->update('report_name', $report);
+	if($this->db->affected_rows()>0){
+       	
+       	return true;
+       }
+       else 
+       return false;
+		
+ 	}
+   
+   
+   function delete_report($id)
+   {
+   	
+   	$this->db->where('id', $id);
+   	
+   	$this->db-> delete ('report_name');
+   	
+   	if($this->db->affected_rows()>0)
+   	
+   		return true;
+   	
+   	else
+   	
+   		return false;
+   	
+   }
+   
+    
+
+}
+?>

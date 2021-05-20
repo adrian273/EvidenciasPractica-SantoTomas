@@ -1,0 +1,85 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr id="lala">     
+    <td style="padding: 5px;">
+		Invoice # <input type="text" name="invoice_no" id="invoice_no" size="5">
+		
+		{*Past Due <select name="past_due">
+		<option value="">All</option>
+		<option value="-15d">-15 day</option>
+		<option value="-7d" >-7 days</option>
+		<option value="1d" >1 day</option>
+		<option value="7d">7 days</option>
+		<option value="15d">15 days</option>
+		<option value="30d">30 days</option>
+		<option value="45d">45 days</option>
+		<option value="60d">60 days</option>
+		<option value="90+d">90+ days</option>
+		</select>*}		
+	
+		Invoice From <input type="text" id="invoice_from_date" name="invoice_from_date" value="{ $backdate|date_format:'%m-%d-%Y'}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('invoice_from_date'),document.getElementById('fecha_help'));return false;" >
+		
+		Invoice Thru <input type="text" id="invoice_to_date" name="invoice_to_date" value="{$smarty.now|date_format:'%m-%d-%Y'}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('invoice_to_date'),document.getElementById('fecha_help'));return false;" >		
+
+		<input type="button" value="Search" onclick="loadGrid();afterload();">
+
+	</td>
+  </tr>
+  <!-- <tr>
+  	<td style="padding: 5px;">
+  		Total Amount Due : $<b id="total_balance"></b>
+  	</td>
+  </tr> -->
+</table> 
+
+<script>
+	
+  function downloadToExcell(){literal}{{/literal}
+  	gform.action = "{$index_url}contractor/invoices/by_dates_export_xls";
+	gform.target = "print_invoice";
+	gform.submit();
+  {literal}}{/literal}
+
+  function editInvoice (invoice_id) {literal}{{/literal}
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 500, 350);
+			w2.setText("Update Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/edit_invoice/"+invoice_id);
+			
+  {literal}}{/literal}
+	function detailInvoice(invoice_id){literal}{{/literal}
+		window.location.href = "{$index_url}contractor/invoices/detail/"+invoice_id+"/{$back}";
+  {literal}}{/literal}	
+  
+  
+	function show_emails(invoice_id) {literal}{{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+		var w2 = dhxWins.createWindow("w2", 10, 10, 800, 400);
+		w2.setText("Invoices Sent Emails");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}{$resource_path}/show_emails/" + invoice_id);
+    	
+    {literal}}{/literal}
+	
+	function print_invoice(invoice_id){literal}{{/literal}
+		gform.action = "{$index_url}contractor/invoices/print_invoice/"+invoice_id;
+		gform.target = "print_invoice";
+		gform.submit();
+	{literal}}{/literal}
+</script>

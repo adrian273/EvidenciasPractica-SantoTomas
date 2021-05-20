@@ -1,0 +1,4007 @@
+<?
+
+ class Invoices extends MY_Controller {
+
+	function Invoices () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "contractor/invoices");
+    $this->load->config('constants');  
+    
+    $this->load->model('companyinvoicemdl');
+    $this->load->model('invoicepaymentsmdl');
+    $this->load->model('invoiceotherchargesmdl');
+        
+
+	}
+	
+  function index () {
+		
+		//$this->tpl->assign_include("dynamic_tpl", "payroll/tbase");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+  
+  function bydates(){
+    
+    $this->tpl->assign("no_grid_buttons", true);
+    //$this->tpl->assign("resource_edit", 'edit_invoice');    
+    //$this->tpl->assign("resource_edit", 'detailInvoice'); 
+	$this->tpl->assign('noedit', true);   
+    $this->tpl->assign("resource_grid", "invoices_grid_bydate");
+    $this->tpl->assign("paginate", 0);
+    // $this->tpl->assign("items_per_page", 300);
+    
+    //$this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+    //$this->tpl->assign("entity_id", $agency_contractor_id);
+    
+    //$this->tpl->assign("resource_grid", "invoices_grid/".$agency_contractor_id);
+    // $this->tpl->assign('additional_buttons', array('Add Credit Invoice'=>'AddCreditInvoice()'));
+    // $this->tpl->assign('additional_buttons', array('Download to Excel'=>'downloadToExcell()'));
+    $this->tpl->assign('additional_buttons', array('Export to Excel'=>'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');'));
+    /*
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);		
+    if($this->getAgencyId() == $data->contractor_id){
+      $co_balance = $this->companyinvoicemdl->getTotalComBalance($agency_contractor_id);      
+      if(is_null($co_balance)){
+        $co_balance = '0.00';      
+      }
+            
+      $this->tpl->assign('co_balance', $co_balance);
+      $this->tpl->assign('agency_name', $data->agency_name);      
+    } */
+    
+    $current_url = site_url($this->uri->uri_string());
+    $base_url = base_url().'index.php/';
+    $current_url = str_replace($base_url, "", $current_url);
+    
+    //$this->session->set_userdata('back', $current_url);
+    $this->tpl->assign("back", preg_replace('"/"', '-', $current_url));
+    $backdate = strtotime('-90 day');
+    $this->tpl->assign('backdate', $backdate);
+  
+    $this->tpl->assign_include("filter_tpl", "contractor/invoices/invoices_gfilter_bydate");
+    $this->tpl->assign_include("grid_footer_tpl", "contractor/invoices/invoices_gfilter_bydate_footer");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/invoices_gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    
+  }
+  
+  function invoices_bydate_total($agency_contractor_id = null){
+    $invoices = array();    
+    if (!is_null($agency_contractor_id)) {
+      $invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id);
+    } else {
+      $invoices = $this->companyinvoicemdl->getByContractor($this->getAgencyId());
+    }
+
+    $total = 0.00;
+    foreach($invoices as $invoice){
+          $show_detail_link = true;
+          $total += $invoice->balance;      
+          /*if($invoice->credit_invoice == 1){
+            $invoice->balance = number_format($invoice->balance, 2).' (CR)';
+            // $invoice->total_payment = $invoice->total_payment * (-1.00);
+            $invoice->total_payment = number_format($invoice->total_payment, 2);
+            $show_detail_link = false;
+          }
+          else{
+            $invoice->balance = number_format($invoice->balance, 2);
+          }*/          
+    }
+    //$total = (float)$total;
+    $total = number_format($total, 2);
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=show_total_balance('{$total}')"));
+  }
+  
+  function invoices_grid_bydate(){
+    
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=link", "Invoice #"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Invoice Date"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Sent Date"));
+		$head->append($this->xml->Element("column", "width=4;type=ro", "R"));
+		$head->append($this->xml->Element("column", "width=10;type=ro", "Notes"));
+		$head->append($this->xml->Element("column", "width=*", "Due date"));
+		//$head->append($this->xml->Element("column", "width=*", "Past Due"));
+		$head->append($this->xml->Element("column", "width=*;sort=int", "Bill Amount"));
+		$head->append($this->xml->Element("column", "width=*;sort=int", "Payment"));
+    $head->append($this->xml->Element("column", "width=*;sort=int", "Balance"));		
+		//$head->append($this->xml->Element("column", "width=5", "Status"));
+		$head->append($this->xml->Element("column", "width=*", "Agency Name"));
+		//$head->append($this->xml->Element("column", "width=10;align=left;type=link", "Actions"));		
+    //$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+  
+    $invoices = $this->companyinvoicemdl->getByContractor($this->getAgencyId());
+    
+      foreach($invoices as $invoice){
+          $show_detail_link = true;
+          $balance_in_red = false;  
+          
+          if($invoice->credit_invoice == 1){
+            $invoice->balance = $invoice->balance.' (CR)';
+            // $invoice->total_payment = $invoice->total_payment * (-1.00);
+            @$invoice->total_payment = number_format($invoice->total_payment, 2);
+            $show_detail_link = false;
+          }
+          else{
+            if($invoice->balance > 0.00)
+            $balance_in_red = true;  
+            $invoice->balance = number_format($invoice->balance, 2);
+          }
+          
+          if($invoice->total_payment ){
+            @$invoice->total_payment = number_format($invoice->total_payment, 2);
+          }
+
+          if($invoice->invoice_amount){
+            $invoice->invoice_amount = number_format($invoice->invoice_amount, 2);          
+          }          
+            
+          /*$balance_in_red = false;  
+          if($invoice->invoice_status == 'PA'){
+          }
+          else if($invoice->invoice_amount > $invoice->total_payment){
+            $balance_in_red = true; 
+          }
+          else if($invoice->invoice_status == 'NP'){
+            $balance_in_red = true; 
+          }          */
+          
+          
+          $comments = $invoice->notes;
+          $comments = str_replace("\n","<br>",$comments );
+          $comments = str_replace("\r","",$comments );
+          $comments = str_replace("'","\\'",$comments );
+          $commentsCellStr = '<![CDATA[';
+          if ($invoice->is_special==1) {
+            $commentsCellStr .= "<span style='color: red; background: yellow; ' title='Special Invoice'>&nbsp;S&nbsp;</span> &nbsp;";
+          }
+          if($comments!="")
+            $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$comments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note.jpg" border="0" /></a>&nbsp;';
+          $commentsCellStr .= ']]>';  
+          
+    			$cell = $this->xml->Element("row", "id=" . $invoice->invoice_id);    			
+    			$cell->append($this->xml->Element("cell", null, $invoice->invoice_no."^javascript:detailInvoice(" . $invoice->invoice_id . ")"));
+    			$cell->append($this->xml->Element("cell", null, is_null($invoice->invoice_date) ? "" : (date("Y/m/d",mysql_to_unix($invoice->invoice_date))) ));
+    			$cell->append($this->xml->Element("cell", null, is_null($invoice->sent_date) ? "" : (date("Y/m/d",mysql_to_unix($invoice->sent_date))) ));
+    			
+				if($invoice->sent_email_log_count > 0) {
+					$show_email_str = '<![CDATA[';
+					$show_email_str.= '<a title="Recipients" href="javascript://" onclick="show_emails(' . $invoice->invoice_id . ')"> R </a>';
+					$show_email_str .= ']]>';
+				} else { 
+					$show_email_str = '';
+				}
+	
+				$cell->append($this->xml->Element("cell", null, $show_email_str));
+				
+				$cell->append($this->xml->Element("cell", null, $commentsCellStr));
+    			$cell->append($this->xml->Element("cell", null, date("Y/m/d",mysql_to_unix($invoice->invoice_due_date))));
+    			//$cell->append($this->xml->Element("cell", null, date("m/d/Y",mysql_to_unix($invoice->past_due))));
+    			$cell->append($this->xml->Element("cell", null, ($invoice->invoice_amount ? $invoice->invoice_amount : '')));			
+          $cell->append($this->xml->Element("cell", null, $invoice->total_payment));	          
+          if($balance_in_red){
+            $cell->append($this->xml->Element("cell", null, htmlentities('<font color="red">'.$invoice->balance.'</font>')));
+          }else{
+            $cell->append($this->xml->Element("cell", null, $invoice->balance));
+          }
+    					
+    			//$cell->append($this->xml->Element("cell", null, ($invoice->invoice_status == 'PA' ? 'Paid' : 'Not Paid')));			
+    			$cell->append($this->xml->Element("cell", null, $invoice->agency_name));
+          //$cell->append($this->xml->Element("cell", null, ""));
+          /*$cell->append($this->xml->Element("cell", null, "Edit Invoice^javascript:editInvoice(" . $invoice->invoice_id . ")"));
+          if($show_detail_link){
+            $cell->append($this->xml->Element("cell", null, "Detail^javascript:detailInvoice(" . $invoice->invoice_id . ")"));
+          }*/
+    			$document->append($cell);
+      }
+      
+  }
+  
+  
+	function show_emails($source_id = null) {
+	
+		if (is_null($source_id)) {
+			exit('No record found in the request');
+		}
+		$this->load->model('sentemailinstancedetailmdl');
+		$sent_emails_array = $this->sentemailinstancedetailmdl->get_group_emails_by_sent_date($source_id, 'INVO');
+		//echo "<pre>"; print_r($sent_emails_array); echo "</pre>";
+		$this->tpl->assign('sent_emails_array', $sent_emails_array);
+		
+		$this->tpl->assign_include("dynamic_tpl", "useragency/nonbillable_visitlog/show_emails");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+  
+  function by_dates_export_xls(){
+
+    $output = '<table class="table" bordered="1">
+                <tr>
+                  <th>Number</th>
+                  <th>Date</th>
+                  <th>Agency Name</th>
+                  <th>Due Date</th>
+                  <th>Amount</th>
+                  <th>Paid</th>
+                  <th>Balance</th>
+                </tr>';
+
+    $invoices = $this->companyinvoicemdl->getByContractor($this->getAgencyId());
+
+    foreach ($invoices as $key => $invoice) {
+      $balance_in_red = false;  
+      
+      if($invoice->balance > 0.00)
+        $balance_in_red = true;  
+
+      $invoice->total_payment = number_format($invoice->total_payment, 2);
+      $invoice->balance = number_format($invoice->balance, 2);
+      $invoice->invoice_amount = number_format($invoice->invoice_amount, 2);          
+
+      $output .= '<tr>
+                  <td>'.$invoice->invoice_no.'</td>
+                  <td>'. (is_null($invoice->invoice_date) ? "" : (date("m/d/Y",mysql_to_unix($invoice->invoice_date))) ).'</td>
+                  <td>'.$invoice->agency_name.'</td>
+                  <td>'.date("m/d/Y",mysql_to_unix($invoice->invoice_due_date)).'</td>
+                  <td>'.($invoice->invoice_amount ? '$  '.$invoice->invoice_amount : '').'</td>
+                  <td>'.'$  '.$invoice->total_payment.'</td>
+                  <td>'.'$  '. ($balance_in_red ? '<font color="red">'.$invoice->balance.'<font>' : $invoice->balance ).'</td>
+                </tr>';
+    }
+
+    $output .= '</table>';
+
+    header('Content-Description: File Transfer');
+    header('Content-Type: application/xls');
+    header('Content-Disposition: attachment; filename=invoices.xls');
+    header('Content-Transfer-Encoding: binary');
+    header('Expires: 0');
+    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+    header('Pragma: public');
+
+    echo $output;
+  }
+
+  function agencies(){
+    
+    $this->tpl->assign("no_grid_buttons", true);
+    $this->tpl->assign("resource_edit", 'co_invoices');    
+    $this->tpl->assign("resource_grid", "agencies_grid");
+    
+
+    $total = $this->companyinvoicemdl->getTotalBalance($this->getAgencyId());
+
+    $total_balance = $total->balance;
+    $total_amount = $total->amount;
+    $total_paid = $total->paid;
+
+    if(is_null($total_balance))
+      $total_balance = 0.00;
+      
+    if(is_null($total_amount))
+      $total_amount = 0.00;
+
+    if(is_null($total_paid))
+      $total_paid = 0.00;
+      
+    // $total_balance = number_format($total_balance, 2);  
+    // $total_amount = number_format($total_amount, 2);  
+    // $total_paid = number_format($total_paid, 2);  
+
+    $this->tpl->assign("total_balance", '$'.number_format($total_balance, 2, '.', ','));
+    $this->tpl->assign("total_amount", '$'.number_format($total_amount, 2, '.', ','));
+    $this->tpl->assign("total_paid", '$'.number_format($total_paid, 2, '.', ','));
+    
+    /*$current_url = site_url($this->uri->uri_string());
+    $base_url = base_url().'index.php/';
+    $current_url = str_replace($base_url, "", $current_url);
+    
+    //$this->session->set_userdata('back', $current_url);
+    $this->tpl->assign("back", preg_replace('"/"', '-', $current_url));
+  */
+
+    $this->tpl->assign('additional_buttons', array(
+        'Download to Excel'=>'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');',
+    ));
+
+   
+
+
+    $this->tpl->assign_include("filter_tpl", "contractor/invoices/gfilter");
+    $this->tpl->assign_include("grid_footer_tpl", "contractor/invoices/gfilter_footer");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function agencies_grid($agency_filter = 'due'){
+    
+    $this->session->set_userdata('invoices_by_agency_filter', $_POST);
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Agency Name"));
+		$head->append($this->xml->Element("column", "width=*;sort=int", "Bill Amount"));
+    $head->append($this->xml->Element("column", "width=*;sort=int", "Paid"));
+    $head->append($this->xml->Element("column", "width=*;sort=int", "Balance"));
+		$head->append($this->xml->Element("column", "width=25;align=left;type=link", "Actions"));		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+		
+		foreach ($data as $agency) {	
+      $co_sum = $this->companyinvoicemdl->getTotalComBalance($agency->agency_contractor_id, $agency_filter);
+      
+      $co_balance = $co_sum->balance;
+      $co_paid = $agency_filter == 'paid' ? $co_sum->partial_payment : $co_sum->paid;
+      $co_amount = $co_sum->amount;
+
+      $amount_num = $co_amount;
+      $balance_num = $co_balance;
+      $paid_num = $co_paid;
+      
+      if(is_null($co_amount)){
+        $co_amount = '0.00';
+        $amount_num = 0.00;
+      }
+
+      if(is_null($co_balance)){
+        $co_balance = '0.00';
+        $balance_num = 0.00;
+      }
+
+      if(is_null($co_paid)){
+        $co_paid = '0.00';
+        $paid_num = 0.00;
+      }
+      
+      if($agency_filter=='due' AND $balance_num <= 0){
+        continue;
+      }  
+      elseif ($agency_filter=='paid' AND $paid_num <= 0) {
+        continue;
+      }
+      
+			$cell = $this->xml->Element("row", "id=" . $agency->agency_contractor_id);
+			$cell->append($this->xml->Element("cell", null, $agency->agency_name));
+			$cell->append($this->xml->Element("cell", null, $co_amount));			
+      $cell->append($this->xml->Element("cell", null, $co_paid));     
+      $cell->append($this->xml->Element("cell", null, $co_balance));      
+      		$cell->append($this->xml->Element("cell", null, "Invoices^javascript:invoices(" . $agency->agency_contractor_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+  }
+  
+  function total_balance(){
+    
+    $document = $this->xml->Document();
+    
+    $total = $this->companyinvoicemdl->getTotalBalance($this->getAgencyId());
+
+    $total_balance = $total->balance;
+    $total_amount = $total->amount;
+    // $total_paid = $total->paid;
+    $total_paid = $this->input->post('agency_filter') == 'paid' ? $total->partial_payment : $total->paid;
+
+    if(is_null($total_balance))
+      $total_balance = 0.00;
+      
+    if(is_null($total_amount))
+      $total_amount = 0.00;
+
+    if(is_null($total_paid))
+      $total_paid = 0.00;
+      
+    $total_balance = number_format($total_balance, 2);  
+    $total_amount = number_format($total_amount, 2);  
+    $total_paid = number_format($total_paid, 2);  
+    
+    $document->append($this->xml->Element('js', 'script=updateTotalBalance(\'$'.$total_balance.'\', \'$'.$total_amount.'\', \'$'.$total_paid.'\')', null));
+  }
+   
+  // this function is updated by ksa to add the buttons to print invoice and to email statement
+  function co_invoices($agency_contractor_id){
+    
+    if ($this->session->flashdata('message')) {
+      $this->tpl->assign('gmessage',   $this->session->flashdata('message'));
+    }
+
+    $_POST = $this->session->userdata('invoices_by_agency_filter');
+    $agency_filter = (isset($_POST['agency_filter']) AND $_POST['agency_filter'] != '') ? $_POST['agency_filter'] : 'all';
+    $this->tpl->assign('agency_filter', $agency_filter);
+    $this->tpl->assign('invoice_from_date', @$_POST['invoice_from_date']);
+    $this->tpl->assign('invoice_to_date', @$_POST['invoice_to_date']);
+
+    $this->tpl->assign("no_grid_buttons", true);
+    //$this->tpl->assign("resource_edit", 'edit_invoice');    
+    //$this->tpl->assign("resource_edit", 'detailInvoice');
+	  $this->tpl->assign('noedit', true);    
+    $this->tpl->assign("resource_grid", "invoices_grid");
+    $this->tpl->assign("paginate", true);
+    $this->tpl->assign("items_per_page", 80);
+
+    
+    $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+    $this->tpl->assign("entity_id", $agency_contractor_id);
+
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $agency = $this->agencymdl->getByAgencyId($data->agency_id);
+    if ($agency->send_invoice_to_patient == 1) {
+      $invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id, $agency_filter);
+      $invoice_ids = array();
+      foreach ($invoices as $key => $invoice) {
+        $invoice_ids[] = $invoice->invoice_id;
+      }
+
+      $patients = $this->visitlogmdl->getInvoicePatients($invoice_ids);
+      $patient_list = array();
+      foreach ($patients as $patient) {
+        $patient_list[$patient->patient_id] = $patient->last_name . ' ' .$patient->first_name;
+      }
+
+      $this->tpl->assign('patient_list', $patient_list);
+    }
+    
+    //$this->tpl->assign("resource_grid", "invoices_grid/".$agency_contractor_id);
+    $this->tpl->assign('additional_buttons', array(
+        'Receive Payment'=>'window.location.href=\''.$this->config->site_url().'/contractor/invoices/receive_payment/'.$agency_contractor_id.'\'', 
+        // 'Create Special Invoice'=>'CreateSpecialInvoice()', 
+        // 'Add Credit Invoice'=>'AddCreditInvoice()', 
+        'Print Statement'=>'PrintStatement();', 
+        'Email Statement'=>'email_statement(' . $agency_contractor_id . ');',
+        // 'Download to Excel'=>'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');',
+        'Back' => 'window.location.href=\''.$this->config->site_url().'/contractor/invoices/agencies\'', 
+    ));
+
+    $this->tpl->assign('more_actions', array(
+        'Create Special Invoice'=>'CreateSpecialInvoice()', 
+        'Add Credit Invoice'=>'AddCreditInvoice()', 
+        'Download to Excel'=>'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');',
+    ));
+
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);		
+    if($this->getAgencyId() == $data->contractor_id){
+      $total = $this->companyinvoicemdl->getTotalComBalance($agency_contractor_id, $agency_filter);
+
+      $co_balance = $total->balance;
+      $co_amount = $total->amount;
+      // $co_paid = $total->paid;
+      $co_paid = $agency_filter == 'paid' ? $total->partial_payment : $total->paid;
+
+      if(is_null($co_balance))
+        $co_balance = 0.00;
+        
+      if(is_null($co_amount))
+        $co_amount = 0.00;
+
+      if(is_null($co_paid))
+        $co_paid = 0.00;
+
+      if(is_null($co_balance)){
+        $co_balance = '0.00';      
+      }
+            
+      $this->tpl->assign('co_balance', $co_balance);
+      $this->tpl->assign('co_amount', $co_amount);
+      $this->tpl->assign('co_paid', $co_paid);
+      $this->tpl->assign('agency_name', $data->agency_name);      
+    } 
+    
+    $current_url = site_url($this->uri->uri_string());
+    $base_url = base_url().'index.php/';
+    $current_url = str_replace($base_url, "", $current_url);
+    
+    //$this->session->set_userdata('back', $current_url);
+    $this->tpl->assign("back", preg_replace('"/"', '-', $current_url));
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/invoices/invoices_gfilter");
+    $this->tpl->assign_include("grid_footer_tpl", "contractor/invoices/co_gfilter_footer");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/invoices_gbase");
+    // $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    
+  }
+  
+  function co_balance($agency_contractor_id){
+
+    $option_filter = $this->input->post('agency_filter');
+    $invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id, $option_filter);
+
+    $co_balance = $co_amount = $co_paid = 0.00;
+
+    foreach($invoices as $invoice){
+          
+          if($option_filter=='due' AND $invoice->balance <= 0){
+            continue;
+          }  
+          // elseif ($option_filter=='paid' AND $invoice->balance > 0) {
+          elseif ($option_filter=='paid' AND $invoice->invoice_payment <= 0) {
+            continue;
+          }
+
+          $co_balance += $invoice->balance;
+          
+          if($option_filter == 'paid') {
+            $co_paid += $invoice->partial_payment;
+          } else {
+            $co_paid += $invoice->total_payment;
+          }
+
+          $co_amount += $invoice->invoice_amount;
+
+      }
+
+      $document = $this->xml->Document();
+
+      // $agency_filter = (isset($_POST['agency_filter']) AND $_POST['agency_filter'] != '') ? $_POST['agency_filter'] : 'all';
+
+      // $total = $this->companyinvoicemdl->getTotalComBalance($agency_contractor_id, $agency_filter);   
+
+      // $co_balance = $total->balance;
+      // $co_amount = $total->amount;
+      // // $co_paid = $total->paid;
+      // $co_paid = $agency_filter == 'paid' ? $total->partial_payment : $total->paid;
+
+      // if(is_null($co_balance))
+      //   $co_balance = 0.00;
+        
+      // if(is_null($co_amount))
+      //   $co_amount = 0.00;
+
+      // if(is_null($co_paid))
+      //   $co_paid = 0.00;
+        
+      // $co_balance = number_format($co_balance, 2);  
+      // $co_amount = number_format($co_amount, 2);  
+      // $co_paid = number_format($co_paid, 2);  
+      
+      $document->append($this->xml->Element('js', 'script=updateCOBalance(\'$'.$co_balance.'\', \'$'.$co_amount.'\', \'$'.$co_paid.'\')', null));
+  }
+
+  // this function will be used to download the xls file from abutton click in the co_invoices based view page
+  function co_invoices_export_xls($agency_contractor_id){
+
+    $output = '<table class="table" bordered="1" cellpadding="5" border="1">
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Invoice Date</th>
+                  <th>Sent Date</th>
+                  <th>Notes</th>
+                  <th>Due date</th>
+                  <th>Bill Amount</th>
+                  <th>Payment</th>
+                  <th>Balance</th>
+                </tr>';
+
+    //$invoices = $this->companyinvoicemdl->getByContractor($this->getAgencyId());
+	$invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id);
+    foreach ($invoices as $key => $invoice) {
+		$balance_in_red = false;  
+      
+		if($invoice->balance > 0.00)
+			$balance_in_red = false;  
+		
+		$option_filter = $this->input->post('agency_filter');
+		if($option_filter=='due' AND $invoice->balance <= 0){
+			continue;
+		} elseif ($option_filter=='paid' AND $invoice->balance > 0) {
+			continue;
+		}
+		
+		if($invoice->credit_invoice == 1){
+			$invoice->balance = number_format($invoice->balance, 2).' (CR)';
+			$invoice->total_payment = number_format($invoice->total_payment, 2);
+		} else{
+			if($invoice->balance > 0.00)
+				$balance_in_red = true;
+			$invoice->balance = number_format($invoice->balance, 2);
+		}
+		
+		if($invoice->total_payment ){
+			$invoice->total_payment = number_format($invoice->total_payment, 2);
+		}
+		
+		if($invoice->invoice_amount){
+			$invoice->invoice_amount = number_format($invoice->invoice_amount, 2);          
+		}              
+
+		$comments = $invoice->notes;
+		$comments = str_replace("\n","<br>",$comments );
+		$comments = str_replace("\r","",$comments );
+		$comments = str_replace("'","\\'",$comments );
+	  
+
+		$output .= '<tr>
+			  <td>'.$invoice->invoice_id.'</td>
+			  <td>'. (is_null($invoice->invoice_date) ? "" : (date("m/d/Y",strtotime($invoice->invoice_date))) ) . '&nbsp;'.'</td>
+			  <td>'. (is_null($invoice->sent_date) ? "" : (date("m/d/Y",strtotime($invoice->sent_date))) ) . '&nbsp;'.'</td>
+			  <td>'.$comments.'</td>
+			  <td>'.date("m/d/Y",strtotime($invoice->invoice_due_date)) . '&nbsp;'.'</td>
+			  <td>'.($invoice->invoice_amount ? '$  '.$invoice->invoice_amount : '').'</td>
+			  <td>'.'$  '.$invoice->total_payment.'</td>
+			  <td>'.'$  '. ($balance_in_red ? '<font color="red">'.$invoice->balance.'<font>' : $invoice->balance ).'</td>
+			</tr>';
+    }
+
+    $output .= '</table>';
+
+    header('Content-Description: File Transfer');
+    header('Content-Type: application/xls');
+    header('Content-Disposition: attachment; filename=invoices.xls');
+    header('Content-Transfer-Encoding: binary');
+    header('Expires: 0');
+    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+    header('Pragma: public');
+
+    echo $output;
+  }
+  
+  
+  function invoices_grid($agency_contractor_id){
+    $option_filter = $this->input->post('agency_filter');
+
+  	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=link", "Invoice #"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Invoice Date"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Sent Date"));
+		$head->append($this->xml->Element("column", "width=4;type=ro", "R"));
+    if ($option_filter == 'paid') {
+      $head->append($this->xml->Element("column", "width=*", "Check Nbr"));
+    }
+    $head->append($this->xml->Element("column", "width=10;type=ro", "Notes"));
+    $head->append($this->xml->Element("column", "width=*", "Due date"));
+		$head->append($this->xml->Element("column", "width=*;sort=int", "Bill Amount"));
+		$head->append($this->xml->Element("column", "width=*;sort=int", "Payment"));		
+    	$head->append($this->xml->Element("column", "width=*;sort=int", "Balance"));
+		//$head->append($this->xml->Element("column", "width=5", "Status"));
+		//$head->append($this->xml->Element("column", "width=10;align=left;type=link", "Actions"));		
+    	//$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		
+		$data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+		
+    if($this->getAgencyId() == $data->contractor_id){
+      $invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id, $option_filter);
+      
+      foreach($invoices as $invoice){
+          $show_detail_link = true;
+          $balance_in_red = false;  
+
+          
+          if($option_filter=='due' AND $invoice->balance <= 0){
+            continue;
+          }  
+          // elseif ($option_filter=='paid' AND $invoice->balance > 0) {
+          elseif ($option_filter=='paid' AND $invoice->invoice_payment <= 0) {
+            continue;
+          }
+
+          if($invoice->credit_invoice == 1){
+            $invoice->balance = number_format($invoice->balance, 2).' (CR)';
+            $invoice->total_payment = number_format($invoice->total_payment, 2);
+            $show_detail_link = false;
+          }
+          else{
+            if($invoice->balance > 0.00)
+            $balance_in_red = true;  
+            $invoice->balance = number_format($invoice->balance, 2);
+          }
+          
+          if($invoice->total_payment ){
+            $invoice->total_payment = number_format($invoice->total_payment, 2);
+          }
+
+          if(isset($invoice->partial_payment)){
+            $invoice->partial_payment = number_format($invoice->partial_payment, 2);
+          }
+
+          if($invoice->invoice_amount){
+            $invoice->invoice_amount = number_format($invoice->invoice_amount, 2);          
+          }          
+            
+          /*$balance_in_red = false;  
+          if($invoice->invoice_status == 'PA'){
+          }
+          else if($invoice->invoice_amount > $invoice->total_payment){
+            $balance_in_red = true; 
+          }
+          else if($invoice->invoice_status == 'NP'){
+            $balance_in_red = true; 
+          }  */        
+
+          $comments = $invoice->notes;
+          $comments = str_replace("\n","<br>",$comments );
+          $comments = str_replace("\r","",$comments );
+          $comments = str_replace("'","\\'",$comments );
+          $commentsCellStr = '<![CDATA[';
+
+          if ($invoice->is_special==1) {
+            $commentsCellStr .= "<span style='color: red; background: yellow; ' title='Special Invoice'>&nbsp;S&nbsp;</span> &nbsp;";
+          }
+
+          if($comments!="")
+            $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$comments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note.jpg" border="0" /></a>&nbsp;';
+          $commentsCellStr .= ']]>';  
+              
+    			// $check_balance = $invoice->balance;
+    			
+    			$cell = $this->xml->Element("row", "id=" . $invoice->invoice_id);  
+    			$cell->append($this->xml->Element("cell", null, $invoice->invoice_no."^javascript:detailInvoice(" . $invoice->invoice_id . ")"));
+        			          
+    			$cell->append($this->xml->Element("cell", null, date("Y/m/d",mysql_to_unix($invoice->invoice_date))));
+    			$cell->append($this->xml->Element("cell", null, is_null($invoice->sent_date) ? "" : (date("Y/m/d",mysql_to_unix($invoice->sent_date))) ));
+    		  
+    			if($invoice->sent_email_log_count > 0) {
+    				$show_email_str = '<![CDATA[';
+    				$show_email_str.= '<a title="Recipients" href="javascript://" onclick="show_emails(' . $invoice->invoice_id . ')"> R </a>';
+    				$show_email_str .= ']]>';
+    			} else { 
+    				$show_email_str = '';
+    			}
+
+    			$cell->append($this->xml->Element("cell", null, $show_email_str));
+    			
+    			if ($option_filter == 'paid') {
+    				$payments = $this->invoicepaymentsmdl->get($invoice->invoice_id, 'check_nbr IS NOT NULL');
+    				if (count($payments) > 0) {
+    					$tran = $payments[0];
+    					$cell->append($this->xml->Element("cell", null, $tran->check_nbr));
+    				} else {
+    					$cell->append($this->xml->Element("cell", null, null));
+    				}
+    			
+    			}
+
+          $cell->append($this->xml->Element("cell", null, $commentsCellStr));
+    			$cell->append($this->xml->Element("cell", null, date("Y/m/d",mysql_to_unix($invoice->invoice_due_date))));
+    			$cell->append($this->xml->Element("cell", null, ($invoice->invoice_amount ? $invoice->invoice_amount : '')));			
+
+          if($option_filter == 'paid') {
+            $cell->append($this->xml->Element("cell", null, $invoice->partial_payment));
+          } else {
+            $cell->append($this->xml->Element("cell", null, $invoice->total_payment));
+          }
+          
+          if($balance_in_red){
+            $cell->append($this->xml->Element("cell", null, htmlentities('<font color="red">'.$invoice->balance.'</font>')));
+          }else{
+            $cell->append($this->xml->Element("cell", null, $invoice->balance));
+          }
+    			//$cell->append($this->xml->Element("cell", null, ($invoice->invoice_status == 'PA' ? 'Paid' : 'Not Paid')));			
+    			
+          //$cell->append($this->xml->Element("cell", null, ""));
+          //$cell->append($this->xml->Element("cell", null, "Edit Invoice^javascript:editInvoice(" . $invoice->invoice_id . ")"));
+          /*if($show_detail_link){
+            $cell->append($this->xml->Element("cell", null, "Detail^javascript:detailInvoice(" . $invoice->invoice_id . ")"));
+          }*/
+    			$document->append($cell);
+      }
+      
+  		
+		}
+  }
+  
+  
+  function edit_invoice_note($invoice_id){
+	$invoice = $this->companyinvoicemdl->getById($invoice_id);
+	if(!$invoice){
+		echo "invoice is not found.";exit;
+	}
+	$invoice->balance = number_format($invoice->balance, 2);
+	$this->tpl->assign("invoice_id", $invoice_id);
+	
+	$rules = array();
+	$fields = array();
+	
+	$this->validation->set_rules($rules);      
+	$this->validation->set_fields($fields);
+	
+	if ($this->validation->run() == FALSE) {    
+		$this->assignObject($invoice);
+	} else {
+		$invoice_note = $this->input->post('invoice_note');  
+		$this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_note', $invoice_note);
+		$this->tpl->assign('success_string', 'Invoice Note is ' . $this->lang->line('grl_upd_msg'));
+	}
+	$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+	$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_invoice_note");			  
+	$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function edit_invoice($invoice_id){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";exit;
+    }
+    
+    $invoice->balance = number_format($invoice->balance, 2);
+    
+    $this->tpl->assign("invoice_id", $invoice_id);
+    
+    $rules = array();
+    $fields = array();
+
+    if($invoice->credit_invoice == 1 OR $invoice->is_special == 1){
+      // $rules['sent_date'] = 'required';
+      $rules['notes'] = 'required';
+
+      // $fields['sent_date'] = 'Sent Date';
+      $fields['notes'] = 'Notes';
+    }else{
+      $rules['invoice_date'] = 'required';
+      $rules['invoice_due_date'] = 'required';
+      // $rules['sent_date'] = 'required';
+
+      $fields['invoice_date'] = 'Invoice Date';
+      $fields['invoice_due_date'] = 'Due Date';
+      // $fields['sent_date'] = 'Sent Date';      
+    }
+
+    if ($this->input->post('invoice_no')) {
+      $rules['invoice_no'] = 'numeric|callback_check_invoice_no['.$invoice_id.']';
+      $fields['invoice_no'] = 'Invoice Number';
+    }
+
+    $this->validation->set_rules($rules);      
+    $this->validation->set_fields($fields);
+    
+		
+		if ($this->validation->run() == FALSE) {
+      $invoice->amount = number_format($invoice->invoice_amount, 2);       
+      $this->assignObject($invoice);
+      /*if($invoice->total_payment < 0){  
+        $total_payment_abs = (float)abs($invoice->total_payment);
+        $total_payment_abs = number_format($total_payment_abs, 2);
+        
+        $this->tpl->assign("total_payment_abs", $total_payment_abs);  
+        $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_credit_form");			
+      }else{
+        $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_invoice_form");			  
+      }
+      */
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_invoice_form");			  
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+    
+      /*if($invoice->total_payment < 0){          
+          $invoice_date = standard_date(human_to_unix($this->input->post('invoice_date')), 'MYSQL_NOTIME');
+          $sent_date = standard_date(human_to_unix($this->input->post('sent_date')), 'MYSQL_NOTIME');
+          
+          $invoice_no = $this->input->post('invoice_no');
+          
+          $notes = $this->input->post('notes');
+          $total_payment = (float)(0.00 - abs($this->input->post('total_payment')));
+          $balance = 0;
+
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'total_payment', $total_payment);
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_date', $invoice_date);
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'sent_date', $sent_date);
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'notes', $notes); 
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_status', 'PA');
+          if($invoice_no)
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_no', $invoice_no);  
+      }else{*/
+        $invoice_date = standard_date(human_to_unix($this->input->post('invoice_date')), 'MYSQL_NOTIME');
+        $invoice_due_date = standard_date(human_to_unix($this->input->post('invoice_due_date')), 'MYSQL_NOTIME');
+        $sent_date = standard_date(human_to_unix($this->input->post('sent_date')), 'MYSQL_NOTIME');
+        
+        //$invoice_status = in_array($this->input->post('invoice_status'), array('NP','PA')) ? $this->input->post('invoice_status') : null;
+          
+          
+        $notes = $this->input->post('notes');
+        //$total_payment = (float)$this->input->post('total_payment');
+        //$balance = (float)($invoice->invoice_amount - $total_payment);
+        //$this->assignPostData($this->visitlogmdl);      
+        $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_date', $invoice_date);
+        $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_due_date', $invoice_due_date);
+        $this->companyinvoicemdl->updateFlex($invoice_id, 'sent_date', $sent_date);
+        //$this->companyinvoicemdl->updateFlex($invoice_id, 'total_payment', $total_payment);
+        
+        
+        $invoice_no = $this->input->post('invoice_no');
+        if($invoice_no != $invoice->invoice_no){
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_no', $invoice_no);
+
+          $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id); 
+          $agency_setting = $this->agencysettingsmdl->get($data->contractor_id);
+          if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+            $invoice_no++;
+            $this->agencysettingsmdl->updateFlex($agency_setting->agency_id, 'invoice_seq_nbr', $invoice_no);
+          }
+        }
+
+        // Can update invoice amout when it is a Special INnvoice
+        if ($this->input->post('invoice_amount') != '' AND $this->input->post('invoice_amount') > 0) {
+          if ($invoice->is_special == 1 AND  $invoice->invoice_amount != $this->input->post('invoice_amount')) {
+            $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_amount', $this->input->post('invoice_amount'));
+          }
+        }
+
+        /*if($balance <= 0){
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_status', 'PA');
+        }else{
+          var_dump($invoice_status);
+          if($invoice_status)
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_status', $invoice_status);
+        }*/
+        
+        if($notes){
+          $this->companyinvoicemdl->updateFlex($invoice_id, 'notes', $notes);
+        }
+      /*}*/
+      
+      
+			/* echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";*/
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+			/* echo "<SCRIPT>location.reload(true);dhxWins.unload()</SCRIPT>";*/
+			
+		}
+  }
+  
+  function add_credit($agency_contractor_id){
+    
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);   
+    if($this->getAgencyId() == $data->contractor_id){
+    
+    }
+    
+    $this->tpl->assign('invoice_date', date("m/d/Y"));
+    
+    $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+    
+    $this->validation->set_rules(array ('credit_amount'   => 'required',
+            'notes'   => 'required'));
+    
+    
+    if ($this->validation->run() == FALSE) {
+      $this->assignObject($data);
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/add_credit_form");
+      $this->tpl->view("parts/ibase", $this->lang->language);     
+    } else {
+    
+      $invoice_date = date("Y-m-d");
+      $invoice_due_date = date("Y-m-d");
+      
+      $notes = $this->input->post('notes');
+      $credit_amount = (float)(abs($this->input->post('credit_amount')));
+      $balance = 0;
+      
+      $this->assignPostData($this->companyinvoicemdl);      
+      $this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+      $this->companyinvoicemdl->invoice_no = null;
+      $this->companyinvoicemdl->invoice_date = $invoice_date;
+      $this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+      $this->companyinvoicemdl->invoice_amount = null;
+      $this->companyinvoicemdl->invoice_status = 'PA';
+      $this->companyinvoicemdl->notes = $notes;
+      
+      $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+      
+      // create a record to invoicepayments table also
+      $this->load->model('invoicepaymentsmdl');
+      $this->invoicepaymentsmdl->invoice_id=$invoice_id;
+      $this->invoicepaymentsmdl->payment_amount=$credit_amount;
+      $this->invoicepaymentsmdl->payment_date=$invoice_date;
+      $this->invoicepaymentsmdl->payment_notes=$notes;
+      $this->invoicepaymentsmdl->credit_invoice=1;
+      $this->invoicepaymentsmdl->insert($invoice_id);
+      
+      /* echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>"; */
+      echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+      
+    }  
+  }
+  
+  function create_special($agency_contractor_id){
+    
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);		
+    /*if($this->getAgencyId() == $data->contractor_id){
+    
+    }*/
+    
+    $this->tpl->assign('invoice_due_date', mktime(0,0,0, date("m"), date("d")+30, date("Y")));
+    
+    $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+    
+    $rules = array (
+          'invoice_amount'    => 'required',
+          'invoice_due_date'  => 'required',
+          'notes'             => 'required');
+        
+
+    $fields = array (
+          'invoice_amount'   => 'Invoice Amount',
+          'invoice_due_date' => 'Invoice Due Date',
+					'notes' 	         => 'Description');
+        
+		
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules); 
+		
+		if ($this->validation->run() == FALSE) {
+			$this->assignObject($data);
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/special_invoice_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);			
+		} else {
+    
+      $invoice_date = date("Y-m-d");
+      $invoice_due_date = standard_date(human_to_unix($this->input->post('invoice_due_date')), 'MYSQL_NOTIME');
+      
+      $notes = $this->input->post('notes');
+      $invoice_amount = (float)(abs($this->input->post('invoice_amount')));
+      $balance = 0;
+      $time = time();
+      $invoice_no = substr($time, 1);  
+      $agency_setting = $this->agencysettingsmdl->get($data->contractor_id);
+      if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+        $invoice_no = $agency_setting->invoice_seq_nbr;
+      }   
+      
+			$this->assignPostData($this->companyinvoicemdl);      
+			$this->companyinvoicemdl->agency_contractor_id = $agency_contractor_id;
+			$this->companyinvoicemdl->invoice_no = $invoice_no;
+			$this->companyinvoicemdl->invoice_date = $invoice_date;
+			$this->companyinvoicemdl->invoice_due_date = $invoice_due_date;
+			$this->companyinvoicemdl->invoice_amount = $invoice_amount;
+			$this->companyinvoicemdl->invoice_status = 'NP';
+      $this->companyinvoicemdl->agency_paid_status = 'NP';
+      $this->companyinvoicemdl->notes = $notes;
+			$this->companyinvoicemdl->is_special = 1;
+			
+      $invoice_id = $this->companyinvoicemdl->insert($agency_contractor_id);
+      if ($invoice_id > 0) {
+        $invoice_no++;
+
+        if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+          $this->agencysettingsmdl->updateFlex($agency_setting->agency_id, 'invoice_seq_nbr', $invoice_no);
+        }
+      }
+      
+			/* echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>"; */
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+			
+		}  
+  }
+  
+  function detail($invoice_id, $back="contractor_invoices_bydates"){
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    $invoice->balance = '$'.number_format($invoice->balance, 2);
+    
+    $invoice->balance_in_red = false;  
+    if($invoice->credit_invoice == 1){
+      $invoice->balance = $invoice->balance.' (CR)';
+      // $invoice->total_payment = $invoice->total_payment * (-1.00);
+      $invoice->total_payment = number_format($invoice->total_payment, 2);      
+    }
+    else{
+      if($invoice->balance > 0.00)
+      $invoice->balance_in_red = true;  
+    }
+    
+    
+    $invoice->amount = '$'.number_format($invoice->invoice_amount, 2); 
+    $this->assignObject($invoice);
+    
+    if ($this->session->userdata('logged_from_admin') === TRUE) {
+      $this->tpl->assign("can_delete_invoice", TRUE);
+    }
+    $this->tpl->assign("invoice_id", $invoice_id);
+    $this->tpl->assign("invoice_note", trim($invoice->invoice_note));
+    $this->tpl->assign("back", $back);
+    //$this->tpl->assign_include("dynamic_tpl", "payroll/tbase");
+	$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/detail_tbase");
+	$this->tpl->view("parts/ibase", $this->lang->language);		
+  }
+  
+  function save_invoice_notes($invoice_id) {	
+    $document = $this->xml->Document();
+		
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      $document->append($this->xml->Element('alert', null, "Invoice not found!"));
+      return;
+    }
+    
+    $this->companyinvoicemdl->updateFlex($invoice_id, 'notes', $this->input->post('notes')); 
+    
+    $document->append($this->xml->Element('js', 'script=cancel_edit_notes(1)', null));
+    
+  }
+  
+  function detail_visits($invoice_id, $back="contractor_invoices_bydates"){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      show_404();
+    }
+    
+    //$invoice->balance = number_format($invoice->balance, 2);
+    
+    $this->tpl->assign("invoice_id", $invoice_id);
+    $this->tpl->assign("invoice_no", $invoice->invoice_no);
+    
+    if($invoice->credit_invoice == 1){
+      show_404();
+    }else{       
+      $this->tpl->assign("no_grid_buttons", true);
+      $this->tpl->assign('noedit', true);
+      
+      //$this->tpl->assign("resource_edit", 'edit_invoice');    
+      $this->tpl->assign("resource_grid", "visits_grid");
+      $this->tpl->assign("enable_paging", false);
+      
+      $this->tpl->assign("invoice_id", $invoice_id);
+      $this->tpl->assign("entity_id", $invoice_id);
+      
+      
+      $total_final_rate = 0.00;
+      
+      // $agency = $this->agencymdl->getByAgencyId($invoice->agency_id);
+      // $sortByPtLastName = isset($invoice->sort_invoice_by_lastname) AND $invoice->sort_invoice_by_lastname == 1 ? true : false;
+      $sortByPtLastName = true;
+
+      $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);
+  		
+      if($this->getAgencyId() == $data->contractor_id){
+        $patients = $this->visitlogmdl->getInvoiceVisitsPatientIds($invoice_id, $sortByPtLastName);
+
+        // $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+        foreach($patients as $patient_id){
+          $patient_id = $patient_id->patient_id;
+          $patient = $this->patientmdl->getById($patient_id);
+          
+          $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, $patient->patient_id);
+          
+          if(count($visits) ==0 )
+          continue;
+          
+          $total_final_rate += $this->visitlogmdl->getVisitsBillAmount($visits);
+
+          /*foreach ($visits as $visit) {		
+            if(!$visit->co_final_rate)
+              $visit->co_final_rate = 0.00; 
+             
+            if($visit->billable_YN == 0){
+              $visit->co_final_rate = 0.00;  
+            }else{
+              if($visit->co_billing_confirmed == 1){
+                $total_final_rate += $visit->co_final_rate;
+              }
+            }
+      		}*/
+          
+            
+        }
+
+        $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice_id);
+        
+        // correcting invoice amount if it have wrong data
+        if ($invoice->is_special != 1) {          
+      		if($total_final_rate != $invoice->invoice_amount AND round(abs($total_final_rate - $invoice->invoice_amount), 2) >0 ){
+            $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_amount', $total_final_rate);
+            $invoice->balance = $total_final_rate - $invoice->total_payment;
+            echo '<script>parent.location.reload(true);</script>';
+            
+          }
+        }
+
+  		}
+      
+      $invoice->balance_in_red = false;  
+      if($invoice->credit_invoice == 1){
+        $invoice->balance = '$'.number_format($invoice->balance, 2);
+        $invoice->balance = $invoice->balance.' (CR)';
+        // $invoice->total_payment = $invoice->total_payment * (-1.00);
+        $invoice->total_payment = number_format($invoice->total_payment, 2);      
+      }
+      else{
+        if($invoice->balance > 0.00){
+          $invoice->balance_in_red = true;  
+        }
+        $invoice->balance = '$'.number_format($invoice->balance, 2);
+      }
+      
+      $invoice->amount = '$'.number_format($invoice->invoice_amount, 2); 
+      
+      $this->tpl->assign('back', $back);
+      //$this->tpl->assign('additional_buttons', array('Back' => 'window.location.href=\''.$this->config->site_url().'/contractor/invoices/index\''));
+      $this->tpl->assign('additional_buttons', array(
+          // 'Print Invoice'=>'document.print_form.submit();', 
+          'Print Invoice'=>'window.open(\''.$this->config->site_url().'/contractor/invoices/print_invoice/'.$invoice_id.'\')', 
+          // 'Print Notes'=>'window.open(\''.$this->config->site_url().'/contractor/invoices/print_notes/'.$invoice_id.'\')', 
+          'Print Notes'=>'print_notes_confirm('.$invoice_id.')', 
+          'Email Invoice and Notes'=>'email_invoice_confirm('.$invoice_id.')', 
+          'Print Patient Signatures'=>'window.open(\''.$this->config->site_url().'/contractor/invoices/pt_signs/'.$invoice_id.'\')', 
+          'Back' => 'parent.location.href=\''.$this->config->site_url().'/'.preg_replace('"-"','/',$back).'\''
+        )
+      );
+      
+      
+      $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);		
+      
+      if($this->getAgencyId() == $data->contractor_id){
+        $this->assignObject($invoice);        
+        $this->tpl->assign('agency_name', $data->agency_name);        
+      }
+      
+      // $this->tpl->assign_include("filter_tpl", "contractor/invoices/visits_gfilter");
+  		$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/visits_gbase");
+  		$this->tpl->view("parts/ibase", $this->lang->language);
+       
+    }
+  }
+  
+  function visits_grid($invoice_id){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    // $agency = $this->agencymdl->getByAgencyId($invoice->agency_id);
+    // $sortByPtLastName = isset($invoice->sort_invoice_by_lastname) AND $invoice->sort_invoice_by_lastname == 1 ? true : false;
+    $sortByPtLastName = true;
+
+    $tab_32_list = $this->parametermdl->getByType(32);
+    
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=30;type=ro", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=*", "Type of Visit"));
+		$head->append($this->xml->Element("column", "width=*", "Clinician"));
+    $head->append($this->xml->Element("column", "width=1;type=ro", ""));
+		$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+    $head->append($this->xml->Element("column", "width=*", "Visit Status"));
+		$head->append($this->xml->Element("column", "width=7;type=ro", "Notes"));
+		$head->append($this->xml->Element("column", "width=5;align=left;type=link", "Actions"));	
+    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+    if($invoice){
+      $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);
+  		
+      if($this->getAgencyId() == $data->contractor_id){
+        $patients = $this->visitlogmdl->getInvoiceVisitsPatientIds($invoice_id, $sortByPtLastName);
+        // $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+        foreach($patients as $patient_id){
+          $patient_id = $patient_id->patient_id;
+          $patient = $this->patientmdl->getById($patient_id);
+          
+          $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, $patient->patient_id);
+          
+          if(count($visits) ==0 )
+          continue;
+          
+          $cell = $this->xml->Element("row", "");
+          $cell->append($this->xml->Element("cell", "colspan=8;aligh=center", '<![CDATA[<b>Patient: <font color="#0000FF">'.$patient->last_name.' '.$patient->first_name.'</font></b> &nbsp;&nbsp;<a href="javascript://" onclick="add_visit_to_invoice('.$invoice_id.', '.$invoice->agency_contractor_id.', '.$patient->patient_id.')" title="Add Visit to Invoice">Add Visit to Invoice</a>]]>'));		
+          $document->append($cell);
+          
+          foreach ($visits as $visit) {		
+            $visit_rate = $this->visitlogmdl->getSingleVisitBillAmount($visit);
+            $visit->co_final_rate = number_format($visit_rate, 2);  
+
+            $cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+      			//$cell->append($this->xml->Element("cell", null, $visit->visit_log_id."::".$visit->patient_id."::".$patient->patient_id."::".standard_date(mysql_to_unix($visit->visited_date), 'VIS_LIST')));
+            if($visit->billable_YN == 0)
+      			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date)).' (Non Billable)' ));
+            else
+      			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date))));
+            
+            switch($visit->visit_program){
+              case 'ptev':
+              case 'stev':                
+                $visit->assessment_type = '  '.@$tab_32_list[$visit_eval->tab_32_assess_type];
+                break;
+              case 'otev':
+                $visit->assessment_type = '  '.@$tab_32_list[$visit_eval->tab_92_assess_type];
+                break;                
+            }
+            
+            
+            
+      			$cell->append($this->xml->Element("cell", null, $visit->visit_description.@$visit->assessment_type));
+      			$cell->append($this->xml->Element("cell", null, $visit->clinician));
+
+            if ($visit->co_sp_final_rate) {
+              $commentsCellStr = '<![CDATA[';
+              if (isset($patient->is_a_group_pt) AND $patient->is_a_group_pt == 1) {
+                $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\'Group Patient Rate Applied\', OFFSETY, 18);"><b>!</b></a>&nbsp;';
+              } else {
+                $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\'Amount Manually Updated\', OFFSETY, 18);"><b>!</b></a>&nbsp;';
+              }
+              $commentsCellStr .= ']]>';  
+              $cell->append($this->xml->Element("cell", null, $commentsCellStr));
+              $commentsCellStr = '';
+            } else {
+              $cell->append($this->xml->Element("cell", null, ''));
+            }
+
+      			$cell->append($this->xml->Element("cell", null, '$'.$visit->co_final_rate));			
+      			$cell->append($this->xml->Element("cell", null, $visit->tab_description));			
+
+            // Notes
+            $comments = $visit->invoice_notes;
+            $comments = str_replace("\n","",$comments );
+            $comments = str_replace("\r","",$comments );
+            $comments = str_replace("'","\\'",$comments );
+            $commentsCellStr = '<![CDATA[';
+            if($comments!="")
+              $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$comments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note.jpg" border="0" /></a>&nbsp;';
+
+            
+            // Uploaded/scanned document icon
+            $visit_type = $this->visittypemdl->getById($visit->visit_type_id);
+            $visit_program_info = array();
+            if ($visit_type->visit_program != "") {
+              if(file_exists(APPPATH."models/".strtolower($visit_type->visit_program)."mdl.php")){
+                $modelclass = strtolower($visit_type->visit_program).'mdl';
+                $this->load->model($modelclass);
+                $visit_program_info = $this->$modelclass->get($visit->visit_log_id);
+              }
+            }
+
+
+            if ( (isset($visit_program_info->upload_document_name) AND $visit_program_info->upload_document_name != '')
+              OR (isset($visit_program_info->upload_document_name2) AND $visit_program_info->upload_document_name2 != '')
+            ) {
+              $scanned_copy = "<span title='Scanned Copy' style='color: red; background: yellow; '>&nbsp;&nbsp;U&nbsp;&nbsp;</span>";
+              $commentsCellStr.= '<a title="Scanned Copy" href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true;  Tip(\'Scanned Copy\', OFFSETY, 18);"> '.$scanned_copy.' </a>';
+            }
+
+            $commentsCellStr .= ']]>';  
+            $cell->append($this->xml->Element("cell", null, $commentsCellStr));
+
+            $cell->append($this->xml->Element("cell", null, ""));
+            if ($visit->billable_YN == 1) {
+              $cell->append($this->xml->Element("cell", null, "Edit^javascript:editVisit(" . $visit->visit_log_id . ")"));
+            }else{
+              $cell->append($this->xml->Element("cell", null, ""));
+            }
+
+            
+      			$document->append($cell);
+      			
+      		}
+        }
+
+        $other_charges = $this->invoiceotherchargesmdl->getOtherAmount($invoice_id);
+        if ($other_charges > 0) {
+          $cell = $this->xml->Element("row", "");
+          $cell->append($this->xml->Element("cell", "colspan=3;aligh=center", '<![CDATA[<b>Additional Charges</b>]]>'));   
+            $document->append($cell);
+
+          foreach ($this->invoiceotherchargesmdl->get($invoice_id) as $other) {
+            $description = $this->xml_entities($other->description);  
+            $description=str_replace("&","",$description);
+            $description=str_replace(";","",$description);
+            $description = str_replace("=",'',$description);
+            
+            $cell = $this->xml->Element("row", "");
+            $cell->append($this->xml->Element("cell", null, (($other->service_date != '0000-00-00') ? date("m/d/Y",mysql_to_unix($other->service_date)) : '' ) ));   
+            $cell->append($this->xml->Element("cell", null, $description));   
+            $cell->append($this->xml->Element("cell", null, ''));      
+            $cell->append($this->xml->Element("cell", null, '$'.$other->amount));      
+            $cell->append($this->xml->Element("cell", null, ''));      
+            $cell->append($this->xml->Element("cell", null, ''));
+            $cell->append($this->xml->Element("cell", null, ''));            
+            $cell->append($this->xml->Element("cell", null, ''));            
+            $document->append($cell);
+
+          }
+        }
+        
+    		
+  		}
+    }
+  }
+
+	// added by ksa to download the pdf for invoice statement
+	// function invoice_statement($agency_contractor_id, $invoice_from_date_print=null, $invoice_to_date_print=null){
+  function invoice_statement($agency_contractor_id){
+		
+		$data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+		if(!$data){
+			exit;
+		}
+		
+    // if (!is_null($invoice_from_date_print) AND $invoice_from_date_print != "") {
+    //   $_POST['invoice_from_date_print'] = $invoice_from_date_print; 
+    // } else {
+    //   $_POST['invoice_from_date_print'] = "";
+    // }
+
+    // if (!is_null($invoice_to_date_print) AND $invoice_to_date_print != "") {
+    //   $_POST['invoice_to_date_print'] = $invoice_to_date_print; 
+    // } else {
+    //   $_POST['invoice_to_date_print'] = ""; 
+    // }
+      
+
+		$post_data = $_POST;
+		if($this->getAgencyId() == $data->contractor_id){
+      $option_filter = $this->input->post('agency_filter');
+      $invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id, $option_filter);
+      $tmpInvoices = array();
+      foreach ($invoices as $key => $invoice) {
+          if($option_filter=='due' AND $invoice->balance <= 0){
+            continue;
+          }  
+          // elseif ($option_filter=='paid' AND $invoice->balance > 0) {
+          elseif ($option_filter=='paid' AND $invoice->invoice_payment <= 0) {
+            continue;
+          }
+
+          $tmpInvoices[] = $invoice;
+      }
+      $invoices = $tmpInvoices;
+
+      if ($this->input->post('patient_id') != "") {
+        $patient = $this->patientmdl->getById($this->input->post('patient_id'));
+        $ptAgency = $this->agencymdl->getByAgencyId($patient->agency_id);
+        // Bill to patient for PRIVATE patients when agency settings "Send Invoice to Patient" is YES
+        if ($ptAgency->send_invoice_to_patient == 1) {
+            $data->contact_name = $patient->last_name.' '.$patient->first_name;
+            $data->agency_name = '';
+            $data->address = $patient->address;
+            $data->zip = $patient->zip;
+            $data->city = $patient->city;
+            $data->state_name_short = $patient->state_name_short;
+        }        
+      }
+
+      $data->invoices = $invoices;
+      $data->post_data = $post_data;
+
+			$data->contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+			$total_due_balance = 0;
+			foreach($invoices as $invoice){
+				if($invoice->balance <= 0){
+					continue;
+				}			
+				$total_due_balance += $invoice->balance;
+			}
+			$data->total_due_balance = $total_due_balance;
+		}
+
+		$data->base_url = base_url();
+		$content = "";
+		$content = $this->load->view('contractor/invoices/print_statement',$data,true);
+		
+		// convert in PDF
+		require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+		try {
+		
+			$pdf_path = str_replace("\\","/", FCPATH) . "upload/";
+			$html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+			//$html2pdf = new HTML2PDF('P', 'A4', 'en');
+			//        $html2pdf->setModeDebug();
+			//$html2pdf->pdf->SetDisplayMode('fullpage');
+			$html2pdf->setTestTdInOnePage(false);
+			$html2pdf->setDefaultFont('Arial');
+			$html2pdf->writeHTML($content);
+			$pdf_file_name = 'invoice_statement_'.$agency_contractor_id.'.pdf';
+			$html2pdf->Output($pdf_file_name, 'D'); 
+		} catch(HTML2PDF_exception $e) {
+			echo $e;
+			exit;
+		}
+	}
+	
+	function email_statement($agency_contractor_id){
+		
+		$data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);	
+		if(!$data){
+			echo "Agency Contractor not found";exit;
+		}
+		$this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+
+		
+		$rules = array (
+			'email' 	=> 'required'/*,
+			'special_notes' 	=> 'required'*/
+		);
+		$fields = array(
+			'email' => 'Email'
+		);
+		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->assignObject($data);
+			//$user_info = $this->usermdl->getById($this->session->userdata('user_id'));
+      $this->tpl->assign("user_email", $data->agency_email);
+      // $this->tpl->assign("invoice_from_date_print", $invoice_from_date_print);
+			// $this->tpl->assign("invoice_to_date_print", $invoice_to_date_print);
+			
+			$company_info = $this->agencymdl->getByAgencyId($this->getAgencyId());      
+			$this->tpl->assign("company_email", $company_info->agency_email);
+			
+			$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/email_statement");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		}else{
+			$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			$contractor_info = $this->usermdl->getById($this->session->userdata('user_id'));    
+			
+			$post_data = $_POST;
+			if($this->getAgencyId() == $data->contractor_id){
+				$invoices = $this->companyinvoicemdl->getByContractorId($agency_contractor_id);
+				$data->invoices = $invoices;
+				$data->post_data = $post_data;
+				$data->contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+				$total_due_balance = 0;
+				foreach($invoices as $invoice){
+					if($invoice->balance <= 0){
+						continue;
+					}			
+					$total_due_balance += $invoice->balance;
+				}
+				$data->total_due_balance = $total_due_balance;
+			}
+			$data->base_url = base_url();
+			$content = "";
+			$content = $this->load->view('contractor/invoices/print_statement',$data,true);
+
+			// convert in PDF
+			require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');   
+			$pdf_path = str_replace("\\","/", FCPATH) . "upload/";
+			$html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+			//$html2pdf = new HTML2PDF('P', 'A4', 'en');
+			//        $html2pdf->setModeDebug();
+			//$html2pdf->pdf->SetDisplayMode('fullpage');
+			$html2pdf->setTestTdInOnePage(false);
+			$html2pdf->setDefaultFont('Arial');
+			$html2pdf->writeHTML($content);
+			$pdf_file_name = 'invoice_statement_'.$agency_contractor_id.'.pdf';
+			
+			$html2pdf->Output($pdf_path . $pdf_file_name, 'F');
+			$subject = "Please see Statement enclosed";
+			// send email to the user if user clicks to the Email Statement Button
+			$this->load->library('email');
+			$this->email->from('noreply@homehealthsoft.com', $company->agency_name);
+			$this->email->to($this->input->post('email'));
+			$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->input->post('special_notes');	
+			$this->email->subject($subject);
+				
+			$this->email->message($body); 			
+			$this->email->attach($pdf_path . $pdf_file_name);
+			$this->email->send();
+			$this->email->clear();
+			
+			
+			if($this->input->post('email_copy_company') == '1'){
+				$company_info = $this->agencymdl->getByAgencyId($this->getAgencyId());      
+				// $this->email->from('noreply@homehealthsoft.com', $contractor_info->first_name." ".$contractor_info->last_name);
+				$this->email->from('noreply@homehealthsoft.com', $company->agency_name);
+				$this->email->to($company_info->agency_email);  			
+				$this->email->subject("Copy of ".$subject);
+				$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->input->post('special_notes');
+				// $this->email->set_mailtype("html"); 
+				$this->email->message($body);      
+				$this->email->send();
+			}
+			$this->email->clear(true);
+			
+			sleep(2);
+			unlink($pdf_path . $pdf_file_name);
+			
+			echo "Email has been sent";
+		}
+	}	
+
+
+
+
+  function edit_visit_rate ( $visit_log_id ) {
+		$this->load->model('invoiceauditlogmdl');
+    $visitlog = $this->visitlogmdl->getById($visit_log_id);
+    $patient = $this->patientmdl->getById($visitlog->patient_id);
+    
+    if(!$visitlog){
+      echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";exit;
+    }
+    
+    $this->tpl->assign("visit_log_id", $visit_log_id);
+    $this->tpl->assign("patient", $patient);
+		
+    $rules = array (
+            'co_final_rate'   => 'required'
+            );
+
+    $fields = array (
+            'co_final_rate'   => 'Visit Rate'
+            );
+
+    if($this->input->post('co_final_rate') != $visitlog->co_final_rate){
+      $rules['invoice_notes'] = 'required';
+      $fields['invoice_notes'] = 'Notes';
+    }
+
+    $co_sp_final_rate = null;
+    $edit_co_sp_final_rate = FALSE;
+
+    if (
+      in_array($visitlog->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))
+
+      OR $patient->gov_program == 'Waiver'
+    ) {
+      $co_sp_final_rate = $this->visitlogmdl->getSingleVisitBillAmount($visitlog);
+      $edit_co_sp_final_rate = TRUE;
+
+      $this->tpl->assign('edit_co_sp_final_rate', TRUE);
+      
+      if($this->input->post('co_sp_final_rate') != $co_sp_final_rate){
+        if (!isset($rules['invoice_notes'])) {
+          $rules['invoice_notes'] = 'required';
+          $fields['invoice_notes'] = 'Notes';
+        }
+      }
+    }
+
+    $this->validation->set_rules($rules);
+    $this->validation->set_fields($fields);
+		
+		//$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+      $this->assignObject($visitlog);
+      $invoice_audit_log = $this->invoiceauditlogmdl->getById($visitlog->visit_log_id);
+      $data_audit_log = array();
+      if (count($invoice_audit_log) > 0) {
+        foreach ($invoice_audit_log as $data) {
+          $usAgy = $this->usagymdl->getByUsAgyId($data->user_id);
+          $data_audit_log[$data->invoice_audit_log_id] = array(
+              'name' => $usAgy->first_name." ".$usAgy->last_name,
+              'date_audit_log' => $data->invoice_audit_log_date
+          );
+        }
+        //echo var_dump($data_audit_log);
+      }
+      $this->tpl->assign('audit_log_date', $data_audit_log);
+      $this->tpl->assign('co_sp_final_rate', $co_sp_final_rate);
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_rate_form");			
+			$this->tpl->view("parts/ibase", $this->lang->language);			
+		} else {
+      $co_final_rate = (float)$this->input->post('co_final_rate');        
+      $this->visitlogmdl->updateFlex($visit_log_id, 'co_final_rate', $co_final_rate);
+      $this->visitlogmdl->updateFlex($visit_log_id, 'co_billing_confirmed', 1);
+      $this->visitlogmdl->updateFlex($visit_log_id, 'invoice_notes', $this->input->post('invoice_notes'));
+
+      if ($edit_co_sp_final_rate AND !is_null($co_sp_final_rate)) {
+        $new_co_sp_final_rate = (float)$this->input->post('co_sp_final_rate'); 
+        if ($co_sp_final_rate != $new_co_sp_final_rate) {
+          $this->visitlogmdl->updateFlex($visit_log_id, 'co_sp_final_rate', $new_co_sp_final_rate);
+        }
+      }
+      
+      if ($visitlog->co_invoice_id) {
+          $visits = $this->visitlogmdl->getInvoiceVisits($visitlog->co_invoice_id);
+          
+          if(count($visits) > 0 ){
+            $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);
+            $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($visitlog->co_invoice_id);
+            $invoice = $this->companyinvoicemdl->getById($visitlog->co_invoice_id);
+
+            if($total_final_rate != $invoice->invoice_amount AND round(abs($total_final_rate - $invoice->invoice_amount), 2) >0 ){
+              $this->companyinvoicemdl->updateFlex($visitlog->co_invoice_id, 'invoice_amount', $total_final_rate);
+              // echo '<script>parent.location.reload(true);</script>';
+              
+            }
+
+            
+            $this->assignPostData($invoiceauditlogmdl);
+            $this->invoiceauditlogmdl->visit_log_id = $visitlog->visit_log_id;
+            $this->invoiceauditlogmdl->user_id = $this->getUsAgyId();
+            $this->invoiceauditlogmdl->invoice_audit_log_date = date("Y-m-d H:i:s");
+            if ($visitlog->co_final_rate != $this->input->post('co_final_rate') || $visitlog->invoice_notes != $this->input->post('invoice_notes')) {
+              $this->invoiceauditlogmdl->insert();
+            }
+            
+          }
+          
+          
+      }
+			//echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";
+			echo "<SCRIPT>parent.parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+			
+		}
+	}
+
+  function revert_visit($visit_log_id){
+    $visitlog = $this->visitlogmdl->getById($visit_log_id);
+    if(!$visitlog){
+      echo "Visit not found!";
+      // echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";exit;
+    }
+
+    $invoice_id = $visitlog->co_invoice_id;
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+
+    $this->visitlogmdl->updateFlex($visit_log_id, 'co_invoice_id', null);
+    
+    // Update Invoice amount
+    $difference = 0;
+    $total_final_rate = 0;
+    
+    $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id);
+    if(count($visits) > 0 ){
+      $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);      
+    }
+
+    $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice_id);
+    $difference = round(abs($total_final_rate - $invoice->invoice_amount), 2);
+    if($total_final_rate != $invoice->invoice_amount AND $difference >0 ){
+      $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_amount', $total_final_rate);
+    }
+
+    if ($invoice->agency_balance > 0) {
+      $agency_balance  = $invoice->agency_balance  - $difference;
+      $this->companyinvoicemdl->updateFlex($invoice_id, 'agency_balance ', $agency_balance );
+    }
+
+    echo "Visit reverted to Ready to Bill";
+    echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+  }
+
+  function payments($invoice_id, $back="contractor_invoices_bydates"){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    //$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());  
+    $this->tpl->assign("no_grid_buttons", true);    
+		$this->tpl->assign(array("add_sufix" => "Payment"));
+    $this->tpl->assign("resource_grid", "payments_grid");
+    $this->tpl->assign("resource_index", 'payments'); 
+    $this->tpl->assign('resource_add', 'payments_add');
+    $this->tpl->assign('resource_edit', 'payments_edit');
+    $this->tpl->assign("resource_delete", "payments_delete");
+        
+    $this->tpl->assign('additional_buttons', array('Add Payment' => 'addPayment()', 'Back' => 'parent.location.href=\''.$this->config->site_url().'/'.preg_replace('"-"','/',$back).'\''));
+    
+    $this->tpl->assign("entity_id", $invoice_id);
+    
+    $invoice->balance_in_red = false;  
+    if($invoice->credit_invoice == 1){
+      // $invoice->total_payment = $invoice->total_payment * (-1.00);
+      $invoice->total_payment = number_format($invoice->total_payment, 2);      
+      $invoice->balance = '$'.number_format($invoice->balance, 2);
+      $invoice->balance = $invoice->balance.' (CR)';
+    }
+    else{
+      if($invoice->balance > 0.00){
+        $invoice->balance_in_red = true;  
+      }
+      $invoice->balance = '$'.number_format($invoice->balance, 2);
+    }
+    
+    $invoice->amount = '$'.number_format($invoice->invoice_amount, 2); 
+    $this->assignObject($invoice);
+    
+		$this->tpl->assign_include("filter_tpl", "contractor/invoices/payment_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function payments_grid($invoice_id){
+    $this->load->model('invoicepaymentsmdl');
+    
+    
+    $this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Payment Amount"));
+		$head->append($this->xml->Element("column", "width=*", "Payment Date"));
+    $head->append($this->xml->Element("column", "width=*", "Check Nbr"));
+		$head->append($this->xml->Element("column", "width=*", "Notes"));
+		$head->append($this->xml->Element("column", "width=25;align=left;type=link", "Actions"));	
+    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$data = $this->invoicepaymentsmdl->get($invoice_id);
+		
+		foreach ($data as $tran) {	
+      $amount = '$'.number_format($tran->payment_amount, 2); 
+      
+			$cell = $this->xml->Element("row", "id=" . $tran->invoice_payment_id);
+			$cell->append($this->xml->Element("cell", null, $amount));
+			$cell->append($this->xml->Element("cell", null, ($tran->payment_date != '0000-00-00') ? date("m/d/Y",mysql_to_unix($tran->payment_date)) : '' ));
+      $cell->append($this->xml->Element("cell", null, $tran->check_nbr));     
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($tran->payment_notes)) );			
+      
+      //$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "contractor/invoices/delete_payment/" . $tran->invoice_payment_id . "/".$invoice_id."^Are you sure to delete this payment?"));
+      
+      $cell->append($this->xml->Element("cell", null, "Edit^javascript:editPayment(" . $tran->invoice_payment_id . ")"));
+      
+      $cell->append($this->xml->Element("cell", null, "Delete^javascript:deletePayment(" . $tran->invoice_payment_id . ")"));
+      
+      $document->append($cell);
+			
+		}		
+  }
+  
+  function greater_than_zero ( $amount ) {
+    
+    if (is_numeric($amount) AND $amount > 0) {
+      return TRUE;
+    } else {
+      $this->validation->set_message('greater_than_zero', "The Payment Amount field must contain a number greater than 0.");
+      return FALSE;  
+    }    
+  }
+
+  function payments_add($invoice_id){
+    $this->load->model('invoicepaymentsmdl');
+    
+    $rules = array (
+      'payment_amount'  	=> 'required|numeric|callback_greater_than_zero',
+      'payment_date'  	=> 'required'      
+      );
+  
+    $fields = array (
+      'payment_amount'  	=> 'Payment Amount',
+      'payment_date'  	=> 'Payment Date'
+      );
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules);	
+    
+    if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign('invoice_id', $invoice_id);
+      
+			$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/add_payment_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			$this->assignPostData($this->invoicepaymentsmdl);
+      //$this->invoicepaymentsmdl->invoice_id=$invoice_id;
+      //$this->invoicepaymentsmdl->payment_date=date('Y-m-d');
+      $this->invoicepaymentsmdl->insert($invoice_id);
+      
+			echo "<SCRIPT>parent.location.reload(true); parent.dhxWins.unload();</SCRIPT>";			
+		}	        
+  }
+  
+  function payments_edit ( $invoice_id, $invoice_payment_id ) {
+		
+    $this->load->model('invoicepaymentsmdl');
+    
+    $this->tpl->assign("invoice_payment_id", $invoice_payment_id);
+    $this->tpl->assign("invoice_id", $invoice_id);
+		
+    $rules = array (
+      //'invoice_id'  	=> 'required',
+      'payment_amount'  	=> 'required|numeric|callback_greater_than_zero',
+      'payment_date'  	=> 'required'
+      );
+  
+    $fields = array (
+      //'invoice_id'  	=> 'Visit Type',
+      'payment_amount'  	=> 'Payment Amount',
+      'payment_date'  	=> 'Payment Date'
+      );
+    
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules);	
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->assignObject($this->invoicepaymentsmdl->getById($invoice_payment_id));
+
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_payment_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+    
+			$this->assignPostData($this->invoicepaymentsmdl);      
+      $set = array();
+      $set['payment_amount'] = $this->input->post('payment_amount');
+      $set['payment_date'] = $this->invoicepaymentsmdl->payment_date;
+      $set['check_nbr'] = $this->input->post('check_nbr');
+      $set['payment_notes'] = $this->input->post('payment_notes');
+      
+			$this->invoicepaymentsmdl->updateFlex($invoice_payment_id, $set);
+			/*$this->invoicepaymentsmdl->updateFlex($invoice_payment_id, 'payment_amount', $this->input->post('payment_amount'));
+			$this->invoicepaymentsmdl->updateFlex($invoice_payment_id, 'payment_date', $this->invoicepaymentsmdl->payment_date);*/
+			
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";			
+		}		    
+	}
+  
+  function payments_delete($invoice_payment_id, $invoice_id) {		
+    $this->load->model('invoicepaymentsmdl');
+    
+    $document = $this->xml->Document();
+		$payment = $this->invoicepaymentsmdl->getById($invoice_payment_id);    
+		
+    if($payment != null){
+      if($payment->invoice_id == $invoice_id){
+        $this->invoicepaymentsmdl->delete($invoice_payment_id);
+        $document->append($this->xml->Element('js', 'script=parent.location.reload(true)', null));
+      }else{
+        $document->append($this->xml->Element('alert', null, "Invoice mis match!"));
+        return;
+      }
+    }else {
+			
+			$document->append($this->xml->Element('alert', null, "Payment not found!"));
+			return;
+			
+		}
+    
+  }
+
+  function other_charges($invoice_id, $back="contractor_invoices_bydates"){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    //$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());  
+    $this->tpl->assign("no_grid_buttons", true);    
+    $this->tpl->assign(array("add_sufix" => "Other Charges"));
+    $this->tpl->assign("resource_grid", "other_charges_grid");
+    $this->tpl->assign("resource_index", 'other_charges'); 
+    $this->tpl->assign('resource_add', 'other_charges_add');
+    $this->tpl->assign('resource_edit', 'other_charges_edit');
+    $this->tpl->assign("resource_delete", "other_charges_delete");
+        
+    $this->tpl->assign('additional_buttons', array('Add Other Charges' => 'addOtherCharges()', 'Back' => 'parent.location.href=\''.$this->config->site_url().'/'.preg_replace('"-"','/',$back).'\''));
+    
+    $this->tpl->assign("entity_id", $invoice_id);
+    
+    $invoice->balance_in_red = false;  
+    if($invoice->credit_invoice == 1){
+      exit('Other charges not application to credit invoice.');
+    }
+    
+    $invoice->amount = '$'.number_format($invoice->invoice_amount, 2); 
+    $this->assignObject($invoice);
+    
+    $this->tpl->assign_include("filter_tpl", "contractor/invoices/other_charges_gfilter");
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    $this->tpl->view("parts/ibase", $this->lang->language);
+  }
+  
+  function other_charges_grid($invoice_id){
+    $this->load->model('invoiceotherchargesmdl');
+    
+    
+    $this->xml->root_name = "rows";
+    $document = $this->xml->Document();
+    $head = $this->xml->Element("head");
+    $head->append($this->xml->Element("column", "width=*", "Date"));
+    $head->append($this->xml->Element("column", "width=*;type=ro", "Service"));
+    $head->append($this->xml->Element("column", "width=*", "Quantity"));
+    $head->append($this->xml->Element("column", "width=*", "Rate"));
+    $head->append($this->xml->Element("column", "width=25;align=left;type=link", "Actions")); 
+    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));    
+    $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+    $document->append($head);
+    
+    $data = $this->invoiceotherchargesmdl->get($invoice_id);
+    
+    foreach ($data as $charge) {  
+      $amount = '$'.number_format($charge->amount, 2); 
+      
+      $cell = $this->xml->Element("row", "id=" . $charge->other_charge_id);
+      $cell->append($this->xml->Element("cell", null, ($charge->service_date != '0000-00-00') ? date("m/d/Y",mysql_to_unix($charge->service_date)) : '' ) );
+      $cell->append($this->xml->Element("cell", null, $charge->description));
+      $cell->append($this->xml->Element("cell", null, $charge->quantity));
+      $cell->append($this->xml->Element("cell", null, $amount));
+      
+      $cell->append($this->xml->Element("cell", null, "Edit^javascript:editOtherCharges(" . $charge->other_charge_id . ")"));
+      
+      $cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteOtherCharges(" . $charge->other_charge_id . ")"));
+      
+      $document->append($cell);
+      
+    }   
+  }
+
+  function other_charges_add($invoice_id){
+    $this->load->model('invoiceotherchargesmdl');
+    
+    $rules = array (
+      'service_date'    => 'required',
+      'description'    => 'required',
+      'quantity'    => 'required|numeric|callback_greater_than_zero',
+      'amount'    => 'required|numeric|callback_greater_than_zero',
+      );
+  
+    $fields = array (
+      'service_date'    => 'Date',
+      'description'    => 'Service',
+      'quantity'    => 'Quantity',
+      'amount'    => 'Rate'
+      );
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules); 
+    
+    if ($this->validation->run() == FALSE) {
+      
+      $this->tpl->assign('invoice_id', $invoice_id);
+      
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/add_other_charges_form");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+      
+    } else {
+      $this->assignPostData($this->invoiceotherchargesmdl);
+      //$this->invoiceotherchargesmdl->invoice_id=$invoice_id;
+      //$this->invoiceotherchargesmdl->payment_date=date('Y-m-d');
+      $this->invoiceotherchargesmdl->insert($invoice_id);
+      
+      echo "<SCRIPT>parent.parent.location.reload(true); parent.dhxWins.unload();</SCRIPT>";     
+    }         
+  }
+  
+  function other_charges_edit ( $invoice_id, $other_charge_id ) {
+    
+    $this->load->model('invoiceotherchargesmdl');
+    
+    $this->tpl->assign("other_charge_id", $other_charge_id);
+    $this->tpl->assign("invoice_id", $invoice_id);
+    
+    $rules = array (
+      'service_date'    => 'required',
+      'description'    => 'required',
+      'quantity'    => 'required|numeric|callback_greater_than_zero',
+      'amount'    => 'required|numeric|callback_greater_than_zero',
+      );
+  
+    $fields = array (
+      'service_date'    => 'Date',
+      'description'    => 'Service',
+      'quantity'    => 'Quantity',
+      'amount'    => 'Rate'
+      );
+
+    $this->validation->set_fields($fields);  
+    $this->validation->set_rules($rules); 
+    
+    if ($this->validation->run() == FALSE) {
+
+      $this->assignObject($this->invoiceotherchargesmdl->getById($other_charge_id));
+
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/edit_other_charges_form");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+      
+    } else {
+    
+      $this->assignPostData($this->invoiceotherchargesmdl);      
+      $this->invoiceotherchargesmdl->update($other_charge_id);
+      
+      echo "<SCRIPT>parent.parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";     
+    }       
+  }
+
+  function other_charges_delete($other_charge_id, $invoice_id) {    
+    $this->load->model('invoiceotherchargesmdl');
+    
+    $document = $this->xml->Document();
+    $row = $this->invoiceotherchargesmdl->getById($other_charge_id);    
+    
+    if($row != null){
+      if($row->invoice_id == $invoice_id){
+        $this->invoiceotherchargesmdl->delete($other_charge_id);
+        $document->append($this->xml->Element('js', 'script=parent.parent.location.reload(true)', null));
+      }else{
+        $document->append($this->xml->Element('alert', null, "Invoice mis match!"));
+        return;
+      }
+    }else {
+      
+      $document->append($this->xml->Element('alert', null, "Other Charge record not found!"));
+      return;
+      
+    }
+    
+  }
+
+  function print_invoice($invoice_id, $from_agency_type = 'contractor', $return_file_name = false){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      exit;
+    }
+    
+    set_time_limit(0);
+    
+    $data = array();
+    $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);
+    // $sortByPtLastName = isset($invoice->sort_invoice_by_lastname) AND $invoice->sort_invoice_by_lastname == 1 ? true : false;
+    $sortByPtLastName = true;
+
+    $alternate_therapy = false;
+
+    $notes = array();
+    $compare_to_agency_id = ($from_agency_type == 'contractor') ? $data->contractor_id : $data->agency_id;
+    if($this->getAgencyId() == $compare_to_agency_id){
+        $data->invoice = $invoice;
+        $data->contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+        
+        $patients = $this->visitlogmdl->getInvoiceVisitsPatientIds($invoice_id, $sortByPtLastName);
+        // $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+        $total_amount = 0;
+        foreach($patients as $key=>$patient_id){
+            $patient_id = $patient_id->patient_id;
+            $patient = $this->patientmdl->getById($patient_id);
+            if ($data->contractor_info->state_id == 6) {
+              if ($patient->gov_program == 'Y-Waiver' ) {
+                $patient->gov_program = 'WAIVER';
+              }
+            }
+        
+            $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, $patient->patient_id);
+            $patient->medicaidInsurance = $this->patientinsurancemdl->getMedicaidInsurance($patient->patient_id);
+            $patient->agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+            $patient->visits = $visits;          
+            $p_amount = 0;
+            foreach ($visits as $key2=>$visit) {
+              $notes[] = $visit->visit_log_id;
+              
+              $units = 0;
+              $visit->co_final_rate = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units);
+
+              
+              if (
+                in_array($visit->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))
+                OR $patient->gov_program == 'Waiver'
+              ) {
+                $visit->amount = number_format(0, 2);
+                if ($visit->gov_program == 'PRIVATE') {
+                  $alternate_therapy = true;    
+                  if ($data->contractor_info->state_id == 6) {
+                    $visit->do_not_display_gov_program = TRUE;
+                  }
+                  
+                  $total_amount += $visit->co_final_rate;
+                  $p_amount += $visit->co_final_rate;
+                  $visit->amount = $visit->co_final_rate;
+                  $visit->units = $units;                  
+                } else {
+                  $alternate_therapy = true;    
+                  
+                  $total_amount += $visit->co_final_rate;
+                  $p_amount += $visit->co_final_rate;
+                  $visit->amount = $visit->co_final_rate;
+                  
+                  $visit->units = $units;
+
+                  if ($visit->visit_type_id ==  116 AND $patient->gov_program == 'WAIVER' AND $data->contractor_info->state_id == 6) {
+                    // $this->load->model('muvimdl');
+                    // $muvi = $this->muvimdl->get($visit->visit_log_id);
+                    // $visit->session_type = $muvi->session_type;
+                    $visit->session_type = 'Treatment';
+                  } else if ($visit->visit_type_id ==  120 AND $patient->gov_program == 'WAIVER' AND $data->contractor_info->state_id == 6) {
+                    // $this->load->model('muvimdl');
+                    // $muvi = $this->muvimdl->get($visit->visit_log_id);
+                    // $visit->session_type = $muvi->session_type;
+                    $visit->session_type = 'Assessment';
+                  }
+
+                  if ($patient->gov_program == 'WAIVER' AND $data->contractor_info->state_id == 6) {
+                    $visit->show_gov_program_waiver = true;
+                  }
+                }
+                
+              } else {       
+                $visit->units = 1;     
+                $total_amount += $visit->co_final_rate;
+                $p_amount += $visit->co_final_rate;
+                $visit->amount = number_format($visit->co_final_rate, 2);
+              }
+
+              $total_amount = round($total_amount, 2);
+              
+              $visit->co_final_rate = number_format($visit->co_final_rate, 2);  
+
+              
+              if(in_array($visit->visit_program, array('ptev','stev','otev'))){
+                $visit_type_mdl = $visit->visit_program.'mdl';
+                $this->load->model($visit_type_mdl);
+                $this->load->model('parametermdl');
+                $visit_eval = $this->$visit_type_mdl->get($visit->visit_log_id);
+                $tab_32_list = $this->parametermdl->getByType(32);
+                
+                switch($visit->visit_program){
+                  case 'ptev':
+                  case 'stev':                
+                    $visit->assessment_type = @$tab_32_list[$visit_eval->tab_32_assess_type].( ($visit->billable_YN == 0) ? ' (non_billable)' : '');
+                    break;
+                  case 'otev':
+                    $visit->assessment_type = @$tab_32_list[$visit_eval->tab_92_assess_type].( ($visit->billable_YN == 0) ? ' (non_billable)' : '');
+                    break;  
+                  default: 
+                    $visit->assessment_type = ($visit->billable_YN == 0) ? '(non_billable)' : '';
+                    break;
+                }
+              }
+
+              if ($data->contractor_info->state_id == 6) {
+                $visit->mod = '';
+                switch ($patient->gov_program_waiver) {
+                  case 'CES':
+                    $visit->mod = 'U7';
+                    break;
+                  case 'SLS':
+                    $visit->mod = 'U8';
+                    break;
+                  case 'CLLI':
+                    $visit->mod = 'CLLLI';
+                    break;
+                  case 'CCT':
+                    $visit->mod = 'CCT';
+                    break;
+                }
+
+                $visit_user = $this->usagymdl->getByUsAgyId($visit->visit_user_id);
+                $patient->agency->print_therapist_name_in_invoice = 1;
+                if ($visit_user->mov == 'BA') {
+                  $visit->mod = $visit->mod . ',';
+                } else if ($visit_user->mov == 'MA') {
+                  $visit->mod = $visit->mod . ', 22';
+                }
+              }
+              
+              $visits[$key2] = $visit;
+            }
+            
+            $patient->amount = $p_amount;
+
+            // Bill to patient for PRIVATE patients when agency settings "Send Invoice to Patient" is YES
+            if ($invoice->send_invoice_to_patient == 1) {
+              $data->contact_name = $patient->last_name.' '.$patient->first_name;
+              $data->agency_name = '';
+              $data->address = $patient->address;
+              $data->zip = $patient->zip;
+              $data->city = $patient->city;
+              $data->state_name_short = $patient->state_name_short;
+            }
+
+            $patients[$key] = $patient;
+            if ($patient->amount > 0) {
+              $data->agency = $patient->agency;
+            }
+        }
+        
+        $data->patients = $patients;        
+        //$data->total_amount = $total_amount;
+        $data->total_amount = $invoice->invoice_amount;
+        
+        $data->other_amount = $this->invoiceotherchargesmdl->getOtherAmount($invoice_id);
+        if ($data->other_amount > 0) {
+          $data->others_charges = $this->invoiceotherchargesmdl->get($invoice_id);      
+        }
+    }
+    
+
+    //print_r($data);exit;
+    $data->base_url = base_url();
+    $content = "";
+    if ($alternate_therapy) {
+      $content = $this->load->view('contractor/invoices/print_invoice_alt_therapy',$data,true);
+    } else {
+      $content = $this->load->view('contractor/invoices/print_invoice',$data,true);
+    }
+
+    // echo $content;exit;
+    
+    // convert in PDF
+    require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+    try
+    {
+        $html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+        //$html2pdf = new HTML2PDF('P', 'A4', 'en');
+        // $html2pdf->setModeDebug();
+        //$html2pdf->pdf->SetDisplayMode('fullpage');
+        $html2pdf->setTestTdInOnePage(false);
+        $html2pdf->setDefaultFont('Arial');
+        $html2pdf->writeHTML($content);
+        $invoice_date = date_create($invoice->invoice_date);
+        $invoice_format = date_format($invoice_date, 'm-d-Y');
+
+        // Invoice Nbr 999999 Date mm-dd-yyyy Agency AAAAAAAA
+
+        if (!$return_file_name) {
+          if($invoice->invoice_no)
+            $html2pdf->Output("Invoice.".$invoice->invoice_no . " Date " . $invoice_format . " Agency " .$invoice->agency_name.'.pdf', 'D');
+          else
+            $html2pdf->Output("Invoice.".$invoice->invoice_no . " Date " . $invoice_format . " Agency " .$invoice->agency_name.'.pdf', 'D');    
+        } else {
+          $filename = FCPATH;        
+            $filename = str_replace("\\","/", $filename);
+            
+            if($invoice->invoice_no)
+              $filename = $filename.'tmp/Invoice.'. $invoice->invoice_no . ' Date ' . $invoice_format . ' Agency ' .$invoice->agency_name.'.pdf';
+            else
+              $filename = $filename.'tmp/Invoice.'. $invoice->invoice_no . ' Date ' . $invoice_format . ' Agency ' .$invoice->agency_name.'.pdf';
+            $filename = str_replace(" ", "_", $filename);
+            $filename = str_replace("&", "_", $filename);
+            $filename = str_replace("*", "_", $filename);
+            $filename = str_replace(":", "_", $filename);
+            $html2pdf->Output($filename, 'F');        
+            return $filename;
+        }
+    }
+    catch(HTML2PDF_exception $e) {
+        echo $e;
+        exit;
+    } 
+  
+  }  
+  
+  function print_notes($invoice_id, $return_file_name = false, $print_uploaded_docs=true, $print_elec_notes=true){
+    
+    if (!$print_elec_notes AND !$print_uploaded_docs) {
+      exit("Please select at least one option to print");
+    }
+
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      if($return_file_name)
+      return "";
+      else{exit;}
+    }
+    
+    global $pt_3625_visits;
+    global $last_3625_visit_log_id;
+    global $print_notes;
+    global $GL_VISIT;
+    
+    global $ELEC_VISITS;
+    global $UPLOADED_VISITS;
+    global $F3625_VISITS;
+    global $VISITS_TO_UNLINK;
+    global $PATIENT_IDS;
+
+    $ELEC_VISITS = array();
+    $UPLOADED_VISITS = array();
+    $F3625_VISITS = array();
+    $VISITS_TO_UNLINK = array();
+    $PATIENT_IDS = array();
+    $invalid_formats = array();
+    
+    $print_notes = 1;
+
+    $data = array();
+    $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);
+    
+    $notes = array();
+    $filenames = array();    
+    $this->load->helper('visit_pdf');
+
+    if($this->getAgencyId() == $data->contractor_id){
+      $data->invoice = $invoice;
+      $data->contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+      // $sortByPtLastName = isset($invoice->sort_invoice_by_lastname) AND $invoice->sort_invoice_by_lastname == 1 ? true : false;
+      $sortByPtLastName = true;
+      $patients = $this->visitlogmdl->getInvoiceVisitsPatientIds($invoice_id, $sortByPtLastName);
+      // $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+      $total_amount = 0;
+      foreach($patients as $key=>$patient_id){
+        $patient_id = $patient_id->patient_id;
+        $patient = $this->patientmdl->getById($patient_id);
+        $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, $patient->patient_id, 'vis_visit_log.visit_log_id');        
+        
+        $p_amount = 0;
+        $pt_3625_visits = array();
+        $last_3625_visit_log_id = null;
+
+        foreach ($visits as $key2=>$visit) {
+          $visit_log_id = $visit->visit_log_id;
+
+          $visit_log = $this->visitlogmdl->getById($visit_log_id);
+          $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+      
+          if ($visit_type->visit_program == null) {
+            continue;
+          }
+
+          $method = strtolower($visit_type->visit_program).'_pdf';
+          if(!function_exists($method)){
+            continue;
+          }
+          
+          $this->load->model(strtolower($visit_type->visit_program).'mdl');
+          $visit_pdf = $method($visit_log_id);
+          $VISITS_TO_UNLINK[] = $visit_pdf;
+          if ($visit_pdf) {
+            if ($print_elec_notes) {
+                if (in_array($visit_log->visit_type_id, array(10, 12, 40, 42, 60, 62))) {
+                  if ( isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "" ) {
+                        // do not print electronic form
+                  } else {
+                    $filenames[] = $visit_pdf;
+                    $ELEC_VISITS[$patient_id][] = $visit_pdf;
+                  }
+                } else {
+                  if ( (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") 
+                    OR  (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") ) {
+                    // when uploaded found document no need to print electronic version
+                  }else{
+                    $filenames[] = $visit_pdf;
+                    $ELEC_VISITS[$patient_id][] = $visit_pdf;
+                  }
+                }
+
+            }
+          }
+          
+
+          if ($print_uploaded_docs) {
+            // Add uploaded scanned document if have any
+            $FCPATH = FCPATH;
+            $FCPATH = str_replace("\\","/", $FCPATH);
+            // upload_document_name 1
+            if (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") {
+              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name)) {
+                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name, PATHINFO_EXTENSION);
+                if ($ext == 'pdf') {
+                  $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+                  $UPLOADED_VISITS[$patient_id][] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+                }  else {
+                  $invalid_formats[] = $ext;
+                }
+              }
+            }
+            
+            // upload_document_name 2
+            if (in_array($visit_log->visit_type_id, array(10, 12, 40, 42, 60, 62))) {
+              if (!$visit_log->signature AND isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+                if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+                  $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+                  if ($ext == 'pdf') {
+                    $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+                    $UPLOADED_VISITS[$patient_id][] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+                  } else {
+                    $invalid_formats[] = $ext;
+                  }
+                }
+              }
+            } else  if (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+                if ($ext == 'pdf') {
+                  $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+                  $UPLOADED_VISITS[$patient_id][] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+                } else {
+                  $invalid_formats[] = $ext;
+                }
+              }
+            }
+
+            // Covid screening document "upload_covid_document"
+            if (isset($GL_VISIT->upload_covid_document) AND $GL_VISIT->upload_covid_document != "") {
+              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document)) {
+                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document, PATHINFO_EXTENSION);
+                if ($ext == 'pdf') {
+                  $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document;
+                  $UPLOADED_VISITS[$patient_id][] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document;
+                }  else {
+                  $invalid_formats[] = $ext;
+                }
+              }
+            }
+            
+          }
+    		}
+
+        unset($visits);
+
+        if ($last_3625_visit_log_id) {
+          $form3625_pdf_file_name = form3625_pdf($last_3625_visit_log_id, "F");
+          $VISITS_TO_UNLINK[] = $form3625_pdf_file_name;
+          if ($print_elec_notes) {        
+            // $filenames[] = $form3625_pdf_file_name;
+            $F3625_VISITS[$patient_id][] = $form3625_pdf_file_name;
+            // $ELEC_VISITS[] = $form3625_pdf_file_name;
+          }
+
+
+          if ($print_uploaded_docs) {
+            $visit_log = $this->visitlogmdl->getById($last_3625_visit_log_id);
+            $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+            // Add uploaded scanned document if have any
+            $FCPATH = FCPATH;
+            $FCPATH = str_replace("\\","/", $FCPATH);
+            // upload_document_name 1
+            if (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") {
+              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name)) {
+                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name, PATHINFO_EXTENSION);
+                if ($ext == 'pdf') {
+                  $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+                  $UPLOADED_VISITS[$patient_id][] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+                } else {
+                  $invalid_formats[] = $ext;
+                }
+              }
+            }
+
+            // upload_document_name 2
+            if (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+                if ($ext == 'pdf') {
+                  $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+                  $UPLOADED_VISITS[$patient_id][] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+                } else {
+                  $invalid_formats[] = $ext;
+                }
+              }
+            }
+          }
+
+        }
+
+        $PATIENT_IDS[] = $patient_id;
+
+      }  		
+      unset($patients);
+		}
+    
+    unset($pt_3625_visits);
+    unset($last_3625_visit_log_id);
+    unset($print_notes);
+    unset($GL_VISIT);
+    // print_r($filenames);
+
+    if (!empty($invalid_formats)) {
+      echo '<font color="red">Some uploaded docs can not be printed due to invalid format</font><br><br>';
+    }
+    if (empty($filenames) AND !$print_elec_notes AND $print_uploaded_docs) {
+      exit("Uploaded Docs not available");
+    }
+
+    if(!$return_file_name){
+      /** 
+      * New Code support >= PHP 5.3.0
+      */
+      require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+      require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+      require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+      // and we can do stuff
+      $pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+      try {
+        foreach ($PATIENT_IDS as $patient_id) {
+          // echo $patient_id."<br>";
+          // 3625 first
+          if (isset($F3625_VISITS[$patient_id])) {
+            foreach($F3625_VISITS[$patient_id] as $name){
+                  // echo "1.a. attached 3625 file: ".$name."<br>";
+              $pdf->addPDF($name, 'all');
+            }
+          }
+
+          if (isset($filenames[$patient_id])) {
+            foreach($filenames[$patient_id] as $name){
+              // echo "1.b. attached visit pdf file: ".$name."<br>";
+              $pdf->addPDF($name, 'all');
+            }      
+          }
+        }
+
+        $pdf->merge('download', 'Invoice '.$invoice->invoice_no.' Notes.pdf');
+        // End of code for PHP >= 5.3.0
+
+        foreach($VISITS_TO_UNLINK as $name){
+          if (strpos($name, 'datastore') == FALSE) {
+            @unlink($name);
+          }
+        } 
+        // unset global vars
+        unset($VISITS_TO_UNLINK);
+        unset($UPLOADED_VISITS);
+        unset($F3625_VISITS);
+        unset($ELEC_VISITS);
+      } catch (Exception $e) {
+        foreach($VISITS_TO_UNLINK as $name){
+          if (strpos($name, 'datastore') == FALSE) {
+            @unlink($name);
+          }
+        } 
+        // unset global vars
+        unset($VISITS_TO_UNLINK);
+        unset($UPLOADED_VISITS);
+        unset($F3625_VISITS);
+        unset($ELEC_VISITS);
+
+        echo "<font color='red'>Visit Pdfs can't merged into single pdf due to invalid encoded Scanned Copy / Uploaded Docs of visit.</font>";
+        exit();
+      }      
+    }else{
+      // print_r($F3625_VISITS); exit();
+      // print_r(array_merge($F3625_VISITS,$filenames)); exit();
+      return array_merge($F3625_VISITS,$filenames);
+      
+      /*$filename = FCPATH;        
+      $filename = str_replace("\\","/", $filename);
+      
+      $filename = $filename.'tmp/'.time().'_notes_'.$invoice_id.'.pdf';
+      
+      try{
+        $pdf->merge('file', $filename);
+      }
+      catch (Exception $e) {
+        //echo 'Caught exception: ',  $e->getMessage(), "\n";
+      }
+      return $filename;*/
+    }
+        
+  }
+  
+	function email_invoice_confirm($invoice_id, $popup = 1, $back="contractor_invoices_bydates"){
+    $this->load->model('agencysettingsmdl');
+    $agency_config = $this->agencysettingsmdl->get($this->getAgencyId());
+		$invoice = $this->companyinvoicemdl->getById($invoice_id);
+		
+		if(!$invoice){
+			echo "Invoice not found";exit;
+		}
+		
+		global $ELEC_VISITS;
+		$ELEC_VISITS = array();
+		global $UPLOADED_VISITS;
+		$UPLOADED_VISITS = array();
+		global $F3625_VISITS;
+		$F3625_VISITS = array();
+		global $VISITS_TO_UNLINK;
+		$VISITS_TO_UNLINK = array();
+    global $PATIENT_IDS;
+    $PATIENT_IDS = array();
+		
+		$this->tpl->assign("invoice_id", $invoice_id);
+		
+		$have_private_patients = FALSE;
+		$patient_gov_programs = array();
+		$visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, null , 'pat_patient.gov_program, pat_patient.patient_id, pat_patient.email');
+		foreach ($visits as $key2=>$visit) {
+			$patient_gov_programs[$visit->gov_program] = $visit->gov_program;
+			if ($visit->gov_program == 'PRIVATE') {
+				$have_private_patients = TRUE;
+			}
+		}
+		
+		$rules = array();
+		$fields = array();
+		
+		/*if (!($invoice->send_invoice_to_patient == 1 AND $have_private_patients)) {
+			$rules['email'] = 'required';
+			$fields['email'] = 'Email';
+		}*/
+		
+		if(!$this->input->post('send_notes') AND !$this->input->post('send_invoice')){
+      $rules['send_notes_or_send_invoice'] = 'required';
+			$fields['send_notes_or_send_invoice'] = 'Send Invoice Or Send Notes';
+    }
+    
+    $rules["email"] = "callback_validate_email_duplicate";
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+    $company_info = $this->agencymdl->getByAgencyId($this->getAgencyId());  
+
+		if ($this->validation->run() == FALSE) {
+			$this->assignObject($invoice);
+			$data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id); 
+			
+			//$user_info = $this->usermdl->getById($this->session->userdata('user_id'));
+			$this->tpl->assign("agency_contract_detail", $data);
+			$this->tpl->assign("user_email", $data->agency_email);
+			$this->tpl->assign("have_private_patients", $have_private_patients);
+			$this->tpl->assign('agency_config', $agency_config);
+			
+      $private_patients_emails = array();
+
+			if ($invoice->send_invoice_to_patient == 1 AND $have_private_patients) {
+				$visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, null, 'pat_patient.gov_program, pat_patient.patient_id, pat_patient.email, pat_patient.first_name, pat_patient.last_name');
+				$msgs = array();
+				foreach ($visits as $key2=>$visit) {  
+					if ($visit->gov_program == 'PRIVATE') {
+						if (!isset($msgs[$visit->patient_id])) {
+							if (!$visit->email) {
+								$msgs[$visit->patient_id] = $visit->first_name." ".$visit->last_name."'s email is empty.";
+							} else {
+                $private_patients_emails[$visit->email] = $visit->email;
+              }
+						}
+					}
+				}
+				unset($visits);
+				if (!empty($msgs)) {
+					$this->tpl->assign('msgs', implode("<br>", $msgs));
+				}
+
+        if (count($private_patients_emails) > 0) {
+          $this->tpl->assign("private_patients_emails", implode(", ", $private_patients_emails));
+        }
+        
+				if (count($patient_gov_programs) > 1) {
+					$this->tpl->assign("can_send_to_agency_email", true);
+				}
+			} else {
+				$this->tpl->assign("can_send_to_agency_email", true);
+			}
+			
+			
+			
+			$this->tpl->assign("company_email", $company_info->agency_email);
+			
+			$this->tpl->assign('popup', $popup);
+			$this->tpl->assign('back', $back);
+			if (!$popup) {
+				$this->tpl->assign('form_title', 'Confirmation Email Invoice and Notes');
+				$this->tpl->assign('cancel_url', $this->config->site_url().'/contractor/invoices/detail/'.$invoice_id.'/'.$back);
+			}
+			$agency_info = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);
+			$this->tpl->assign("entity_id", $agency_info->agency_id);
+			
+			$this->tpl->assign('noedit', true);
+			$this->tpl->assign("resource_grid", "contractor_contacts_grid");
+			$this->tpl->assign_include("dynamic_tpl", "contractor/invoices/email_invoice_confirm");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		}else{
+			$gov_program = null;
+			// $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, null , 'pat_patient.gov_program, pat_patient.patient_id, pat_patient.email');
+			foreach ($visits as $key2=>$visit) {
+				$gov_program = $visit->gov_program;
+				break;
+			}
+		
+			$to_emails = array();
+      $to_email = $this->input->post('email');
+      $email_str = $this->input->post('email');
+      if ($email_str) {
+        $email_str_array = explode(",", $email_str);
+        if(!empty($email_str_array)) {
+          foreach($email_str_array as $k => $v) {
+            $to_emails[] = trim($v);
+          }
+        }
+      }
+    
+      $bcc = array();
+      if ($to_email != "") {
+        $bcc[0] = $to_emails[0];
+      }
+			
+			
+	    	// Send to contractor contacts which are selected
+        $this->load->model("contractorcontactsmdl");	
+
+      if ($this->input->post('contact_ids') != "") {
+      	$contact_ids = explode(",", $this->input->post('contact_ids'));
+				
+				$contacts = $this->contractorcontactsmdl->getByIds($contact_ids);
+				foreach ($contacts as $contact) {
+					$to_emails[] = $contact->email;
+				}
+      }
+			
+			//echo "<pre>"; print_r($to_emails); echo "</pre>"; exit;
+		
+			if ($invoice->send_invoice_to_patient == 1 AND $have_private_patients) {
+				foreach ($visits as $key2=>$visit) {
+					if ($visit->gov_program == 'PRIVATE') {
+						if (!isset($bcc[$visit->patient_id])) {
+							if ($visit->email) {
+								$bcc[$visit->patient_id] = $visit->email;
+							}
+						}
+					}
+				}
+			}
+		
+			if (count($bcc) > 0) {
+        $to_email = array_pop($bcc);
+      } else if (count($to_emails) > 0) {
+        $to_email = array_pop($to_emails);
+      } else {
+        $to_email = null;
+        //exit("Recipients Not Found!");
+      }
+			
+			unset($visits);
+		
+		
+			// if($this->input->post('invoice_no'))
+			// $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_no', $this->input->post('invoice_no'));
+			
+			$this->companyinvoicemdl->updateFlex($invoice_id, 'sent_date', date("Y-m-d"));
+			
+			$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+      $contractor_info = $this->usermdl->getById($this->session->userdata('user_id')); 
+      
+			
+			/** 
+			* New Code support >= PHP 5.3.0
+			*/
+			require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+			require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+			require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+			
+			$notes_file = array();
+			$invoice_file = null;
+			$pt_sign_file = null;
+			
+			$this->load->library('email');
+			// $this->email->from('noreply@homehealthsoft.com', $contractor_info->first_name." ".$contractor_info->last_name);
+			$this->email->from('noreply@homehealthsoft.com', $company->agency_name);
+			$this->email->to($to_email);   
+
+      if (!empty($to_emails)) {
+        $this->email->cc($to_emails);
+      } 
+
+			if (!empty($bcc)) {
+				$this->email->bcc($bcc);
+			} 
+		
+			// $this->email->subject("Invoice # ".$this->input->post('invoice_no')." from ".$contractor_info->first_name." ".$contractor_info->last_name);
+			// $this->email->subject("Invoice notification from ".$contractor_info->first_name." ".$contractor_info->last_name);
+			
+			
+			$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->input->post('special_notes');
+			
+			if(trim($invoice->invoice_note) != '') {
+				if ($this->input->post('send_invoice_notes') == 1) {
+					$body .= "\n\n" . $invoice->invoice_note;
+        }
+			}
+			// $this->email->set_mailtype("html"); 
+			$this->email->message($body);      
+			$subject = '';
+			if ($this->input->post('send_notes') == 1) {
+				$subject = "Invoice #".$invoice->invoice_no." Notes from ".$company->agency_name." - ".$contractor_info->first_name." ".$contractor_info->last_name;
+				
+				$send_elec_notes = TRUE;
+				$send_uploaded_docs = FALSE;
+				if ($this->input->post('send_uploaded_docs') == '1') {
+					$send_uploaded_docs = TRUE;
+				}
+		
+				@$this->print_notes($invoice_id,true, $send_uploaded_docs, $send_elec_notes);
+				
+				if ($this->input->post('send_in_bulks') == 1) {
+
+          //  When 'send_in_bulks' is ON, Email all Electronic visits selected in one PDF
+					// Merge Electronic visits only and attach this single merged file
+					$pdf = new \Jurosh\PDFMerge\PDFMerger;
+					
+					try {
+            foreach ($PATIENT_IDS as $patient_id) {
+              // 3625 first
+              if (isset($F3625_VISITS[$patient_id])) {
+                foreach($F3625_VISITS[$patient_id] as $name){
+                  echo "1.a. added 3625 file: ".$name."<br>";
+    							$pdf->addPDF($name, 'all');
+    						}
+              }
+
+              // Then visit notes
+              if (isset($ELEC_VISITS[$patient_id])) {
+                foreach($ELEC_VISITS[$patient_id] as $name){
+                  echo "1.b. added elec file: ".$name."<br>";
+                  $pdf->addPDF($name, 'all');
+                }      
+              }
+            }
+						
+						$filepath = FCPATH;
+						$filepath = str_replace("\\","/", $filepath);
+						$filepath = $filepath.'tmp/'.$invoice->invoice_no.' Electronic Notes.pdf';
+						$pdf->merge('file', $filepath);
+            // echo "1. attached file: ".$filepath."<br>";
+						$this->email->attach($filepath);
+						
+						// need to remove this merged file after operation
+						$VISITS_TO_UNLINK[] = $filepath;
+
+            // attach uploaded docs individually
+            if ($send_uploaded_docs) {
+              // Sort documents by filename
+              $tmpArray = array();
+              foreach($UPLOADED_VISITS as $pt_notes){            
+                foreach($pt_notes as $note){            
+                  $name = basename($note);
+                  $tmpArray[$name] = $note;
+                }
+              }
+              ksort($tmpArray);
+              // print_r($tmpArray); exit();
+              foreach($tmpArray as $note){            
+                $this->email->attach($note);
+                // echo "2. uploaded doc attached file: ".$note."<br>";
+              }
+            }
+					} catch (Exception $e) {
+						echo "<font color='red'>Visit Pdfs can't merged into single pdf. To avoid this error skip bulk sending.</font>";
+						
+						if (!empty($VISITS_TO_UNLINK)) {
+							foreach($VISITS_TO_UNLINK as $note){
+								if (strpos($note, 'datastore') == FALSE) {
+									@unlink($note);
+								}
+							}
+						}
+						exit();
+					}
+				
+				} else {
+          foreach ($PATIENT_IDS as $patient_id) {
+            // Attach 3625 pdf First
+            if (isset($F3625_VISITS[$patient_id])) {
+              foreach($F3625_VISITS[$patient_id] as $name){
+                $this->email->attach($name);
+                // echo "3.a. f3625 attached file: ".$name."<br>";
+              }
+            }
+
+            // Attach visit notes
+            if (isset($ELEC_VISITS[$patient_id])) {
+              foreach($ELEC_VISITS[$patient_id] as $name){
+                $this->email->attach($name);
+                // echo "3.b. attached elec file: ".$name."<br>";
+              }
+            }
+
+            // Attach uploaded documents of this patient
+            if (isset($UPLOADED_VISITS[$patient_id])) {
+              foreach ($UPLOADED_VISITS[$patient_id] as $note) {
+                // echo "3.c. attached uploaded doc file: ".$note."<br>";
+                $this->email->attach($note);
+              }
+            }
+          }
+                      
+				}
+			
+
+			} else if($this->input->post('send_uploaded_docs') == '1'){
+        $subject = "Invoice #".$invoice->invoice_no." Notes from ".$company->agency_name." - ".$contractor_info->first_name." ".$contractor_info->last_name;
+				
+				$send_uploaded_docs = TRUE;
+				$send_elec_notes = FALSE;
+				
+				@$this->print_notes($invoice_id,true, $send_uploaded_docs, $send_elec_notes);
+				
+        // attach uploaded docs individually
+        // Sort documents by filename
+        $tmpArray = array();
+        foreach($UPLOADED_VISITS as $pt_notes){            
+          foreach($pt_notes as $note){            
+            $name = basename($note);
+            $tmpArray[$name] = $note;
+          }
+        }
+        ksort($tmpArray);
+        // print_r($tmpArray); exit();
+				foreach($tmpArray as $note){            
+					$this->email->attach($note);
+          // echo "4. attached uploaded doc file: ".$note."<br>";
+				}
+			}
+			//echo "this is here 3.";
+
+      $invoice_file = "";
+      
+			if ($this->input->post('send_invoice') == 1) {
+        // When "Emailing" an invoice for CLASS patient, add (attach) the 3625 as well.
+				if ($gov_program == 'CLASS') {
+					if ($this->input->post('send_notes') != 1 AND $this->input->post('send_uploaded_docs') != 1) {
+						@$this->print_notes($invoice_id,true, false, true);
+						
+						// attach F3625 notes individually
+            foreach ($PATIENT_IDS as $patient_id) {
+              if (isset($F3625_VISITS[$patient_id])) {
+                foreach($F3625_VISITS[$patient_id] as $note){            
+    							$this->email->attach($note);
+                  // echo "5. 3625 only attached file: ".$note."<br>";
+    						}             
+              }
+            }
+					}
+				}
+				
+				$subject = "Invoice #".$invoice->invoice_no." from ".$company->agency_name." - ".$contractor_info->first_name." ".$contractor_info->last_name;
+				
+				@$invoice_file = $this->print_invoice($invoice_id, 'contractor', true);
+				$this->email->attach($invoice_file);
+        // echo "6. attached invoice file: ".$invoice_file."<br>";
+			}
+			
+      $pt_sign_file = "";
+
+			if ($this->input->post('send_tracking_sheet') == 1) {
+        // attach the patient sign pdf with the email
+				@$pt_sign_file = $this->pt_signs($invoice_id, false);
+				$this->email->attach($pt_sign_file);
+			}
+			
+			$this->email->subject($subject);
+      
+      if($to_email != null) {
+         $this->email->send();	
+      }		
+			
+			// echo $this->email->print_debugger();
+			$this->email->clear();
+			
+
+			
+			//echo "this is here 2.";
+			if($this->input->post('email_copy_company') == '1'){
+				$company_info = $this->agencymdl->getByAgencyId($this->getAgencyId());      
+				// $this->email->from('noreply@homehealthsoft.com', $contractor_info->first_name." ".$contractor_info->last_name);
+				$this->email->from('noreply@homehealthsoft.com', $company->agency_name);
+				$this->email->to($company_info->agency_email);        
+				$this->email->subject("Copy of ".$subject);
+				$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->input->post('special_notes');
+				if(trim($invoice->invoice_note) != '') {
+					$body .= "\n\n" . $invoice->invoice_note;
+				}		
+				// $this->email->set_mailtype("html"); 
+				$this->email->message($body);      
+				$this->email->send();
+			}
+			$this->email->clear(true);
+		
+			if ($invoice_file) {
+				@unlink($invoice_file);
+			}
+		
+			if ($pt_sign_file) {
+				@unlink($pt_sign_file);
+			}
+			unset($invoice_file);
+			unset($pt_sign_file);
+		
+			if (!empty($VISITS_TO_UNLINK)) {
+				foreach($VISITS_TO_UNLINK as $note){
+					if (strpos($note, 'datastore') == FALSE) {
+						@unlink($note);
+					}
+				}
+			}
+			//echo "this is here 1.";
+			unset($notes_file);
+			
+			// unset global vars
+			unset($VISITS_TO_UNLINK);
+			unset($UPLOADED_VISITS);
+			unset($F3625_VISITS);
+			unset($ELEC_VISITS);
+						
+
+			// save data to the sent_email_instances and sent_email_instance_details tables
+			$this->load->model('sentemailinstancemdl');
+			$this->sentemailinstancemdl->insert();
+			$instance_id = $this->sentemailinstancemdl->id;
+			
+			$this->load->model('sentemailinstancedetailmdl');
+			$insert_array = array();
+      $insert_array[$to_email] = array('sent_email_instance_id' => $instance_id, 'source_id' => $invoice_id, 'email' => $to_email, 'source_name' => 'INVO');
+			
+      if(!empty($to_emails)) {
+        foreach($to_emails as $ei => $ek) {
+  				 $insert_array[$ek] = array('sent_email_instance_id' => $instance_id, 'source_id' => $invoice_id, 'email' => $ek, 'source_name' => 'INVO');
+  			}
+      }
+
+			if(!empty($bcc)) {
+				foreach($bcc as $bi => $bk) {
+					 $insert_array[$bk] = array('sent_email_instance_id' => $instance_id, 'source_id' => $invoice_id, 'email' => $bk, 'source_name' => 'INVO');
+				}
+			}
+
+      if($this->input->post('email_copy_company') == '1'){
+        $insert_array[$company_info->agency_email] = array('sent_email_instance_id' => $instance_id, 'source_id' => $invoice_id, 'email' => $company_info->agency_email, 'source_name' => 'INVO');
+      }
+
+			if(!empty($insert_array)) {
+				$this->sentemailinstancedetailmdl->insert_batch($insert_array);
+			}
+					
+			$this->tpl->assign('msgs', "Email has been sent");
+			//echo "this is here.";
+			//exit;
+			echo "Email has been sent";
+		
+			if (!$popup) {
+				echo '
+				<script>
+				setTimeout(function(){
+				window.location.href="'.$this->config->site_url().'/contractor/invoices/detail/'.$invoice_id.'/'.$back.'";
+				}, 1000);
+				</script>
+				';
+			}
+		}
+	}
+  
+
+	function contractor_contacts_grid($agency_id) {
+		$this->load->model("contractorcontactsmdl");
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$contractor_id = $this->getAgencyId();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=ch", " "));
+		$head->append($this->xml->Element("column", "width=*", "Dept/Role Descrip"));
+		$head->append($this->xml->Element("column", "width=*", "Email"));
+		$head->append($this->xml->Element("column", "width=*", "Phone"));
+		$head->append($this->xml->Element("column", "width=*", "Ext"));
+	
+		//$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+	
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		$data = $this->contractorcontactsmdl->getContractorContacts($contractor_id, $agency_id);
+		foreach ($data as $d) {
+			$cell = $this->xml->Element("row", "id=" . $d->contact_id );
+			if( $d->make_default == 0 ) {
+				$cell->append($this->xml->Element("cell", null, "0"));
+			} else {
+				$cell->append($this->xml->Element("cell", null, "1"));
+			}
+			$cell->append($this->xml->Element("cell", null, $d->tab_description));
+			$cell->append($this->xml->Element("cell", null, $d->email));
+			$cell->append($this->xml->Element("cell", null, $d->phone));
+			$cell->append($this->xml->Element("cell", null, $d->phone_ext));
+	
+	
+	
+			$document->append($cell);
+		}
+	}
+
+  function print_notes_confirm($invoice_id){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      echo "Invoice not found";exit;
+    }
+
+    global $ELEC_VISITS;
+    $ELEC_VISITS = array();
+    global $UPLOADED_VISITS;
+    $UPLOADED_VISITS = array();
+    global $F3625_VISITS;
+    $F3625_VISITS = array();
+    global $VISITS_TO_UNLINK;
+    $VISITS_TO_UNLINK = array();
+    global $PATIENT_IDS;
+    $PATIENT_IDS = array();
+
+
+    $this->tpl->assign("invoice_id", $invoice_id);
+    
+		$rules = array (
+              'confirm' 	=> 'required'
+            );
+    $fields = array(
+        'confirm' => 'Confirm'
+    );
+            
+
+    $this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == FALSE) {
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/print_notes_confirm");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+    }else{
+      $print_elec_notes = false;
+      $print_uploaded_docs = false;
+      if ($this->input->post('print_elec_notes') == '1') {
+        $print_elec_notes = true;
+      }
+
+      if ($this->input->post('print_uploaded_docs') == '1') {
+        $print_uploaded_docs = true;
+      }
+
+      // $this->print_notes($invoice_id, false, $print_uploaded_docs, $print_elec_notes);
+      @$this->print_notes($invoice_id, true, $print_uploaded_docs, $print_elec_notes);
+
+      $pdf_name = 'Invoice '.$invoice->invoice_no.' Notes';
+      $pdf_name = str_replace(" ", "_", $pdf_name);
+      /** 
+      * New Code support >= PHP 5.3.0
+      */
+      require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+      require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+      require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+      // and we can do stuff
+      $pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+      try {
+        // echo "<pre>";print_r($UPLOADED_VISITS); echo "</pre>";exit();
+        
+
+        $electronic_file_name = null;
+        $files_added = array();
+        foreach ($PATIENT_IDS as $patient_id) {
+          // 3625 first
+          if (isset($F3625_VISITS[$patient_id])) {
+            foreach($F3625_VISITS[$patient_id] as $name){
+                  // echo "1.a. attached 3625 file: ".$name."<br>";
+              $pdf->addPDF($name, 'all');
+              $files_added[] = $name;
+            }
+          }
+          
+          if (isset($ELEC_VISITS[$patient_id])) {
+            foreach($ELEC_VISITS[$patient_id] as $name){
+              $pdf->addPDF($name, 'all');
+              $files_added[] = $name;
+            }
+          }
+        }
+
+        if (count($files_added) > 0) {
+          if (count($UPLOADED_VISITS) > 0) {
+            // $electronic_file_name = sys_get_temp_dir().'/'.$pdf_name.'.pdf';
+            $electronic_file_name = FCPATH.'tmp/'.$pdf_name.'.pdf';
+            $pdf->merge('file', $electronic_file_name);
+          }  else {
+            $pdf->merge('download', $pdf_name.'.pdf');
+          }   
+        }
+            
+        // End of code for PHP >= 5.3.0
+        foreach($VISITS_TO_UNLINK as $name){
+          if (strpos($name, 'datastore') == FALSE) {
+            @unlink($name);
+          }
+        }
+
+        if (count($UPLOADED_VISITS) > 0) {
+          $zip = new ZipArchive;
+          $archive_file_name = $pdf_name.'.zip';
+          
+          // $zip_file = sys_get_temp_dir().'/'.$archive_file_name;
+          $zip_file = FCPATH.'tmp/'.$archive_file_name;
+          
+          if (file_exists($zip_file)) {
+            @unlink($zip_file);
+          }
+
+
+          if ($zip->open($zip_file, (ZipArchive::CREATE | ZipArchive::OVERWRITE)) === TRUE)
+          {
+              if ($electronic_file_name != "") {
+                // Add electronic merged file to the zip
+                  $zip->addFile($electronic_file_name, basename($electronic_file_name));
+              }
+
+              foreach($UPLOADED_VISITS as $pt_notes){
+                foreach($pt_notes as $name){
+                  $name = str_replace("//", "/", $name);
+                  // Add files to the zip file inside demo_folder
+                  $zip->addFile($name, 'uploaded_documents/'.basename($name));
+                }
+              }
+
+              // All files are added, so close the zip file.
+              $zip->close();
+
+              header("Pragma: public");
+              header("Expires: 0");
+              header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+              header("Cache-Control: private",false);
+              header("Content-Type: application/zip");
+              header("Content-Disposition: attachment; filename=$archive_file_name");
+              header("Content-Transfer-Encoding: binary");
+              header("Content-length: " . filesize($zip_file));
+
+              readfile("$zip_file");
+
+              @unlink($electronic_file_name);
+              @unlink($zip_file);
+          } else {
+            exit('Failed to zip files.');
+          }
+        }
+
+        // unset global vars
+        unset($VISITS_TO_UNLINK);
+        unset($UPLOADED_VISITS);
+        unset($F3625_VISITS);
+        unset($ELEC_VISITS);
+      } catch (Exception $e) {
+        // echo $e->getMessage()."<br>";
+        // End of code for PHP >= 5.3.0
+        foreach($VISITS_TO_UNLINK as $name){
+          if (strpos($name, 'datastore') == FALSE) {
+            @unlink($name);
+          }
+        } 
+        // unset global vars
+        unset($VISITS_TO_UNLINK);
+        unset($UPLOADED_VISITS);
+        unset($F3625_VISITS);
+        unset($ELEC_VISITS);
+
+        echo "<font color='red'>Visit Pdfs can't merged into single pdf due to invalid encoded Scanned Copy / Uploaded Docs of visit.</font>";
+        exit();
+      }
+
+    }
+  }
+  
+  public function receive_payment($agency_contractor_id){
+    $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+    $this->tpl->assign("entity_id", $agency_contractor_id);
+    
+    $amount_received = 0.00;
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);   
+    $this->tpl->assign('agency_name', $data->agency_name);      
+    $payment_date = $this->input->post("payment_date") ? $this->input->post('payment_date') : date("Y-m-d");
+    
+    $this->tpl->assign("payment_date", $payment_date);
+
+    $check_nbr = $this->input->post("check_nbr");
+    $this->tpl->assign("check_nbr", $check_nbr);
+    
+    if ($this->input->post("amount_received")) {
+      $amount_received = (float) $this->input->post("amount_received");
+      if($this->getAgencyId() == $data->contractor_id){
+        $row = $this->companyinvoicemdl->getTotalComBalance($agency_contractor_id);
+        $co_balance = number_format($row->balance,2);      
+        if(is_null($co_balance)){
+          $co_balance = '0.00';      
+        }
+              
+        $this->tpl->assign('co_balance', $co_balance);
+        
+        
+
+        $rows = $this->companyinvoicemdl->getByContractorId($agency_contractor_id, "all", "invoice_date", "ASC");
+        
+        $option_filter = "due";
+        $invoices = array();
+        $applied_total = 0.00;
+        foreach($rows as $invoice){
+            $tmp = array();
+            if($invoice->balance <= 0){
+              // this is paid and so need to skip
+              continue;
+            }  
+            
+            $tmp["invoice_id"] =  $invoice->invoice_id;
+            $tmp["invoice_no"] =  $invoice->invoice_no;
+            $tmp["invoice_date"] =  date("m/d/Y",mysql_to_unix($invoice->invoice_date));
+            $tmp["invoice_due_date"] =  date("m/d/Y",mysql_to_unix($invoice->invoice_due_date));
+            $tmp["bill_amount"] =  $invoice->invoice_amount;
+            $tmp["balance"] =  $invoice->balance;
+            if ($amount_received - $applied_total > 0) {
+              $tmp['amount_to_apply'] = ($amount_received - $applied_total) > $invoice->balance ? $invoice->balance :  ($amount_received - $applied_total);
+              $applied_total += $tmp['amount_to_apply'];
+            }
+            $invoices[] = $tmp;
+        }
+        $this->tpl->assign('invoices', $invoices);      
+        $this->tpl->assign('amount_received', $amount_received);      
+        $this->tpl->assign('amount_applied', $applied_total);      
+      } 
+      $this->tpl->assign('additional_buttons', array(
+        'Back' => 'window.location.href=\''.$this->config->site_url().'/contractor/invoices/receive_payment/'.$agency_contractor_id.'\'')
+      );
+    } else{
+      $this->tpl->assign('additional_buttons', array(
+        'Back' => 'window.location.href=\''.$this->config->site_url().'/contractor/invoices/co_invoices/'.$agency_contractor_id.'\'')
+      );
+    }
+      
+
+
+    /*$current_url = site_url($this->uri->uri_string());
+    $base_url = base_url().'index.php/';
+    $current_url = str_replace($base_url, "", $current_url);
+    
+    $this->tpl->assign("back", preg_replace('"/"', '-', $current_url));*/
+    
+
+    // $this->tpl->assign_include("filter_tpl", "contractor/invoices/invoices_gfilter");
+    $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/receive_payment");
+    // $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    $this->tpl->view("parts/ibase", $this->lang->language);
+  }
+
+  function post_receive_payment($agency_contractor_id){
+    // $payment_date = $this->input->post("payment_date") ? $this->input->post('payment_date') : date("Y-m-d");
+    $this->load->model('invoicepaymentsmdl');
+    $error = "";
+    if ($this->input->post("amount_received")===false or $this->input->post("amount_received")==0) {
+      $error .= "Please enter the amount you have received.";
+    }
+
+    if ($this->input->post("amount_applied")===false or $this->input->post("amount_applied")==0) {
+      $error .= "Please enter the amount you have applied.";
+    }/* else if($this->input->post("amount_applied") != $this->input->post("amount_received")){
+      $error .= "Please received and amount applied should be equal.";
+    }*/
+    if ($this->input->post('invoice_id') === false) {
+      $error .= "Please select invoices you want to apply payment received.";
+    } else if(is_array($this->input->post('invoice_id')) AND count($this->input->post('invoice_id'))==0){
+      $error .= "Please select invoices you want to apply payment received.";     
+    } else {
+      if ($this->input->post('amount_to_apply') === false) {
+        $error .= "Please select invoices and enter amout to apply.";
+      } else if(is_array($this->input->post('amount_to_apply')) AND count($this->input->post('amount_to_apply'))==0){
+        $error .= "Please select invoices and enter amout to apply.";     
+      }
+    }
+
+    if ($error != "") {
+      echo json_encode(array("error"=>$error));exit();
+    }
+
+    $invoices = $this->input->post('invoice_id');
+    $amounts_to_apply = $this->input->post('amount_to_apply');
+    $payment_date = standard_date(human_to_unix($this->input->post('payment_date')), 'MYSQL_NOTIME');
+    $check_nbr = $this->input->post("check_nbr");
+    foreach ($invoices as $key => $invoice_id) {
+      $amount_to_apply = $amounts_to_apply[$key];
+      $invoice = $this->companyinvoicemdl->getById($invoice_id);
+      if (empty($invoice)) {
+        continue;
+      }
+      if ($invoice->balance >= $amount_to_apply) {                      
+        $this->invoicepaymentsmdl->invoice_payment_id=null;
+        $this->invoicepaymentsmdl->invoice_id=$invoice_id;
+        $this->invoicepaymentsmdl->payment_date=$payment_date;
+        $this->invoicepaymentsmdl->payment_amount=$amount_to_apply;
+        $this->invoicepaymentsmdl->check_nbr=$check_nbr;
+        $this->invoicepaymentsmdl->insert($invoice_id);
+      }
+    }
+
+    $this->session->set_flashdata('message', "Payment has been applied to selected invoices successfully." );
+
+    echo json_encode(array("error"=>"","success"=>"1"));exit();
+  }
+
+  function pt_signs($invoice_id, $stream = true){
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      echo "Invoice not found";exit;
+    }
+
+    $data = array();
+    $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id);
+    // $sortByPtLastName = isset($invoice->sort_invoice_by_lastname) AND $invoice->sort_invoice_by_lastname == 1 ? true : false;
+    $sortByPtLastName = true;
+    
+    $patients = $this->visitlogmdl->getInvoiceVisitsPatientIds($invoice_id, $sortByPtLastName);
+    // $patients = $this->patientcontractormdl->getByContractorIdAndAgencyId($data->agency_id, $data->contractor_id);
+    foreach($patients as $key=>$patient_id){
+      $patient_id = $patient_id->patient_id;
+      $patient = $this->patientmdl->getById($patient_id);
+      $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id, $patient->patient_id);
+      if(count($visits) ==0 ){
+        unset($patients[$key]);  
+        continue;
+      }
+      // $patient->medicaidInsurance = $this->patientinsurancemdl->getMedicaidInsurance($patient->patient_id);
+      // $patient->agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+      $patient->visits = $visits;          
+      $patients[$key] = $patient;
+    }
+
+    $data->invoice = $invoice;      
+    $data->patients = $patients;      
+    $data->base_url = $this->config->config["base_url"];      
+
+    $html = $this->load->view('contractor/invoices/print_invoice_pt_signs', $data, true);
+
+    $this->load->helper(array('dompdf', 'file'));
+    $pdf_path = str_replace("\\","/", FCPATH) . "tmp/";
+    $file_name = $pdf_path."Invoice-" . $invoice->invoice_no . "-PT_signature_Sheet";
+	
+    pdf_create($html, $file_name, $stream);
+	return $file_name.".pdf";
+
+    /*if (!is_null($this->input->post('record_ids'))) {
+      $record_ids = $this->input->post('record_ids');
+      $recods = explode(",", $record_ids);
+      
+      $this->load->helper(array('dompdf', 'file'));
+      // page info here, db calls, etc. 
+      $episode = $this->episodemdl->getById($cms_485);
+      $patient = $this->patientmdl->getById($patient_id);
+      $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+      //echo "<pre>"; print_r($episode); echo "</pre>";
+      //echo "<pre>"; print_r($patient); echo "</pre>"; exit;
+      //echo "<pre>"; print_r($agency); echo "</pre>";
+      
+      $visits = $this->visitlogmdl->getByEpsodeId($cms_485, null, null, null, null, null, null, null, null, "no", $recods);
+      //echo "<pre>"; print_r($gdata); echo "</pre>";
+      $data = array('patient' => $patient, "agency" => $agency, "visits" => $visits, "episode" => $episode, "base_url" => $this->config->config["base_url"]);   
+      //ob_start();
+      $html = $this->load->view('print_invoice_pt_signs', $data, true);
+      //echo $html;
+      $file_name = "PT: " . $patient->last_name . " " . $patient->first_name . " - Signature Sheet";
+      pdf_create($html, $file_name, true);
+      //or
+      //$data = pdf_create($html, '', false);
+      //write_file('name', $data);
+      //if you want to write it to disk and/or send it as an attachment    
+    }*/
+
+  }
+
+  public function check_invoice_no($invoice_no, $invoice_id){
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    if (empty($invoice)) {
+      $this->validation->set_message('check_invoice_no', "Invoice Not Found");
+      return FALSE;
+    }
+
+    if ($invoice_no == $invoice->invoice_no) {
+      return TRUE;
+    }
+
+    $data = $this->agencycontractormdl->getByAgencyContractorId($invoice->agency_contractor_id); 
+
+    $agency_setting = $this->agencysettingsmdl->get($data->contractor_id);
+    if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+      if ($invoice_no < $agency_setting->invoice_seq_nbr) {
+        $at_least = $agency_setting->invoice_seq_nbr-1;
+        $this->validation->set_message('check_invoice_no', "You can't change Invoice Number to {$invoice_no}. You can only change to bigger then {$at_least}.");
+        return FALSE;
+      }
+    }
+
+    return TRUE;
+  }
+
+  public function add_visit_to_invoice($invoice_id, $agency_contractor_id, $patient_id){
+
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+
+    if (!is_null($this->input->post('record_ids'))) {  
+      $tab_32_assess_type_lsit = $this->parametermdl->getByType(32);    
+      // $visit_date_ini = $this->input->post('visit_date_ini');
+      // $visit_date_fin = $this->input->post('visit_date_fin');
+      $record_ids = $this->input->post('record_ids');
+      $records = explode(",", $record_ids);
+      
+      $this->load->model('companyinvoicemdl');
+      
+      if (empty($invoice)) {
+        echo "-1"; exit();
+      } else if($invoice->is_special) {
+        echo "-2"; exit();
+      } else {
+        // check visit already is in invoices or not
+        foreach ($records as $key => $visit_log_id) {
+          $visitlog = $this->visitlogmdl->getById($visit_log_id);
+          if ($visitlog->co_invoice_id) {
+            echo "-3";
+            exit();
+          }
+        }
+
+        $this->db->trans_start();
+
+        // add new visits to the invoice
+        foreach ($records as $key => $visit_log_id) {
+          $this->visitlogmdl->updateFlex($visit_log_id, 'co_invoice_id', $invoice->invoice_id);
+        }
+
+        // Calculate new invoice amount and update
+        $this->load->model('invoiceotherchargesmdl');
+        $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+        $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);
+        $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice->invoice_id);
+        if($total_final_rate != $invoice->invoice_amount AND round(abs($total_final_rate - $invoice->invoice_amount), 2) >0 ){
+          $this->companyinvoicemdl->updateFlex($invoice->invoice_id, 'invoice_amount', $total_final_rate);          
+        }
+
+        $this->db->trans_complete();
+
+        if($this->db->trans_status() === TRUE){
+          echo "1"; exit();
+        } else {
+          echo "0"; exit();
+        }
+      }
+        
+    } else {
+
+      if (empty($invoice)) {
+        echo "Invoice Not Found"; exit();
+      } else if($invoice->is_special) {
+        echo "The invoice is Special Invoice. You can't add visits to it."; exit();
+      }
+      $this->tpl->assign("no_grid_buttons", true);
+      $this->tpl->assign('noedit', true);
+      $this->tpl->assign('enable_paging', true);
+      $this->tpl->assign("resource_grid", 'add_visit_to_invoice_grid/'.$invoice_id.'/'.$agency_contractor_id.'/'.$patient_id);
+      $this->tpl->assign("invoice_id", $invoice_id);
+      $this->tpl->assign("agency_contractor_id", $agency_contractor_id);
+      $this->tpl->assign("patient_id", $patient_id);
+
+      // $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id); 
+      // $this->tpl->assign("agency_name", $data->agency_name);
+      
+      $this->tpl->assign_include("filter_tpl", "contractor/invoices/addtoinvoice_filter");
+      $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+  }
+
+  public function add_visit_to_invoice_grid($invoice_id, $agency_contractor_id, $patient_id){
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+    $contractor_info = $this->agencymdl->getByAgencyId($data->contractor_id);
+    $patient = $this->patientmdl->getById($patient_id);
+
+    $this->xml->root_name = "rows";
+    $document = $this->xml->Document();
+    $head = $this->xml->Element("head");
+    $head->append($this->xml->Element("column", "width=5;type=ch", " "));
+    $head->append($this->xml->Element("column", "width=11;type=ro",  "Confirmed"));
+    $head->append($this->xml->Element("column", "width=*;type=ro", "Visit Date"));
+    $head->append($this->xml->Element("column", "width=*;type=ro", "Patient"));
+    $head->append($this->xml->Element("column", "width=*", "Type of Visit"));
+    $head->append($this->xml->Element("column", "width=*", "Clinician"));
+    if ($contractor_info->provides_altern_therapy == 'Y') {
+      $head->append($this->xml->Element("column", "width=7", "Units"));
+    }
+    $head->append($this->xml->Element("column", "width=7", "Visit Rate"));
+    $head->append($this->xml->Element("column", "width=*", "Visit Status"));
+
+    // $head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));
+    // $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+
+    $document->append($head);
+
+    $data = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+
+    if($this->getAgencyId() == $data->contractor_id){
+      $visits = $this->visitlogmdl->getBillableVisits($agency_contractor_id, null, null, $patient_id, $contractor_info->provides_altern_therapy);
+      foreach ($visits as $visit) {           
+          $units = 0;
+          $visit_rate = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units);
+          
+          $visit->co_final_rate = number_format($visit_rate, 2);  
+
+          
+          $cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+          $cell->append($this->xml->Element("cell", null, "0"));
+
+          if ($visit->co_billing_deleted ==1) {
+            $cell->append($this->xml->Element("cell", null, ""));
+          } else if ($visit->co_billing_confirmed == 1) {
+            $cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/images/drop-yes.gif'>")));
+          } else {
+            $cell->append($this->xml->Element("cell", null,  ''));
+          }
+
+          if($visit->billable_YN == 0)
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date)).' (Non Billable)'));
+          else
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visited_date))));
+
+          $cell->append($this->xml->Element("cell", null, $patient->last_name.' '.$patient->first_name));
+          $cell->append($this->xml->Element("cell", null, $visit->visit_description));
+          $cell->append($this->xml->Element("cell", null, $visit->clinician));
+          if ($contractor_info->provides_altern_therapy == 'Y') {
+            $cell->append($this->xml->Element("cell", null, $units));     
+          }
+          $cell->append($this->xml->Element("cell", null, '$'.$visit->co_final_rate));      
+          $cell->append($this->xml->Element("cell", null, $visit->tab_description));      
+          
+          $document->append($cell);
+
+      }
+    }      
+  }
+
+  function agencies_receivables($export_excel = null){
+
+    $data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+
+    $agencies = array();
+
+    $due_days_1_30_total = 0;
+    $due_days_31_60_total = 0;
+    $due_days_61_90_total = 0;
+    $due_days_older_total = 0;
+    $TOTAL = 0;
+
+    foreach ($this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A') as $agency) {
+
+      $row = $this->companyinvoicemdl->getTotalComBalance($agency->agency_contractor_id);
+
+      $agency->total_balance = $row->balance;
+
+      if($agency->total_balance <= 0)
+        continue;
+
+      $agency_total = 0;
+      $agency->due_days_1_30_total = 0;
+      $agency->due_days_31_60_total = 0;
+      $agency->due_days_61_90_total = 0;
+      $agency->due_days_older_total = 0;
+
+      $invoices = array();
+      foreach($this->companyinvoicemdl->getByContractorId($agency->agency_contractor_id) as $invoice){
+
+        if($invoice->balance == 0)
+          continue;
+
+        // if($invoice->balance <= 0)
+        //   continue;
+
+        // if($invoice->credit_invoice == 1)
+        //   continue;
+
+
+        $datetime1 = new DateTime("now");
+        $datetime2 = new DateTime($invoice->invoice_due_date);
+        $interval = $datetime1->diff($datetime2);
+        $invoice->due_age = $interval->format("%a");
+
+        if ($invoice->due_age < 31) {
+          $invoice->due_days_1_30 = 1;
+          $due_days_1_30_total += $invoice->balance;
+          $agency->due_days_1_30_total += $invoice->balance;
+        }else if ($invoice->due_age < 61) {
+          $invoice->due_days_31_60 = 1;
+          $due_days_31_60_total += $invoice->balance;
+          $agency->due_days_31_60_total += $invoice->balance;
+        }else if ($invoice->due_age < 91) {
+          $invoice->due_days_61_90 = 1;
+          $due_days_61_90_total += $invoice->balance;
+          $agency->due_days_61_90_total += $invoice->balance;
+        } else {
+          $invoice->due_days_older = 1;
+          $due_days_older_total += $invoice->balance;
+          $agency->due_days_older_total += $invoice->balance;
+        }
+          
+        $agency_total += $invoice->balance;
+        $invoice->balance = number_format($invoice->balance, 2);
+        $invoices[] = $invoice;
+      }
+
+      $agency->total_balance = $agency_total;
+      $agency->invoices = $invoices;
+      $TOTAL += $agency->total_balance;
+      
+      $agency->total_balance = number_format($agency->total_balance, 2);
+      $agency->due_days_1_30_total = number_format($agency->due_days_1_30_total, 2);
+      $agency->due_days_31_60_total = number_format($agency->due_days_31_60_total, 2);
+      $agency->due_days_61_90_total = number_format($agency->due_days_61_90_total, 2);
+      $agency->due_days_older_total = number_format($agency->due_days_older_total, 2);
+      $agencies[] = $agency;
+    }
+
+    $due_days_older_total = number_format($due_days_older_total, 2);
+    $due_days_61_90_total = number_format($due_days_61_90_total, 2);
+    $due_days_31_60_total = number_format($due_days_31_60_total, 2);
+    $due_days_1_30_total = number_format($due_days_1_30_total, 2);
+    $TOTAL = number_format($TOTAL, 2);
+
+    $this->tpl->assign('agencies', $agencies);
+    $this->tpl->assign('due_days_older_total', $due_days_older_total);
+    $this->tpl->assign('due_days_61_90_total', $due_days_61_90_total);
+    $this->tpl->assign('due_days_31_60_total', $due_days_31_60_total);
+    $this->tpl->assign('due_days_1_30_total', $due_days_1_30_total);
+    $this->tpl->assign('TOTAL', $TOTAL);
+
+    if ($export_excel==1) {
+      $output = $this->tpl->view("contractor/invoices/agencies_receivables_xls", $this->lang->language, false);
+
+      header('Content-Description: File Transfer');
+      header('Content-Type: application/xls');
+      header('Content-Disposition: attachment; filename=agencies_receivables.xls');
+      header('Content-Transfer-Encoding: binary');
+      header('Expires: 0');
+      header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+      header('Pragma: public');
+
+      echo $output;
+    } else {
+      $this->tpl->assign('additional_buttons', array('Download to Excel'=>'downloadToExcell()'));
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/agencies_receivables");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+  }
+
+  function xml_entities($text, $charset = 'UTF-8'){
+
+    $text = iconv('UTF-8', 'ASCII//TRANSLIT', $text);
+    $text = htmlentities($text, ENT_QUOTES);
+    $text=str_replace("'","",$text);
+    $text=str_replace('"',"",$text);
+
+    $text=str_replace("&","",$text);
+    $text=str_replace("&","",$text);
+    $text=str_replace(";","",$text);
+    return $text;
+  }
+
+  /**
+    * Detalles de la agencia utilizando el template de paciente/detalleDeAgencia; 
+  */
+  function agencydetails($id_agency = NULL) {
+    $agency = $this->agencymdl->getByAgencyId($id_agency);
+    $this->tpl->assign('agency', $agency);
+    $this->tpl->assign_include("dynamic_tpl", "patient/agencydetails");
+    $this->tpl->view("parts/ibase", $this->lang->language);
+  }
+
+  /**
+    * Confirmation upon invoice delete by admin
+  */
+  function confirm_delete_invoice($invoice_id, $back="contractor_invoices_bydates"){
+    
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    
+    if(!$invoice){
+      echo "Invoice not found";exit;
+    }
+
+    $this->tpl->assign("invoice_id", $invoice_id);
+    
+    $rules = array (
+              'confirm'   => 'required'
+            );
+    $fields = array(
+        'confirm' => 'Confirm'
+    );
+            
+
+    $this->validation->set_rules($rules);
+    $this->validation->set_fields($fields);
+
+    if ($this->validation->run() == FALSE) {
+      if ($invoice->invoice_payment > 0) {
+        $this->tpl->assign("invoice_payment", $invoice->invoice_payment);
+      }
+      $this->tpl->assign("back", $back);
+      $this->tpl->assign_include("dynamic_tpl", "contractor/invoices/delete_invoice_confirm");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    }else{
+      echo 'Reverting invoice (id:'.$invoice->invoice_id.') # '.$invoice->invoice_no.' ...<br>';
+      
+      $this->db->trans_start();
+
+      $invoice_amount = $invoice->invoice_amount;
+      $invoice_payment = $invoice->invoice_payment;
+      $amount_reduction = 0;
+      $payment_reduction = 0;
+
+      if ($this->input->post('visits') == 1) {
+        $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+        if(count($visits) > 0 ){
+          $amount_reduction += $this->visitlogmdl->getVisitsBillAmount($visits);      
+        }
+
+        foreach ($visits as $visit) {
+            $this->visitlogmdl->updateFlex($visit->visit_log_id, 'co_invoice_id', null);
+        }
+      }
+
+      if ($this->input->post('other_charges') == 1) {
+        $other_charges = $this->invoiceotherchargesmdl->get($invoice->invoice_id);
+        foreach ($other_charges as $charge) {
+          $amount_reduction += $charge->amount;
+          $this->invoiceotherchargesmdl->delete($charge->other_charge_id);
+        }
+      }
+      
+      if ($this->input->post('payments') == 1) {
+        $payments = $this->invoicepaymentsmdl->get($invoice->invoice_id);
+        foreach ($payments as $payment) {
+          $payment_reduction += $payment->payment_amount;
+          $this->invoicepaymentsmdl->delete($payment->invoice_payment_id);
+        }
+      }
+
+      
+      $invoice_deleted = FALSE;
+      if ($this->input->post('visits') == 1 AND $this->input->post('other_charges') == 1 AND $this->input->post('payments') == 1){
+        $this->companyinvoicemdl->delete($invoice->invoice_id);
+        $invoice_deleted = TRUE;
+      } else {
+        $new_invoice_amount = ($invoice_amount - $amount_reduction);
+        $new_payment_amount = ($invoice_payment - $payment_reduction);
+
+        // echo "New Invoice amount : ".$new_invoice_amount."<br>";
+        // echo "New Invoice payment: ".$new_payment_amount."<br>";
+        
+        if ($new_invoice_amount > 0 OR $new_payment_amount > 0 ) {
+          if ($amount_reduction > 0) {
+            $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_amount', $new_invoice_amount);
+          }
+
+          if ($payment_reduction > 0) {
+            $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_payment', $new_payment_amount);
+          }
+        } else {
+          // invoice amount is Zero. Now we can delete this invoice.
+          $this->companyinvoicemdl->delete($invoice->invoice_id);
+          $invoice_deleted = TRUE;
+        }
+        
+      }
+
+      if ($this->db->trans_status() === TRUE){
+        $this->db->trans_commit();
+        echo '<font color="green">DELETED</font><br>';
+        if (!$invoice_deleted) {
+          echo '<script>
+            setTimeout(function(){
+                parent.location.reload(true);
+            }, 2000);
+          </script>';
+        } else {
+          echo '<script>
+            setTimeout(function(){
+                parent.location.href=\''.$this->config->site_url().'/'.preg_replace('"-"','/',$back).'\';
+            }, 2000);
+          </script>';
+        }
+      } else {
+        $this->db->trans_rollback();
+        echo '<font color="red">Operation Failed! Try Again.</font><br>';
+      }
+    }
+  }
+
+  public function validate_email_duplicate() {
+    $to_emails = array();
+    if ($this->input->post('contact_ids') != "") {
+        $contact_ids = explode(",", $this->input->post('contact_ids'));
+        $this->load->model("contractorcontactsmdl");	
+
+        $contacts = $this->contractorcontactsmdl->getByIds($contact_ids);
+        foreach ($contacts as $contact) {
+          $to_emails[] = $contact->email;
+        }
+      }
+      if ($this->input->post('email_copy_company') == 1) {
+        $company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        $to_emails[] = $company->agency_email;
+      }
+      if (in_array($this->input->post('email'), $to_emails)) {
+        $this->validation->set_message('validate_email_duplicate', "Error: Duplicated Emails");
+        return false;
+      }
+          
+  }
+
+
+ }

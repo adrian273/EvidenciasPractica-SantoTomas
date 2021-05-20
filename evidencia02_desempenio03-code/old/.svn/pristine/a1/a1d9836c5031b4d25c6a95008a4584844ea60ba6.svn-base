@@ -1,0 +1,275 @@
+<?
+
+ class PayRollBatchMdl extends Model {
+
+	var $payroll_batch_id;
+	var $user_id;
+	// var $period_from;
+	// var $period_end;
+	// var $process_date_time;
+	var $total_amount_period;
+	var $check_no;
+	var $check_date;
+	var $batch_status;
+	var $payroll_batch_process_number;
+	var $payment_status; // paid, not
+	var $payment_type; // check, directdepo, other
+
+	function PayRollBatchMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $agency_id, $user_id=null, $batch_status=null, $from_date = null, $thru_date = null ) {
+		$not_type_id = array(200, 201, 400, 350, 320);    
+		$not_type_id_str = implode(",", $not_type_id);
+
+		$this->db->select('*, dis_discipline.*, payroll_batch.payroll_batch_id, payroll_batch.user_id, us1_user.first_name, us1_user.last_name');
+		$this->db->select('CAST(count(vis_visit_log.visit_user_id) as UNSIGNED) as visit_count');
+		$this->db->select('sum(vis_visit_log.visit_amount) as sum_visit_amount');
+		$this->db->select('sum(vis_visit_log.mileage_amount) as sum_mileage_amount');
+		
+		
+
+		$this->db->join('payroll_batch_process', 'payroll_batch_process.payroll_batch_process_number = payroll_batch.payroll_batch_process_number');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = payroll_batch.user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('vis_visit_log', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id AND vis_visit_log.visit_type_id NOT IN('.$not_type_id_str.') AND vis_visit_log.billable_YN = 1','left');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		
+		// $this->db->where('vis_visit_log.visit_type_id <> 320');
+		// $this->db->where('vis_visit_log.billable_YN', 1);
+		
+		$this->db->where('us_agy.agency_id', $agency_id);
+		
+		if (!is_null($user_id)) {
+			$this->db->where("payroll_batch.user_id", $user_id);
+		}
+		
+		if (!is_null($batch_status)) {
+			//$this->db->where("payroll_batch.batch_status", $batch_status);
+		}
+		
+		if($this->input->post('status') !== FALSE && $this->input->post('status') != "") {
+			$status = $this->input->post('status');
+			$this->db->where("tab_021_user_status", $status);
+		}
+		if($this->input->post('keyword') !== FALSE && $this->input->post('keyword') != "") {
+			$keyword = $this->input->post('keyword');
+			$this->db->like("CONCAT_WS(' ', us_agy.last_name, us_agy.first_name)", $keyword);
+		}		
+		
+		
+		$date_filter = 'process';
+		if($this->input->post('date_filter') !== FALSE && $this->input->post('date_filter') != "") {
+			$date_filter = $this->input->post('date_filter');
+		}
+		
+		if($date_filter == 'payment') {
+			$this->db->where("payroll_batch.payment_status = ", 'paid');
+		}
+		
+		if (!is_null($from_date)) {
+			if($date_filter == 'payment') {
+				$this->db->where("payroll_batch.check_date >= ", standard_date(human_to_unix($from_date), 'MYSQL_NOTIME'));
+			} else {
+				$this->db->where("payroll_batch_process_date >=", standard_date(human_to_unix($from_date), 'MYSQL_NOTIME'));
+			}
+		
+			
+		}
+		
+		if (!is_null($thru_date)) {
+			if($date_filter == 'payment') {
+				$this->db->where("payroll_batch.check_date <= ", standard_date(human_to_unix($thru_date), 'MYSQL_NOTIME'));
+			} else {
+				$this->db->where("payroll_batch_process_date <=", standard_date(human_to_unix($thru_date), 'MYSQL_NOTIME'));
+			}
+			
+		}				
+		
+		/*if (is_null($from_date)) {
+			if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+				
+			}
+		}
+		if (!is_null($to_date)) {    
+			$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+		} else {      
+			if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}      
+		}*/
+		
+		$this->db->order_by('payroll_batch_process_date','desc');
+		$this->db->order_by('us1_user.last_name','asc');
+		
+		if (is_null($user_id)) {
+			$this->db->group_by('us_agy.us_agy_id');
+		} else {
+			$this->db->group_by('vis_visit_log.payroll_batch_id');
+		}
+		//$this->db->group_by('vis_visit_log.payroll_batch_id');
+		
+		$query = $this->db->get('payroll_batch');
+		return $query->result();
+		
+	}
+	
+	function getByProcessNo ( $payroll_batch_process_number, $user_id=null, $batch_status=null ) {
+		$not_type_id = array(200, 201, 400, 350, 320);    
+		$not_type_id_str = implode(",", $not_type_id);
+
+		$this->db->select('*, payroll_batch.payroll_batch_id, payroll_batch.user_id, us1_user.first_name, us1_user.last_name');
+		$this->db->select('CAST(count(vis_visit_log.visit_user_id)  as UNSIGNED) as visit_count');
+		$this->db->select('sum(vis_visit_log.visit_amount) as sum_visit_amount');
+		$this->db->select('sum(vis_visit_log.mileage_amount) as sum_mileage_amount');
+		
+		$this->db->join('payroll_batch_process', 'payroll_batch_process.payroll_batch_process_number = payroll_batch.payroll_batch_process_number');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = payroll_batch.user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('vis_visit_log', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id AND vis_visit_log.visit_type_id NOT IN('.$not_type_id_str.') AND vis_visit_log.billable_YN = 1', 'left');
+		// $this->db->where('vis_visit_log.visit_type_id <> 320');
+		// $this->db->where('vis_visit_log.billable_YN', 1);
+		
+		$this->db->where('payroll_batch.payroll_batch_process_number', $payroll_batch_process_number);
+		
+		if (!is_null($user_id)) {
+			$this->db->where("payroll_batch.user_id", $user_id);
+		}
+		
+		if (!is_null($batch_status)) {
+			$this->db->where("payroll_batch.batch_status", $batch_status);
+		}
+		
+		$this->db->order_by('payroll_batch_process_date','desc');
+		$this->db->order_by('us1_user.last_name,us1_user.first_name','desc');
+		
+		$this->db->group_by('vis_visit_log.payroll_batch_id');
+		
+		$query = $this->db->get('payroll_batch');
+		return $query->result();
+		
+	}
+	
+	function getOne ( $payroll_batch_id ) {
+		$not_type_id = array(200, 201, 400, 350, 320);    
+		$not_type_id_str = implode(",", $not_type_id);
+
+		$this->db->select('*,payroll_batch.notes, payroll_batch.payroll_batch_id, payroll_batch.user_id, us1_user.first_name, us1_user.last_name');
+		$this->db->select('CAST(count(vis_visit_log.visit_user_id) as UNSIGNED) as visit_count');
+		$this->db->select('sum(vis_visit_log.visit_amount) as sum_visit_amount');
+		$this->db->select('sum(vis_visit_log.mileage_amount) as sum_mileage_amount');
+		
+		$this->db->join('payroll_batch_process', 'payroll_batch_process.payroll_batch_process_number = payroll_batch.payroll_batch_process_number');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = payroll_batch.user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('sta_states', 'sta_states.state_id = us_agy.state_id', ' LEFT');
+		$this->db->join('vis_visit_log', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id AND vis_visit_log.visit_type_id NOT IN('.$not_type_id_str.') AND vis_visit_log.billable_YN = 1', 'left');
+		
+		$this->db->where('vis_visit_log.payroll_batch_id', $payroll_batch_id);
+		// $this->db->where('vis_visit_log.visit_type_id <> 320');
+		// $this->db->where('vis_visit_log.billable_YN', 1);
+		
+		$this->db->order_by('payroll_batch_process_date');
+		
+		$this->db->group_by('vis_visit_log.payroll_batch_id');
+		
+		$query = $this->db->get('payroll_batch');
+		return $query->row();
+		
+	}
+	
+	function getPeriods ( $agency_id ) {
+		
+		$this->db->select("CONCAT(payroll_batch_process_period_from, ' - ', payroll_batch_process_period_end) as period_concated");
+		
+		$this->db->join('payroll_batch_process', 'payroll_batch_process.payroll_batch_process_number = payroll_batch.payroll_batch_process_number');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = payroll_batch.user_id');
+		
+		$this->db->where('agency_id', $agency_id);
+		
+		$this->db->order_by('payroll_batch_process_period_from');
+		
+		$this->db->group_by(array('payroll_batch_process_period_from', 'payroll_batch_process_period_end'));
+		
+		$query = $this->db->get('payroll_batch');
+		
+		
+		return $query->result2('period_concated', 'period_concated');
+		
+	}
+	
+	function getHistoryDetail ( $payroll_batch_id, $group_patient=false ) {
+		$not_type_id = array(200, 201, 400, 350);    
+		$not_type_id_str = implode(",", $not_type_id);
+
+		$this->db->select("*,  TIMEDIFF(visited_time_out, visited_time_in) as visit_duration,  us_agy.agency_id as user_agency_id, vis_visit_log.comments, pat_patient.first_name, pat_patient.last_name, company_invoice.invoice_no");
+	
+		$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id', 'left');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id', 'left');
+		$this->db->join('pat_patient',    		'pat_patient.patient_id = soc_start_of_care.patient_id', 'left');
+		$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id', 'left');
+		$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id', 'left');
+		$this->db->join('company_invoice', 'company_invoice.invoice_id = vis_visit_log.co_invoice_id', 'LEFT');
+		
+		$this->db->where('payroll_batch_id', $payroll_batch_id);
+		/**
+		* Commented to show all visits from batch
+		*/
+		// $this->db->where('vis_visit_log.visit_type_id <> 320');
+		$this->db->where_not_in('vis_visit_log.visit_type_id', $not_type_id);
+		// $this->db->where('vis_visit_log.billable_YN', 1);
+		
+		$this->db->order_by('pat_patient.first_name');
+		
+		if ($group_patient == true) {
+			$this->db->group_by('pat_patient.patient_id');
+		}
+		
+		$query = $this->db->get('vis_visit_log');
+		return $query->result();
+		
+	}
+	
+	function insert ( $user_id, $period_from, $period_end ) {
+	
+		$this->db->set('user_id', $user_id);
+		// $this->db->set('period_from', $period_from);
+		// $this->db->set('period_end', $period_end);
+		
+		$this->db->insert('payroll_batch');
+		
+		$this->payroll_batch_id = $this->db->insert_id();
+
+	}
+
+  function updateFlex($payroll_batch_id, $attribute, $where = 'payroll_batch_id') {
+
+    $this->db->where($where, $payroll_batch_id);
+    $this->db->set($attribute); // example: $attribute = array('name' => $name, 'title' => $title, 'status' => $status);
+
+    $this->db->update('payroll_batch');
+
+  }
+	
+	function changeStatus ( $payroll_batch_id, $batch_status='C' ) {
+	
+		$this->db->set('batch_status', $batch_status);
+		
+		$this->db->where('payroll_batch_id', $payroll_batch_id);
+		
+		$this->db->update('payroll_batch');
+		
+	}
+	
+	function delete( $payroll_batch_id ) {
+	
+		$this->db->where('payroll_batch_id', $payroll_batch_id);
+		
+		$this->db->delete('payroll_batch');		
+	}
+ }

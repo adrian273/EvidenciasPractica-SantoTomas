@@ -1,0 +1,73 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr>
+    <td><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency:  <b>{$agency->agency_name}</b></td>
+  </tr> 
+  <tr><td height="10"></td></tr>
+  <tr> 
+    <td>
+		Certification end date is older then
+		<input type="text" id="cert_end_date" name="cert_end_date" value="{$cert_end_date}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('cert_end_date'), document.getElementById('fecha_help'));return false;" >
+
+		&nbsp;&nbsp;&nbsp;&nbsp; Agency Patient Status: {html_options options=$status_list name='patient_status'}
+
+		<input type="submit" value="Search">
+    </td>    
+  </tr>
+</table> 
+
+<script type="text/javascript">
+{literal}
+
+  var dhxWins;
+
+  function changeToDischarge(){
+
+    if(confirm("Are you sure want to change patients status to Discharge? This can not be undo!")){
+      {/literal}gform.action='{$index_url}{$resource_path}/change_patients_to_discharge/{$entity_id}';{literal}
+      // gform.target='_blank';
+      gform.submit();
+    }
+  }
+
+{/literal}
+
+  function move_patient(patient_id, agency_id) {literal}{{/literal}
+      dhxWins = new dhtmlXWindows();
+      dhxWins.setImagePath("{$base_url}style/window/imgs/");
+      
+      var w2 = dhxWins.createWindow("w2", 10, 10, 450, 250);
+      w2.setText("Move a Patient to Another Agency");
+      w2.button("park").hide();
+      w2.button("minmax1").hide();
+      //w2.denyResize(); // deny resizing
+      //w2.denyMove(); 
+      dhxWins.window('w2').center();
+      dhxWins.window('w2').setModal(true);
+      w2.attachURL("{$index_url}/{$resource_path}/move_patient/"+patient_id+"/"+agency_id);
+      
+      
+  {literal}}{/literal}
+
+function deletePatient (patient_id, agency_id) {literal}{{/literal}
+
+    if (confirm("Are you sure want to delete this patient? This can't be undo."))
+        {literal}{{/literal}
+        ajax("{$index_url}{$resource_path}/deletePatient/"+patient_id+'/'+agency_id, ajaxParseAction);
+        {literal}}{/literal}
+
+
+    {literal}}{/literal}
+
+function deleteContactor (contractor_id, agency_id) {literal}{{/literal}
+
+    if (confirm("Are you sure want to delete this contractor? This can't be undo."))
+        {literal}{{/literal}
+        ajax("{$index_url}{$resource_path}/deleteContactor/"+contractor_id+'/'+agency_id, ajaxParseAction);
+        {literal}}{/literal}
+
+
+    {literal}}{/literal}
+
+</script>

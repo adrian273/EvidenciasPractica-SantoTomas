@@ -1,0 +1,117 @@
+
+<style>
+        .container {
+            width: 100%;
+        }
+
+        h2,h5.header-title {
+          text-align: center;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        td {
+            text-align: left;
+            padding: 2px;
+            font-size: 13px;
+        }
+
+        th {
+            background-color: white;
+            color: black;
+            text-align: left;
+            
+            border:none;
+            text-transform: uppercase;
+            font-size: 13px; 
+        }
+
+        .striped tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr.border_bottom td {
+            border-top:1pt solid black;
+            padding-bottom: 10px;
+        }
+
+        tr.header-info td {
+            font-size: 13px;
+           
+        }
+
+        .communication_section {
+            border: none;
+        }
+
+        /*img {
+            display: inline-block;
+            margin:auto;
+        }   */
+</style>
+
+<?php
+    set_time_limit(500);
+?>
+
+<div class="container" style="font-family:Arial;">
+    <h2>Confirmation of Receipt</h2>
+    <table>
+        <tr class="">
+            <td>
+                I, (name) <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo $patient->caregiver_name; ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>, have received a verbal review <b>and</b> written copy of Beat to your Rhythm's <b>Dispute Resolution, Grievance Resolution Policies & Procedures, and have reviewed the Individual Rights of Persons Receiving Services</b> for myself/my child 
+                <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo $patient->first_name . " " .$patient->last_name; ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u> (name of Person Receiving Services). <br><br>
+
+                <?php echo nl2br($grvi_comments); ?>
+
+                <br /><br />
+                <span><b>Parent/Authorized Guardian Signature:</b></span>
+                <span>
+                  <?php if ($signature != "") {?>
+                    <img src="./upload/signatures/<?php echo $signature; ?>" style="height: 70px; padding-bottom: 2px; padding-right: 20px; padding-right: 20px; border-bottom: 1px solid #000;"  />
+                  <?php } else { ?>
+                    _________________________ 
+                  <?php } ?>
+                </span> 
+                <span>
+                  <?php if ($signature != "") {?>
+                    <b>Date: </b> <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo date("m-d-Y", strtotime($pt_signed_date)); ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>
+                  <?php } else { ?>
+                    <b>Date: </b> _______________
+                  <?php } ?>
+                </span>
+
+                <br /><br />
+
+                Review of Policies & Procedures and Individual Rights of Persons Receiving Services Provided by: <br /><br />
+
+                <span><b>Therapist/Provider Name:</b></span>
+                <span>
+                  <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo $first_name ." " . $last_name; ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>
+                </span> <br /><br />
+
+                <span><b>Therapist/Provider Signature:</b></span>
+                <span>
+                  <?php if ($clinician_signature != "") { ?>
+                    <img src="./upload/signatures/<?php echo $clinician_signature; ?>" style="height: 70px; padding-bottom: 2px; padding-right: 20px; padding-right: 20px; border-bottom: 1px solid #000;"  />
+                  
+                  <?php } else { ?>
+                    _________________________ 
+                  <?php } ?>
+                </span> 
+                <span>
+                  <?php if ($clinician_signature != "") { ?>
+                    <b>Date: </b> <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo date("m-d-Y", strtotime($clinician_signed_date)); ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>
+                  <?php } else { ?>
+                    <b>Date: </b> _______________
+                  <?php } ?>
+                </span>
+
+            </td>
+        </tr>
+    </table>   
+</div>

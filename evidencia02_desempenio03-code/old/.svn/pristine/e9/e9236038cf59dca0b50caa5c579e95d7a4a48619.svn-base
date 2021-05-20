@@ -1,0 +1,59 @@
+<?
+
+ class Permissions extends MY_Controller {
+
+	function Permissions () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/permissions");
+		
+	}
+
+	function index ( $us_agy_id ) {
+
+		$this->permissions($us_agy_id);
+	
+	}	
+	
+	function permissions ( $us_agy_id ) {
+
+		if ($this->validation->run() == TRUE) {
+
+			$this->usagypermissionmdl->deleteByUsAgyId($us_agy_id);
+			
+			if ($this->input->post('permission_id')) {
+				
+				foreach ($this->input->post('permission_id') as $permission_id) {
+					
+					$this->usagypermissionmdl->insert($us_agy_id, $permission_id);
+					
+				}
+				
+			}
+			
+			$us_agy = $this->usagymdl->getByUsAgyId($us_agy_id);
+			$this->tpl->assign('success_string', $us_agy->first_name . " " . $us_agy->last_name . "'s permissions" . $this->lang->line('grl_upd_msg'));
+			
+		}
+		
+		$permisison_headers = $this->permissionheadermdl->getAll();
+		$this->tpl->assign("permission_headers", $permisison_headers);
+		
+		foreach ($permisison_headers as $permisison_header) {
+			$permissions[] = $this->permissionmdl->getByHeaderId($permisison_header->permission_header_id, ($this->getAgencyType() == 'C' ? 'permission_contractor' : 'permission_agency'), false);
+		}
+		$this->tpl->assign("permissions", $permissions);
+		
+		$this->tpl->assign("us_agy_permission", $this->usagypermissionmdl->getByUsAgyId($us_agy_id, null, false));
+	
+		$this->tpl->assign('faction', 'permissions');
+		$this->tpl->assign('record_id', $us_agy_id);
+		
+		$this->tpl->assign(array("tab_page" => true));
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "useragency/permissions_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+ }

@@ -1,0 +1,113 @@
+<?php
+
+ class AgencyServiceArea extends MY_Controller {
+
+	function AgencyServiceArea () {
+		parent::MY_Controller();
+		$this->load->model('AgencyServiceAreaMdl');
+		$this->tpl->assign("resource_path", "useragency/agencyservicearea");
+		$this->tpl->assign('tab_page', true);
+	}
+
+	function index () {
+        $this->tpl->assign("items_per_page",  999999);
+		$this->tpl->assign(array("list_title" => "Agency Service Area", "add_sufix" => "City"));
+		$this->tpl->assign("entity_id", $this->getUsAgyId());
+		$this->tpl->assign_include("filter_tpl", "useragency/gfilter_agencyservicearea");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+  
+	function grid () {
+		$user = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+        $cities = $this->AgencyServiceAreaMdl->getCitiesByAgency($user->agency_id, false);
+        
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=50", "City"));
+		$head->append($this->xml->Element("column", "width=50",  "General Area"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		foreach ($cities as $city) {
+			$cell = $this->xml->Element("row", "id=" . $city->id);
+			$cell->append($this->xml->Element("cell", null, $city->city));
+			$cell->append($this->xml->Element("cell", null, $city->general_area));
+			$document->append($cell);
+		}
+	}	
+	
+	function add (  ) {
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('entity_id', $this->getUsAgyId());
+		$this->tpl->assign('resource_index', 'index');
+		
+		$user = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+		// var_dump($user->user_id);
+		$agency_state = $this->agencymdl->getByAgencyId($user->agency_id);
+		$rules = array('city' => 'required');
+		$fields = array('city' => 'city');
+		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == FALSE) {
+            $this->tpl->assign("form_title", "Add Service Area Cities");
+            $this->tpl->assign('state_id', @$user->user_state_id);
+            $this->tpl->assign('agency_id', @$agency_state->agency_id);
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/servicearea_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->AgencyServiceAreaMdl);
+			$this->AgencyServiceAreaMdl->insert();
+			$this->tpl->assign('gmessage', "City" . $this->lang->line('grl_add_msg'));
+			$this->index();
+		}
+	}
+
+	function edit ( $us_agy_id=null, $city_id ) {		
+		$this->tpl->assign("entity_id", $this->getUsAgyId());
+		$this->tpl->assign('record_id', $city_id);
+		$this->tpl->assign('faction', 'edit');
+		
+		
+		$this->assignObject($this->AgencyServiceAreaMdl->getCityDetail($city_id));
+		$this->tpl->assign("adress_type_list", array('real' => 'Address', 'serv' => 'Service Area'));
+		$this->tpl->assign('resource_index', 'index');
+		$rules = array();
+		$fields = array();
+		
+			
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+            $this->tpl->assign("form_title", "Edit Service Area Cities");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/servicearea_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->AgencyServiceAreaMdl);
+			$this->AgencyServiceAreaMdl->update($city_id);
+			
+			$this->tpl->assign('gmessage', "City" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index();
+			
+		}
+	}
+	
+	function delete ( $us_agy_id, $city_id ) {
+		$city = $this->AgencyServiceAreaMdl->getCityDetail($city_id);
+		if (!empty($city)) {
+			$this->AgencyServiceAreaMdl->delete($city_id);
+			$this->tpl->assign('gmessage', "City" . $this->lang->line('grl_del_msg'));
+			$this->index();
+		} else {
+			exit('City Not Found');
+		}	
+	}
+
+ }

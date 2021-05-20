@@ -1,0 +1,46 @@
+<?
+
+ class FaqGroupMdl extends Model {
+
+	var $faq_group_id;
+  	var $faq_group_name;
+  	var $faq_sequence;
+
+	function FaqGroupMdl () {
+		parent::Model();
+	}
+	
+	function get(){
+		$this->db->order_by("faq_sequence", "asc"); 
+		$query = $this->db->get('faq_groups');
+		return $query->result();
+	}
+	
+	function getById ( $faq_group_id ) {
+		$this->db->where('faq_group_id', $faq_group_id);
+		$query = $this->db->get('faq_groups');
+		return $query->row();
+	}
+	
+	function insert (  $faq_group_name= "" ) {
+		if ($faq_group_name) {
+			$this->faq_group_name = $faq_group_name;
+		}		
+		$this->db->insert('faq_groups', $this);		
+	}
+	
+	function update ( $faq_group_id ) {
+		$this->faq_group_id = $faq_group_id;
+		$this->db->where('faq_group_id', $faq_group_id);
+		$this->db->update('faq_groups', $this);	
+		
+	}
+	
+	function delete ( $faq_group_id ) {
+		$this->db->where('faq_group_id', $faq_group_id);
+		$this->db->delete('faq_groups');
+	}
+		
+		
+	
+ }

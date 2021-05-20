@@ -1,0 +1,175 @@
+<?php
+
+ class TplPtPnMdl extends Model {
+
+	var $tpl_ptpn_id;
+	var $tpl_ptpn_name;
+	var $user_id;
+  	var $primary_diag;
+	var $secondary_diag;
+  	var $primary_diag_date;
+	var $secondary_diag_date;  
+	var $bp;
+	var $temp;
+	var $resp;
+	var $pulse;
+	var $provider;
+	var $provider_sign_date;
+	var $order_written;
+	var $bedbound_chair_wheelchair;
+	var $requires_assistive_device;
+	var $unsteady_gait;
+	var $fatigue;
+	var $poor_endurance;
+	var $severe_disabling_pain;
+	var $needs_assis_leave_house;
+	var $subj_text;
+	var $subj_pain_level;
+	var $tab_075_pain_level;
+	var $subj_hours_since_last;
+	var $subj_mins_since_last;
+	var $tab_024_trans_sit_stand;
+	var $trans_sit_stand_notes;
+	var $tab_024_standing_pivot;
+	var $standing_pivot_notes;
+	var $tab_024_trans_shower_tub;
+	var $trans_shower_tub_notes;
+	var $tab_024_rolling_walker;
+	var $rolling_walker_notes;
+	var $tab_024_walker;
+	var $walker_notes;
+	var $tab_024_quad_cane;
+	var $quad_cane_notes;
+	var $tab_024_no_device;
+	var $no_device_notes;
+	var $tab_024_supine_to_sit;
+	var $supine_to_sit_notes;
+	var $tab_024_rolling;
+	var $rolling_notes;
+	var $tab_024_scooting;
+	var $scooting_notes;
+	var $tab_024_wheelchair_movility;
+	var $wheelchair_movility_notes;
+	var $modalities_na;
+	var $modalities_text;
+	var $modalities_thermal;
+	var $modalities_electrical;
+	var $manual_therapy_na;
+	var $manual_therapy_status;
+	var $balance_training_na;
+	var $balance_training_text;
+	var $ther_exer_rom_ues;
+	var $ther_exer_rom_les;
+	var $ther_exer_rom_nbr_exer;
+	var $ther_exer_rom_reps;
+	var $ther_exer_rom_sets;
+	var $ther_exer_stren_ues;
+	var $ther_exer_stren_les;
+	var $ther_exer_stren_nbr_exer;
+	var $ther_exer_stren_reps;
+	var $ther_exer_stren_sets;
+	var $ther_exer_comments;
+	var $coord_md;
+	var $coord_rn;
+	var $coord_lvn;
+	var $coord_aide;
+	var $coord_pt;
+	var $coord_ot;
+	var $coord_st;
+	var $coord_msw;
+	var $coord_ptcg;
+	var $coord_tl;
+	var $coord_other;
+	var $coord_oth_text;
+	var $educ_train_patient;
+	var $educ_train_caregiver;
+	var $educ_train_body_mechanics;
+	var $educ_train_positioning_turning;
+	var $educ_train_safety_measures;
+	var $educ_train_false_precautions;
+	var $educ_train_hip_precautions;
+	var $educ_train_knee_precautions;
+	var $educ_train_back_precautions;
+	var $educ_train_pain;
+	var $educ_train_energy_conserv;
+	var $educ_train_hep;
+	var $educ_train_other;
+	var $educ_train_other_text;
+	var $resp_instr_needs_further_instr;
+	var $resp_instr_able_perform_proced;
+	var $resp_instr_repeats_instruct_comp_accur;
+	var $resp_instr_verba_unders_hesit;
+	var $resp_instr_comments;
+	var $day30_assess;
+	var $day30_assess_text;
+	var $ppn_vsbp_sisto;
+	var $ppn_vsbp_dias;
+	var $ppn_vital_sign_pulse;
+	var $ppn_vital_sign_respiration;
+	var $dc_plan_conti_progress;
+	var $dc_plan_5_day_given;
+	var $dc_plan_other;
+	var $dc_plan_comments;
+	var $ther_na;
+	var $ther_name;
+	var $ther_follow_plan;
+	var $ther_impl_plan;
+	var $ther_raport_pat;
+	var $ther_raport_fam;
+	var $ther_eval_plan;
+	var $ther_supervisor;
+
+	function TplPtPnMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $template_id ) {
+		
+		$this->db->where('tpl_ptpn_id', $template_id);
+	
+		$query = $this->db->get('tpl_ptpn');
+		return $query->row();
+		
+	}
+	
+	function getByUserId ( $user_id ) {
+		
+		$this->db->where('user_id', $user_id);
+	
+		$query = $this->db->get('tpl_ptpn');
+		return $query->result2('tpl_ptpn_id', 'tpl_ptpn_name');
+		
+	}
+
+	function insert ( $user_id, $template_name ) {
+
+		$this->user_id = $user_id;
+		$this->tpl_ptpn_name = $template_name;
+		
+		$this->db->insert('tpl_ptpn', $this);
+		return $this->db->insert_id();
+		
+	}
+
+	function update ( $tpl_ptpn_id ) {
+		unset($this->tpl_ptpn_id);
+		unset($this->user_id);
+		$this->db->where('tpl_ptpn_id', $tpl_ptpn_id);
+		$this->db->update('tpl_ptpn', $this);
+	}
+
+	function updateFlex($tpl_ptpn_id, $attribute, $value, $where = 'tpl_ptpn_id') {
+		$this->db->where($where, $tpl_ptpn_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('tpl_ptpn');
+	}	
+
+	function delete ( $tpl_ptpn_id, $user_id ) {
+		$this->db->where('user_id', $user_id);
+		$this->db->where('tpl_ptpn_id', $tpl_ptpn_id);
+		$this->db->delete('tpl_ptpn');
+	}	
+ }

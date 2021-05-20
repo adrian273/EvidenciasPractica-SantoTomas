@@ -1,0 +1,132 @@
+<?
+
+class dme extends MY_Controller {
+
+	var $rules = array ('dme_description'	=> 'required');
+
+	function dme () {
+
+		parent::MY_Controller();
+
+		$this->tpl->assign('status_list', $this->parametermdl->getByType(8));
+		$this->tpl->assign('no_commit_form', !$this->hasPermission(5));
+
+		$this->tpl->assign("resource_path", "patient/dme");
+		$this->tpl->assign('tab_page', true);
+		
+	}
+
+	function index ( $patient_id ) {
+		
+		
+		$patient = $this->patientmdl->getById($patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		if ( $this->getUserProfileId()==3 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==1) ) {
+			// Can edit/add
+		} else {
+			$this->tpl->assign_include("no_grid_buttons", true);
+			$this->tpl->assign_include("noedit", true);
+		}
+		$this->tpl->assign('no_commit_form', true);
+
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign("add_sufix", "DME");
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+
+	function grid ( $patient_id ) {
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=20", "Description"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Date"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Status"));
+		$head->append($this->xml->Element("column", "width=*", "Comments"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+
+		foreach($this->patientdmemdl->get($patient_id, $this->input->post('keyword')) as $dme) {
+
+			$cell = $this->xml->Element("row", "id=" . $dme->pat_dme_id);
+			$cell->append($this->xml->Element("cell", null, $dme->dme_description));
+			$cell->append($this->xml->Element("cell", null, (!is_null($dme->dme_date)) ? standard_date(mysql_to_unix($dme->dme_date)) : null));
+			$cell->append($this->xml->Element("cell", null, $dme->tab_description));
+			$cell->append($this->xml->Element("cell", null, $dme->dme_comment));
+			$document->append($cell);
+		}
+
+	}
+	
+	function add ( $patient_id ) {
+		
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);			
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/dme/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->patientdmemdl);
+			$this->patientdmemdl->insert();
+			
+			$this->tpl->assign('gmessage', "DME" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	
+	function edit ( $patient_id, $pat_dme_id ) {
+		
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign("record_id", $pat_dme_id);
+		$this->tpl->assign('faction', 'edit');
+						
+		$this->assignObject($this->patientdmemdl->getById($pat_dme_id));
+		
+		$this->validation->set_rules($this->rules);	
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/dme/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->patientdmemdl);
+			$this->patientdmemdl->update($pat_dme_id);
+			
+			$this->tpl->assign('gmessage', "DME" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	
+	function delete ( $patient_id, $pat_dme_id ) {
+		
+		$this->patientdmemdl->delete($pat_dme_id);
+		
+		$this->tpl->assign('gmessage', "DME" . $this->lang->line('grl_del_msg'));
+
+		$this->index($patient_id);
+		
+	}
+	
+}

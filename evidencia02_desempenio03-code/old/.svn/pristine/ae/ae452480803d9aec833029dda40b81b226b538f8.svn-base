@@ -1,0 +1,94 @@
+<?php
+
+ class UsAgyDisciplineMdl extends Model {
+
+	var $us_agy_discipline_id;
+	var $us_agy_id;
+  	var $discipline_id;
+
+	function UsAgyDisciplineMdl () {
+		parent::Model();	
+	}
+	
+	function getById ( $us_agy_discipline_id ) {
+	
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = us_agy_discipline.discipline_id');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = us_agy_discipline.us_agy_id');
+		
+		$this->db->where('us_agy_discipline_id', $us_agy_discipline_id);
+		$query = $this->db->get('us_agy_discipline');
+		return $query->row();
+	}
+
+	function getByUser ( $us_agy_id, $aslist = false ) {
+		$this->db->select("us_agy_discipline.*, dis_discipline.*");
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = us_agy_discipline.discipline_id');
+
+		$this->db->where('us_agy_discipline.us_agy_id', $us_agy_id);	
+		$query = $this->db->get('us_agy_discipline');
+		if ($query->num_rows() == 0) {
+			$this->db->select("us_agy.discipline_id");
+			$this->db->where('us_agy.us_agy_id', $us_agy_id);	
+			$query = $this->db->get('us_agy');
+			$row = $query->row();
+			if (!empty($row) AND $row->discipline_id) {
+				$this->insert($us_agy_id, $row->discipline_id);
+				$this->getByUser($us_agy_id, $aslist);
+			} else {
+				return array();
+			}
+		} else {
+			if ($aslist) {
+				$rows = array();
+				foreach ($query->result() as $key => $disc) {
+					$rows[$disc->discipline_id] = $disc->description.' ('.$disc->short_description.')';
+				}
+				return $rows;
+			} else {
+				return $query->result();
+			}
+		}
+	}
+
+	function isExist ( $us_agy_id, $discipline_id ) {
+		$this->db->select("us_agy_discipline.*, dis_discipline.*");
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = us_agy_discipline.discipline_id');
+
+		$this->db->where('us_agy_discipline.us_agy_id', $us_agy_id);	
+		$this->db->where('us_agy_discipline.discipline_id', $discipline_id);	
+		$query = $this->db->get('us_agy_discipline');
+		if ($query->num_rows() > 0) {
+			return true;
+		} 
+
+		return false;
+	}
+	
+	function getFilterDisciplineByUser ( $us_agy_id ) {
+	
+		$this->db->where('discipline_id NOT IN (SELECT discipline_id FROM us_agy_discipline WHERE us_agy_id = ' . $us_agy_id . ')');
+		$this->db->order_by('short_description');
+		
+		$query = $this->db->get('dis_discipline');
+		$rows = array();
+		foreach ($query->result() as $key => $disc) {
+			$rows[$disc->discipline_id] = $disc->description.' ('.$disc->short_description.')';
+		}
+		return $rows;			
+	}
+	
+	function insert ( $us_agy_id, $discipline_id ) {
+		//echo "khush";
+		$this->us_agy_discipline_id = null;
+		$this->us_agy_id = $us_agy_id;
+		$this->discipline_id = $discipline_id;
+		$this->db->insert('us_agy_discipline', $this);	
+	}
+	
+	function delete ( $us_agy_discipline_id, $us_agy_id ) {
+		$this->db->where('us_agy_id', $us_agy_id);
+		$this->db->where('us_agy_discipline_id', $us_agy_discipline_id);
+		$this->db->delete('us_agy_discipline');
+	}
+	
+ }

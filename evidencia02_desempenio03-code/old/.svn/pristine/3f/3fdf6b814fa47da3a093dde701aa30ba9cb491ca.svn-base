@@ -1,0 +1,336 @@
+<?
+
+class medication extends MY_Controller {
+
+	function medication () {
+
+		parent::MY_Controller();
+		$this->tpl->assign('route_list', $this->parametermdl->getByType(84));
+		$this->tpl->assign('39_list', $this->parametermdl->getByType(39));
+
+		$this->tpl->assign("resource_path", "patient/medication");
+		$this->tpl->assign('tab_page', true);
+		
+		
+//		$this->output->enable_profiler();
+	}
+
+	function index ( $patient_id ) {
+
+		
+		$patient = $this->patientmdl->getById($patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		if ( $this->getUserProfileId()==3 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==1) ) {
+			// Can edit/add
+		} else {
+			$this->tpl->assign_include("no_grid_buttons", true);
+			$this->tpl->assign_include("noedit", true);
+		}
+
+		$this->tpl->assign('no_commit_form', true);
+		
+		$this->tpl->assign('additional_buttons', array('Approve Medication' => "checkEpass()"));
+
+		$this->tpl->assign("checkHandler", "1");
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign("add_sufix", "Medication");
+		
+		$this->tpl->assign_include("filter_tpl", "patient/medication/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "patient/medication/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	
+
+	function grid ( $patient_id ) {
+		$medication_status 	= $this->parametermdl->getByType(39);
+		$soc 				= $this->socmdl->getCurrent($patient_id);
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Medication"));
+		$head->append($this->xml->Element("column", "width=15", "Dose"));
+		$head->append($this->xml->Element("column", "width=15", "Frecuency"));
+		$head->append($this->xml->Element("column", "width=15", "Route"));
+		$head->append($this->xml->Element("column", "width=8;align=center",  "N/C/D"));
+		$head->append($this->xml->Element("column", "width=10", "Date(N/C/D)"));
+		$head->append($this->xml->Element("column", "width=10", "Last modified by"));
+		$head->append($this->xml->Element("column", "width=10", "Date"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->patientmedicationmdl->get($patient_id, $this->input->post('keyword'), $this->input->post('tab_084_route'), $this->input->post('med_newcharge')) as $med) {
+
+			$cell = $this->xml->Element("row", "id=" . $med->med_id);
+			$cell->append($this->xml->Element("cell", null, $med->med_descrip));
+			$cell->append($this->xml->Element("cell", null, $med->med_dose));
+			$cell->append($this->xml->Element("cell", null, $med->med_frecuency));
+			$cell->append($this->xml->Element("cell", null, $med->tab_description));
+			$cell->append($this->xml->Element("cell", null, ($med->med_newcharge > 0) ? substr($medication_status[$med->med_newcharge], 0, 1) : null));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($med->med_date))));
+			$cell->append($this->xml->Element("cell", null, $med->first_name.' '.$med->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($med->modify_date))));
+
+			$document->append($cell);
+		}
+
+	}
+	
+	function checkHandler ( $patient_id, $mediation_id, $idc, $primary ) {
+		
+		$this->patientmedicationmdl->updateApprove($mediation_id, $this->getUsAgyId());
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=loadGrid()"));
+		
+	}
+	
+	function add ( $patient_id ) {
+		$rules = array ('med_descrip'			=> 'required');		
+		$this->validation->set_rules($rules);
+		
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign('faction', 'add');
+		
+						
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/medication/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->patientmedicationmdl);
+			$this->patientmedicationmdl->modify_user=$this->getUserId();
+			$this->patientmedicationmdl->insert($patient_id, $this->getUsAgyId());
+			
+			$this->tpl->assign('gmessage', "Medication" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	
+	function edit ( $patient_id, $med_id ) {
+		$rules = array ('med_descrip'			=> 'required');		
+		$this->validation->set_rules($rules);
+
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign("record_id", $med_id);
+		$this->tpl->assign('faction', 'edit');
+						
+		$this->assignObject($medication = $this->patientmedicationmdl->getById($med_id));
+						
+		if ($this->validation->run() == FALSE) {
+
+			$soc = $this->socmdl->getCurrent($patient_id);
+			
+			if ($soc->case_manager_user_id != $this->getUsAgyId() && $medication->creation_user != $this->getUsAgyId()) {
+				$this->tpl->assign('no_commit_form', true);
+			}
+			
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/medication/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->patientmedicationmdl);
+			$this->patientmedicationmdl->modify_user=$this->getUserId();
+			$this->patientmedicationmdl->update($patient_id, $med_id);
+			
+			$this->tpl->assign('gmessage', "Medication" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	
+	function delete ( $patient_id, $med_id ) {
+		
+		$this->patientmedicationmdl->delete($med_id);
+		
+		$this->tpl->assign('gmessage', "Medication" . $this->lang->line('grl_del_msg'));
+
+		$this->index($patient_id);
+		
+	}
+	
+	## pdf methods ##
+	
+	function pdflist ( $patient_id ) {
+		
+		$medication_status = $this->parametermdl->getByType(39);
+		$pharmacy = $this->patientpharmacymdl->get($patient_id);
+		
+		$this->load->library('table');
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+		
+		$agency  = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$patient = $this->patientmdl->getById($patient_id);
+		
+		$this->fpdf->AddPage('L');
+		
+        $this->fpdf->SetFont('Arial','B', 10);
+        $this->fpdf->Text(20, 20, $patient->first_name . " " . $patient->last_name); // patient name
+        
+        $this->fpdf->Text(600, 20, "Pharmacy Name: ");
+
+        $this->fpdf->SetFont('Arial','', 10);
+        $this->fpdf->Text(690, 20, $pharmacy->pharmacy_name); // pharmacy name
+        
+        // date
+        $this->fpdf->SetFont('Arial','B', 10);
+        $this->fpdf->Text(20, 30, "Date:");
+        
+        $this->fpdf->SetFont('Arial','', 10);
+        $this->fpdf->Text(50, 30, date('m-d-Y'));   
+        
+        $this->fpdf->SetFont('Arial','B', 10);
+        $this->fpdf->Text(600, 30, "Pharmacy Phone: ");
+
+        $this->fpdf->SetFont('Arial','', 10);
+        $this->fpdf->Text(690, 30, $pharmacy->pharmacy_phone); // pharmacy phone     
+        
+        $this->fpdf->SetFont('Arial','B', 10);
+        $this->fpdf->Text(380, 50, "MEDICATION PROFILE");
+        
+        $this->fpdf->SetDrawColor(130,100);
+        
+        $this->fpdf->SetFont('Arial','B', 8);
+        
+        $this->fpdf->Text(20,  77, "Date");
+        $this->fpdf->Text(90,  77, "Drug Description");
+        $this->fpdf->Text(270, 77, "Dose");
+        $this->fpdf->Text(340, 77, "Frequency / Route");
+        $this->fpdf->Text(540, 77, "N/C/D");
+        $this->fpdf->Text(600, 77, "Added by");
+/*         $this->fpdf->Text(710, 77, "Approved by"); */
+
+        
+        $this->fpdf->Line(20, 80, 820, 80);
+		
+		$this->fpdf->SetFont('Courier','', 8);
+		$this->fpdf->SetLineWidth( 0.3 );
+		
+		$eje_y = 90;
+			
+		foreach ($this->patientmedicationmdl->get($patient_id, $this->input->post('keyword'), $this->input->post('tab_084_route')) as $med) {
+			
+	        $this->fpdf->Text(20,  $eje_y, standard_date(mysql_to_unix($med->med_date)));
+	        $this->fpdf->Text(90,  $eje_y, $med->med_descrip);
+	        $this->fpdf->Text(270, $eje_y, $med->med_dose);
+	        $this->fpdf->Text(340, $eje_y, $med->med_frecuency);
+	        $this->fpdf->Text(340, $eje_y+10, $med->tab_description);
+	        $this->fpdf->Text(549, $eje_y, ($med->med_newcharge > 0) ? substr($medication_status[$med->med_newcharge], 0, 1) : "");
+	        
+	        $this->fpdf->Text(600, $eje_y, $med->first_name . " " . $med->last_name);
+	        $this->fpdf->Text(600, $eje_y+10, standard_date(mysql_to_unix($med->creation_date)));
+	        
+/*
+	        if ($med->approve_user) {
+	        	$approve_user = $this->usagymdl->getByUsAgyId($med->approve_user);
+	        	$this->fpdf->Text(710, $eje_y, $approve_user->first_name . " " . $approve_user->last_name);
+	        	$this->fpdf->Text(710, $eje_y+10, standard_date(mysql_to_unix($med->approve_date)));
+	        }
+*/
+
+	        $this->fpdf->Line(20, $eje_y+13, 820, $eje_y+13);
+			$eje_y += 20;
+			
+			if ($eje_y > 570) {
+				$this->fpdf->AddPage('L');
+				$eje_y = 30;
+				$this->fpdf->Line(20, $eje_y-7, 820, $eje_y-7);
+			}
+			
+		}
+			
+		$this->fpdf->Output('medication_list.pdf','D');
+		
+	}
+	
+	
+	function modalCheckEpassword ($patient_id) {
+		
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+						
+		$rules = array ('user_epass' 	=> 'required|callback_verify_epass');
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "epass/modal_epass_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			/* approve medication, save into pat_medical_approval		 */
+			$this->patientmedicationapprovalmdl->patient_id=$patient_id;
+			$this->patientmedicationapprovalmdl->approved_user_id=$this->getUserId();
+			$this->patientmedicationapprovalmdl->approve();
+
+			/* send to print queue */
+			$this->assignPostData($this->prtprintqueuemdl);
+			$this->prtprintqueuemdl->user_id			= $this->getUserId();
+			$this->prtprintqueuemdl->patient_id			= $patient_id;
+			$this->prtprintqueuemdl->doc_description	= 'Medication List';
+			$this->prtprintqueuemdl->doc_type			= "MED";
+			$this->prtprintqueuemdl->doc_id				= $this->patientmedicationapprovalmdl->med_approv_id;
+			$this->prtprintqueuemdl->print_status		= "PE";
+			$this->prtprintqueuemdl->creation_datetime	= standard_date(now(), 'MYSQL');			
+			$this->prtprintqueuemdl->insert();
+			
+			echo "<script>parent.cancelModal();</script>";
+		}
+		
+	}
+	
+	function modalMedicationApprovals ($patient_id) {
+		
+		if (!$this->hasPermission(4) && !$this->hasPatientAccess($patient_id)) {
+			$this->tpl->assign_include("no_grid_buttons", false);
+		}
+		$this->tpl->assign('resource_grid', 'gridMedicationApprovals');
+
+		$this->tpl->assign('additional_buttons', array('Cancel' => "parent.cancelModal()"));
+
+		$this->tpl->assign('no_commit_form', true);
+		$this->tpl->assign('no_grid_buttons', true);
+
+		$this->tpl->assign("entity_id", $patient_id);
+		
+		$this->tpl->assign_include("dynamic_tpl", "patient/medication/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function gridMedicationApprovals ( $patient_id ) {
+		$medication_status 	= $this->parametermdl->getByType(39);
+		$soc 				= $this->socmdl->getCurrent($patient_id);
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Medication List Approved By"));
+		$head->append($this->xml->Element("column", "width=20", "Date"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->patientmedicationapprovalmdl->get($patient_id) as $med) {
+
+			$cell = $this->xml->Element("row", "id=" . $med->med_approv_id);
+			$cell->append($this->xml->Element("cell", null, $med->first_name.' '.$med->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($med->approved_date))));
+
+			$document->append($cell);
+		}
+
+	}
+	
+}

@@ -1,0 +1,220 @@
+<?
+
+ class EpisodeMdl extends Model {
+
+	var $cms485_id;
+	var $soc_id;
+	var $doc_doctor_order_id;
+	var $doctor_office_id;
+	var $episode_start_date;
+	var $episode_end_date;
+	var $dme_and_supplies;
+	var $safety_measures;
+	var $nutritional_requirements;
+	var $allergies;
+	var $amputation;
+	var $bowell_incontinence;
+	var $contracture;
+	var $hearing;
+	var $paralysis;
+	var $endurance;
+	var $ambulation;
+	var $speech;
+	var $leagally_blind;
+	var $dyspnea;
+	var $other_lim;
+	var $bedrest;
+	var $bedrest_brp;
+	var $up_as_tolerated;
+	var $transfer_bed_chair;
+	var $exercises_prescribed;
+	var $partial_weight_bearing;
+	var $independent_at_home;
+	var $crutches;
+	var $cane;
+	var $wheelchair;
+	var $walker;
+	var $no_restrictions;
+	var $other_specify;
+	var $oriented;
+	var $comatose;
+	var $forgetful;
+	var $depressed;
+	var $disoriented;
+	var $lethargic;
+	var $agitated;
+	var $other_mental;
+	var $prognosis_20;
+	var $orders_discip_21;
+	var $goal_rehab_disch_22;
+	var $nurse_user_id_23;
+	var $nurse_date_23;
+	var $nurse_full_name_23;
+	var $nurse_signat_23;
+	var $phys_full_description_24;
+	var $hha_rcv_date_signed_poc_25;
+	var $is_certify;
+//	var $phys_user_id;
+	var $phys_sign_date_27;
+	var $physi_full_name_27;
+	var $tab_023_cms_485_state;
+	var $sent_date;
+	var $signed_date;
+	var $received_date;
+	var $note;
+	var $create_user_id;
+	var $create_datetime;
+	var $modify_user_id;
+	var $modify_datetime;
+	var $bill_grouper_amount;
+	var $bill_hipps_code;
+	var $tab_060_billing_status;
+	var $tab_061_payment_status;
+	var $bill_01;
+	var $bill_02;
+	var $episode_comments;
+	var $qr4_scheduled;
+
+	function EpisodeMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $cms485_id ) {
+		
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		
+		$this->db->where('cms485_id', $cms485_id);
+		
+		$query = $this->db->get('cms_485');
+		return $query->row();
+		
+	}
+	
+	function getBySocId ( $soc_id ) {
+		
+		$this->db->where('soc_id', $soc_id);
+		$this->db->order_by('cms485_id', 'ASC');
+		
+		$query = $this->db->get('cms_485');
+		return $query->result();
+		
+	}
+
+	function getByDoctorOrder ( $doctor_order_id ) {
+		
+		$this->db->where('doc_doctor_order_id', $doctor_order_id);
+		$this->db->order_by('cms485_id');
+		
+		$query = $this->db->get('cms_485');
+		return $query;
+		
+	}
+	
+	function getCurrent ( $soc_id ) {
+		
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		
+		$this->db->where('soc_start_of_care.soc_id', $soc_id);
+		$this->db->order_by('cms485_id', 'DESC');
+		
+		$query = $this->db->get('cms_485');
+		return $query->row();
+		
+	}
+	
+	function getCurrentByPatientId ( $patient_id ) {
+		
+		$this->db->select("*,  DATEDIFF(episode_end_date, NOW()) as expiration_days_left");
+		
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		
+		$this->db->where('patient_id', $patient_id);
+		$this->db->order_by('cms485_id', 'DESC');
+		
+		$query = $this->db->get('cms_485');
+		return $query->row();
+		
+	}
+
+	function getEpisodeByPatientId ( $patient_id ) {
+		
+		// $this->db->select("*,  DATEDIFF(episode_end_date, NOW()) as expiration_days_left");
+		
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		
+		$this->db->where('patient_id', $patient_id);
+		$this->db->order_by('cms485_id', 'DESC');
+		
+		$query = $this->db->get('cms_485');
+		return $query->result();
+		
+	}
+	
+  function getCommentById ( $cms485_id ) {
+		if(!$cms485_id)
+    return '';
+    
+		$this->db->select('episode_comments');
+		
+		$this->db->where('cms485_id', $cms485_id);
+		
+		$query = $this->db->get('cms_485');
+		$row =  $query->row();
+    return $row->episode_comments;		
+	}
+	
+  
+	function insert ( $soc_id, $episode_start_date, $doc_doctor_order_id=null, $doctor_office_id=null, $estimated_soc_end_date=false ) {
+
+		$this->db->set('soc_id', $soc_id);
+		$this->db->set('episode_start_date', $episode_start_date);
+		$this->db->set('doc_doctor_order_id', $doc_doctor_order_id);
+		$this->db->set('doctor_office_id', $doctor_office_id);
+		if ($estimated_soc_end_date) {
+			$this->db->set("episode_end_date", $estimated_soc_end_date);
+			// $this->db->set("episode_end_date", "DATE_ADD('" . $episode_start_date . "', INTERVAL 1 YEAR)", FALSE);
+		} else {
+			$this->db->set("episode_end_date", "DATE_ADD('" . $episode_start_date . "', INTERVAL 59 DAY)", FALSE);
+		}
+
+		$this->db->insert('cms_485');
+		$this->cms485_id = $this->db->insert_id();
+		return $this->cms485_id;
+	}
+	
+	function update ( $cms485_id ) {
+
+		$this->cms485_id = $cms485_id;
+		$this->db->where('cms485_id', $cms485_id);
+
+		$this->db->update('cms_485', $this);
+	
+	}
+	
+	function updateEpisodesDates ( $soc_id, $soc_original_date, $soc_new_date, $period_in_days = null ) {
+
+		$this->db->set("episode_start_date", "DATE_ADD(episode_start_date, INTERVAL DATEDIFF('" . $soc_new_date . "', '" . $soc_original_date. "') DAY)", FALSE);
+		if ($period_in_days) {
+			$this->db->set("episode_end_date", 	 "DATE_ADD(episode_start_date, INTERVAL ".$period_in_days." DAY)", FALSE);
+		} else {
+			$this->db->set("episode_end_date", 	 "DATE_ADD(episode_end_date, INTERVAL DATEDIFF('" . $soc_new_date . "', '" . $soc_original_date. "') DAY)", FALSE);
+		}
+
+		$this->db->where('soc_id', $soc_id);
+
+		$this->db->update('cms_485');
+	
+	}
+	
+	function updateFlex($cms485_id, $attribute, $value, $where = 'cms485_id') {
+
+		$this->db->where($where, $cms485_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('cms_485');
+
+	}
+	
+ }

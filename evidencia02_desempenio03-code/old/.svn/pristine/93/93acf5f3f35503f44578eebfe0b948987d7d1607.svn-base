@@ -1,0 +1,163 @@
+<?php
+
+class Read extends MY_Controller {
+
+	var $msg_id	= '';
+
+	function Read() {
+
+		parent::MY_Controller();
+
+		$this->tpl->assign("resource_path", "mail/read");
+		
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('no_grid_buttons', true);
+		
+	}
+
+	function msg ( $message_id, $back_path="" ) {
+		if ($this->session->userdata('task_return')) {
+			$this->tpl->assign("back_url", $this->config->config["index_url"] . $this->session->userdata('task_return'));
+		}
+		$this->tpl->assign("back_path", $back_path);
+
+		$message 	= $this->messagemdl->get($message_id);
+		$recipients = $this->usermessagemdl->getByMessageId($message_id);
+
+		if (array_key_exists($this->getUsAgyId(), $recipients) OR $message->user_from == $this->getUsAgyId() OR in_array($back_path, array('mycomnotes','allcomnotes'))) {
+
+			if ($back_path=='inbox' OR $back_path == 'mycomnotes') {
+				$this->usermessagemdl->setMsgRead($message_id, $this->getUsAgyId());
+			}
+
+			if ($message->user_from == 0) {
+				$message->sender_complete_name = "ADMIN";				
+			}
+
+			if (in_array($back_path, array('mycomnotes','allcomnotes'))) {
+				$this->tpl->assign('print_comm_note', true);
+			}
+
+			$this->assignObject($message);
+			$this->tpl->assign("msg_users", implode("; ", $this->usermessagemdl->getByMessageId($message_id)));
+			
+			if (!is_null($message->patient_id)) {
+				$this->tpl->assign("patient", $this->patientmdl->getById($message->patient_id));
+			}
+
+			$message_count = $this->usermessagemdl->getCountUnread($this->getUsAgyId());
+			if ($message_count > 9) $message_count = 'm9';
+			$this->tpl->assign("message_count", $message_count);
+
+			if ($message->msg_attachment != "") {  
+				$attachments = explode("||", $message->msg_attachment);		
+				$attachment_file = '';		
+				foreach ($attachments as $key=>$file) {
+					$attachment_file .= '<a href="'.$this->config->config['base_url']."datastore/attachment/".$file.'" target="_blank">file '.($key+1).'</a> &nbsp; ';
+				}
+
+				// $attachment_file = $this->config->config['base_url']."datastore/attachment/".$message->msg_attachment;          
+				$this->tpl->assign("attachment_file", $attachment_file);
+			}
+
+			$this->tpl->assign_include("dynamic_tpl", "mail/read_msg");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->tpl->assign_include("dynamic_tpl", "mail/wrong_message");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		}
+
+	}
+
+	function msgFromTrash($msg) {
+
+		$aux = explode("_",$msg);
+
+		if($aux[0]=="S")
+			$this->msgFromSent($aux[1]);
+		if($aux[0]=="R")
+			$this->msg($aux[1]);
+
+	}
+
+	function msgFromSent($msg_id) {
+
+		if(!is_null($msg_id)) {
+
+			$user_from	= $this->messagemdl->checkMsgOwner($msg_id);
+
+
+			if ($user_from->user_from == $this->getUsAgyId()) {
+
+				$this->usermessagemdl->setMsgRead($msg_id);
+
+				$this->session->set_userdata('msg_id',$msg_id);
+
+				$msg	= $this->messagemdl->_getMsgById($msg_id);
+
+				$users	= '';
+				$users_aux  = $this->usermessagemdl->getUser_($msg_id);
+
+				$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+				foreach($users_aux as $user_info) {
+
+					$udata = $this->usagymdl->getByUsAgyId($user_info->user_to);
+
+					$u_name	= $udata->first_name." ".$udata->last_name."<br>";
+
+					$users.=$u_name;
+				}
+
+				$user_f = $this->messagemdl->getUserMsg($msg->user_from);
+				$user_name = $user_f->first_name." ".$user_f->last_name;
+
+				$this->tpl->assign("users",count($users_aux));
+
+				$this->tpl->assign("msg_id",$msg_id);
+
+				$this->tpl->assign("msg_subject",$msg->msg_subject);
+				$this->tpl->assign("msg_from",$user_name);
+				$this->tpl->assign("msg_users",$users);
+				$this->tpl->assign("msg_date",$this->format_date($msg->msg_date));
+				$this->tpl->assign("msg_text",str_replace('\n','<br>',$msg->msg_text));
+				$this->tpl->assign("msg_attachment",$msg->msg_attachment);
+				$this->tpl->assign("patient",$msg->patient_id);
+
+				$this->tpl->assign_include("dynamic_tpl", "mail/read_msg");
+				$this->tpl->view("parts/ibase", $this->lang->language);
+
+			} else {
+
+				$this->tpl->assign_include("dynamic_tpl", "mail/wrong_message");
+				$this->tpl->view("parts/ibase", $this->lang->language);
+
+			}
+
+		} else {
+				$this->tpl->assign_include("dynamic_tpl", "mail/no_message");
+				$this->tpl->view("parts/ibase", $this->lang->language);
+
+		}
+
+
+	}
+
+	function format_date($msg_date) {
+
+		$aux = explode("-",strtok($msg_date," "));
+
+		$yy = $aux[0];
+		$mm = $aux[1];
+		$dd = $aux[2];
+
+		return $mm."-".$dd."-".$yy;
+	}
+
+
+}
+
+?>

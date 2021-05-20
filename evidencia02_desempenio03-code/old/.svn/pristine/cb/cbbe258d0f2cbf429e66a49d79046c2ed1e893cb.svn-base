@@ -1,0 +1,25 @@
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<input type="hidden" value="" name="visit_date_ini" id="visit_date_ini_print" >
+<input type="hidden" value="" name="visit_date_fin" id="visit_date_fin_print" >
+</form>
+<form method="POST" action="{$index_url}{$resource_path}" onsubmit="this.action='{$index_url}{$resource_path}/pending/' + getValue('visit_date_ini') + '/' + getValue('visit_date_fin')">
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+		<tr> 
+			<td>
+				<b>Payroll Period Start:</b>
+				<input type="text" id="visit_date_ini" name="visit_date_ini" value="{$visit_date_ini}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				&nbsp;&nbsp;&nbsp;
+				<b>End:</b>
+				<input type="text" id="visit_date_fin" name="visit_date_fin" value="{$visit_date_fin}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				<input type="submit" value="Update">
+			</td>
+			<td>
+				<b>Total Payments for period:</b> {$total_amount}
+			</td>
+		</tr>		
+	</table>
+

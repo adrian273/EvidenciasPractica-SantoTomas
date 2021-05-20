@@ -1,0 +1,71 @@
+<?php
+
+class ContractorContactsMdl extends Model {
+
+    var $contact_id;
+    var $contractor_id;
+    var $agency_id;
+    var $department_tab110;
+    var $last_name;
+    var $first_name;
+    var $email;
+    var $phone;
+    var $phone_ext;
+    var $make_default;
+    var $notes;
+    var $change_date;
+
+
+    function  ContractorContactsMdl() {
+        parent::Model();
+    }
+
+    function getContractorContacts( $contractor_id = null, $agency_id = null ) {
+        return $this->db->query("
+            select  * from contractor_contacts
+            left join tab_parameters on tab_type = 110 
+            where tab_value = department_tab110 
+            and contractor_id = $contractor_id 
+            and agency_id =$agency_id order by tab_value asc;
+        ")->result();
+    }
+
+    function getCaseManager( $contractor_id = null, $agency_id = null ) {
+        return $this->db->query("
+            SELECT  * FROM contractor_contacts
+            LEFT JOIN tab_parameters ON tab_type = 110 AND tab_parameters.tab_value = contractor_contacts.department_tab110 
+            WHERE department_tab110=1 
+            AND contractor_id = $contractor_id 
+            AND agency_id =$agency_id 
+            ORDER BY contact_id ASC;
+        ")->row();
+    }
+
+    function getById( $id ) {
+        $this->db->where('contact_id', $id);
+        return $this->db->get('contractor_contacts')->row();
+    }
+
+    function getByIds( $ids ) {
+        $this->db->where_in('contact_id', $ids);
+        return $this->db->get('contractor_contacts')->result();
+    }
+
+    function insert () {
+        $this->change_date = date('Y-m-d H:i:s');
+        $this->db->insert("contractor_contacts", $this);
+        $contact_id = $this->db->insert_id();
+        return $contact_id;
+    }
+
+    function update ( $id ) {
+        $this->change_date = date('Y-m-d H:i:s');
+        $this->db->where('contact_id', $id);
+        $this->db->update('contractor_contacts', $this);
+    }
+
+    function delete ( $id ) {
+        $this->db->delete("contractor_contacts", array("contact_id" => $id));
+    }
+
+}

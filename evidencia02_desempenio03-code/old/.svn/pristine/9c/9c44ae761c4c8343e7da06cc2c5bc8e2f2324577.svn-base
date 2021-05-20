@@ -1,0 +1,223 @@
+{*<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>*}
+  <script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+	{*<!-- <tr height="35">	
+	    <td>
+	    	Doctor Name
+			<input type="text" name="doctorname" id="fd1" style="width: 120px">
+			<input type="button" value="Search" onclick="loadGrid()">			
+	    </td>
+	</tr> -->*}
+	<tr>
+		<td>
+			<div id="toolbarObj" style="float: left"></div>
+		</td>
+	</tr>
+</table>
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		//webBar.addSeparator('sp1', 3);
+		//webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		/*case 'print':
+		  printSelected()
+		  break;	*/
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>
+
+
+<script language="JavaScript" type="text/javascript">
+
+    var dhxWins;
+    
+	function printSelected() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}{$resource_path}/pdf';
+			gform.target='_blank';
+			gform.submit();
+		{literal}}{/literal}   
+	{literal}}{/literal}   	
+
+	function sendToPhysician() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			if (confirm('The Orders selected will be sent to the Physician and placed in the "Pending Physician Signature" folder.')) {literal}{{/literal}
+				setValue('record_ids', grid.getCheckedRows(0));
+				gform.action='{$index_url}{$resource_path}/sendto_physician';
+				// gform.target='_blank';
+				gform.submit();
+			{literal}}{/literal}  
+		{literal}}{/literal}   
+	{literal}}{/literal}   	  
+	function sentToPhysician ( ) {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+      		var x = 'The Doctor Orders selected will be exported to PDF and moved to the "Pending Physician Signature" folder';
+          	{literal} 
+          	$('<div>' + x + '</div>').dialog({
+              	title: "Send to Physician via Fax or Manual",
+              	resizable: false,
+              	width: 350,
+              	buttons: {             
+                  	"Confirm": function() {
+                      	$(this).dialog("close");  
+                      	url = {/literal}"{$index_url}{$resource_path}/sentto_physician/"+grid.getCheckedRows(0);{literal}
+                      	ajaxRequest.getRequest(url, [], [], function(data){
+                        	if (data=='1') {
+                          		loadGrid();
+                        	}else{
+                          		alert("These visits can'ot be moved to 'Pending Physician Signature' folder!");
+                        	}
+                      	});                  
+              		},
+                  	Cancel: function() {
+                    	$(this).dialog("close");
+                      	//return false;
+                  	}
+              	}
+          	});
+        }
+    }{/literal}
+    function checkEmailToPhysician ( ) {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+          	url = "{$index_url}{$resource_path}/checkemailto_physician/"+grid.getCheckedRows(0);{literal}
+          	ajaxRequest.getRequest(url, [], [], function(data){
+          		data = parseInt(data);
+            	if (data > 0) {
+              		emailToPhysician(data)
+            	}else{
+              		alert("All selected records are not belong to a same doctor!");
+            	}
+          	});                  
+
+        }
+    }{/literal}
+	function emailToPhysician(doctorid) {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			/*if (confirm("Are you sure you want to send the selected visits to Physician via Email?")) {literal}{{/literal}
+				setValue('record_ids', grid.getCheckedRows(0));
+				gform.action='{$index_url}{$resource_path}/emailto_physician';
+				// gform.target='_blank';
+				gform.submit();
+			{literal}}{/literal}  */
+
+		      dhxWins = new dhtmlXWindows();
+		      dhxWins.enableAutoViewport(false);
+		      dhxWins.attachViewportTo("vp_container");
+		      dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		    
+		      var w1 = dhxWins.createWindow("w1", 10, 10, 450, 450);
+		      w1.setText("Email To Physician");
+		      w1.button("park").hide();
+		      w1.button("minmax1").hide();
+		      w1.denyResize(); // deny resizing
+		      w1.denyMove(); 
+		      dhxWins.window('w1').center();
+		      dhxWins.window('w1').setModal(true);
+		      
+		      {literal}if (typeof(doctorid)=='undefined') {{/literal}
+		      	w1.attachURL("{$index_url}{$resource_path}/emailto_physician/{$doctorid}/"+grid.getCheckedRows(0));
+		      {literal} } else { {/literal}
+		      	w1.attachURL("{$index_url}{$resource_path}/emailto_physician/"+doctorid+"/"+grid.getCheckedRows(0));
+		      {literal} } {/literal}
+
+		{literal}}{/literal}   
+	{literal}}{/literal}   	  
+	function signedByPhysician() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			/*if (confirm("Are you sure the selected visits are signed by Physician?")) {literal}{{/literal}
+				setValue('record_ids', grid.getCheckedRows(0));
+				gform.action='{$index_url}{$resource_path}/signedby_physician';
+				// gform.target='_blank';
+				gform.submit();
+			{literal}}{/literal}  */
+			dhxWins = new dhtmlXWindows();
+			dhxWins.enableAutoViewport(false);
+			dhxWins.attachViewportTo("vp_container");
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+			var w3 = dhxWins.createWindow("w3", 10, 10, 450, 200);
+			w3.setText("Signed By Physician");
+			w3.button("park").hide();
+			w3.button("minmax1").hide();
+			w3.denyResize(); // deny resizing
+			w3.denyMove(); 
+			dhxWins.window('w3').center();
+			dhxWins.window('w3').setModal(true);
+			w3.attachURL("{$index_url}{$resource_path}/signedby_physician/"+grid.getCheckedRows(0));
+		{literal}}{/literal}   
+	{literal}}{/literal}   	  
+
+	function editOrdeFlow(visit_log_id) {literal}{{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.enableAutoViewport(false);
+		dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+		var w2 = dhxWins.createWindow("w2", 10, 10, 500, 300);
+		w2.setText("Edit Doctor Order Flow");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		w2.denyResize(); // deny resizing
+		w2.denyMove(); 
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}{$resource_path}/edit_order_flow/"+visit_log_id);	
+	{literal}}{/literal}   	  
+
+
+ 	function cancelModal () {literal}{{/literal}
+      	dhxWins.window('w1').close();
+     {literal}}{/literal}
+
+	function cancelModal2 () {literal}{{/literal}
+      	dhxWins.window('w2').close();
+     {literal}}{/literal}
+
+ 	function cancelModal3 () {literal}{{/literal}
+      	dhxWins.window('w3').close();
+     {literal}}{/literal}
+</script>
+
+

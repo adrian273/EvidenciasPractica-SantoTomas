@@ -1,0 +1,27 @@
+<?php
+
+
+class InvoiceAuditLogMdl extends Model {
+    
+    var $invoice_audit_log_id;
+    var $visit_log_id;
+    var $user_id;
+    var $invoice_audit_log_date;
+
+    function InvoiceAuditLogMdl() {
+        parent::Model();
+    }
+
+    function getById($visit_log_id) {
+        $query = $this->db->select('*');
+        $this->db->where('visit_log_id', $visit_log_id);
+        $this->db->order_by('invoice_audit_log_date', 'desc');
+        return $this->db->get('invoice_audit_log')->result();
+    }
+
+    function insert() {
+        $this->db->insert('invoice_audit_log', $this);
+        return $this->invoice_audit_log_id = $this->db->insert_id();
+    }
+
+}

@@ -1,0 +1,727 @@
+<?php  if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+function quartsumm_pdf($visit_log_id, $output ='F'){
+    global $GL_VISIT;
+
+    $CI =& get_instance();
+    // define ('PDF_PAGE_ORIENTATION', 'L');
+
+    $CI->load->model('quartsummmdl');
+    $visit_log = $visitlog = $CI->visitlogmdl->getById($visit_log_id);
+    $agy_user_id = $visit_log->user_id;
+    $us1_user = $CI->usermdl->getById($agy_user_id);
+
+    $visit_user = $CI->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+    if ($visitlog->visit_discipline_id) {
+        $user_discipline = $CI->disciplinemdl->getById($visitlog->visit_discipline_id);
+        $visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+    }
+
+    $quartsumm = $CI->quartsummmdl->get($visit_log_id);
+    if (empty($quartsumm)) {
+        $quartsumm = $CI->quartsummmdl->getEmpty();
+    } else {
+        array_walk($quartsumm, 'convert_special_chars');
+    }
+
+    $GL_VISIT = $quartsumm;
+
+    $patient  = $CI->patientmdl->getById($visit_log->patient_id);
+    $agency = $CI->agencymdl->getByAgencyId($patient->agency_id);
+    $medicaidInsurance = $CI->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+
+    $user_discipline = array();
+    if ($visit_user->discipline_id) {
+        $user_discipline = $CI->disciplinemdl->getById($visit_user->discipline_id);
+    }
+
+    // Case Manager
+    $cm_approver = $CI->teammdl->get($visitlog->patient_id, null, null, $CI->getAgencyId(), null, 3);
+    if (count($cm_approver)) {
+        $cm_approver = $CI->usagymdl->getByUsAgyId($cm_approver[0]->us_agy_id);
+    }
+
+    $created_by_user = $CI->usagymdl->getByUsAgyId($visitlog->visit_asigned_by);
+    $created_by_agency = $CI->agencymdl->getByAgencyId($created_by_user->agency_id);
+
+    // $month = date("n",strtotime($visitlog->visit_date_time));
+    // $year = date("Y",strtotime($visitlog->visit_date_time));
+    // $quarter = (($month-1)/3)+1;
+    // $quarter_yer = $quarter.'/'.$year;
+
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+
+    $label_font = "Arial";
+    $data_font = "Courier";
+
+    $__FONT['PDF']['SIZE'] = 9;
+    $__FONT['PDF']['FORM_MEDIUM'] = 10;
+    $__FONT['PDF']['FORM_SMALL'] = 9;
+    $__FONT['PDF']['FORM_SMALL2'] = 8;
+    $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+    $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+    $__FONT['PDF']['FORM_arial8'] = 9.5;
+
+
+    $total_page = 2;
+    $CI->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+      define('FPDF_FONTPATH',$CI->config->item('fonts_path'));
+
+    if ($quartsumm->addendum != "") {
+        $total_page = 3;
+    }
+
+    $CI->fpdf->Open();
+    $pdf = $CI->fpdf;
+    $pdf->AddPage();
+    $con = 2.8346456692913384;
+
+    $cero_x = 11;
+    $cero_y = 2 - 15;
+
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+    $y = $y - 15;
+
+    //page 1 top line
+    $CI->fpdf->Line(($cero_x ), ($cero_y +40), ($cero_x +577), ($cero_y +40));
+    $pdf->SetFont('Arial', 'B', 11);
+    $CI->fpdf->Text(($x), ($y + 31), "QUARTERLY SUMMARY - Goals, Progress & Treatment");
+    $CI->fpdf->Text(($x + 475), ($y + 31), "Page 1 of ".$total_page);
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +65), ($cero_x +577), ($cero_y +65));
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x), ($y + 60), "Client:");
+    $CI->fpdf->Line(($cero_x +50), ($cero_y +88), ($cero_x +150), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 35), ($y + 60), $patient->first_name.' '.$patient->middle_initial.' '.$patient->last_name);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x + 165), ($y + 60), "Therapist:");
+    $CI->fpdf->Line(($cero_x +230), ($cero_y +88), ($cero_x +330+80), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 215 ), ($y + 60), $visit_user->first_name.' '.$visit_user->last_name);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x + 355 + 50), ($y + 60), "Discipline:");
+    $CI->fpdf->Line(($cero_x +423+50), ($cero_y +88), ($cero_x +572), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 9);
+    if (isset($visit_user->mayor_discipline)) {
+        $CI->fpdf->Text(($x + 410+45), ($y + 60), $visit_user->mayor_discipline);
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x), ($y + 82), "Date of Assessment:");
+    $CI->fpdf->Line(($cero_x +110), ($cero_y +110), ($cero_x +175), ($cero_y +110));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 8 + 90), ($y + 82), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x + 165), ($y + 82), "Review Period (Qrt/Yr):");
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 298 - 30), ($y + 82), $quartsumm->quarter_year);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Line(($cero_x +315 - 30), ($cero_y +110), ($cero_x +355), ($cero_y +110));
+    $CI->fpdf->Line(($cero_x ), ($cero_y +120), ($cero_x +577), ($cero_y +120));
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x + 355 - 12), ($y + 82), "Diagnosis:");
+    $CI->fpdf->Line(($cero_x +423 -15), ($cero_y +110), ($cero_x +572), ($cero_y +110));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 410 - 18), ($y + 82), substr($quartsumm->diagnosis, 0, 32));
+    $pdf->SetFont('Arial', 'B', 9);
+
+    // End of HEADER
+    //page 1 left line
+    $CI->fpdf->Line(($cero_x ), ($cero_y +70-30), ($cero_x ), ($cero_y +574+70+70));
+    //page 1 right line
+    $CI->fpdf->Line(($cero_x +577), ($cero_y +70-30), ($cero_x +577), ($cero_y +574+70+70));
+
+
+    $y = $y - 5;
+
+    $CI->fpdf->Text(($x), ($y + 120-5), "Initial/annual evaluation of ");
+    $CI->fpdf->Text(($x), ($y + 132-5), "deficits and needs. Taken");
+    $CI->fpdf->Text(($x), ($y + 144-5), "from 8606A addendum");
+    $CI->fpdf->Line(($cero_x +150), ($cero_y +120), ($cero_x +150), ($cero_y +270));
+    $cero_y = $cero_y - 10;
+    $initial_annual_eval = str_replace("\n", " ", substr($quartsumm->initial_annual_eval, 0, 600));
+    $CI->fpdf->SetXY( ($x + 135) , ($y + 100));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(420, 10, $initial_annual_eval);
+
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $y += 30;
+    $cero_y += 30;
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +195), ($cero_x +577), ($cero_y +195));
+    $CI->fpdf->Text(($x), ($y + 175), "Frequency AND Duration");
+    //underline for AND
+    $CI->fpdf->Line(($cero_x +83-18), ($cero_y +208), ($cero_x +105-20), ($cero_y +208));
+    $frequency_duration = str_replace("\n", " ", substr($quartsumm->frequency_duration, 0, 100));
+    $CI->fpdf->SetXY( ($x + 135) , ($y + 167));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(420, 10, $frequency_duration);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x), ($y + 188), "of visits:");
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +225), ($cero_x +577), ($cero_y +225));
+    $CI->fpdf->Text(($x), ($y + 209), "Coordination of Care:");
+    $cero_y = $cero_y - 5;
+    $coord_text = str_replace("\n", " ", substr($quartsumm->coord_text, 0, 145));
+    $CI->fpdf->SetXY( ($x + 135) , ($y + 196));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(420, 10, $coord_text);
+    $pdf->SetFont('Arial', 'B', 9);
+
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +250+5), ($cero_x +577), ($cero_y +250+5));
+    $y = $y - 10;
+    $CI->fpdf->Text(($x), ($y + 240), "# 1 Baseline Data:");
+    $base_line1 = str_replace("\n", " ", substr($quartsumm->base_line1, 0, 484));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 232));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $base_line1);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $cero_y += 5;
+    $y += 5;
+
+    $CI->fpdf->Text(($x), ($y + 305), "Goal:");
+    $goals1 = str_replace("\n", " ", substr($quartsumm->goals1, 0, 200));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 295));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $goals1);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x), ($y + 330), "Measurable");
+    $CI->fpdf->Text(($x), ($y + 340), "Objectives:");
+    $objectives1 = str_replace("\n", " ", substr($quartsumm->objectives1, 0, 350));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 325));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $objectives1);
+    $pdf->SetFont('Arial', 'B', 9);
+    $cero_y += 35;
+    $y += 35;
+    $CI->fpdf->Line(($cero_x ), ($cero_y +367), ($cero_x +577), ($cero_y +367));
+
+    $cero_y -= 5;
+    $y -= 5;
+    $CI->fpdf->Text(($x), ($y + 357), "# 2 Baseline Data:");
+    $base_line2 = str_replace("\n", " ", substr($quartsumm->base_line2, 0, 408));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 349));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $base_line2);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x), ($y + 410), "Goal:");
+    $goals2 = str_replace("\n", " ", substr($quartsumm->goals2, 0, 200));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 405));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $goals2);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x), ($y + 441), "Measurable");
+    $CI->fpdf->Text(($x), ($y + 451), "Objectives:");
+    $objectives2 = str_replace("\n", " ", substr($quartsumm->objectives2, 0, 350));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 435));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $objectives2);
+    $pdf->SetFont('Arial', 'B', 9);
+    $cero_y += 45;
+    $y += 45;
+    $CI->fpdf->Line(($cero_x ), ($cero_y +467), ($cero_x +577), ($cero_y +467));
+
+
+    // $y = $y + 5;
+    $CI->fpdf->Text(($x), ($y + 452), "# 3 Baseline Data:");
+    $base_line3 = str_replace("\n", " ", substr($quartsumm->base_line3, 0, 408));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 444));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $base_line3);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $y = $y + 20;
+    $CI->fpdf->Text(($x), ($y + 495), "Goal:");
+    $goals3 = str_replace("\n", " ", substr($quartsumm->goals3, 0, 200));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 487));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $goals3);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $y = $y - 7;
+    $CI->fpdf->Text(($x), ($y + 535), "Measurable");
+    $CI->fpdf->Text(($x), ($y + 545), "Objectives:");
+    $objectives3 = str_replace("\n", " ", substr($quartsumm->objectives3, 0, 350));
+    $CI->fpdf->SetXY( ($x + 84) , ($y + 525));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(450, 10, $objectives3);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $cero_y += 45;
+    $y += 45;
+
+    //page 1 bottom line
+    $CI->fpdf->Line(($cero_x ), ($cero_y +575), ($cero_x +577), ($cero_y +575));
+    $pdf->SetFont('Arial', '', 10);
+    $CI->fpdf->Text(($x + 255), ($y + 550), "Form 332-B");
+
+
+
+
+    // Page 3
+
+    $CI->fpdf->AddPage();
+    $con = 2.8346456692913384;
+    $cero_x = 11;
+    $cero_y = 2 - 15;
+
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+    $y = $y - 15;
+
+
+    //page 2 top line
+    $CI->fpdf->Line(($cero_x ), ($cero_y +40), ($cero_x +577), ($cero_y +40));
+    $pdf->SetFont('Arial', 'B', 11);
+    $CI->fpdf->Text(($x), ($y + 31), "QUARTERLY SUMMARY - Goals, Progress & Treatment");
+    $CI->fpdf->Text(($x + 475), ($y + 31), "Page 2 of ".$total_page);
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +65), ($cero_x +577), ($cero_y +65));
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x), ($y + 60), "Client:");
+    $CI->fpdf->Line(($cero_x +50), ($cero_y +88), ($cero_x +150), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 35), ($y + 60), $patient->first_name.' '.$patient->middle_initial.' '.$patient->last_name);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x + 165), ($y + 60), "Therapist:");
+    $CI->fpdf->Line(($cero_x +230), ($cero_y +88), ($cero_x +330+80), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 215 ), ($y + 60), $visit_user->first_name.' '.$visit_user->last_name);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x + 355 + 50), ($y + 60), "Discipline:");
+    $CI->fpdf->Line(($cero_x +423+50), ($cero_y +88), ($cero_x +572), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 9);
+    if (isset($visit_user->mayor_discipline)) {
+        $CI->fpdf->Text(($x + 410+45), ($y + 60), $visit_user->mayor_discipline);
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x), ($y + 82), "Date of Assessment:");
+    $CI->fpdf->Line(($cero_x +110), ($cero_y +110), ($cero_x +175), ($cero_y +110));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 8 + 90), ($y + 82), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Text(($x + 165), ($y + 82), "Review Period (Qrt/Yr):");
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 298 - 30), ($y + 82), $quartsumm->quarter_year);
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Line(($cero_x +315 - 30), ($cero_y +110), ($cero_x +355), ($cero_y +110));
+    $CI->fpdf->Line(($cero_x ), ($cero_y +120), ($cero_x +577), ($cero_y +120));
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x + 355 - 12), ($y + 82), "Diagnosis:");
+    $CI->fpdf->Line(($cero_x +423 -15), ($cero_y +110), ($cero_x +572), ($cero_y +110));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 410 - 18), ($y + 82), substr($quartsumm->diagnosis, 0, 32));
+    $pdf->SetFont('Arial', 'B', 9);
+
+    // $CI->fpdf->Line(($cero_x ), ($cero_y +195), ($cero_x +577), ($cero_y +195));
+    // End of HEADER
+
+    $cero_y += 40;
+    $y += 40;
+
+
+    //page 2 left line
+    $CI->fpdf->Line(($cero_x ), ($cero_y ), ($cero_x ), ($cero_y +485+90));
+
+    //page 2 right line
+    $CI->fpdf->Line(($cero_x +577), ($cero_y ), ($cero_x +577), ($cero_y +485+90));
+
+
+    $pdf->SetFont('Arial', 'B', 9.5);
+    $CI->fpdf->Text(($x ), ($y + 68), "Client Participation:");
+    $CI->fpdf->Line(($cero_x +130), ($cero_y +76+4), ($cero_x +130), ($cero_y +170));
+    $client_participation = str_replace("\n", " ", substr($quartsumm->client_participation, 0, 160));
+    $CI->fpdf->SetXY( ($x + 120) , ($y + 55));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(420, 10, $client_participation);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +115), ($cero_x +577), ($cero_y +115));
+    $CI->fpdf->Text(($x ), ($y + 113), "# of Missed Visits:");
+    $CI->fpdf->Line(($cero_x+200-30), ($cero_y +115), ($cero_x+200-30), ($cero_y +170));
+    $pdf->SetFont('Courier', '', 9);
+    $CI->fpdf->Text(($x + 120), ($y + 113), $quartsumm->missed_visits_nbr);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $CI->fpdf->Text(($x + 212 - 35), ($y + 103), "Reason(s) for Missed Visit(s):");
+    $CI->fpdf->Text(($x + 202 - 35), ($y + 113), "(If the client missed multiple visits");
+    $CI->fpdf->Text(($x + 197 - 35), ($y + 123), "for a variety of reasons, then please");
+    $CI->fpdf->Text(($x + 227 - 35), ($y + 133), "document all the reasons.)");
+    $CI->fpdf->Line(($cero_x +350), ($cero_y +115), ($cero_x +350), ($cero_y +485+90));
+    $missed_visits_reason = str_replace("\n", " ", substr($quartsumm->missed_visits_reason, 0, 175));
+    $CI->fpdf->SetXY( ($x + 335) , ($y + 90));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(220, 10, $missed_visits_reason);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +170), ($cero_x +577), ($cero_y +170));
+    $CI->fpdf->Text(($x), ($y + 160), "Treatment provided to address identified needs for Goal #1:");
+    $treatment_goal1 = str_replace("\n", " ", substr($quartsumm->treatment_goal1, 0, 450));
+    $CI->fpdf->SetXY( ($x + 7) , ($y + 163));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(315, 10, $treatment_goal1);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $CI->fpdf->Text(($x + 338), ($y + 160), "Current Progress Goal # 1:");
+    $current_prog_goal1 = str_replace("\n", " ", substr($quartsumm->current_prog_goal1, 0, 250));
+    $CI->fpdf->SetXY( ($x + 335) , ($y + 164));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(220, 10, $current_prog_goal1);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $cero_y += 10;
+    $y += 10;
+
+    $CI->fpdf->Rect(( $cero_x + 357),($cero_y + 257), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised1 == 1){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 359 ),($cero_y + 257.5),6);
+    }
+    $CI->fpdf->Text(($x + 352), ($y + 238), "Met");
+    $CI->fpdf->Rect(( $cero_x + 400),($cero_y + 257), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised1 == 2){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 402 ),($cero_y + 257.5),6);
+    }
+    $CI->fpdf->Text(($x + 395), ($y + 238), "Unmet Goal");
+
+    $cero_y += 10;
+    $y += 10;
+    $CI->fpdf->Rect(( $cero_x + 478 - 121),($cero_y + 257), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised1 == 3){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 430 - 121 ),($cero_y + 257.5),6);
+    }
+    $CI->fpdf->Text(($x + 473 - 121), ($y + 238), "Revised; Specify Revision:");
+    $pdf->SetFont('Courier', '', 9);
+    $cero_y += 10;
+    $y += 10;
+    $CI->fpdf->Text(($x + 473 + 123 - 121 - 121), ($y + 238), substr($quartsumm->spec_revision1, 0, 23));
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +275), ($cero_x +577), ($cero_y +275));
+    $CI->fpdf->Text(($x), ($y + 265), "Treatment provided to address identified needs for Goal #2:");
+    $treatment_goal2 = str_replace("\n", " ", substr($quartsumm->treatment_goal2, 0, 420));
+    $CI->fpdf->SetXY( ($x + 7) , ($y + 270));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(315, 10, $treatment_goal2);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+
+    $CI->fpdf->Text(($x + 338), ($y + 265), "Current Progress Goal # 2:");
+    $current_prog_goal2 = str_replace("\n", " ", substr($quartsumm->current_prog_goal2, 0, 250));
+    $CI->fpdf->SetXY( ($x + 335) , ($y + 271));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(220, 10, $current_prog_goal2);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $cero_y += 10;
+    $y += 10;
+
+    $CI->fpdf->Rect(( $cero_x + 357),($cero_y + 362), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised2 == 1){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 359 ),($cero_y + 362.5),6);
+    }
+    $CI->fpdf->Text(($x + 352), ($y + 343), "Met");
+    $CI->fpdf->Rect(( $cero_x + 400),($cero_y + 362), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised2 == 2){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 402 ),($cero_y + 362.5),6);
+    }
+    $CI->fpdf->Text(($x + 395), ($y + 343), "Unmet Goal");
+
+    $cero_y += 10;
+    $y += 10;
+    $CI->fpdf->Rect(( $cero_x + 478 - 121),($cero_y + 362), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised2 == 3){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 430 -121),($cero_y + 362.5),6);
+    }
+    $CI->fpdf->Text(($x + 473 - 121), ($y + 343), "Revised; Specify Revision:");
+    $pdf->SetFont('Courier', '', 9);
+    $cero_y += 10;
+    $y += 10;
+    $CI->fpdf->Text(($x + 473 + 123 - 121 - 121), ($y + 343), substr($quartsumm->spec_revision2, 0, 23));
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +380), ($cero_x +577), ($cero_y +380));
+    $CI->fpdf->Text(($x), ($y + 370), "Treatment provided to address identified needs for Goal #3:");
+    $treatment_goal3 = str_replace("\n", " ", substr($quartsumm->treatment_goal3, 0, 420));
+    $CI->fpdf->SetXY( ($x + 7) , ($y + 375));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(315, 10, $treatment_goal3);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $CI->fpdf->Text(($x + 338), ($y + 370), "Current Progress Goal # 3:");
+    $current_prog_goal3 = str_replace("\n", " ", substr($quartsumm->current_prog_goal3, 0, 250));
+    $CI->fpdf->SetXY( ($x + 335) , ($y + 376));
+    $pdf->SetFont('Courier', '', 9);
+    $pdf->MultiCell(220, 10, $current_prog_goal3);
+    $pdf->SetFont('Arial', 'B', 9.5);
+
+    $cero_y += 10;
+    $y += 10;
+
+    $CI->fpdf->Rect(( $cero_x + 357),($cero_y + 467), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised3 == 1){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 359 ),($cero_y + 467.5),6);
+    }
+    $CI->fpdf->Text(($x + 352), ($y + 448), "Met");
+    $CI->fpdf->Rect(( $cero_x + 400),($cero_y + 467), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised3 == 2){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 402 ),($cero_y + 467.5),6);
+    }
+    $CI->fpdf->Text(($x + 395), ($y + 448), "Unmet Goal");
+
+    $cero_y += 10;
+    $y += 10;
+    $CI->fpdf->Rect(( $cero_x + 478 - 121),($cero_y + 467), 9.5, 8.5);
+    if($quartsumm->met_unmet_revised3 == 3){
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 430 -121 ),($cero_y + 467.5),6);
+    }
+    $CI->fpdf->Text(($x + 473 - 121), ($y + 448), "Revised; Specify Revision:");
+    $pdf->SetFont('Courier', '', 9);
+    $cero_y += 10;
+    $y += 10;
+    $CI->fpdf->Text(($x + 473 + 123 - 121 -121), ($y + 448), substr($quartsumm->spec_revision3, 0, 23));
+    $pdf->SetFont('Arial', 'B', 8);
+
+    $CI->fpdf->Line(($cero_x ), ($cero_y +485), ($cero_x +577), ($cero_y +485));
+
+    if ($total_page == 2) {
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x - 5), ($y + 495), "Therapist Printed Name:");
+        $CI->fpdf->Line(($cero_x +105), ($cero_y +523), ($cero_x +290), ($cero_y +523));
+        $CI->fpdf->Text(($x + 275), ($y + 495), "Signature:");
+        $CI->fpdf->Line(($cero_x +341), ($cero_y +523), ($cero_x +440), ($cero_y +523));
+        $CI->fpdf->Text(($x + 437), ($y + 495), "Date:");
+        $CI->fpdf->Line(($cero_x +481), ($cero_y +523), ($cero_x +560), ($cero_y +523));
+        if (isset($quartsumm->clinician_signature) AND $quartsumm->clinician_signature != "") {
+            $pdf->SetFont('Courier', '', 8);
+            $CI->fpdf->Text(($x + 95), ($y + 493), $visit_user->first_name.' '.$visit_user->last_name);
+            // $pdf->SetFont('Arial', 'B', 8);
+            $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$quartsumm->clinician_signature;
+            $CI->fpdf->Image( $img_path, ($x + 320), ($y + 470), 58);
+            // $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $CI->fpdf->Text(($x + 470), ($y + 493), standard_date(mysql_to_unix($quartsumm->clinician_signed_date)));
+        }
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x - 5), ($y + 525), "DSA Representative Printed Name:");
+        $CI->fpdf->Line(($cero_x +224 - 80), ($cero_y +553), ($cero_x +290), ($cero_y +553));
+        $CI->fpdf->Text(($x + 275), ($y + 525), "Signature:");
+        $CI->fpdf->Line(($cero_x +341), ($cero_y +553), ($cero_x +440), ($cero_y +553));
+        $CI->fpdf->Text(($x + 437), ($y + 525), "Date:");
+        $CI->fpdf->Line(($cero_x +481), ($cero_y +553), ($cero_x +560), ($cero_y +553));
+        if (isset($quartsumm->dsa_signature) AND $quartsumm->dsa_signature != "") {
+            $pdf->SetFont('Courier', '', 8);
+            // $pdf->SetFont('Arial', 'B', 8.2);
+            // $CI->fpdf->Text(($x + 45 + 160), ($y + 523), $visit_user->first_name.' '.$visit_user->last_name);
+            // $pdf->SetFont('Arial', 'B', 9.5);
+            $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$quartsumm->dsa_signature;
+            $CI->fpdf->Image( $img_path, ($x + 320), ($y + 500), 58);
+            // $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $CI->fpdf->Text(($x + 470), ($y + 523), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+        }
+    }
+
+    $cero_x += 10;
+    $y += 10;
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 20), ($y + 540), "*Date sent to CMA must be within 5 business days of the quarterly summary being completed/signed by the therapist*");
+
+    $cero_x += 10;
+    $y += 10;
+
+    $pdf->SetFont('Arial', '', 10);
+    $CI->fpdf->Text(($x + 255), ($y + 550), "Form 332-B");
+
+
+    if ($total_page == 3) {
+        $CI->fpdf->AddPage();
+        $con = 2.8346456692913384;
+        $cero_x = 11;
+        $cero_y = 2 - 15;
+
+        $x = $pdf->GetX();
+        $y = $pdf->GetY();
+        $y = $y-15;
+
+        $CI->fpdf->Line(($cero_x ), ($cero_y +40), ($cero_x +577), ($cero_y +40));
+        $pdf->SetFont('Arial', 'B', 11);
+        $CI->fpdf->Text(($x), ($y + 31), "QUARTERLY SUMMARY - Goals, Progress & Treatment");
+        $CI->fpdf->Text(($x + 475), ($y + 31), "Page 3 of ".$total_page);
+
+        $CI->fpdf->Line(($cero_x ), ($cero_y +65), ($cero_x +577), ($cero_y +65));
+
+        $pdf->SetFont('Arial', 'B', 9);
+        $CI->fpdf->Text(($x), ($y + 60), "Client:");
+        $CI->fpdf->Line(($cero_x +50), ($cero_y +88), ($cero_x +150), ($cero_y +88));
+        $pdf->SetFont('Courier', '', 9);
+        $CI->fpdf->Text(($x + 35), ($y + 60), $patient->first_name.' '.$patient->middle_initial.' '.$patient->last_name);
+        $pdf->SetFont('Arial', 'B', 9);
+
+        $CI->fpdf->Text(($x + 165), ($y + 60), "Therapist:");
+        $CI->fpdf->Line(($cero_x +230), ($cero_y +88), ($cero_x +330+80), ($cero_y +88));
+        $pdf->SetFont('Courier', '', 9);
+        $CI->fpdf->Text(($x + 215 ), ($y + 60), $visit_user->first_name.' '.$visit_user->last_name);
+        $pdf->SetFont('Arial', 'B', 9);
+
+        $CI->fpdf->Text(($x + 355 + 50), ($y + 60), "Discipline:");
+        $CI->fpdf->Line(($cero_x +423+50), ($cero_y +88), ($cero_x +572), ($cero_y +88));
+        $pdf->SetFont('Courier', '', 9);
+        if (isset($visit_user->mayor_discipline)) {
+            $CI->fpdf->Text(($x + 410+45), ($y + 60), $visit_user->mayor_discipline);
+        }
+
+        $pdf->SetFont('Arial', 'B', 9);
+
+        $CI->fpdf->Text(($x), ($y + 82), "Date of Assessment:");
+        $CI->fpdf->Line(($cero_x +110), ($cero_y +110), ($cero_x +175), ($cero_y +110));
+        $pdf->SetFont('Courier', '', 9);
+        $CI->fpdf->Text(($x + 8 + 90), ($y + 82), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+        $pdf->SetFont('Arial', 'B', 9);
+
+        $CI->fpdf->Text(($x + 165), ($y + 82), "Review Period (Qrt/Yr):");
+        $pdf->SetFont('Courier', '', 9);
+        $CI->fpdf->Text(($x + 298 - 30), ($y + 82), $quartsumm->quarter_year);
+        $pdf->SetFont('Arial', 'B', 9);
+
+        $CI->fpdf->Line(($cero_x +315 - 30), ($cero_y +110), ($cero_x +355), ($cero_y +110));
+        $CI->fpdf->Line(($cero_x ), ($cero_y +120), ($cero_x +577), ($cero_y +120));
+
+        $pdf->SetFont('Arial', 'B', 9);
+        $CI->fpdf->Text(($x + 355 - 12), ($y + 82), "Diagnosis:");
+        $CI->fpdf->Line(($cero_x +423 -15), ($cero_y +110), ($cero_x +572), ($cero_y +110));
+        $pdf->SetFont('Courier', '', 9);
+        $CI->fpdf->Text(($x + 410 - 18), ($y + 82), substr($quartsumm->diagnosis, 0, 32));
+        $pdf->SetFont('Arial', 'B', 9);
+
+        // $CI->fpdf->Line(($cero_x ), ($cero_y +195), ($cero_x +577), ($cero_y +195));
+        // End of HEADER
+
+        $cero_y += 40;
+        $y += 40;
+
+
+        //page 3 left line
+        $CI->fpdf->Line(($cero_x ), ($cero_y ), ($cero_x ), ($cero_y +565));
+
+        //page 3 right line
+        $y = $y + 5;
+        $CI->fpdf->Line(($cero_x +577), ($cero_y ), ($cero_x +577), ($cero_y +565));
+
+
+
+        // Print Addendum
+        $pdf->SetFont('Arial', 'B', 9.5);
+        $CI->fpdf->Text(($x ), ($y + 69), "Addendum:");
+        // $addendum = str_replace("\n", " ", substr($quartsumm->addendum, 0, 160));
+        $CI->fpdf->SetXY( ($x + 60) , ($y + 58));
+        $pdf->SetFont('Courier', '', 9);
+        $pdf->MultiCell(490, 10, $quartsumm->addendum);
+        $pdf->SetFont('Arial', 'B', 9);
+
+
+
+
+        //page 3 bottom line
+        $CI->fpdf->Line(($cero_x ), ($cero_y +565), ($cero_x +577), ($cero_y +565));
+
+        $cero_y += 80;
+        $y += 80;
+
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x - 5), ($y + 495), "Therapist Printed Name:");
+        $CI->fpdf->Line(($cero_x +105), ($cero_y +523 + 4 ), ($cero_x +290), ($cero_y +523 + 4 ));
+        $CI->fpdf->Text(($x + 275), ($y + 495), "Signature:");
+        $CI->fpdf->Line(($cero_x +341), ($cero_y +523 + 4 ), ($cero_x +440), ($cero_y +523 + 4 ));
+        $CI->fpdf->Text(($x + 437), ($y + 495), "Date:");
+        $CI->fpdf->Line(($cero_x +481), ($cero_y +523 + 4 ), ($cero_x +560), ($cero_y +523 + 4 ));
+        if (isset($quartsumm->clinician_signature) AND $quartsumm->clinician_signature != "") {
+            $pdf->SetFont('Courier', '', 8);
+            $CI->fpdf->Text(($x + 95), ($y + 493 ), $visit_user->first_name.' '.$visit_user->last_name);
+            // $pdf->SetFont('Arial', 'B', 8);
+            $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$quartsumm->clinician_signature;
+            $CI->fpdf->Image( $img_path, ($x + 320), ($y + 470 ), 58);
+            // $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $CI->fpdf->Text(($x + 470), ($y + 493 ), standard_date(mysql_to_unix($quartsumm->clinician_signed_date)));
+        }
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x - 5), ($y + 525 - 5), "DSA Representative Printed Name:");
+        $CI->fpdf->Line(($cero_x +224 - 80), ($cero_y +553 ), ($cero_x +290), ($cero_y +553 ));
+        $CI->fpdf->Text(($x + 275), ($y + 525 - 5), "Signature:");
+        $CI->fpdf->Line(($cero_x +341), ($cero_y +553 ), ($cero_x +440), ($cero_y +553 ));
+        $CI->fpdf->Text(($x + 437), ($y + 525 - 5), "Date:");
+        $CI->fpdf->Line(($cero_x +481), ($cero_y +553 ), ($cero_x +560), ($cero_y +553 ));
+        if (isset($quartsumm->dsa_signature) AND $quartsumm->dsa_signature != "") {
+            $pdf->SetFont('Courier', '', 8);
+            // $pdf->SetFont('Arial', 'B', 8.2);
+            // $CI->fpdf->Text(($x + 45 + 160), ($y + 523), $visit_user->first_name.' '.$visit_user->last_name);
+            // $pdf->SetFont('Arial', 'B', 9.5);
+            $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$quartsumm->dsa_signature;
+            $CI->fpdf->Image( $img_path, ($x + 320), ($y + 500 - 5), 58);
+            // $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $CI->fpdf->Text(($x + 470), ($y + 523 - 5), standard_date(mysql_to_unix($quartsumm->dsa_signed_date)));
+        }
+
+
+        $pdf->SetFont('Arial', '', 10);
+        $CI->fpdf->Text(($x + 255), ($y + 550), "Form 332-B");
+
+
+    }
+
+    // $CI->fpdf->Output('test_pdf',$output);
+
+    $title_text = "QR Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $filename_only = "Pt ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+
+    switch($output){
+        case 'D':
+            $filename_only = "Pt ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+            $filename = $filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+        case 'F':
+            //$filename = $filename.'tmp/'.time().'_'.$visit_log_id.'_pq_ptpn.pdf';
+            $c = 1;
+            while(file_exists($filename.'tmp/'.$filename_only.'.pdf'))
+            {
+                $filename_only =  "Pt ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text." _".$c;
+                $c++;
+            }
+            $filename = $filename.'tmp/'.$filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+    }
+
+    return $filename;
+
+}

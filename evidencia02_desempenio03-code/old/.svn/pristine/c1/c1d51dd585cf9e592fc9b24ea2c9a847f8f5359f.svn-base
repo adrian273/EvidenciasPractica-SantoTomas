@@ -1,0 +1,107 @@
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/rates_default_edit/{$contractor_rate_id}">
+ 	<input type="hidden" name="agency_contractor_id" value="{$agency_contractor_id}" />
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}	
+  {*<tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User to reassign</td>
+  </tr>
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr>*}
+  <tr>		
+		<td height="10">Visit Type: *</td>
+    <td height="10">
+    	{$visit_description}
+    </td>
+  </tr>
+  {if $provides_altern_therapy eq 'Y'}
+  <tr>    
+    <td height="10">CLASS Rate: *</td>
+    <td height="10">
+      <input type="text" name="class_rate" value="{$class_rate}" id="class_rate"  size="6" maxlength="6"/>
+    </td>
+  </tr>
+  <tr>    
+    <td height="10">YES-W Rate: *</td>
+    <td height="10">
+      <input type="text" name="yes_rate" value="{$yes_rate}" id="yes_rate"  size="6" maxlength="6"/>
+    </td>
+  </tr>
+  <tr>    
+    <td height="10">Private Rate: *</td>
+    <td height="10">
+      <input type="text" name="private_rate" value="{$private_rate}" id="private_rate"  size="6" maxlength="6"/>
+    </td>
+  </tr>
+  <!-- <tr>    
+    <td height="10">Private Min Rate: *</td>
+    <td height="10">
+      <input type="text" name="private_rate_min" value="{$private_rate_min}" id="private_rate_min"  size="6" maxlength="6"/>
+    </td>
+  </tr> -->
+  {else}
+  <tr>		
+		<td height="10">Visit Rate: *</td>
+    <td height="10">
+    	<input type="text" name="company_rate" value="{$company_rate}" id="company_rate"  size="6" maxlength="6"/>
+    </td>
+  </tr>
+  <tr style="display:none" id="pta_cota_tr">		
+		<td height="10"><label id="pta_cota"></label>Visit Rate: *</td>
+    <td height="10">
+    	<input type="text" name="PTA_or_COTA_rate" value="{$PTA_or_COTA_rate}" id="PTA_or_COTA_rate"  size="6" maxlength="6"/> <span style="color:#999999;"><label id="visit_type_help_text">PT</label>Visit rate will be used if no value entered here. </span>
+    </td>
+  </tr>	
+    {if $LOB eq 2}
+    <tr>    
+      <td height="10">Waiver Rate: *</td>
+      <td height="10">
+        <input type="text" name="waiver_rate" value="{$waiver_rate}" id="waiver_rate"  size="6" maxlength="6"/>
+      </td>
+    </tr>
+    {else}
+    <tr style="display: none;">    
+      <td height="10">Waiver Rate: *</td>
+      <td height="10">
+        <input type="text" name="waiver_rate" value="{$waiver_rate}" id="waiver_rate"  size="6" maxlength="6"/>
+      </td>
+    </tr>
+    {/if}
+  {/if}
+  <tr>		
+		<td height="10">Effective Date: *</td>
+    <td height="10">
+			<input type="text" id="rate_effective_date" name="rate_effective_date" value="{$rate_effective_date|date_format:"%m-%d-%Y":"":true}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('rate_effective_date'), document.getElementById('fecha_help'));return false;" >		
+    </td>
+  </tr>	
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+<script>
+{literal}
+ function other_rate(visit_type_id){
+ 	if(visit_type_id==12){
+		$('#pta_cota').text('PTA');
+		$('#visit_type_help_text').text('PT');
+		$('#pta_cota_tr').show();
+	}else if(visit_type_id==42){
+		$('#pta_cota').text('COTA');
+		$('#visit_type_help_text').text('OT');		
+		$('#pta_cota_tr').show();	
+	}else{
+		$('#pta_cota_tr').hide();	
+	}
+ }
+ {/literal}
+ other_rate({$visit_type_id});
+</script>

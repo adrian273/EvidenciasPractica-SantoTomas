@@ -1,0 +1,177 @@
+<?
+
+ class TicketMdl extends Model {
+
+	var $ticket_id;
+	var $ticket_subject;
+	var $tab_088_ticket_type_id;
+	var $tab_089_ticket_status_id;
+	var $ticket_user_id;
+	var $ticket_content;
+	var $attachment;
+	var $ticket_datetime;
+
+	function TicketMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get () {
+		
+		$this->db->join('us1_user', 'user_id = ticket_user_id');
+		$this->db->join('tab_parameters', 'tic_ticket.tab_088_ticket_type_id = tab_parameters.tab_value AND tab_parameters.tab_type = 88', 'LEFT');		
+		$this->db->join('tab_parameters as status_tab', 'tic_ticket.tab_089_ticket_status_id = status_tab.tab_value AND status_tab.tab_type = 89', 'LEFT');
+		
+		if ($keyword=$this->input->post('keyword')) {
+			$this->db->like('tic_ticket.ticket_subject', $keyword);
+			$this->db->or_like('tab_parameters.tab_description', $keyword);
+			$this->db->or_like('us1_user.first_name', $keyword);
+			$this->db->or_like('us1_user.last_name', $keyword);
+			$this->db->or_like('tic_ticket.ticket_content', $keyword);
+		}
+ 		if ($referral_date_time_from = $this->input->post('referral_date_time_from')) {
+    		$this->db->where("tic_ticket.ticket_datetime >=", standard_date(human_to_unix($referral_date_time_from), 'MYSQL_NOTIME')." 00:00:00");
+    	}
+    
+    	if ($referral_date_time_to = $this->input->post('referral_date_time_to')) {
+     		$this->db->where("tic_ticket.ticket_datetime <=", standard_date(human_to_unix($referral_date_time_to), 'MYSQL_NOTIME')." 23:59:59");
+    	}
+		
+    	if ($status = $this->input->post('status')) {
+     		$this->db->where("status_tab.tab_value = ", $status);
+    	}
+		
+		$this->db->order_by('ticket_datetime', 'DESC');
+		
+		$query = $this->db->get('tic_ticket');
+		return $query->result();
+		
+	}
+	
+	function get2 ($user_id = NULL, $agency_id = NULL) {
+		
+		//echo "user id is " . $user_id;
+		$this->db->select("tic_ticket.*, tab1.*, us1_user.first_name as user_first_name, us1_user.last_name as user_last_name, TR.response_datetime");
+		$this->db->join('(SELECT MAX(response_datetime) as response_datetime, ticket_id FROM tic_response GROUP BY ticket_id) as TR', 'tic_ticket.ticket_id = TR.ticket_id', 'LEFT');
+		$this->db->join('us1_user', 'user_id = ticket_user_id','LEFT');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = ticket_us_agy_id', 'LEFT');
+		$this->db->join('tab_parameters as tab1', 'tic_ticket.tab_088_ticket_type_id = tab1.tab_value AND tab1.tab_type = 88', 'LEFT');
+		$this->db->join('tab_parameters as status_tab', 'tic_ticket.tab_089_ticket_status_id = status_tab.tab_value AND status_tab.tab_type = 89', 'LEFT');
+		
+     	
+		
+		//$this->db->join('(SELECT ticket_id as res_ticket_id,response_datetime FROM tic_response ORDER BY response_datetime DESC LIMIT 1) as TR', 'TR.res_ticket_id = tic_ticket.ticket_id', 'INNER ');
+		if ($keyword=$this->input->post('keyword')) {
+			$this->db->like('tic_ticket.ticket_subject', $keyword);
+			$this->db->or_like('tab1.tab_description', $keyword);
+			$this->db->or_like('status_tab.tab_description', $keyword);
+			$this->db->or_like('us1_user.first_name', $keyword);
+			$this->db->or_like('us1_user.last_name', $keyword);
+		}
+ 		if ($referral_date_time_from = $this->input->post('referral_date_time_from')) {
+    		$this->db->where("tic_ticket.ticket_datetime >=", standard_date(human_to_unix($referral_date_time_from), 'MYSQL_NOTIME')." 00:00:00");
+    	}
+    
+    	if ($referral_date_time_to = $this->input->post('referral_date_time_to')) {
+     		$this->db->where("tic_ticket.ticket_datetime <=", standard_date(human_to_unix($referral_date_time_to), 'MYSQL_NOTIME')." 23:59:59");
+    	} 
+    
+    	if ($status = $this->input->post('status')) {
+     		$this->db->where("status_tab.tab_value = ", $status);
+    	}
+    
+    	if ($post_user_id = $this->input->post('user_id')) {
+     		$this->db->where("tic_ticket.ticket_user_id = ", $post_user_id);
+    	} 
+		
+		if($user_id != NULL) {
+			$this->db->where('tic_ticket.ticket_user_id', $user_id);
+		}
+		
+		if($agency_id != NULL) {
+			//$this->db->where("us_agy.profile_id IN (1, 3)");
+			$this->db->where('us_agy.agency_id', $agency_id);
+		}
+
+		$this->db->order_by('ticket_datetime', 'DESC');
+		//$this->db->order_by('response_datetime', 'DESC');
+		
+		$query = $this->db->get('tic_ticket');
+		return $query->result();
+		
+	}
+	
+	
+	function getById ( $ticket_id ) {
+		
+		$this->db->join('us1_user', 'user_id = ticket_user_id');
+		
+		$this->db->where('ticket_id', $ticket_id);
+		
+		$query = $this->db->get('tic_ticket');
+		return $query->row();
+		
+	}
+	
+	function getByUserId ( $user_id ) {
+		
+		$this->db->where('ticket_user_id', $user_id);
+		
+		return $this->get();
+		
+	}
+	
+	function insert ( $ticket_user_id ) {
+		
+		$this->ticket_user_id = $ticket_user_id;
+		
+		$this->db->insert('tic_ticket', $this);
+		
+		$this->ticket_id = $this->db->insert_id();
+		
+	}
+	
+	function updateStatus ( $ticket_id, $status_id ) {
+		
+		$this->db->where('ticket_id', $ticket_id);
+		$this->db->set('tab_089_ticket_status_id', $status_id);
+		$this->db->set('ticket_datetime', 'ticket_datetime', FALSE);
+		
+		$this->db->update('tic_ticket');
+		
+	}
+	
+	function updateAttachment ( $ticket_id, $attachment=0 ) {
+		
+		$this->db->where('ticket_id', $ticket_id);
+		$this->db->set('attachment', $attachment);
+		
+		$this->db->update('tic_ticket');
+		
+	}
+
+	function updateSendOn($ticket_id) {
+		$send_on_date = date('Y-m-d h:i:s');
+		$this->db->where('ticket_id', $ticket_id);
+		//$this->db->set('ticket_datetime', 'ticket_datetime', FALSE);
+		$this->db->set('ticket_datetime', $send_on_date);
+		$this->db->update('tic_ticket');
+	}
+	
+	function delete ( $ticket_id ) {
+		
+		$this->db->where('ticket_id', $ticket_id);
+		
+		$this->db->delete('tic_ticket');
+		
+	}
+
+	function getTicketType($value) {
+		$this->db->select('tab_parameters.tab_description');
+		$this->db->where('tab_parameters.tab_type = 88');
+		$this->db->where('tab_parameters.tab_value', $value);
+		return $this->db->get('tab_parameters')->row();
+	}
+
+ }

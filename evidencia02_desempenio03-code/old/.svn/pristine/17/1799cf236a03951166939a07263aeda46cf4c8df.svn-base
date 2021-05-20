@@ -1,0 +1,100 @@
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  	<tr height="35"> 
+	    <td>
+			
+			Patient Name <input type="text" name="keyword" style="width: 120px">
+			<!-- Home Phone <input type="text" name="phone_home" style="width: 120px"> -->
+			Status {html_options options=$tab_13_list name='tab_013_status' id='tab_013_status'} 
+			<!-- <br>
+			Soc Date <input type="text" id="soc_date" name="soc_date"  
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('soc_date'), document.getElementById('fecha_help'));return false;" >
+
+			Certif. Start <input type="text" id="cert_start_date" name="cert_start_date"  
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('cert_start_date'), document.getElementById('fecha_help'));return false;" >
+
+			Certif. End <input type="text" id="cert_end_date" name="cert_end_date"  
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('cert_end_date'), document.getElementById('fecha_help'));return false;" >
+			
+			
+			Days Left <input type="text" name="days_left" style="width: 120px"> -->
+			
+
+			<input type="button" value="Search" onclick="loadGrid()">
+			
+	    </td>
+	</tr>	
+	<tr><td>
+		<div id="toolbarObj" style="float: left"></div>
+	</td></tr>
+</table> 
+
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+	webBar.addButton("none", 2, "None");
+	webBar.addSeparator('sp1', 3);
+	webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		case 'print':
+		  printSelected()
+		  break;	
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>
+
+
+<script language="JavaScript" type="text/javascript">
+
+    var dhxWins;
+    
+	function printSelected() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}{$resource_path}/print_patients/{$contrator_id}';
+			gform.target='_blank';
+			gform.submit();
+		{literal}}{/literal}   
+	{literal}}{/literal}   	  
+		
+</script>

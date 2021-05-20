@@ -1,0 +1,41 @@
+<?
+
+class rptgroupmdl extends Model {
+
+	var $rpt_group_id;
+	var $group_name;
+	
+	function rptgroupmdl() {
+		
+		parent::Model();
+		
+	}
+
+	function get ( ) {
+		$this->db->order_by("group_name","ASC");
+		$query = $this->db->get("rpt_group");
+		return $query->result();		
+	}
+
+	function getById ( $rpt_group_id ) {    
+		$this->db->where("rpt_group_id", $rpt_group_id);
+		$query = $this->db->get("rpt_group");
+
+		return $query->row();
+	}
+
+	function insert () {
+		$this->db->insert("rpt_group", $this);
+	}
+
+  function update ( $rpt_group_id ) {		
+		$this->rpt_group_id = $rpt_group_id;		
+		$this->db->where("rpt_group_id", $rpt_group_id);		
+		$this->db->update("rpt_group", $this);		
+	}
+
+	function delete ( $rpt_group_id ) {	
+		$this->db->delete("rpt_group", array("rpt_group_id" => $rpt_group_id));	
+	}
+
+}

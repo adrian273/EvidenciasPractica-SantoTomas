@@ -1,0 +1,41 @@
+	<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>  
+  <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+  
+  <script>
+  {literal}$(document).ready(function() {
+    $("input#keyword").autocomplete({
+    source: {/literal}{$name_source_obj}{literal}
+		});
+  });{/literal}
+	
+
+	function assignTo ( id ) {literal}{{/literal}	
+		if (confirm('Are you sure you want to assign to agency?'))
+		{literal}{{/literal}
+     		ajax("{$index_url}contractor/doctors/assign_to/{$entity_id}/"+id, ajaxParseAction);
+   {literal}}{/literal}
+	{literal}}{/literal}
+	
+function successfullyAssigned () {literal}{{/literal}
+
+	document.location = "{$index_url}contractor/doctors/index/{$entity_id}";
+	  
+{literal}}{/literal}
+  </script>
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center">
+  <tr>
+  	<td colspan="2" width="100%">&nbsp;</td>
+  </tr> 	
+  {*<tr>
+  	<td nowrap="nowrap" align="left" width="50%"><strong>>Doctor List</strong></td>
+	<td nowrap="nowrap" align="right" width="50%"><strong>Agency Name&nbsp;:&nbsp;</strong>{$agency_name}</td>
+  </tr>*}  
+  <tr id="lala"> 
+    <td nowrap>
+		<input type="text" name="keyword" id="keyword">
+		<input type="submit" value="Search">
+    </td>
+    <td align="right" width="100%">
+    </td>
+  </tr>
+</table> 

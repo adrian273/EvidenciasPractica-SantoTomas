@@ -1,0 +1,88 @@
+<?
+
+ class ContractorRateAgencyMdl extends Model {
+
+	var $contractor_rate_id;
+	var $agency_contractor_id; 	 	
+	var $visit_type_id;
+	var $rate_effective_date;
+	var $company_rate;
+	var $PTA_or_COTA_rate;
+	var $class_rate;
+	var $yes_rate;
+	var $private_rate;
+	var $waiver_rate;
+	var $modify_user_id;
+	var $modify_date;
+
+	function ContractorRateAgencyMdl () {
+
+		parent::Model();
+		
+	}
+	
+	
+  function getById ( $contractor_rate_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = contractor_rate_agency.visit_type_id');    
+		
+    $this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = contractor_rate_agency.agency_contractor_id');    
+    
+    $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = contractor_rate_agency.modify_user_id' , 'left');
+		$this->db->where("contractor_rate_agency.contractor_rate_id", $contractor_rate_id);		
+		$query = $this->db->get('contractor_rate_agency');
+		return $query->row();
+	}
+  
+	function getByContractorId ( $agency_contractor_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = contractor_rate_agency.visit_type_id');    
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = contractor_rate_agency.modify_user_id' , 'left');
+    
+		$this->db->where("contractor_rate_agency.agency_contractor_id", $agency_contractor_id);		
+    
+		$this->db->order_by("vit_visit_type.visit_description", "ASC");		
+		$this->db->order_by("contractor_rate_agency.rate_effective_date", "DESC");		
+    
+		$query = $this->db->get('contractor_rate_agency');
+		return $query->result();
+	}
+	
+	function getRate ( $agency_contractor_id, $visit_type, $rate_effective_date) {	
+		$this->db->where("contractor_rate_agency.agency_contractor_id", $agency_contractor_id);	
+		$this->db->where("contractor_rate_agency.visit_type_id", $visit_type);		
+    	$this->db->where("contractor_rate_agency.rate_effective_date <= '{$rate_effective_date}'");		
+		$query = $this->db->get('contractor_rate_agency');
+
+		if ($query->num_rows() > 0) {
+			return $query->row()->company_rate;
+		}
+		return false;		
+	}
+	
+  function updateFlex($contractor_rate_id, $attribute, $value, $where = 'contractor_rate_id') {
+
+		$this->db->where($where, $contractor_rate_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('contractor_rate_agency');
+
+	}
+  
+	function insert ( $agency_contractor_id ) {
+		
+		$this->agency_contractor_id = $agency_contractor_id;		
+		$this->db->insert('contractor_rate_agency', $this);
+		$this->contractor_rate_id = $this->db->insert_id();		
+	}	
+	
+	function delete ( $contractor_rate_id ) {
+		
+		$this->db->where('contractor_rate_id', $contractor_rate_id);
+		
+		$this->db->delete('contractor_rate_agency'); 
+		
+	}
+
+ }

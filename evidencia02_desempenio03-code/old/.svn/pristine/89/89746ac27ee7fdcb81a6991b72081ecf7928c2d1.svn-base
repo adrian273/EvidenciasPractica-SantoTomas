@@ -1,0 +1,49 @@
+<?
+
+ class VisitMissedMdl extends Model {
+
+	var $vis_missed_id;
+	var $visit_log_id;
+	var $comments;
+
+	function VisitMissedMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getByVisitLogId ( $visit_log_id ) {
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+		
+		$query = $this->db->get('vis_missed');
+		return $query->row();
+		
+	}
+	
+	function insert ( $visit_log_id ) {
+		
+		$this->visit_log_id = $visit_log_id;
+		$this->db->insert('vis_missed', $this);
+		$this->vis_missed_id = $this->db->insert_id();
+
+	}
+	
+	function update ( $visit_log_id ) {
+		
+		$this->db->set('comments', $this->comments);
+		$this->db->where('visit_log_id', $visit_log_id);
+		
+		$this->db->update('vis_missed');
+
+	}
+	
+	function delete ( $visit_log_id ) {
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+		
+		$this->db->delete('vis_missed');
+
+	}
+	
+ }

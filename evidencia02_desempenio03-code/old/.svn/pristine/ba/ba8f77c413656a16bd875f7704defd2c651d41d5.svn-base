@@ -1,0 +1,1394 @@
+	<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>*}
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>*}
+	<script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+	{*<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/blitzer/jquery-ui.css" type="text/css" />*}
+	<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+
+{literal}
+<style type="text/css" media="screen">
+        table .striped {
+              border-collapse: collapse;
+              width: 100%;
+              max-width: 100%;
+        }
+
+        .striped  td {
+            text-align: left;
+            padding-left: 15px;
+            font-size: 13px;
+            width: 10%;
+        }
+
+        .striped tr td:first-child {
+            /*background-color: red;*/
+            width: 30%;
+            padding-left: 2px !important;
+        }
+
+        .striped tr td:last-child{
+          width: 100%;
+        }
+
+        .striped tr:nth-child(even) {
+            background-color: #fdfdfd;
+        }
+
+      tr.boder-bottom td{
+        border-bottom: 0.5px dotted #bbbbbb;
+        padding-bottom: 5px;
+      }  
+
+      .ftitle {
+        width: 18%;
+      }
+</style>
+{/literal}
+
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="pt_clinical_visit_id" value="{$pt_clinical_visit_id}">
+  <input type="hidden" name="clinician_signed_date" value="{$clinician_signed_date|date_format:"%m-%d-%Y":"":true}">
+  <input type="hidden" name="pt_signed_date" value="{$pt_signed_date|date_format:"%m-%d-%Y":"":true}">
+  <input type="hidden" name="clinician_signature" value="{$clinician_signature}">
+  <input type="hidden" name="signature" value="{$signature}">
+  <input type="hidden" name="upload_document_name" id="upload_document_name" value="{$upload_document_name}">
+  
+  {include file="task/documents/top_base.tpl"}
+  {if $upload_document_name != '' }
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+   <tr>
+    <td colspan="4" >
+      <h4>Visit have scanned document uploaded. <br>
+      	{if $upload_document_name != '' }
+      	<a href="{$base_url}datastore/aavi/{$upload_document_name}" target="_blank">Click to Open Docuemnt </a><br>
+      	{/if}
+      </h4>
+      
+    </td>
+  </tr> 
+  {/if}
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  
+  <tr>
+    <td height="10" class="ftitle" >
+      Goals Valid Through
+    </td>
+    <td height="10">
+    </td>
+
+    <td height="10" class="ftitle">
+      PASA
+    </td>
+    <td height="10">
+      <b>Service Coordinator</b>
+    </td>
+  </tr>
+  <tr>
+    <td height="10" colspan="2">
+      <input type="text" id="goals_valid_through_date" name="goals_valid_through_date" value="{$goals_valid_through_date|date_format:"%m-%d-%Y":"":true}" 
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> &nbsp;
+      <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('goals_valid_through_date'), document.getElementById('fecha_help'));return false;" >
+    </td>
+    <td height="10">
+      <input name="pasa" type="text" value="{$pasa}" size="27" maxlength="25">
+    </td>
+    <td height="10">
+      <input name="service_co_ordinator" type="text" value="{$service_co_ordinator}" size="27" maxlength="25">
+    </td>
+  </tr>
+
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Diagnosis</td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="diagnoses" cols="90" rows="5" wrap="auto">{$diagnoses}</textarea><br /> -->
+      <textarea id="diagnoses" name="diagnoses" cols="90" rows="6" onkeyup="chars_limit_notice('diagnoses', 750)" maxlength="750" style="margin: 0px; width: 810px; height: 104px;">{$diagnoses}</textarea>
+          {assign var="diagnoses_length" value=$diagnoses|count_characters:true}
+          {assign var="diagnoses_left" value="`$diagnoses_length-750`"}
+          <div style="font-size:9px;{if $diagnoses_left gt 0}display:none;{/if}" id="diagnoses_note">
+            <label id="diagnoses_chars_left">{$diagnoses_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr>  
+
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Client Profile </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="diagnoses" cols="90" rows="5" wrap="auto">{$diagnoses}</textarea><br /> -->
+      <textarea id="client_profile" name="client_profile" cols="90" rows="5" onkeyup="chars_limit_notice('client_profile', 1000)" maxlength="1000" style="margin: 0px; width: 810px; height: 129px;">{$client_profile}</textarea>
+          {assign var="client_profile_length" value=$client_profile|count_characters:true}
+          {assign var="client_profile_left" value="`$client_profile_length-1000`"}
+          <div style="font-size:9px;{if $client_profile_left gt 0}display:none;{/if}" id="client_profile_note">
+            <label id="client_profile_chars_left">{$client_profile_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr>  
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Communication: </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <table class="striped">
+        <tr>
+            <td class="ftitle"></td>
+            <td class="ftitle">Always</td>
+            <td class="ftitle">Frequent</td>
+            <td class="ftitle">Occasionally</td>
+            <td class="ftitle">None</td>
+            <td class="ftitle">N/A</td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Initiates conversations</td>
+            <td><input type="radio" name="tab_113_comm_init_conv" value="1" {if $tab_113_comm_init_conv eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_init_conv" value="2" {if $tab_113_comm_init_conv eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_init_conv" value="3" {if $tab_113_comm_init_conv eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_init_conv" value="4" {if $tab_113_comm_init_conv eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_init_conv" value="5" {if $tab_113_comm_init_conv eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of single words</td>
+            <td><input type="radio" name="tab_113_comm_use_single_words" value="1" {if $tab_113_comm_use_single_words eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_single_words" value="2" {if $tab_113_comm_use_single_words eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_single_words" value="3" {if $tab_113_comm_use_single_words eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_single_words" value="4" {if $tab_113_comm_use_single_words eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_single_words" value="5" {if $tab_113_comm_use_single_words eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of short phrases</td>
+            <td><input type="radio" name="tab_113_comm_use_short_phrases" value="1" {if $tab_113_comm_use_short_phrases eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_short_phrases" value="2" {if $tab_113_comm_use_short_phrases eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_short_phrases" value="3" {if $tab_113_comm_use_short_phrases eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_short_phrases" value="4" {if $tab_113_comm_use_short_phrases eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_short_phrases" value="5" {if $tab_113_comm_use_short_phrases eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of full sentences</td>
+            <td><input type="radio" name="tab_113_comm_use_full_sentences" value="1" {if $tab_113_comm_use_full_sentences eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_full_sentences" value="2" {if $tab_113_comm_use_full_sentences eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_full_sentences" value="3" {if $tab_113_comm_use_full_sentences eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_full_sentences" value="4" {if $tab_113_comm_use_full_sentences eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_full_sentences" value="5" {if $tab_113_comm_use_full_sentences eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of AAC</td>
+            <td><input type="radio" name="tab_113_comm_use_aac" value="1" {if $tab_113_comm_use_aac eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_aac" value="2" {if $tab_113_comm_use_aac eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_aac" value="3" {if $tab_113_comm_use_aac eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_aac" value="4" {if $tab_113_comm_use_aac eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_aac" value="5" {if $tab_113_comm_use_aac eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of ASL</td>
+            <td><input type="radio" name="tab_113_comm_use_asl" value="1" {if $tab_113_comm_use_asl eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_asl" value="2" {if $tab_113_comm_use_asl eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_asl" value="3" {if $tab_113_comm_use_asl eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_asl" value="4" {if $tab_113_comm_use_asl eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_asl" value="5" {if $tab_113_comm_use_asl eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Appropriate intonation</td>
+            <td><input type="radio" name="tab_113_comm_appr_into" value="1" {if $tab_113_comm_appr_into eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_into" value="2" {if $tab_113_comm_appr_into eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_into" value="3" {if $tab_113_comm_appr_into eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_into" value="4" {if $tab_113_comm_appr_into eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_into" value="5" {if $tab_113_comm_appr_into eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Appropriate vocal volume</td>
+            <td><input type="radio" name="tab_113_comm_appr_vocal_vol" value="1" {if $tab_113_comm_appr_vocal_vol eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_vocal_vol" value="2" {if $tab_113_comm_appr_vocal_vol eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_vocal_vol" value="3" {if $tab_113_comm_appr_vocal_vol eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_vocal_vol" value="4" {if $tab_113_comm_appr_vocal_vol eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_vocal_vol" value="5" {if $tab_113_comm_appr_vocal_vol eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Intelligible speech</td>
+            <td><input type="radio" name="tab_113_comm_intell_speech" value="1" {if $tab_113_comm_intell_speech eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_intell_speech" value="2" {if $tab_113_comm_intell_speech eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_intell_speech" value="3" {if $tab_113_comm_intell_speech eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_intell_speech" value="4" {if $tab_113_comm_intell_speech eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_intell_speech" value="5" {if $tab_113_comm_intell_speech eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Appropriate rate of speech</td>
+            <td><input type="radio" name="tab_113_comm_appr_rate_speech" value="1" {if $tab_113_comm_appr_rate_speech eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_rate_speech" value="2" {if $tab_113_comm_appr_rate_speech eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_rate_speech" value="3" {if $tab_113_comm_appr_rate_speech eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_rate_speech" value="4" {if $tab_113_comm_appr_rate_speech eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_rate_speech" value="5" {if $tab_113_comm_appr_rate_speech eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Oral motor coordination difficulty</td>
+            <td><input type="radio" name="tab_113_comm_oral_motor_coord_diff" value="1" {if $tab_113_comm_oral_motor_coord_diff eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_oral_motor_coord_diff" value="2" {if $tab_113_comm_oral_motor_coord_diff eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_oral_motor_coord_diff" value="3" {if $tab_113_comm_oral_motor_coord_diff eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_oral_motor_coord_diff" value="4" {if $tab_113_comm_oral_motor_coord_diff eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_oral_motor_coord_diff" value="5" {if $tab_113_comm_oral_motor_coord_diff eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Articulation of speech difficulty</td>
+            <td><input type="radio" name="tab_113_comm_articu_speech_diff" value="1" {if $tab_113_comm_articu_speech_diff eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_articu_speech_diff" value="2" {if $tab_113_comm_articu_speech_diff eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_articu_speech_diff" value="3" {if $tab_113_comm_articu_speech_diff eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_articu_speech_diff" value="4" {if $tab_113_comm_articu_speech_diff eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_articu_speech_diff" value="5" {if $tab_113_comm_articu_speech_diff eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of expressive language </td>
+            <td><input type="radio" name="tab_113_comm_use_expr_lang" value="1" {if $tab_113_comm_use_expr_lang eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_expr_lang" value="2" {if $tab_113_comm_use_expr_lang eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_expr_lang" value="3" {if $tab_113_comm_use_expr_lang eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_expr_lang" value="4" {if $tab_113_comm_use_expr_lang eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_use_expr_lang" value="5" {if $tab_113_comm_use_expr_lang eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Appropriate response / accuracy of receptive language skills </td>
+            <td><input type="radio" name="tab_113_comm_appr_res_or_accur_recept_lang" value="1" {if $tab_113_comm_appr_res_or_accur_recept_lang eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_res_or_accur_recept_lang" value="2" {if $tab_113_comm_appr_res_or_accur_recept_lang eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_res_or_accur_recept_lang" value="3" {if $tab_113_comm_appr_res_or_accur_recept_lang eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_res_or_accur_recept_lang" value="4" {if $tab_113_comm_appr_res_or_accur_recept_lang eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_appr_res_or_accur_recept_lang" value="5" {if $tab_113_comm_appr_res_or_accur_recept_lang eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Exaggerated language</td>
+            <td><input type="radio" name="tab_113_comm_exagg_lang" value="1" {if $tab_113_comm_exagg_lang eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_exagg_lang" value="2" {if $tab_113_comm_exagg_lang eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_exagg_lang" value="3" {if $tab_113_comm_exagg_lang eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_exagg_lang" value="4" {if $tab_113_comm_exagg_lang eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_exagg_lang" value="5" {if $tab_113_comm_exagg_lang eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Repetitive or echolalic speech</td>
+            <td><input type="radio" name="tab_113_comm_repet_echo_speech" value="1" {if $tab_113_comm_repet_echo_speech eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_repet_echo_speech" value="2" {if $tab_113_comm_repet_echo_speech eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_repet_echo_speech" value="3" {if $tab_113_comm_repet_echo_speech eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_repet_echo_speech" value="4" {if $tab_113_comm_repet_echo_speech eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_repet_echo_speech" value="5" {if $tab_113_comm_repet_echo_speech eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Purposeful body language/gestures</td>
+            <td><input type="radio" name="tab_113_comm_purpos_body_lang" value="1" {if $tab_113_comm_purpos_body_lang eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_purpos_body_lang" value="2" {if $tab_113_comm_purpos_body_lang eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_purpos_body_lang" value="3" {if $tab_113_comm_purpos_body_lang eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_purpos_body_lang" value="4" {if $tab_113_comm_purpos_body_lang eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_113_comm_purpos_body_lang" value="5" {if $tab_113_comm_purpos_body_lang eq 5}checked="checked"{/if}></td>
+        </tr>
+      </table>
+    </td>
+  </tr>  
+  <tr>
+    <td colspan="4" height="10" class="ftitle" >
+      Comments
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="comm_comments" cols="90" rows="5" wrap="auto">{$comm_comments}</textarea><br /> -->
+      <textarea id="comm_comments" name="comm_comments" cols="90" rows="5" onkeyup="chars_limit_notice('comm_comments', 750)" maxlength="750">{$comm_comments}</textarea>
+          {assign var="comm_comments_length" value=$comm_comments|count_characters:true}
+          {assign var="comm_comments_left" value="`$comm_comments_length-750`"}
+          <div style="font-size:9px;{if $comm_comments_left gt 0}display:none;{/if}" id="comm_comments_note">
+            <label id="comm_comments_chars_left">{$comm_comments_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr>  
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Cognition: </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <table class="striped">
+        <tr>
+            <td class="ftitle"></td>
+            <td class="ftitle">High</td>
+            <td class="ftitle">Moderate</td>
+            <td class="ftitle">Low</td>
+            <td class="ftitle">None</td>
+            <td class="ftitle">N/A</td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Awareness of surroundings</td>
+            <td><input type="radio" name="tab_114_cogn_awar_surr" value="1" {if $tab_114_cogn_awar_surr eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_awar_surr" value="2" {if $tab_114_cogn_awar_surr eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_awar_surr" value="3" {if $tab_114_cogn_awar_surr eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_awar_surr" value="4" {if $tab_114_cogn_awar_surr eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_awar_surr" value="5" {if $tab_114_cogn_awar_surr eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Sustained / focused attention</td>
+            <td><input type="radio" name="tab_114_cogn_sust_foc_att" value="1" {if $tab_114_cogn_sust_foc_att eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_sust_foc_att" value="2" {if $tab_114_cogn_sust_foc_att eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_sust_foc_att" value="3" {if $tab_114_cogn_sust_foc_att eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_sust_foc_att" value="4" {if $tab_114_cogn_sust_foc_att eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_sust_foc_att" value="5" {if $tab_114_cogn_sust_foc_att eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Selective attention</td>
+            <td><input type="radio" name="tab_114_cogn_selec_att" value="1" {if $tab_114_cogn_selec_att eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_selec_att" value="2" {if $tab_114_cogn_selec_att eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_selec_att" value="3" {if $tab_114_cogn_selec_att eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_selec_att" value="4" {if $tab_114_cogn_selec_att eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_selec_att" value="5" {if $tab_114_cogn_selec_att eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Divided attention</td>
+            <td><input type="radio" name="tab_114_cogn_div_att" value="1" {if $tab_114_cogn_div_att eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_div_att" value="2" {if $tab_114_cogn_div_att eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_div_att" value="3" {if $tab_114_cogn_div_att eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_div_att" value="4" {if $tab_114_cogn_div_att eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_div_att" value="5" {if $tab_114_cogn_div_att eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Alternating attention</td>
+            <td><input type="radio" name="tab_114_cogn_alt_att" value="1" {if $tab_114_cogn_alt_att eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_alt_att" value="2" {if $tab_114_cogn_alt_att eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_alt_att" value="3" {if $tab_114_cogn_alt_att eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_alt_att" value="4" {if $tab_114_cogn_alt_att eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_alt_att" value="5" {if $tab_114_cogn_alt_att eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Decision making</td>
+            <td><input type="radio" name="tab_114_cogn_decision_making" value="1" {if $tab_114_cogn_decision_making eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_decision_making" value="2" {if $tab_114_cogn_decision_making eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_decision_making" value="3" {if $tab_114_cogn_decision_making eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_decision_making" value="4" {if $tab_114_cogn_decision_making eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_decision_making" value="5" {if $tab_114_cogn_decision_making eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Reasoning/problem solving</td>
+            <td><input type="radio" name="tab_114_cogn_reas_prob_solv" value="1" {if $tab_114_cogn_reas_prob_solv eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_reas_prob_solv" value="2" {if $tab_114_cogn_reas_prob_solv eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_reas_prob_solv" value="3" {if $tab_114_cogn_reas_prob_solv eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_reas_prob_solv" value="4" {if $tab_114_cogn_reas_prob_solv eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_reas_prob_solv" value="5" {if $tab_114_cogn_reas_prob_solv eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Memory/recall </td>
+            <td><input type="radio" name="tab_114_cogn_memory_recall" value="1" {if $tab_114_cogn_memory_recall eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_memory_recall" value="2" {if $tab_114_cogn_memory_recall eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_memory_recall" value="3" {if $tab_114_cogn_memory_recall eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_memory_recall" value="4" {if $tab_114_cogn_memory_recall eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_memory_recall" value="5" {if $tab_114_cogn_memory_recall eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Proprioception </td>
+            <td><input type="radio" name="tab_114_cogn_proprioception" value="1" {if $tab_114_cogn_proprioception eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_proprioception" value="2" {if $tab_114_cogn_proprioception eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_proprioception" value="3" {if $tab_114_cogn_proprioception eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_proprioception" value="4" {if $tab_114_cogn_proprioception eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_proprioception" value="5" {if $tab_114_cogn_proprioception eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Visual tracking </td>
+            <td><input type="radio" name="tab_114_cogn_visual_tracking" value="1" {if $tab_114_cogn_visual_tracking eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_visual_tracking" value="2" {if $tab_114_cogn_visual_tracking eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_visual_tracking" value="3" {if $tab_114_cogn_visual_tracking eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_visual_tracking" value="4" {if $tab_114_cogn_visual_tracking eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_visual_tracking" value="5" {if $tab_114_cogn_visual_tracking eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Auditory discrimination </td>
+            <td><input type="radio" name="tab_114_cogn_auditory_discri" value="1" {if $tab_114_cogn_auditory_discri eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_auditory_discri" value="2" {if $tab_114_cogn_auditory_discri eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_auditory_discri" value="3" {if $tab_114_cogn_auditory_discri eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_auditory_discri" value="4" {if $tab_114_cogn_auditory_discri eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_auditory_discri" value="5" {if $tab_114_cogn_auditory_discri eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ability to sequence (items, actions, etc.) </td>
+            <td><input type="radio" name="tab_114_cogn_ability_seq" value="1" {if $tab_114_cogn_ability_seq eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_seq" value="2" {if $tab_114_cogn_ability_seq eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_seq" value="3" {if $tab_114_cogn_ability_seq eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_seq" value="4" {if $tab_114_cogn_ability_seq eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_seq" value="5" {if $tab_114_cogn_ability_seq eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ability to follow simple directives </td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_simp_dir" value="1" {if $tab_114_cogn_ability_foll_simp_dir eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_simp_dir" value="2" {if $tab_114_cogn_ability_foll_simp_dir eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_simp_dir" value="3" {if $tab_114_cogn_ability_foll_simp_dir eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_simp_dir" value="4" {if $tab_114_cogn_ability_foll_simp_dir eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_simp_dir" value="5" {if $tab_114_cogn_ability_foll_simp_dir eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ability to follow complex directives </td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_compl_dir" value="1" {if $tab_114_cogn_ability_foll_compl_dir eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_compl_dir" value="2" {if $tab_114_cogn_ability_foll_compl_dir eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_compl_dir" value="3" {if $tab_114_cogn_ability_foll_compl_dir eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_compl_dir" value="4" {if $tab_114_cogn_ability_foll_compl_dir eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_114_cogn_ability_foll_compl_dir" value="5" {if $tab_114_cogn_ability_foll_compl_dir eq 5}checked="checked"{/if}></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10" class="ftitle" >
+      Comments
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="cogn_comments" cols="90" rows="5" wrap="auto">{$cogn_comments}</textarea><br /> -->
+      <textarea id="cogn_comments" name="cogn_comments" cols="90" rows="5" onkeyup="chars_limit_notice('cogn_comments', 750)" maxlength="750">{$cogn_comments}</textarea>
+          {assign var="cogn_comments_length" value=$cogn_comments|count_characters:true}
+          {assign var="cogn_comments_left" value="`$cogn_comments_length-750`"}
+          <div style="font-size:9px;{if $cogn_comments_left gt 0}display:none;{/if}" id="cogn_comments_note">
+            <label id="cogn_comments_chars_left">{$cogn_comments_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr>  
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Motor: </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <table class="striped">
+        <tr>
+            <td class="ftitle"></td>
+            <td class="ftitle">Typical</td>
+            <td class="ftitle">Functional</td>
+            <td class="ftitle">Limited</td>
+            <td class="ftitle">Requires Assistance/Low</td>
+            <td class="ftitle">None</td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Independent ambulation</td>
+            <td><input type="radio" name="tab_115_motor_inde_ambu" value="1" {if $tab_115_motor_inde_ambu eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_inde_ambu" value="2" {if $tab_115_motor_inde_ambu eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_inde_ambu" value="3" {if $tab_115_motor_inde_ambu eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_inde_ambu" value="4" {if $tab_115_motor_inde_ambu eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_inde_ambu" value="5" {if $tab_115_motor_inde_ambu eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Gross motor coordination</td>
+            <td><input type="radio" name="tab_115_motor_gross_cordin" value="1" {if $tab_115_motor_gross_cordin eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_cordin" value="2" {if $tab_115_motor_gross_cordin eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_cordin" value="3" {if $tab_115_motor_gross_cordin eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_cordin" value="4" {if $tab_115_motor_gross_cordin eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_cordin" value="5" {if $tab_115_motor_gross_cordin eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Gross motor strength</td>
+            <td><input type="radio" name="tab_115_motor_gross_strength" value="1" {if $tab_115_motor_gross_strength eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_strength" value="2" {if $tab_115_motor_gross_strength eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_strength" value="3" {if $tab_115_motor_gross_strength eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_strength" value="4" {if $tab_115_motor_gross_strength eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_strength" value="5" {if $tab_115_motor_gross_strength eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Gross motor balance</td>
+            <td><input type="radio" name="tab_115_motor_gross_balance" value="1" {if $tab_115_motor_gross_balance eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_balance" value="2" {if $tab_115_motor_gross_balance eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_balance" value="3" {if $tab_115_motor_gross_balance eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_balance" value="4" {if $tab_115_motor_gross_balance eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_gross_balance" value="5" {if $tab_115_motor_gross_balance eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Obstacle/advanced navigation</td>
+            <td><input type="radio" name="tab_115_motor_obst_nav" value="1" {if $tab_115_motor_obst_nav eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_obst_nav" value="2" {if $tab_115_motor_obst_nav eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_obst_nav" value="3" {if $tab_115_motor_obst_nav eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_obst_nav" value="4" {if $tab_115_motor_obst_nav eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_obst_nav" value="5" {if $tab_115_motor_obst_nav eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Fine motor strength (grasp)</td>
+            <td><input type="radio" name="tab_115_motor_fine_coord" value="1" {if $tab_115_motor_fine_coord eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_coord" value="2" {if $tab_115_motor_fine_coord eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_coord" value="3" {if $tab_115_motor_fine_coord eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_coord" value="4" {if $tab_115_motor_fine_coord eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_coord" value="5" {if $tab_115_motor_fine_coord eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Fine motor strength (digits)</td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_grasp" value="1" {if $tab_115_motor_fine_strength_grasp eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_grasp" value="2" {if $tab_115_motor_fine_strength_grasp eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_grasp" value="3" {if $tab_115_motor_fine_strength_grasp eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_grasp" value="4" {if $tab_115_motor_fine_strength_grasp eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_grasp" value="5" {if $tab_115_motor_fine_strength_grasp eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Core strength</td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_digits" value="1" {if $tab_115_motor_fine_strength_digits eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_digits" value="2" {if $tab_115_motor_fine_strength_digits eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_digits" value="3" {if $tab_115_motor_fine_strength_digits eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_digits" value="4" {if $tab_115_motor_fine_strength_digits eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_fine_strength_digits" value="5" {if $tab_115_motor_fine_strength_digits eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Muscle tone (specify in comments)</td>
+            <td><input type="radio" name="tab_115_motor_muscle_tone" value="1" {if $tab_115_motor_muscle_tone eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_muscle_tone" value="2" {if $tab_115_motor_muscle_tone eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_muscle_tone" value="3" {if $tab_115_motor_muscle_tone eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_muscle_tone" value="4" {if $tab_115_motor_muscle_tone eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_muscle_tone" value="5" {if $tab_115_motor_muscle_tone eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Bilateral coordination</td>
+            <td><input type="radio" name="tab_115_motor_bilateral_coord" value="1" {if $tab_115_motor_bilateral_coord eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_bilateral_coord" value="2" {if $tab_115_motor_bilateral_coord eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_bilateral_coord" value="3" {if $tab_115_motor_bilateral_coord eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_bilateral_coord" value="4" {if $tab_115_motor_bilateral_coord eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_bilateral_coord" value="5" {if $tab_115_motor_bilateral_coord eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Eye-hand coordination</td>
+            <td><input type="radio" name="tab_115_motor_eye_hand_coord" value="1" {if $tab_115_motor_eye_hand_coord eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_eye_hand_coord" value="2" {if $tab_115_motor_eye_hand_coord eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_eye_hand_coord" value="3" {if $tab_115_motor_eye_hand_coord eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_eye_hand_coord" value="4" {if $tab_115_motor_eye_hand_coord eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_eye_hand_coord" value="5" {if $tab_115_motor_eye_hand_coord eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of left extremity (upper)</td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_upp" value="1" {if $tab_115_motor_use_left_extr_upp eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_upp" value="2" {if $tab_115_motor_use_left_extr_upp eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_upp" value="3" {if $tab_115_motor_use_left_extr_upp eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_upp" value="4" {if $tab_115_motor_use_left_extr_upp eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_upp" value="5" {if $tab_115_motor_use_left_extr_upp eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of right extremity (upper)</td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_upp" value="1" {if $tab_115_motor_use_right_extr_upp eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_upp" value="2" {if $tab_115_motor_use_right_extr_upp eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_upp" value="3" {if $tab_115_motor_use_right_extr_upp eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_upp" value="4" {if $tab_115_motor_use_right_extr_upp eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_upp" value="5" {if $tab_115_motor_use_right_extr_upp eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of left extremity (lower)</td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_low" value="1" {if $tab_115_motor_use_left_extr_low eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_low" value="2" {if $tab_115_motor_use_left_extr_low eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_low" value="3" {if $tab_115_motor_use_left_extr_low eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_low" value="4" {if $tab_115_motor_use_left_extr_low eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_left_extr_low" value="5" {if $tab_115_motor_use_left_extr_low eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of right extremity (lower)</td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_low" value="1" {if $tab_115_motor_use_right_extr_low eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_low" value="2" {if $tab_115_motor_use_right_extr_low eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_low" value="3" {if $tab_115_motor_use_right_extr_low eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_low" value="4" {if $tab_115_motor_use_right_extr_low eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_use_right_extr_low" value="5" {if $tab_115_motor_use_right_extr_low eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Crosses midline (lower extremities)</td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_low" value="1" {if $tab_115_motor_cross_midl_low eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_low" value="2" {if $tab_115_motor_cross_midl_low eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_low" value="3" {if $tab_115_motor_cross_midl_low eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_low" value="4" {if $tab_115_motor_cross_midl_low eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_low" value="5" {if $tab_115_motor_cross_midl_low eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Crosses midline (upper extremities)</td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_upp" value="1" {if $tab_115_motor_cross_midl_upp eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_upp" value="2" {if $tab_115_motor_cross_midl_upp eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_upp" value="3" {if $tab_115_motor_cross_midl_upp eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_upp" value="4" {if $tab_115_motor_cross_midl_upp eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_cross_midl_upp" value="5" {if $tab_115_motor_cross_midl_upp eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Range of motion (lower extremity)</td>
+            <td><input type="radio" name="tab_115_motor_range_motion_low" value="1" {if $tab_115_motor_range_motion_low eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_low" value="2" {if $tab_115_motor_range_motion_low eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_low" value="3" {if $tab_115_motor_range_motion_low eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_low" value="4" {if $tab_115_motor_range_motion_low eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_low" value="5" {if $tab_115_motor_range_motion_low eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Range of motion (upper extremity)</td>
+            <td><input type="radio" name="tab_115_motor_range_motion_upp" value="1" {if $tab_115_motor_range_motion_upp eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_upp" value="2" {if $tab_115_motor_range_motion_upp eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_upp" value="3" {if $tab_115_motor_range_motion_upp eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_upp" value="4" {if $tab_115_motor_range_motion_upp eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_range_motion_upp" value="5" {if $tab_115_motor_range_motion_upp eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Overall physical activity level</td>
+            <td><input type="radio" name="tab_115_motor_overall_phys_act_level" value="1" {if $tab_115_motor_overall_phys_act_level eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_overall_phys_act_level" value="2" {if $tab_115_motor_overall_phys_act_level eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_overall_phys_act_level" value="3" {if $tab_115_motor_overall_phys_act_level eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_overall_phys_act_level" value="4" {if $tab_115_motor_overall_phys_act_level eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_115_motor_overall_phys_act_level" value="5" {if $tab_115_motor_overall_phys_act_level eq 5}checked="checked"{/if}></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10" class="ftitle" >
+      Comments
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="motor_comments" cols="90" rows="5" wrap="auto">{$motor_comments}</textarea><br /> -->
+      <textarea id="motor_comments" name="motor_comments" cols="90" rows="5" onkeyup="chars_limit_notice('motor_comments', 750)" maxlength="750">{$motor_comments}</textarea>
+          {assign var="motor_comments_length" value=$motor_comments|count_characters:true}
+          {assign var="motor_comments_left" value="`$motor_comments_length-750`"}
+          <div style="font-size:9px;{if $motor_comments_left gt 0}display:none;{/if}" id="motor_comments_note">
+            <label id="motor_comments_chars_left">{$motor_comments_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr>  
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Sensory Integration/ Processing: </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <table class="striped">
+        <tr>
+            <td class="ftitle">PART I:</td>
+            <td class="ftitle">Hypersensitive</td>
+            <td class="ftitle">Sensitive</td>
+            <td class="ftitle">Typical</td>
+            <td class="ftitle">Hyposensitive</td>
+            <td class="ftitle">N/A or Not Observable</td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Vision</td>
+            <td><input type="radio" name="tab_116_senso_1_vision" value="1" {if $tab_116_senso_1_vision eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vision" value="2" {if $tab_116_senso_1_vision eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vision" value="3" {if $tab_116_senso_1_vision eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vision" value="4" {if $tab_116_senso_1_vision eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vision" value="5" {if $tab_116_senso_1_vision eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Auditory</td>
+            <td><input type="radio" name="tab_116_senso_1_auditory" value="1" {if $tab_116_senso_1_auditory eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_auditory" value="2" {if $tab_116_senso_1_auditory eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_auditory" value="3" {if $tab_116_senso_1_auditory eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_auditory" value="4" {if $tab_116_senso_1_auditory eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_auditory" value="5" {if $tab_116_senso_1_auditory eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Tactile</td>
+            <td><input type="radio" name="tab_116_senso_1_tectile" value="1" {if $tab_116_senso_1_tectile eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_tectile" value="2" {if $tab_116_senso_1_tectile eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_tectile" value="3" {if $tab_116_senso_1_tectile eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_tectile" value="4" {if $tab_116_senso_1_tectile eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_tectile" value="5" {if $tab_116_senso_1_tectile eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Vestibular</td>
+            <td><input type="radio" name="tab_116_senso_1_vestibular" value="1" {if $tab_116_senso_1_vestibular eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vestibular" value="2" {if $tab_116_senso_1_vestibular eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vestibular" value="3" {if $tab_116_senso_1_vestibular eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vestibular" value="4" {if $tab_116_senso_1_vestibular eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_vestibular" value="5" {if $tab_116_senso_1_vestibular eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Olfactory</td>
+            <td><input type="radio" name="tab_116_senso_1_olfactory" value="1" {if $tab_116_senso_1_olfactory eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_olfactory" value="2" {if $tab_116_senso_1_olfactory eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_olfactory" value="3" {if $tab_116_senso_1_olfactory eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_olfactory" value="4" {if $tab_116_senso_1_olfactory eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_116_senso_1_olfactory" value="5" {if $tab_116_senso_1_olfactory eq 5}checked="checked"{/if}></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <table class="striped">
+        <tr>
+            <td class="ftitle">PART II:</td>
+            <td class="ftitle">Always</td>
+            <td class="ftitle">Frequent</td>
+            <td class="ftitle">Occasionally</td>
+            <td class="ftitle">Rarely</td>
+            <td class="ftitle">N/A or Not Observable</td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Self-stimulation behaviors</td>
+            <td><input type="radio" name="tab_117_senso_2_self_stim_behav" value="1" {if $tab_117_senso_2_self_stim_behav eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_self_stim_behav" value="2" {if $tab_117_senso_2_self_stim_behav eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_self_stim_behav" value="3" {if $tab_117_senso_2_self_stim_behav eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_self_stim_behav" value="4" {if $tab_117_senso_2_self_stim_behav eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_self_stim_behav" value="5" {if $tab_117_senso_2_self_stim_behav eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of adaptive equipment <br><small>(headphones, oral stim, glasses, etc)</small></td>
+            <td><input type="radio" name="tab_117_senso_2_use_adapt_equip" value="1" {if $tab_117_senso_2_use_adapt_equip eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_use_adapt_equip" value="2" {if $tab_117_senso_2_use_adapt_equip eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_use_adapt_equip" value="3" {if $tab_117_senso_2_use_adapt_equip eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_use_adapt_equip" value="4" {if $tab_117_senso_2_use_adapt_equip eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_use_adapt_equip" value="5" {if $tab_117_senso_2_use_adapt_equip eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Independently requests sensory input</td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_input" value="1" {if $tab_117_senso_2_ind_req_input eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_input" value="2" {if $tab_117_senso_2_ind_req_input eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_input" value="3" {if $tab_117_senso_2_ind_req_input eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_input" value="4" {if $tab_117_senso_2_ind_req_input eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_input" value="5" {if $tab_117_senso_2_ind_req_input eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Independently requests regulation of external sensory factors</td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_reg_ext_fac" value="1" {if $tab_117_senso_2_ind_req_reg_ext_fac eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_reg_ext_fac" value="2" {if $tab_117_senso_2_ind_req_reg_ext_fac eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_reg_ext_fac" value="3" {if $tab_117_senso_2_ind_req_reg_ext_fac eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_reg_ext_fac" value="4" {if $tab_117_senso_2_ind_req_reg_ext_fac eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_ind_req_reg_ext_fac" value="5" {if $tab_117_senso_2_ind_req_reg_ext_fac eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Responds to passive sensory input/ regulation</td>
+            <td><input type="radio" name="tab_117_senso_2_resp_pas_inp" value="1" {if $tab_117_senso_2_resp_pas_inp eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_resp_pas_inp" value="2" {if $tab_117_senso_2_resp_pas_inp eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_resp_pas_inp" value="3" {if $tab_117_senso_2_resp_pas_inp eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_resp_pas_inp" value="4" {if $tab_117_senso_2_resp_pas_inp eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_117_senso_2_resp_pas_inp" value="5" {if $tab_117_senso_2_resp_pas_inp eq 5}checked="checked"{/if}></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10" class="ftitle" >
+      Comments
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="senso_comments" cols="90" rows="5" wrap="auto">{$senso_comments}</textarea><br /> -->
+      <textarea id="senso_comments" name="senso_comments" cols="90" rows="5" onkeyup="chars_limit_notice('senso_comments', 750)" maxlength="750">{$senso_comments}</textarea>
+          {assign var="senso_comments_length" value=$senso_comments|count_characters:true}
+          {assign var="senso_comments_left" value="`$senso_comments_length-750`"}
+          <div style="font-size:9px;{if $senso_comments_left gt 0}display:none;{/if}" id="senso_comments_note">
+            <label id="senso_comments_chars_left">{$senso_comments_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr>  
+
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Social/Emotional/Behavioral: </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <table class="striped">
+        <tr>
+            <td class="ftitle">PART I:</td>
+            <td class="ftitle">High</td>
+            <td class="ftitle">Moderate</td>
+            <td class="ftitle">Low</td>
+            <td class="ftitle">None</td>
+            <td class="ftitle">N/A</td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Self-expression</td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_expr" value="1" {if $tab_118_social_behav_1_self_expr eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_expr" value="2" {if $tab_118_social_behav_1_self_expr eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_expr" value="3" {if $tab_118_social_behav_1_self_expr eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_expr" value="4" {if $tab_118_social_behav_1_self_expr eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_expr" value="5" {if $tab_118_social_behav_1_self_expr eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Self-regulation</td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_regul" value="1" {if $tab_118_social_behav_1_self_regul eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_regul" value="2" {if $tab_118_social_behav_1_self_regul eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_regul" value="3" {if $tab_118_social_behav_1_self_regul eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_regul" value="4" {if $tab_118_social_behav_1_self_regul eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_regul" value="5" {if $tab_118_social_behav_1_self_regul eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of coping skills</td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_cop_skill" value="1" {if $tab_118_social_behav_1_use_cop_skill eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_cop_skill" value="2" {if $tab_118_social_behav_1_use_cop_skill eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_cop_skill" value="3" {if $tab_118_social_behav_1_use_cop_skill eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_cop_skill" value="4" {if $tab_118_social_behav_1_use_cop_skill eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_cop_skill" value="5" {if $tab_118_social_behav_1_use_cop_skill eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Self-esteem/confidence</td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_esteem" value="1" {if $tab_118_social_behav_1_self_esteem eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_esteem" value="2" {if $tab_118_social_behav_1_self_esteem eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_esteem" value="3" {if $tab_118_social_behav_1_self_esteem eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_esteem" value="4" {if $tab_118_social_behav_1_self_esteem eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_self_esteem" value="5" {if $tab_118_social_behav_1_self_esteem eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ability to identify emotions (self)</td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_self" value="1" {if $tab_118_social_behav_1_iden_emot_self eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_self" value="2" {if $tab_118_social_behav_1_iden_emot_self eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_self" value="3" {if $tab_118_social_behav_1_iden_emot_self eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_self" value="4" {if $tab_118_social_behav_1_iden_emot_self eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_self" value="5" {if $tab_118_social_behav_1_iden_emot_self eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ability to identify emotions (others)</td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_oth" value="1" {if $tab_118_social_behav_1_iden_emot_oth eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_oth" value="2" {if $tab_118_social_behav_1_iden_emot_oth eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_oth" value="3" {if $tab_118_social_behav_1_iden_emot_oth eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_oth" value="4" {if $tab_118_social_behav_1_iden_emot_oth eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_iden_emot_oth" value="5" {if $tab_118_social_behav_1_iden_emot_oth eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Appropriate range of affect</td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_rang_eff" value="1" {if $tab_118_social_behav_1_appr_rang_eff eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_rang_eff" value="2" {if $tab_118_social_behav_1_appr_rang_eff eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_rang_eff" value="3" {if $tab_118_social_behav_1_appr_rang_eff eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_rang_eff" value="4" {if $tab_118_social_behav_1_appr_rang_eff eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_rang_eff" value="5" {if $tab_118_social_behav_1_appr_rang_eff eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Appropriate emotional responses</td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_emot_resp" value="1" {if $tab_118_social_behav_1_appr_emot_resp eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_emot_resp" value="2" {if $tab_118_social_behav_1_appr_emot_resp eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_emot_resp" value="3" {if $tab_118_social_behav_1_appr_emot_resp eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_emot_resp" value="4" {if $tab_118_social_behav_1_appr_emot_resp eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_appr_emot_resp" value="5" {if $tab_118_social_behav_1_appr_emot_resp eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Eye contact when speaking</td>
+            <td><input type="radio" name="tab_118_social_behav_1_eye_cont_speak" value="1" {if $tab_118_social_behav_1_eye_cont_speak eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_eye_cont_speak" value="2" {if $tab_118_social_behav_1_eye_cont_speak eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_eye_cont_speak" value="3" {if $tab_118_social_behav_1_eye_cont_speak eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_eye_cont_speak" value="4" {if $tab_118_social_behav_1_eye_cont_speak eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_eye_cont_speak" value="5" {if $tab_118_social_behav_1_eye_cont_speak eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Engagement/participation</td>
+            <td><input type="radio" name="tab_118_social_behav_1_engage_partic" value="1" {if $tab_118_social_behav_1_engage_partic eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_engage_partic" value="2" {if $tab_118_social_behav_1_engage_partic eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_engage_partic" value="3" {if $tab_118_social_behav_1_engage_partic eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_engage_partic" value="4" {if $tab_118_social_behav_1_engage_partic eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_engage_partic" value="5" {if $tab_118_social_behav_1_engage_partic eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ability to share items/tasks</td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_share_item" value="1" {if $tab_118_social_behav_1_abil_share_item eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_share_item" value="2" {if $tab_118_social_behav_1_abil_share_item eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_share_item" value="3" {if $tab_118_social_behav_1_abil_share_item eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_share_item" value="4" {if $tab_118_social_behav_1_abil_share_item eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_share_item" value="5" {if $tab_118_social_behav_1_abil_share_item eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Share appropriate information with others</td>
+            <td><input type="radio" name="tab_118_social_behav_1_share_appr_inf_oth" value="1" {if $tab_118_social_behav_1_share_appr_inf_oth eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_share_appr_inf_oth" value="2" {if $tab_118_social_behav_1_share_appr_inf_oth eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_share_appr_inf_oth" value="3" {if $tab_118_social_behav_1_share_appr_inf_oth eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_share_appr_inf_oth" value="4" {if $tab_118_social_behav_1_share_appr_inf_oth eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_share_appr_inf_oth" value="5" {if $tab_118_social_behav_1_share_appr_inf_oth eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Joint play/attention</td>
+            <td><input type="radio" name="tab_118_social_behav_1_joint_play_atten" value="1" {if $tab_118_social_behav_1_joint_play_atten eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_joint_play_atten" value="2" {if $tab_118_social_behav_1_joint_play_atten eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_joint_play_atten" value="3" {if $tab_118_social_behav_1_joint_play_atten eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_joint_play_atten" value="4" {if $tab_118_social_behav_1_joint_play_atten eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_joint_play_atten" value="5" {if $tab_118_social_behav_1_joint_play_atten eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Turn taking</td>
+            <td><input type="radio" name="tab_118_social_behav_1_turn_taking" value="1" {if $tab_118_social_behav_1_turn_taking eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_turn_taking" value="2" {if $tab_118_social_behav_1_turn_taking eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_turn_taking" value="3" {if $tab_118_social_behav_1_turn_taking eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_turn_taking" value="4" {if $tab_118_social_behav_1_turn_taking eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_turn_taking" value="5" {if $tab_118_social_behav_1_turn_taking eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Compliance for preferred tasks</td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_pref_tasks" value="1" {if $tab_118_social_behav_1_compli_pref_tasks eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_pref_tasks" value="2" {if $tab_118_social_behav_1_compli_pref_tasks eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_pref_tasks" value="3" {if $tab_118_social_behav_1_compli_pref_tasks eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_pref_tasks" value="4" {if $tab_118_social_behav_1_compli_pref_tasks eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_pref_tasks" value="5" {if $tab_118_social_behav_1_compli_pref_tasks eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Compliance for non-preferred tasks</td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_non_pref_tasks" value="1" {if $tab_118_social_behav_1_compli_non_pref_tasks eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_non_pref_tasks" value="2" {if $tab_118_social_behav_1_compli_non_pref_tasks eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_non_pref_tasks" value="3" {if $tab_118_social_behav_1_compli_non_pref_tasks eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_non_pref_tasks" value="4" {if $tab_118_social_behav_1_compli_non_pref_tasks eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_compli_non_pref_tasks" value="5" {if $tab_118_social_behav_1_compli_non_pref_tasks eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Use of social greetings</td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_social_greet" value="1" {if $tab_118_social_behav_1_use_social_greet eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_social_greet" value="2" {if $tab_118_social_behav_1_use_social_greet eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_social_greet" value="3" {if $tab_118_social_behav_1_use_social_greet eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_social_greet" value="4" {if $tab_118_social_behav_1_use_social_greet eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_use_social_greet" value="5" {if $tab_118_social_behav_1_use_social_greet eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Respond to questions</td>
+            <td><input type="radio" name="tab_118_social_behav_1_respo_to_quest" value="1" {if $tab_118_social_behav_1_respo_to_quest eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_respo_to_quest" value="2" {if $tab_118_social_behav_1_respo_to_quest eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_respo_to_quest" value="3" {if $tab_118_social_behav_1_respo_to_quest eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_respo_to_quest" value="4" {if $tab_118_social_behav_1_respo_to_quest eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_respo_to_quest" value="5" {if $tab_118_social_behav_1_respo_to_quest eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ask questions</td>
+            <td><input type="radio" name="tab_118_social_behav_1_ask_quest" value="1" {if $tab_118_social_behav_1_ask_quest eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_ask_quest" value="2" {if $tab_118_social_behav_1_ask_quest eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_ask_quest" value="3" {if $tab_118_social_behav_1_ask_quest eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_ask_quest" value="4" {if $tab_118_social_behav_1_ask_quest eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_ask_quest" value="5" {if $tab_118_social_behav_1_ask_quest eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Ability to anticipate or identify social cues</td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_antic" value="1" {if $tab_118_social_behav_1_abil_antic eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_antic" value="2" {if $tab_118_social_behav_1_abil_antic eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_antic" value="3" {if $tab_118_social_behav_1_abil_antic eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_antic" value="4" {if $tab_118_social_behav_1_abil_antic eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_118_social_behav_1_abil_antic" value="5" {if $tab_118_social_behav_1_abil_antic eq 5}checked="checked"{/if}></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <table class="striped">
+        <tr>
+            <td class="ftitle">PART II- Observable Affect/Behaviors:</td>
+            <td class="ftitle">Frequent</td>
+            <td class="ftitle">Occasionally</td>
+            <td class="ftitle">Rarely</td>
+            <td class="ftitle">None Observed</td>
+            <td class="ftitle">N/A</td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Health/safe engagement</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_health_safe_engag" value="1" {if $tab_119_obser_behav_2_health_safe_engag eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_health_safe_engag" value="2" {if $tab_119_obser_behav_2_health_safe_engag eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_health_safe_engag" value="3" {if $tab_119_obser_behav_2_health_safe_engag eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_health_safe_engag" value="4" {if $tab_119_obser_behav_2_health_safe_engag eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_health_safe_engag" value="5" {if $tab_119_obser_behav_2_health_safe_engag eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Satisfaction/content</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_satis_cont" value="1" {if $tab_119_obser_behav_2_satis_cont eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_satis_cont" value="2" {if $tab_119_obser_behav_2_satis_cont eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_satis_cont" value="3" {if $tab_119_obser_behav_2_satis_cont eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_satis_cont" value="4" {if $tab_119_obser_behav_2_satis_cont eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_satis_cont" value="5" {if $tab_119_obser_behav_2_satis_cont eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Neutral/ambivalence</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_neutr_amb" value="1" {if $tab_119_obser_behav_2_neutr_amb eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_neutr_amb" value="2" {if $tab_119_obser_behav_2_neutr_amb eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_neutr_amb" value="3" {if $tab_119_obser_behav_2_neutr_amb eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_neutr_amb" value="4" {if $tab_119_obser_behav_2_neutr_amb eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_neutr_amb" value="5" {if $tab_119_obser_behav_2_neutr_amb eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Anxiety/fear</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anxiety_fear" value="1" {if $tab_119_obser_behav_2_anxiety_fear eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anxiety_fear" value="2" {if $tab_119_obser_behav_2_anxiety_fear eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anxiety_fear" value="3" {if $tab_119_obser_behav_2_anxiety_fear eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anxiety_fear" value="4" {if $tab_119_obser_behav_2_anxiety_fear eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anxiety_fear" value="5" {if $tab_119_obser_behav_2_anxiety_fear eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Depression</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_depression" value="1" {if $tab_119_obser_behav_2_depression eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_depression" value="2" {if $tab_119_obser_behav_2_depression eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_depression" value="3" {if $tab_119_obser_behav_2_depression eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_depression" value="4" {if $tab_119_obser_behav_2_depression eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_depression" value="5" {if $tab_119_obser_behav_2_depression eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Sadness</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_sadness" value="1" {if $tab_119_obser_behav_2_sadness eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_sadness" value="2" {if $tab_119_obser_behav_2_sadness eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_sadness" value="3" {if $tab_119_obser_behav_2_sadness eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_sadness" value="4" {if $tab_119_obser_behav_2_sadness eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_sadness" value="5" {if $tab_119_obser_behav_2_sadness eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Frustration</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_frustration" value="1" {if $tab_119_obser_behav_2_frustration eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_frustration" value="2" {if $tab_119_obser_behav_2_frustration eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_frustration" value="3" {if $tab_119_obser_behav_2_frustration eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_frustration" value="4" {if $tab_119_obser_behav_2_frustration eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_frustration" value="5" {if $tab_119_obser_behav_2_frustration eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Anger</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anger" value="1" {if $tab_119_obser_behav_2_anger eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anger" value="2" {if $tab_119_obser_behav_2_anger eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anger" value="3" {if $tab_119_obser_behav_2_anger eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anger" value="4" {if $tab_119_obser_behav_2_anger eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_anger" value="5" {if $tab_119_obser_behav_2_anger eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Aggression</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_aggression" value="1" {if $tab_119_obser_behav_2_aggression eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_aggression" value="2" {if $tab_119_obser_behav_2_aggression eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_aggression" value="3" {if $tab_119_obser_behav_2_aggression eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_aggression" value="4" {if $tab_119_obser_behav_2_aggression eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_aggression" value="5" {if $tab_119_obser_behav_2_aggression eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Identifiable escalation</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_ident_esc" value="1" {if $tab_119_obser_behav_2_ident_esc eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_ident_esc" value="2" {if $tab_119_obser_behav_2_ident_esc eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_ident_esc" value="3" {if $tab_119_obser_behav_2_ident_esc eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_ident_esc" value="4" {if $tab_119_obser_behav_2_ident_esc eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_ident_esc" value="5" {if $tab_119_obser_behav_2_ident_esc eq 5}checked="checked"{/if}></td>
+        </tr>
+        <tr class="boder-bottom">
+            <td>Dysregulation/lability</td>
+            <td><input type="radio" name="tab_119_obser_behav_2_dysr_lability" value="1" {if $tab_119_obser_behav_2_dysr_lability eq 1}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_dysr_lability" value="2" {if $tab_119_obser_behav_2_dysr_lability eq 2}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_dysr_lability" value="3" {if $tab_119_obser_behav_2_dysr_lability eq 3}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_dysr_lability" value="4" {if $tab_119_obser_behav_2_dysr_lability eq 4}checked="checked"{/if}></td>
+            <td><input type="radio" name="tab_119_obser_behav_2_dysr_lability" value="5" {if $tab_119_obser_behav_2_dysr_lability eq 5}checked="checked"{/if}></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10" class="ftitle" >
+      Comments
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="social_obs_behav_comments" cols="90" rows="5" wrap="auto">{$social_obs_behav_comments}</textarea><br /> -->
+      <textarea id="social_obs_behav_comments" name="social_obs_behav_comments" cols="90" rows="5" onkeyup="chars_limit_notice('social_obs_behav_comments', 750)" maxlength="750">{$social_obs_behav_comments}</textarea>
+          {assign var="social_obs_behav_comments_length" value=$social_obs_behav_comments|count_characters:true}
+          {assign var="social_obs_behav_comments_left" value="`$social_obs_behav_comments_length-750`"}
+          <div style="font-size:9px;{if $social_obs_behav_comments_left gt 0}display:none;{/if}" id="social_obs_behav_comments_note">
+            <label id="social_obs_behav_comments_chars_left">{$social_obs_behav_comments_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr>  
+
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Treatment Recommendations </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="treatment_recomm" cols="90" rows="5" wrap="auto">{$treatment_recomm}</textarea><br /> -->
+      <textarea id="treatment_recomm" name="treatment_recomm" cols="90" rows="5" onkeyup="chars_limit_notice('treatment_recomm', 750)" maxlength="750">{$treatment_recomm}</textarea>
+          {assign var="treatment_recomm_length" value=$treatment_recomm|count_characters:true}
+          {assign var="treatment_recomm_left" value="`$treatment_recomm_length-750`"}
+          <div style="font-size:9px;{if $treatment_recomm_left gt 0}display:none;{/if}" id="treatment_recomm_note">
+            <label id="treatment_recomm_chars_left">{$treatment_recomm_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr> 
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Goals and Objectives: </td>
+  </tr> 
+  <tr>
+    <td height="10" class="ftitle" >
+      Goal1
+    </td>
+    <td height="10">
+    </td>
+
+    <td height="10" class="ftitle" >
+      Objective
+    </td>
+    <td height="10">
+    </td>
+  </tr>
+  <tr>
+    <td height="10" colspan="2">
+      <textarea id="goal1" name="goal1" cols="50" rows="5" onkeyup="chars_limit_notice('goal1', 750)" maxlength="750">{$goal1}</textarea>
+      {assign var="goal1_length" value=$goal1|count_characters:true}
+      {assign var="goal1_left" value="`$goal1_length-750`"}
+      <div style="font-size:9px;{if $goal1_left gt 0}display:none;{/if}" id="goal1_note">
+        <label id="goal1_chars_left">{$goal1_left|abs}</label>characters left.
+      </div>
+    </td>
+    <td height="10"  colspan="2">
+      <textarea id="objective1" name="objective1" cols="50" rows="5" onkeyup="chars_limit_notice('objective1', 750)" maxlength="750">{$objective1}</textarea>
+      {assign var="objective1_length" value=$objective1|count_characters:true}
+      {assign var="objective1_left" value="`$objective1_length-750`"}
+      <div style="font-size:9px;{if $objective1_left gt 0}display:none;{/if}" id="objective1_note">
+        <label id="objective1_chars_left">{$objective1_left|abs}</label>characters left.
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td height="10" class="ftitle" >
+      Goal2
+    </td>
+    <td height="10">
+    </td>
+
+    <td height="10" class="ftitle" >
+      Objective
+    </td>
+    <td height="10">
+    </td>
+  </tr>
+  <tr>
+    <td height="10" colspan="2">
+      <textarea id="goal2" name="goal2" cols="50" rows="5" onkeyup="chars_limit_notice('goal2', 750)" maxlength="750">{$goal2}</textarea>
+      {assign var="goal2_length" value=$goal2|count_characters:true}
+      {assign var="goal2_left" value="`$goal2_length-750`"}
+      <div style="font-size:9px;{if $goal2_left gt 0}display:none;{/if}" id="goal2_note">
+        <label id="goal2_chars_left">{$goal2_left|abs}</label>characters left.
+      </div>
+    </td>
+    <td height="10"  colspan="2">
+      <textarea id="objective2" name="objective2" cols="50" rows="5" onkeyup="chars_limit_notice('objective2', 750)" maxlength="750">{$objective2}</textarea>
+      {assign var="objective2_length" value=$objective2|count_characters:true}
+      {assign var="objective2_left" value="`$objective2_length-750`"}
+      <div style="font-size:9px;{if $objective2_left gt 0}display:none;{/if}" id="objective2_note">
+        <label id="objective2_chars_left">{$objective2_left|abs}</label>characters left.
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td height="10" class="ftitle" >
+      Goal3
+    </td>
+    <td height="10">
+    </td>
+
+    <td height="10" class="ftitle" >
+      Objective
+    </td>
+    <td height="10">
+    </td>
+  </tr>
+  <tr>
+    <td height="10" colspan="2">
+      <textarea id="goal3" name="goal3" cols="50" rows="5" onkeyup="chars_limit_notice('goal3', 750)" maxlength="750">{$goal3}</textarea>
+      {assign var="goal3_length" value=$goal3|count_characters:true}
+      {assign var="goal3_left" value="`$goal3_length-750`"}
+      <div style="font-size:9px;{if $goal3_left gt 0}display:none;{/if}" id="goal3_note">
+        <label id="goal3_chars_left">{$goal3_left|abs}</label>characters left.
+      </div>
+    </td>
+    <td height="10"  colspan="2">
+      <textarea id="objective3" name="objective3" cols="50" rows="5" onkeyup="chars_limit_notice('objective3', 750)" maxlength="750">{$objective3}</textarea>
+      {assign var="objective3_length" value=$objective3|count_characters:true}
+      {assign var="objective3_left" value="`$objective3_length-750`"}
+      <div style="font-size:9px;{if $objective3_left gt 0}display:none;{/if}" id="objective3_note">
+        <label id="objective3_chars_left">{$objective3_left|abs}</label>characters left.
+      </div>
+    </td>
+  </tr>
+
+
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Treatment Plan </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <!-- <textarea name="treatment_plan" cols="90" rows="5" wrap="auto">{$treatment_plan}</textarea><br /> -->
+      <textarea id="treatment_plan" name="treatment_plan" cols="90" rows="5" onkeyup="chars_limit_notice('treatment_plan', 750)" maxlength="750">{$treatment_plan}</textarea>
+          {assign var="treatment_plan_length" value=$treatment_plan|count_characters:true}
+          {assign var="treatment_plan_left" value="`$treatment_plan_length-750`"}
+          <div style="font-size:9px;{if $treatment_plan_left gt 0}display:none;{/if}" id="treatment_plan_note">
+            <label id="treatment_plan_chars_left">{$treatment_plan_left|abs}</label>characters left.
+          </div>
+    </td>
+  </tr> 
+
+
+
+
+
+
+
+
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Signature</td>    
+  </tr> 
+  <tr>
+  	<td>
+  		<input class="btn" value="Participant/Family Signature" onclick="capture_signature({$visit_log_id})" type="button">
+  	</td>
+  	<td align="center">
+  		{if $signature != ""}
+		<img src="{$base_url}upload/signatures/{$signature}?{$smarty.now}" style="height: 70px;"  />
+		{/if}
+  	</td>
+  	<td colspan="2" align="left">
+  		{if $signature != ""}
+		<b>Date: </b> {$pt_signed_date|date_format:"%m-%d-%Y":"":true}
+		{/if}
+  	</td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Clinician Signature</td>
+  </tr> 
+  <tr>
+  	<td>
+  		<input class="btn" value="Therapist Signature" onclick="capture_clinician_signature({$visit_log_id})" type="button">
+  	</td>
+  	<td>
+  		{if $clinician_signature != ""}
+			<img src="{$base_url}upload/signatures/{$clinician_signature}?{$smarty.now}" style="height: 70px;"  />
+			<br>
+			{$visit_user_id_name}
+		{/if}
+  	</td>
+  	<td colspan="2">
+  		{if $clinician_signature != ""}
+			<b>Date:</b> {$clinician_signed_date|date_format:"%m-%d-%Y":"":true}		
+		{/if}
+  	</td>
+  </tr>
+  
+</tbody>
+</table>
+
+<script>
+{literal} 
+function chars_limit_notice(field, limit){
+		if(!field || !limit)
+		return;
+		
+		if(document.getElementById(field).value.length >= limit){
+			document.getElementById(field+'_note').style.display='none';
+		}else{
+			document.getElementById(field+'_chars_left').innerHTML = limit - document.getElementById(field).value.length;
+			document.getElementById(field+'_note').style.display='';
+		} 
+}
+{/literal}
+function capture_signature(visit_log_id) {literal}{{/literal}
+	{if !$no_commit_form}
+		{if $visit_status_id eq 1}
+		setValue('visit_status_id', 2);
+		{/if}
+		autoSave();
+	{/if}
+	//alert(visit_log_id);
+	//alert(grid.getCheckedRows(0));
+	dhxWins = new dhtmlXWindows();
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+	w2.setText("Capture Patient Digital Signature");
+	w2.button("park").hide();
+	w2.button("minmax1").hide();
+	//w2.denyResize(); // deny resizing
+	//w2.denyMove(); 
+	w2.button("close")._doOnClick = function() {literal}{{/literal}		
+		w2.close();
+	{literal}}{/literal}	
+	
+	dhxWins.window('w2').center();
+	dhxWins.window('w2').setModal(true);
+	w2.attachURL("{$index_url}/task/aavi/capture_pt_signature/" + visit_log_id);
+{literal}}{/literal}
+
+function capture_clinician_signature(visit_log_id) {literal}{{/literal}
+	{if !$no_commit_form}
+		{if $visit_status_id eq 1}
+		setValue('visit_status_id', 2);
+		{/if}
+		autoSave();
+	{/if}
+	//alert(visit_log_id);
+	//alert(grid.getCheckedRows(0));
+	dhxWins = new dhtmlXWindows();
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+	w2.setText("Capture Clinician Digital Signature");
+	w2.button("park").hide();
+	w2.button("minmax1").hide();
+	//w2.denyResize(); // deny resizing
+	//w2.denyMove(); 
+	w2.button("close")._doOnClick = function() {literal}{{/literal}		
+		w2.close();
+	{literal}}{/literal}	
+	
+	dhxWins.window('w2').center();
+	dhxWins.window('w2').setModal(true);
+	w2.attachURL("{$index_url}/task/aavi/capture_clinician_signature/" + visit_log_id);
+{literal}}{/literal}	
+
+
+	function uploadScannedDocument ( visit_log_id ) {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+        var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+        w1.setText('Upload Scanned Annual Assessment Visit document');
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').center();
+        dhxWins.window('w1').setModal(true);
+        w1.attachURL("{$index_url}task/aavi/upload_document/" + visit_log_id);
+
+        pos = dhxWins.window('w1').getPosition();
+        dhxWins.window('w1').setPosition(pos[0], 60);
+
+    {literal}}{/literal}
+
+    function removeScannedDocument ( visit_log_id ) {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+        var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+        w1.setText('Remove Scanned Annual Assessment Visit document');
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').center();
+        dhxWins.window('w1').setModal(true);
+        w1.attachURL("{$index_url}task/aavi/pre_remove_document/" + visit_log_id);
+
+        pos = dhxWins.window('w1').getPosition();
+        dhxWins.window('w1').setPosition(pos[0], 60);
+
+    {literal}}{/literal}    
+</script>

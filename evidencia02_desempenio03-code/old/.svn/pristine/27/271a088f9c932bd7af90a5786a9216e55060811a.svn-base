@@ -1,0 +1,236 @@
+<form action="{$index_url}mail/compose/sendMsg/comnotes/1" method="post" name="frmCompose" id="frmCompose" enctype="multipart/form-data">
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0">
+  <input type="hidden" name="msg_to" id="msg_to_hidden" value="">
+  <tr>
+    <td valign="top" nowrap class="title" colspan="2">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> 
+    	{if $form_title}
+    		{$form_title}
+    	{else}
+    		Compose Communication Note
+    	{/if}
+    </td>
+  </tr>
+  <tr> 
+    <td height="10" colspan="2"></td>
+  </tr>
+  <tr>
+    <td class="ftitle" valign="top">Patient</td>
+    <td>
+    	{if $patient->patient_id != ""}
+	    	<input type="hidden" name="patient" value="{$patient->patient_id}" >
+	    	<input type="hidden" name="add_to_pat_chart" value="1" >
+	    	{$patient->first_name} {$patient->last_name}
+    	{else}
+    		{html_options options=$patient_list name="patient" id="patient" style="width:250" onchange="if(this.value!=0) loadTeam(this.value)"}
+    	{/if}
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" valign="top" height="30"><a href="javascript: addToWindow()">To</a></td>
+    <td>
+    	<div id="msg_to"></div>
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" >Subject</td>
+    <td><input type="text" name="msg_subject" id="msg_subject" style="width:250" value="{$msg_subject}"></td>
+ </tr>
+ <tr>
+    <td class="ftitle" valign="top">Attach files</td>
+    <td id="attach_files">
+      <div><input type="file" name="msg_file[]" style="width:250"></div>
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" valign="top"></td>
+    <td>
+      <a href="javascript://" onclick="attach_another()">+ attach more</a>
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" valign="top">Communication</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td height="100%" colspan="2"><textarea name="msg_text" id="msg_text" style="width:100%;height:100%" wrap="auto">{$msg_text}</textarea></td>
+  </tr>
+  <tr>
+    <td height="100%" colspan="2">
+    	<input type="button" value="Send Message" class="btn" onclick="if(validateForm()) {literal}{{/literal} setValue('msg_to_hidden', arrayTo.join(','));checkEpass();{literal}}{/literal}">
+    	{if $cancel_url != ""}
+    		<input type="hidden" value="{$cancel_url}" name="cancel_url">
+    		<input type="button" value="Cancel" class="btn" onclick="document.location = '{$cancel_url}'">
+    	{else}
+    		<input type="button" value="Cancel" class="btn" onclick="document.location = '{$index_url}mail/comnotes/{if $back_path}/{$back_path}{/if}'">
+    	{/if}
+    </td>
+  </tr>
+</table>
+</form>
+
+<style type="text/css">
+
+  {literal}
+  .to_contact {
+  	border: 1px #D0D0D0 solid;
+  	background-color: #E8E8E8;
+  	width: auto;
+  	float: left;
+  	margin-right: 2px;
+  	margin-bottom: 2px;
+  	padding: 2px
+  }
+  {/literal}
+
+</style>
+  
+
+<script>
+
+	document.body.style.overflow = 'hidden';
+	
+	function hide_tr(status) {literal}{{/literal}
+
+		if(status)
+			document.getElementById('tr_to_e').style.display='';
+		else
+			document.getElementById('tr_to_e').style.display='none';
+
+	{literal}}{/literal}
+	
+	
+	function loadTeam ( patient_id ) {literal}{{/literal}
+	
+        while (arrayTo.length > 0) {literal}{{/literal}
+        	removeTo(arrayTo[0]);
+        {literal}}{/literal} 
+		arrayTo = new Array();
+		
+		ajax('{$index_url}mail/compose/getTeam/' + patient_id, ajaxParseAction);
+
+	{literal}}{/literal}
+	
+	var arrayTo = new Array();
+
+	function validateForm() {literal}{{/literal}
+
+		subject	= document.getElementById('msg_subject');
+		patient	= document.getElementById('patient');
+		users	= document.getElementById('msg_to');
+		message	= document.getElementById('msg_text');
+
+		aux = true;
+
+		if(subject.value.length < 1) {literal}{{/literal}
+			alert("Subject required");
+			aux=false;
+		{literal}}{/literal}
+
+		if(arrayTo.length == 0 ) {literal}{{/literal}
+			alert("User(s) to required");
+			aux = false;
+		{literal}}{/literal}
+
+		if(message.value.length < 1) {literal}{{/literal}
+			alert("Message required");
+			aux=false;
+		{literal}}{/literal}
+
+		return aux;
+
+	{literal}}{/literal}
+	
+	function addTo ( name, user_id ) {literal}{{/literal}
+
+          for (var i=0; i<arrayTo.length;i++ ) {literal}{{/literal}
+      			if(arrayTo[i]==user_id)
+           			return;
+      	  {literal}}{/literal}
+
+		  var ni = document.getElementById('msg_to');
+
+		  var newdiv = document.createElement('div');
+		  newdiv.setAttribute('id','to_ctt_'+user_id);
+		  newdiv.setAttribute('class', 'to_contact');
+		  newdiv.innerHTML = name+' <a href="javascript:removeTo('+user_id+')"><img src="{$image_url}small_close.gif"></a></div>';
+		  
+		  arrayTo.push(user_id);
+		  
+		  ni.appendChild(newdiv);
+	
+	{literal}}{/literal}
+	
+	function removeTo (divNum) {literal}{
+	  var d = document.getElementById('msg_to');
+	  var olddiv = document.getElementById('to_ctt_' + divNum);
+	  d.removeChild(olddiv);
+	  
+      for(var i=0; i<arrayTo.length;i++ ) { 
+        
+      	if(arrayTo[i]==divNum)
+            arrayTo.splice(i,1); 
+      } 
+	  
+	}{/literal}
+
+
+    var dhxWins;
+    	
+    function addToWindow ( user_id ) {literal}{{/literal}
+ 
+ 		if (getValue('patient') > 0) {literal}{{/literal}
+ 			alert('You must deselect patient to select users manually.');
+ 			return;
+ 		{literal}}{/literal}
+ 
+     	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 500, 350);
+		w1.setText('Add To');
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    dhxWins.window('w1').center();
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}mail/compose/addTo/");
+		
+
+    {literal}}{/literal}
+
+    {if $patient->patient_id != ""}
+	loadTeam({$patient->patient_id});
+	{/if}
+
+  function checkEpass(){literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+      
+        var w1 = dhxWins.createWindow("w1", 10, 10, 350, 200);
+        w1.setText("Enter your Electronic Password");
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').setModal(true);
+        dhxWins.window('w1').center();
+        w1.attachURL("{$index_url}mail/compose/modalCheckEpassword/");
+      
+        dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+            
+        w1.hide();
+        w1.setModal(false);
+            
+        {literal}}{/literal});
+      
+      {literal}}{/literal}
+
+  function attach_another(){literal}{{/literal}
+    $('#attach_files').append('<div><input type="file" name="msg_file[]" style="width:250"></div>');
+  {literal}}{/literal}
+</script>

@@ -1,0 +1,65 @@
+<?
+
+ class Settings extends MY_Controller {
+
+	function Settings () {
+		
+		parent::MY_Controller();
+		
+		$this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+		
+		$this->tpl->assign("resource_path", "agencyprofile/settings");
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+		
+		
+	}
+
+	function index ( $agency_id=null ) {
+		$agency_id = (is_null($agency_id) ? $this->getAgencyId()  : $agency_id);
+		$this->tpl->assign('faction', 'index');
+		$this->tpl->assign('record_id', $agency_id);
+		
+		$rules = array();
+		$fields = array();
+		
+		if ($this->input->post('invoice_seq_nbr')) {
+			$rules['invoice_seq_nbr'] = 'numeric|callback_check_invoice_seq_nbr['.$agency_id.']';
+			$fields['invoice_seq_nbr'] = 'Initial Invoice Number';
+			$this->validation->set_rules($rules);
+			$this->validation->set_fields($fields);
+		}
+
+		if ($this->validation->run() == TRUE) {
+			
+			//echo "<pre>"; print_r($this); echo "</pre>";
+			$this->assignPostData($this->agencysettingsmdl);
+			$this->agencysettingsmdl->allow_future_dated_visits = $this->input->post('allow_future_dated_visits');
+			$this->agencysettingsmdl->update($agency_id);			
+		}
+
+		$this->assignObject($this->agencysettingsmdl->get($agency_id));
+		
+		$this->tpl->assign("sn_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 16, false));
+		$this->tpl->assign("pt_app_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, 17, false));
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "agencyprofile/settings_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+
+	public function check_invoice_seq_nbr($invoice_seq_nbr, $contractor_id){
+		$agency_setting = $this->agencysettingsmdl->get($contractor_id);
+		if (isset($agency_setting->invoice_seq_nbr) AND $agency_setting->invoice_seq_nbr) {
+			if ($invoice_seq_nbr < $agency_setting->invoice_seq_nbr) {
+				$at_least = $agency_setting->invoice_seq_nbr-1;
+				$this->validation->set_message('check_invoice_seq_nbr', "You can't change Initial Invoice Number to {$invoice_seq_nbr}. You can only change to bigger then {$at_least}.");
+				return FALSE;
+			}
+		}
+
+		return TRUE;
+	}	
+ }

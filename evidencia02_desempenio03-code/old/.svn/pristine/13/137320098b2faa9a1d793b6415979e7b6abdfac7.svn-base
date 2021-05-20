@@ -1,0 +1,91 @@
+{literal}
+<style type="text/css">
+	.error{
+		border: 1px solid red;
+	}
+	table.custom-grid-table{
+	}
+	table.custom-grid-table th{
+		border-color: #FDFDFD #93AFBA #93AFBA #FDFDFD;
+		background-color: transparent;
+		font-family: Tahoma;
+		font-size: 11px;
+		font-weight: bold;
+		color: #055A78;
+		vertical-align: top;
+		text-align: left;
+		margin: 0;
+		padding: 5px 0px 5px 10px;
+	}	
+
+	.grid-header{ background-image: url('style/grid/imgs/skin_light_header.png'); }
+	.odd_light{ background-color: #E5F2F8; }
+
+	table.custom-grid-table tr td{
+		font-family: Tahoma;
+		font-size: 11px;
+		padding: 5px 0px 5px 10px;
+		vertical-align: middle;
+		height: 25px;
+		border-bottom: 1px solid #c2d5dc;
+		border-width: 0px 0px 1px 0px;
+	}
+</style>
+{/literal}
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="6"> 
+	{if $conflicted_message}
+  	<tr>
+    	<td colspan="2" class="error tbl_msg">{$conflicted_message}</td>
+  	</tr>
+  	{/if}
+  	<tr> 
+	    <td height="100%">
+	    	<div id="grid_area" style="height: 99%; width: 100%; border: 1px solid #c2d5dc;">
+				
+				<table class="custom-grid-table" cellspacing="1" cellpadding="0" width="100%">
+					<tr class="grid-header">
+							<th>Patient Name</th>
+							<th>Agency Name</th>
+							<th>Visit Time</th>
+							<th>Description</th>
+					</tr>
+			
+					{foreach from=$conflicted_records item=record name=conflicts}
+					<tr class="{cycle values='odd_light,ev_light'}">
+						<td>
+							{if $record->mark_patient_as_red}<font color="red">{/if} {$record->patient->first_name} {$record->patient->last_name} {if $record->mark_patient_as_red}</font>{/if}
+						</td>
+						<td>
+							{if $record->mark_agency_as_red}<font color="red">{/if} {$record->agency->agency_name} {if $record->mark_agency_as_red}</font>{/if} 
+						</td>
+						<td>
+							{$record->visit_time}
+						</td>
+						<td>
+							{$record->description}
+						</td>
+					</tr>
+					{/foreach}
+				</table>
+
+			</div>
+	    </td>
+  	</tr>
+	<tr><td colspan="2" height="20">&nbsp;</td></tr>
+	<tr>
+		<td colspan="2" height="100%" valign="bottom">
+			<input type="button" class="btn" value="Confirm Overlap" onclick="confirmedOverlap(this)">			
+			<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.cancelModal();">
+		</td>
+	</tr>
+</table>
+
+<script type="text/javascript">
+	function confirmSingleScheduleOverlapSucceded(obj){literal}{{/literal}
+		parent.location.href='{$index_url}{$cancel_url}';
+	{literal}}{/literal}
+	function confirmedOverlap(obj){literal}{{/literal}
+		$(obj).val('Processing...');
+		ajax('{$index_url}{$resource_path}/confirmMultiScheduleOverlap/1/{$patient_id}/{$cms485_id}/{$__visit_time_Hour}/{$__visit_time_Minute}/{$visit_user_id}/{$visit_date}/{$cms_485_mcaid_pa_visits_id}', ajaxParseAction);
+	{literal}}{/literal}
+</script>	

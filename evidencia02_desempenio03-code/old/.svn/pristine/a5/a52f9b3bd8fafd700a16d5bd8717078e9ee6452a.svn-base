@@ -1,0 +1,102 @@
+<?
+
+ class InvoicePaymentsMdl extends Model {
+
+    var $invoice_payment_id 	;
+    var $invoice_id;
+    var $payment_amount;
+    var $payment_date;
+    var $payment_notes;
+    var $check_nbr;
+    
+	function InvoicePaymentsMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $invoice_id=null, $where = null ) {
+    	//$this->db->select("invoice_payments.*, SUM(payment_amount) as total_payment");  
+    
+		if (!is_null($invoice_id)) {
+			$this->db->where("invoice_id", $invoice_id);			
+			//$this->db->group_by("invoice_id");			
+		}		
+		if (!is_null($where)) {
+			$this->db->where($where);
+		}
+		$query = $this->db->get('invoice_payments');
+		return $query->result();		
+	}
+	
+	function getById ( $invoice_payment_id 	 ) {
+		
+		$this->db->where("invoice_payment_id 	", $invoice_payment_id 	);
+		
+		$query = $this->db->get('invoice_payments');
+		return $query->row();
+		
+	}
+
+	function lastPaymentDate ( $invoice_id ) {  
+	    // $this->db->select('MAX(payment_date) as paid_date');
+	    $this->db->where("invoice_id", $invoice_id); 
+	    $this->db->order_by('invoice_payment_id', 'desc');
+
+	    $query = $this->db->get('invoice_payments', 1); 
+	    return $query->row();
+	}
+
+	function insert ($invoice_id) {
+		if(!$this->payment_date)
+		$this->payment_date = date("Y-m-d");
+    
+		$this->invoice_id = $invoice_id;
+		
+		$this->db->insert("invoice_payments", $this);
+		$this->invoice_payment_id = $this->db->insert_id();
+
+		// update company_invoice table
+    	$this->db->query("UPDATE company_invoice SET company_invoice.invoice_payment=(SELECT SUM(payment_amount) FROM invoice_payments WHERE  invoice_id = {$invoice_id} GROUP BY invoice_id) WHERE company_invoice.invoice_id = {$invoice_id}");
+    
+	}
+	
+	function update ( $invoice_payment_id ) {
+		
+		$this->db->where("invoice_payment_id", $invoice_payment_id);
+		$this->db->update("invoice_payments", $this);
+
+		// update company_invoice table
+    	$this->db->query("UPDATE company_invoice SET company_invoice.invoice_payment=(SELECT SUM(payment_amount) FROM invoice_payments WHERE  invoice_id = {$invoice_id} GROUP BY invoice_id) WHERE company_invoice.invoice_id = {$invoice_id}");
+	
+	}
+	
+  	function delete ( $invoice_payment_id ) {		
+    	$row = $this->getById($invoice_payment_id);
+	    if(!empty($row)){
+	      	$invoice_id = $row->invoice_id;
+	  		$this->db->where('invoice_payment_id', $invoice_payment_id);
+	  		$this->db->delete('invoice_payments'); 
+
+	  		// update company_invoice table
+      		$this->db->query("UPDATE company_invoice SET company_invoice.invoice_payment=(SELECT SUM(payment_amount) FROM invoice_payments WHERE  invoice_id = {$invoice_id} GROUP BY invoice_id) WHERE company_invoice.invoice_id = {$invoice_id}");
+      
+	    }
+	}
+
+  	//function updateFlex($invoice_payment_id, $attribute, $value, $where = 'invoice_payment_id') {
+  	function updateFlex($invoice_payment_id, $set, $where = 'invoice_payment_id') {
+    	$row = $this->getById($invoice_payment_id);
+	    if(!empty($row)){
+	      	$invoice_id = $row->invoice_id;
+	  		$this->db->where($where, $invoice_payment_id);
+	  		//$this->db->set($attribute, $value);
+	  		$this->db->set($set);
+	  		$this->db->update('invoice_payments');
+
+	  		// update company_invoice table
+      		$this->db->query("UPDATE company_invoice SET company_invoice.invoice_payment=(SELECT SUM(payment_amount) FROM invoice_payments WHERE  invoice_id = {$invoice_id} GROUP BY invoice_id) WHERE company_invoice.invoice_id = {$invoice_id}");
+	    }
+	}
+	      
+ }

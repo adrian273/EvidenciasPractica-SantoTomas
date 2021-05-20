@@ -1,0 +1,82 @@
+<?php
+
+ class ConflictReport extends MY_Controller {
+
+	function ConflictReport () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/conflictreport");
+		
+	}
+
+	function index () {
+		
+		$this->tpl->assign('agency_list', $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false));
+
+		$this->tpl->assign("items_per_page", 300);
+		$this->tpl->assign("noedit", true);
+	    
+	    $this->tpl->assign(array("no_grid_buttons" => true));
+	    
+	    $this->tpl->assign_include("filter_tpl", "task/conflictreport_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+
+	function grid () {
+		$data = array();
+		if ($this->input->post('agency_id') != "") {
+			if ($this->input->post('conflict_level') == 'patient') {
+				$data = $this->visitlogmdl->getPatientLevelVisitConflictsByAgency($this->input->post('agency_id'), $this->getAgencyId());
+			}else if ($this->input->post('conflict_level') == 'user') {
+				$data = $this->visitlogmdl->getUserLevelVisitConflictsByAgency($this->input->post('agency_id'), $this->getAgencyId());
+			}
+		} else {
+			$agency_list = $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false);
+			$agency_ids = array();
+			foreach ($agency_list as $agency_id => $agency_name) {
+				$agency_ids[] = $agency_id;
+			}
+
+			if ($this->input->post('conflict_level') == 'patient') {
+				$data = $this->visitlogmdl->getPatientLevelVisitConflictsByAgency($agency_ids, $this->getAgencyId());
+			}else if ($this->input->post('conflict_level') == 'user') {
+				$data = $this->visitlogmdl->getUserLevelVisitConflictsByAgency($agency_ids, $this->getAgencyId());
+			}
+		}
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=link", "Visit"));		
+	    $head->append($this->xml->Element("column", "width=*", "Visit Start - End Time"));
+	    $head->append($this->xml->Element("column", "width=*", "Patient"));
+	    $head->append($this->xml->Element("column", "width=*", "Agency"));
+	    $head->append($this->xml->Element("column", "width=*;type=link", "Conflicted Visit"));
+	    $head->append($this->xml->Element("column", "width=*", "Conflicted Visit Start - End Time"));
+	    $head->append($this->xml->Element("column", "width=*", "Patient"));
+	    $head->append($this->xml->Element("column", "width=*", "Agency"));
+
+	    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($data as $visit) {
+			$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, $visit->visit_description."^" . $this->config->config['index_url'] . "task/task/edit/" . $visit->visit_log_id."^blank1"));
+			$cell->append($this->xml->Element("cell", null, date("g:i a", strtotime($visit->visit_start_date_time)).' - '.date("g:i a", strtotime($visit->visit_end_date_time)) ));
+			$cell->append($this->xml->Element("cell", null, $visit->patient_name));
+			$cell->append($this->xml->Element("cell", null, $visit->agency_name));
+
+			$cell->append($this->xml->Element("cell", null, $visit->visit_description2."^" . $this->config->config['index_url'] . "task/task/edit/" . $visit->visit_log_id2."^blank2"));
+			$cell->append($this->xml->Element("cell", null, date("g:i a", strtotime($visit->visit_start_date_time2)).' - '.date("g:i a", strtotime($visit->visit_end_date_time2)) ));
+			$cell->append($this->xml->Element("cell", null, $visit->patient_name2));
+			$cell->append($this->xml->Element("cell", null, $visit->agency_name2));
+
+			$document->append($cell);
+		}
+	}
+	
+ }

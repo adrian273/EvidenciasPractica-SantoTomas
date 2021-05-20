@@ -1,0 +1,67 @@
+<?php
+
+ class CMS487Mdl extends Model {
+
+	var $cms_487_id;
+	var $cms485_id;
+	var $addendum_type; // enum('POT', 'MU')
+	var $description;
+	var $doctor_id;
+
+	function CMS487Mdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $cms485_id ) {
+	
+		//$this->db->join('dis_discipline', 'dis_discipline.discipline_id = cms_487.discipline_id', 'LEFT');
+		
+		$this->db->where("cms485_id", $cms485_id);
+		$this->db->order_by("cms_487_id");
+		$query = $this->db->get('cms_487');
+		return $query->result();
+
+	}
+	
+	function getById ( $cms_487_id ) {
+		
+		//$this->db->join('dis_discipline', 'dis_discipline.discipline_id = cms_487.discipline_id', 'LEFT');
+		
+		$this->db->where("cms_487_id", $cms_487_id);
+		
+		$query = $this->db->get('cms_487');
+		return $query->row();
+		
+	}
+	
+	function insert ( $cms485_id ) {
+		
+		$this->cms485_id = $cms485_id;
+		
+		$this->db->insert('cms_487', $this);
+		$this->cms_487_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $cms485_id, $cms_487_id ) {
+		
+		$this->cms485_id 			= $cms485_id;
+		$this->cms_487_id = $cms_487_id;
+		
+		$this->db->where('cms_487_id', $cms_487_id);
+		
+		$this->db->update('cms_487', $this);
+		
+	}
+	
+	function delete ( $cms_487_id ) {
+		
+		$this->db->where('cms_487_id', $cms_487_id);
+		
+		$this->db->delete('cms_487'); 
+		
+	}
+	
+ }

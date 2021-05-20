@@ -1,0 +1,657 @@
+<?
+
+ class visitrates extends MY_Controller {
+
+	function visitrates () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "payroll/visitrates");
+		
+	}
+
+	function index () {
+		
+		$this->tpl->assign_include("dynamic_tpl", "payroll/visitrates_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+
+	/*********** Default rate ***************/ 
+	function default_rates(){
+	    //$agency_contractor = $this->agencycontractormdl->getByAgencyContractorId($agency_contractor_id);
+		$contractor_id = $this->getAgencyId();    
+		$us_agy_id = $this->getUsAgyId();    
+	    //print_r($agency_contractor);exit;
+
+		$this->tpl->assign("no_grid_buttons", true);
+	    //$this->tpl->assign('noedit', true);
+		$this->tpl->assign("resource_edit", 'rates_default_edit');    
+		$this->tpl->assign("resource_grid", "rates_default_grid");
+		$this->tpl->assign("resource_add", "rates_default_add");
+		$this->tpl->assign("resource_delete", "rates_default_delete");
+		$this->tpl->assign("entity_id", $contractor_id.'/'.$us_agy_id);
+		$this->tpl->assign('additional_buttons', array('Add Rate' => 'addRate()', 'Back' => 'history.go(-1)'));
+
+	    //$this->assignObject($agency_contractor);
+
+	    //$this->tpl->assign('agency_contractor', $agency_contractor);
+
+		$this->tpl->assign_include("filter_tpl", "payroll/rates_default_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "payroll/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function rates_default_grid ($contractor_id=0) {
+		$contractor_id = $this->getAgencyId();
+	    // LOAD MODELS
+		$this->load->model('payrollratebydisciplinemdl');
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+		$head->append($this->xml->Element("column", "width=*", "Effective date"));
+		// $head->append($this->xml->Element("column", "width=*", "Modified By"));
+		// $head->append($this->xml->Element("column", "width=*", "Date / Time"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		//if ($this->input->post('agency_type') == 'A')
+		$data = $this->payrollratebydisciplinemdl->getByContractorId($contractor_id);
+		/*else
+		$data = $this->agencymdl->getByParent($this->getAgencyId());*/
+			
+		foreach ($data as $rate) {			
+			//print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $rate->payroll_rate_by_discipline_id);
+			$cell->append($this->xml->Element("cell", null, $rate->visit_description));
+			$cell->append($this->xml->Element("cell", null, '$'.$rate->payroll_visit_rate));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->rate_effective_date, 'MYSQL_NOTIME'))));
+			// $cell->append($this->xml->Element("cell", null, $rate->first_name.' '.$rate->last_name));
+			// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->modify_date)).' '.date("g:i a", strtotime($rate->modify_date))));
+			
+			$cell->append($this->xml->Element("cell", null, "Edit^javascript:editRate(" . $rate->payroll_rate_by_discipline_id . ")"));
+
+			$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteRate(" . $rate->payroll_rate_by_discipline_id . ")"));
+
+			$document->append($cell);
+			
+		}
+
+	}
+
+	function rates_default_add ( $contractor_id, $us_agy_id = null ) {
+		
+		$this->load->model('payrollratebydisciplinemdl');
+
+		$rules = array (
+			'visit_type_id'  	=> 'required',
+			'payroll_visit_rate'  	=> 'required',
+			'rate_effective_date'  	=> 'required'
+			);
+
+		$fields = array (
+			'visit_type_id'  	=> 'Visit Type',
+			'payroll_visit_rate'  	=> 'Visit Rate',
+			'rate_effective_date'  	=> 'Effective Date'
+			);
+
+		
+		$this->validation->set_fields($fields);  
+		$this->validation->set_rules($rules);	
+
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign('contractor_id', $contractor_id);
+			$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+			$LOB = null;
+			if ($us_agy_id) {
+				$usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+				if (isset($usAgy->user_tab111_product_id)) {
+					$LOB = $usAgy->user_tab111_product_id;
+				}
+			}
+
+			$this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, $contractor->provides_altern_therapy, $contractor_id, $LOB));
+
+			$this->tpl->assign_include("dynamic_tpl", "payroll/add_default_rate_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->payrollratebydisciplinemdl);
+			$this->payrollratebydisciplinemdl->modify_user_id=$this->getUserId();
+			$this->payrollratebydisciplinemdl->modify_date=date('Y-m-d H:i:s');
+			$this->payrollratebydisciplinemdl->insert($contractor_id);
+
+			echo "<SCRIPT>parent.loadGrid(); parent.dhxWins.unload();</SCRIPT>";			
+		}		
+	}
+
+	function rates_default_edit ( $contractor_rate_id ) {
+
+		$this->load->model('payrollratebydisciplinemdl');
+
+		$this->tpl->assign("contractor_rate_id", $contractor_rate_id);
+
+		$rules = array (
+		      //'visit_type_id'  	=> 'required',
+			'payroll_visit_rate'  	=> 'required',
+			'rate_effective_date'  	=> 'required'
+			);
+
+		$fields = array (
+		      //'visit_type_id'  	=> 'Visit Type',
+			'payroll_visit_rate'  	=> 'Visit Rate',
+			'rate_effective_date'  	=> 'Effective Date'
+			);
+		
+
+		$this->validation->set_fields($fields);  
+		$this->validation->set_rules($rules);	
+
+		if ($this->validation->run() == FALSE) {
+			$this->assignObject($this->payrollratebydisciplinemdl->getById($contractor_rate_id));
+			$this->tpl->assign_include("dynamic_tpl", "payroll/edit_default_rate_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->payrollratebydisciplinemdl);      
+			$this->payrollratebydisciplinemdl->updateFlex($contractor_rate_id, 'payroll_visit_rate', $this->input->post('payroll_visit_rate'));
+			$this->payrollratebydisciplinemdl->updateFlex($contractor_rate_id, 'rate_effective_date', $this->payrollratebydisciplinemdl->rate_effective_date);
+			$this->payrollratebydisciplinemdl->updateFlex($contractor_rate_id, 'modify_user_id', $this->getUserId());
+			$this->payrollratebydisciplinemdl->updateFlex($contractor_rate_id, 'modify_date', date('Y-m-d H:i:s'));
+			echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+		}
+
+	}
+
+	function rates_default_delete($contractor_rate_id ) {		
+		$this->load->model('payrollratebydisciplinemdl');
+		$document = $this->xml->Document();
+		$rate = $this->payrollratebydisciplinemdl->getById($contractor_rate_id);    
+		if($rate != null){
+			if( $rate->contractor_id == $this->getAgencyId() ){ 
+				$this->payrollratebydisciplinemdl->delete($contractor_rate_id);
+				$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+			}else{
+				$document->append($this->xml->Element('alert', null, "You are not the contractor to delete this!"));
+				return;
+			}
+		}else {
+			$document->append($this->xml->Element('alert', null, "Payroll rate not found!"));
+			return;
+		}
+
+	}
+
+	/*********** rate for patients ***************/
+
+	/*********** User level rate ***************/ 
+	function users(){
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_edit", 'rates_user');    
+		$this->tpl->assign("resource_grid", "users_grid");
+		$this->tpl->assign("paginate", 0);
+
+		//$data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+		
+		$data = $this->usagymdl->getByAgencyId($this->getAgencyId());
+		$names = array();    
+		foreach($data as $user){
+			$names[] = '"'.addslashes($user->last_name. " " .$user->first_name).'"';
+		}
+		$name_source_obj = "[".implode(",",$names)."]";  
+		$this->tpl->assign("name_source_obj", $name_source_obj);
+
+		$this->tpl->assign_include("filter_tpl", "payroll/user_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+  	
+	function users_grid () {		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Rate By User"));
+		$head->append($this->xml->Element("column", "width=*;align=left;type=link", "Actions"));			
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$data = $this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'));
+
+		foreach ($data as $user) {			
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null, $user->last_name . " " . $user->first_name . ", " . $user->short_description . ($user->legal_name != '' ? ' - '.$user->legal_name : '') ));
+			$cell->append($this->xml->Element("cell", null, "Rate details^" . $this->config->config['index_url'] . "payroll/visitrates/rates_user/" . $user->us_agy_id ));	
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function rates_user($us_agy_id=0){
+	    
+	    $user = $this->usagymdl->getByUsAgyId($us_agy_id);
+	    
+	    //print_r($agency_contractor);exit;
+	    
+	    $this->tpl->assign("no_grid_buttons", true);
+	    //$this->tpl->assign('noedit', true);
+	    $this->tpl->assign("resource_edit", 'rates_user_edit');    
+	    $this->tpl->assign("resource_grid", "rates_user_grid");
+	    $this->tpl->assign("resource_add", "rates_user_add");
+	    $this->tpl->assign("resource_delete", "rates_user_delete");
+	    $this->tpl->assign("entity_id", $us_agy_id);
+	    $this->tpl->assign('additional_buttons', array('Add Rate' => 'addRate()', 'Back' => 'history.go(-1)'));
+	    
+	    $this->assignObject($user);
+	    
+	    //$this->tpl->assign('agency_contractor', $agency_contractor);
+	    
+	    $this->tpl->assign_include("filter_tpl", "payroll/rates_user_gfilter");
+			$this->tpl->assign_include("dynamic_tpl", "payroll/gbase");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	  
+
+	function rates_user_grid ($us_agy_id=0) {
+	    // LOAD MODELS
+		$this->load->model('payrollratebyuservisittypemdl');
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+		$head->append($this->xml->Element("column", "width=*", "Effective date"));
+		
+		// $head->append($this->xml->Element("column", "width=*", "Modified By"));
+		// $head->append($this->xml->Element("column", "width=*", "Date / Time"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		$data = $this->payrollratebyuservisittypemdl->getByUsAgyId($us_agy_id);
+		foreach ($data as $rate) {			
+	  		//print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $rate->payroll_rate_by_user_visit_type_id);
+			$cell->append($this->xml->Element("cell", null, $rate->visit_description));
+			$cell->append($this->xml->Element("cell", null, '$'.$rate->payroll_visit_rate));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->rate_effective_date, 'MYSQL_NOTIME'))));
+			// $cell->append($this->xml->Element("cell", null, $rate->first_name.' '.$rate->last_name));
+			// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->modify_date)).' '.date("g:i a", strtotime($rate->modify_date))));
+	  		$cell->append($this->xml->Element("cell", null, "Edit^javascript:editRate(" . $rate->payroll_rate_by_user_visit_type_id . ")"));
+	  		$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteRate(" . $rate->payroll_rate_by_user_visit_type_id . ")"));
+			$document->append($cell);
+		}
+	    
+	}
+
+	function rates_user_add ( $us_agy_id ) {
+			
+	    $this->load->model('payrollratebyuservisittypemdl');
+	    
+	    $rules = array (
+	      'visit_type_id'  	=> 'required',
+	      'payroll_visit_rate'  	=> 'required',
+	      'rate_effective_date'  	=> 'required'
+	      );
+	  
+	    $fields = array (
+	      'visit_type_id'  	=> 'Visit Type',
+	      'payroll_visit_rate'  	=> 'Visit Rate',
+	      'rate_effective_date'  	=> 'Effective Date'
+	      );
+	        
+	    
+	    $this->validation->set_fields($fields);  
+	    $this->validation->set_rules($rules);	
+	    	
+
+	    if ($this->validation->run() == FALSE) {
+
+	    	$this->tpl->assign('us_agy_id', $us_agy_id);
+	    	$contractor_id = $this->getAgencyId();    
+	    	$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+
+	    	$LOB = null;
+			$contractorUsAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());			
+			if (isset($contractorUsAgy->user_tab111_product_id)) {
+				$LOB = $contractorUsAgy->user_tab111_product_id;
+			}
+		
+
+	    	$this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, $contractor->provides_altern_therapy, $contractor_id, $LOB));
+
+	    	$this->tpl->assign_include("dynamic_tpl", "payroll/add_user_rate_form");
+	    	$this->tpl->view("parts/ibase", $this->lang->language);
+
+	    } else {
+	    	$this->assignPostData($this->payrollratebyuservisittypemdl);
+	    	$this->payrollratebyuservisittypemdl->modify_user_id=$this->getUserId();
+	    	$this->payrollratebyuservisittypemdl->modify_date=date('Y-m-d H:i:s');
+	    	$this->payrollratebyuservisittypemdl->insert($us_agy_id);
+
+	    	echo "<SCRIPT>parent.loadGrid(); parent.dhxWins.unload();</SCRIPT>";			
+	    }		
+	}
+	  
+	function rates_user_edit ( $payroll_rate_by_user_visit_type_id ) {
+			
+	    $this->load->model('payrollratebyuservisittypemdl');
+	    
+	    $this->tpl->assign("payroll_rate_by_user_visit_type_id", $payroll_rate_by_user_visit_type_id);
+			
+	    $rules = array (
+	      //'visit_type_id'  	=> 'required',
+	      'payroll_visit_rate'  	=> 'required',
+	      'rate_effective_date'  	=> 'required'
+	      );
+	  
+	    $fields = array (
+	      //'visit_type_id'  	=> 'Visit Type',
+	      'payroll_visit_rate'  	=> 'Visit Rate',
+	      'rate_effective_date'  	=> 'Effective Date'
+	      );
+	        
+	    
+	    $this->validation->set_fields($fields);  
+	    $this->validation->set_rules($rules);	
+	    	
+	    if ($this->validation->run() == FALSE) {
+	    	$this->assignObject($this->payrollratebyuservisittypemdl->getById($payroll_rate_by_user_visit_type_id));
+	    	$this->tpl->assign_include("dynamic_tpl", "payroll/edit_user_rate_form");
+	    	$this->tpl->view("parts/ibase", $this->lang->language);
+
+	    } else {
+	    	$this->assignPostData($this->payrollratebyuservisittypemdl);      
+	    	$this->payrollratebyuservisittypemdl->updateFlex($payroll_rate_by_user_visit_type_id, 'payroll_visit_rate', $this->input->post('payroll_visit_rate'));
+	    	$this->payrollratebyuservisittypemdl->updateFlex($payroll_rate_by_user_visit_type_id, 'rate_effective_date', $this->payrollratebyuservisittypemdl->rate_effective_date);
+	    	$this->payrollratebyuservisittypemdl->updateFlex($payroll_rate_by_user_visit_type_id, 'modify_user_id', $this->getUserId());
+	    	$this->payrollratebyuservisittypemdl->updateFlex($payroll_rate_by_user_visit_type_id, 'modify_date', date('Y-m-d H:i:s'));
+	    	echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+	    }
+
+	    
+	}
+	  
+	function rates_user_delete($payroll_rate_by_user_visit_type_id ) {		
+	    $this->load->model('payrollratebyuservisittypemdl');
+	    
+	    $document = $this->xml->Document();
+	    $rate = $this->payrollratebyuservisittypemdl->getById($payroll_rate_by_user_visit_type_id);    
+
+	    if($rate != null){
+	    	$usAgy = $this->usagymdl->getByUsAgyId($rate->us_agy_id);    
+	    	if($usAgy->agency_id == $this->getAgencyId()){        
+	    		$this->payrollratebyuservisittypemdl->delete($payroll_rate_by_user_visit_type_id);
+	    		$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+	    	}else{
+	    		$document->append($this->xml->Element('alert', null, "You are not authorize to delete this!"));
+	    		return;
+	    	}
+	    }else {
+	    	$document->append($this->xml->Element('alert', null, "Visit rate not found!"));
+	    	return;
+	    }
+	    
+	}
+	  
+	/*********** User level rate End***************/ 
+	/*********** Patient level rate ***************/ 
+
+	function patients(){
+	    $this->load->model('contractorratepatientmdl');
+	    
+	    $this->tpl->assign("no_grid_buttons", true);
+	    $this->tpl->assign("resource_edit", 'users_patient');    
+	    $this->tpl->assign("resource_grid", "patients_grid");
+	    //$this->tpl->assign("resource_add", "add_patients");
+	    $this->tpl->assign('add_sufix', 'Patient');
+	    $this->tpl->assign("paginate", 0);
+	    
+	    $data = $this->patientcontractormdl->getByContractorId($this->getAgencyId());
+		$names = array();  
+		foreach ($data as $patient) {	
+	      $names[] = '"'.addslashes($patient->first_name . " " . $patient->last_name).'"';
+	    }
+	    
+	    $name_source_obj = "[".implode(",",$names)."]";  
+	    $this->tpl->assign("name_source_obj", $name_source_obj);
+	    
+	    $this->tpl->assign_include("filter_tpl", "payroll/patient_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+  	}
+  
+  	function patients_grid ($agency_contractor_id=0) {
+    	// LOAD MODELS
+		$this->load->model('patientcontractormdl');
+		    
+    	$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Creation date"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+  		$head->append($this->xml->Element("column", "width=*;align=left;type=link", "Actions"));	
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		
+    	$data = $this->patientcontractormdl->getByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'), true, "last_name");
+    
+		foreach ($data as $patient) {			      
+	      	$cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+			$cell->append($this->xml->Element("cell", null, date("m/d/Y", strtotime($patient->create_date)) ));			   
+			$cell->append($this->xml->Element("cell", null, $patient->last_name . ", " . $patient->first_name));			   
+			$cell->append($this->xml->Element("cell", null, "Rate details^".$this->config->config['index_url'] . "payroll/visitrates/users_patient/" . $patient->patient_id));	
+			$document->append($cell);			
+		}
+    
+  	}
+
+  	function users_patient($patient_id){
+		$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+		$this->tpl->assign(array("no_grid_buttons" => true));
+
+		$patient = $this->patientmdl->getById($patient_id);
+		$this->assignObject($patient);
+		$this->tpl->assign("resource_grid", "patient_users_grid");
+		$this->tpl->assign("resource_edit", "rates_patient_user");
+		$this->tpl->assign(array("add_sufix" => "Assign User to Team"));
+		$this->tpl->assign('additional_buttons', array( 'Back' => 'history.go(-1)'));
+		$this->tpl->assign('entity_id', $patient_id);
+		$this->tpl->assign_include("filter_tpl", "payroll/patient_users_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+	
+  	}
+
+  	function patient_users_grid($patient_id){
+
+  		$logic_list = $this->lang->line('logic_list');
+  		$logic_list[NULL] = 'No';
+
+  		$this->xml->root_name = "rows";
+  		$document = $this->xml->Document();
+
+  		$head = $this->xml->Element("head");
+  		$head->append($this->xml->Element("column", "width=*", "User"));
+  		$head->append($this->xml->Element("column", "width=*;align=left;type=link", "Actions"));		
+  		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+  		$document->append($head);
+
+  		foreach ($this->teammdl->get($patient_id, $this->input->post('keyword'), $this->input->post('discipline_id')) as $user) {
+  			$cell = $this->xml->Element("row", "id=" . $user->ppr_id);
+  			$cell->append($this->xml->Element("cell", null, $user->first_name . " " . $user->last_name . ", " . $user->short_description . ($user->legal_name != '' ? ' - '.$user->legal_name : '') ));
+			$cell->append($this->xml->Element("cell", null, "Select User^".$this->config->config['index_url'] . "payroll/visitrates/rates_patient_user/" . $patient_id . "/".$user->ppr_id));
+			$document->append($cell);
+		}
+		
+  	}
+
+  	function rates_patient_user($patient_id, $ppr_id=0){
+	    $ppr = $this->teammdl->getByPPRId($ppr_id);
+	    $user = $this->usagymdl->getByUsAgyId($ppr->us_agy_id);
+	    $patient = $this->patientmdl->getById($patient_id);
+		$this->assignObject($patient);
+	    $this->tpl->assign("patient_name", $patient->last_name . ", " . $patient->first_name);    
+	    $this->assignObject($user);
+		
+	    $this->tpl->assign("no_grid_buttons", true);
+	    //$this->tpl->assign('noedit', true);
+	    $this->tpl->assign("resource_edit", 'rates_patient_user_edit');    
+	    $this->tpl->assign("resource_grid", "rates_patient_user_grid");
+	    $this->tpl->assign("resource_add", "rates_patient_user_add");
+	    $this->tpl->assign("resource_delete", "rates_patient_user_delete");
+	    $this->tpl->assign("entity_id", $ppr_id);
+	    $this->tpl->assign('additional_buttons', array('Add Rate' => 'addRate()', 'Back' => 'history.go(-1)'));
+	    
+	    $this->tpl->assign_include("filter_tpl", "payroll/rates_patient_user_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "payroll/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function rates_patient_user_grid ($ppr_id=0) {
+	    // LOAD MODELS
+		$this->load->model('payrollratebyuserpatientvisittypemdl');
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=*", "Visit Rate"));
+		$head->append($this->xml->Element("column", "width=*", "Effective date"));
+		
+		// $head->append($this->xml->Element("column", "width=*", "Modified By"));
+		// $head->append($this->xml->Element("column", "width=*", "Date / Time"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));		
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		$data = $this->payrollratebyuserpatientvisittypemdl->getByPprId($ppr_id);
+		foreach ($data as $rate) {			
+	  		//print_r($rate);exit;
+			$cell = $this->xml->Element("row", "id=" . $rate->payroll_rate_by_user_patient_visit_type_id);
+			$cell->append($this->xml->Element("cell", null, $rate->visit_description));
+			$cell->append($this->xml->Element("cell", null, '$'.$rate->payroll_visit_rate));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->rate_effective_date, 'MYSQL_NOTIME'))));
+			// $cell->append($this->xml->Element("cell", null, $rate->first_name.' '.$rate->last_name));
+			// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($rate->modify_date)).' '.date("g:i a", strtotime($rate->modify_date))));
+	  		$cell->append($this->xml->Element("cell", null, "Edit^javascript:editRate(" . $rate->payroll_rate_by_user_patient_visit_type_id . ")"));
+	  		$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteRate(" . $rate->payroll_rate_by_user_patient_visit_type_id . ")"));
+			$document->append($cell);
+		}
+	    
+	}
+
+
+	function rates_patient_user_add ( $ppr_id ) {
+	    $this->load->model('payrollratebyuserpatientvisittypemdl');
+	    
+	    $rules = array (
+	      'visit_type_id'  	=> 'required',
+	      'payroll_visit_rate'  	=> 'required',
+	      'rate_effective_date'  	=> 'required'
+	      );
+	  
+	    $fields = array (
+	      'visit_type_id'  	=> 'Visit Type',
+	      'payroll_visit_rate'  	=> 'Visit Rate',
+	      'rate_effective_date'  	=> 'Effective Date'
+	      );
+	        
+	    
+	    $this->validation->set_fields($fields);  
+	    $this->validation->set_rules($rules);	
+	    	
+
+	    if ($this->validation->run() == FALSE) {
+	    	$this->tpl->assign('ppr_id', $ppr_id);
+	    	$contractor_id = $this->getAgencyId();    
+	    	$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+
+	    	$LOB = null;
+			$contractorUsAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+			if (isset($contractorUsAgy->user_tab111_product_id)) {
+				$LOB = $contractorUsAgy->user_tab111_product_id;
+			}
+
+	    	$this->tpl->assign('visit_type_list', $this->visittypemdl->getByBillable(false, $contractor->provides_altern_therapy, $contractor_id, $LOB));
+	    	$this->tpl->assign_include("dynamic_tpl", "payroll/add_patient_user_rate_form");
+	    	$this->tpl->view("parts/ibase", $this->lang->language);
+
+	    } else {
+	    	$this->assignPostData($this->payrollratebyuserpatientvisittypemdl);
+	    	$this->payrollratebyuserpatientvisittypemdl->modify_user_id=$this->getUserId();
+	    	$this->payrollratebyuserpatientvisittypemdl->modify_date=date('Y-m-d H:i:s');
+	    	$this->payrollratebyuserpatientvisittypemdl->insert($ppr_id);
+	    	echo "<SCRIPT>parent.loadGrid(); parent.dhxWins.unload();</SCRIPT>";			
+	    }		
+	}
+	  
+	function rates_patient_user_edit ( $payroll_rate_by_user_patient_visit_type_id ) {
+	    $this->load->model('payrollratebyuserpatientvisittypemdl');
+	    $this->tpl->assign("payroll_rate_by_user_patient_visit_type_id", $payroll_rate_by_user_patient_visit_type_id);
+
+	    $rules = array (
+	      //'visit_type_id'  	=> 'required',
+	      'payroll_visit_rate'  	=> 'required',
+	      'rate_effective_date'  	=> 'required'
+	      );
+	  
+	    $fields = array (
+	      //'visit_type_id'  	=> 'Visit Type',
+	      'payroll_visit_rate'  	=> 'Visit Rate',
+	      'rate_effective_date'  	=> 'Effective Date'
+	      );
+	        
+	    $this->validation->set_fields($fields);  
+	    $this->validation->set_rules($rules);	
+	    	
+	    if ($this->validation->run() == FALSE) {
+	    	$this->assignObject($this->payrollratebyuserpatientvisittypemdl->getById($payroll_rate_by_user_patient_visit_type_id));
+	    	$this->tpl->assign_include("dynamic_tpl", "payroll/edit_patient_user_rate_form");
+	    	$this->tpl->view("parts/ibase", $this->lang->language);
+	    } else {
+	    	$this->assignPostData($this->payrollratebyuserpatientvisittypemdl);      
+	    	$this->payrollratebyuserpatientvisittypemdl->updateFlex($payroll_rate_by_user_patient_visit_type_id, 'payroll_visit_rate', $this->input->post('payroll_visit_rate'));
+	    	$this->payrollratebyuserpatientvisittypemdl->updateFlex($payroll_rate_by_user_patient_visit_type_id, 'rate_effective_date', $this->payrollratebyuserpatientvisittypemdl->rate_effective_date);
+	    	$this->payrollratebyuserpatientvisittypemdl->updateFlex($payroll_rate_by_user_patient_visit_type_id, 'modify_user_id', $this->getUserId());
+	    	$this->payrollratebyuserpatientvisittypemdl->updateFlex($payroll_rate_by_user_patient_visit_type_id, 'modify_date', date('Y-m-d H:i:s'));
+	    	echo "<SCRIPT>parent.location.reload(true);parent.dhxWins.unload()</SCRIPT>";
+	    }
+	    
+	}
+	  
+	function rates_patient_user_delete($payroll_rate_by_user_patient_visit_type_id ) {		
+	    $this->load->model('payrollratebyuserpatientvisittypemdl');
+	    $document = $this->xml->Document();
+	    $rate = $this->payrollratebyuserpatientvisittypemdl->getById($payroll_rate_by_user_patient_visit_type_id);    
+	    if($rate != null){
+	    	$ppr = $this->teammdl->getByPPRId($rate->ppr_id);  
+	    	$userIds = array();
+	    	foreach ($this->teammdl->get($ppr->patient_id) as $user) {
+	    		$userIds[] = $user->us_agy_id;
+	    	}
+	    	if(in_array($ppr->us_agy_id, $userIds)){
+	    		$this->payrollratebyuserpatientvisittypemdl->delete($payroll_rate_by_user_patient_visit_type_id);
+	    		$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+	    	}else{
+	    		$document->append($this->xml->Element('alert', null, "You are not authorize to delete this!"));
+	    		return;
+	    	}
+	    }else {
+	    	$document->append($this->xml->Element('alert', null, "Visit rate not found!"));
+	    	return;
+	    }
+	    
+	}	
+
+}

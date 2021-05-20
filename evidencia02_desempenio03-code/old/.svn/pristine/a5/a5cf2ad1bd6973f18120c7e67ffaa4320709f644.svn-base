@@ -1,0 +1,62 @@
+</form>
+
+<form id="gform2" method="POST" action="{$index_url}{$resource_path}/capture_signature/{$visit_log_id}">
+<input type="hidden" value="" id="signature" name="signature" />
+<input type="hidden" value="{$visit_log_array->signature}" id="signature_old" name="signature_old" />
+
+
+{if $visit_log_array->signature != ""} 
+	<div id="signature-display">
+		<img src="{$base_url}upload/signatures/{$visit_log_array->signature}"  />
+		<div>
+			<button type="button" class="edit-sign" class="button">Edit</button>
+		</div>
+	</div>
+{/if}
+
+<div id="signature-pad" class="m-signature-pad">
+
+	<div class="m-signature-pad--body">
+		
+		<canvas></canvas>
+	</div>
+	<div class="m-signature-pad--footer">
+		{* <div class="description">Sign above</div> *}
+		<button type="button" class="button save" data-action="save">Save</button>
+		<button type="button" class="button clear" data-action="clear">Clear</button>
+		<button type="button" class="button close" onclick="parent.dhxWins.window('w2').close()">Close</button>
+	</div>
+</div> 
+
+
+
+</form>
+
+
+<script language="JavaScript" type="text/javascript">
+function drawImage(){literal}{{/literal}
+	/*if($("#signature_old").val() != '') {literal}{{/literal}
+		var ctx = $("canvas")[0].getContext("2d"),
+			img = new Image();
+		
+		img.onload = function(){literal}{{/literal}
+			ctx.drawImage(img, 0, 0, 700, 300);
+		{literal}}{/literal}
+		img.src = "{$base_url}upload/signatures/" + $("#signature_old").val();
+	{literal}}{/literal}*/
+{literal}}{/literal}
+drawImage();
+
+$(document).ready(function() {literal}{{/literal}
+	if($("#signature_old").val() != '') {literal}{{/literal}
+		$("#signature-display").show();
+		$("#signature-pad").hide();
+	{literal}}{/literal}
+	$(".edit-sign").click(function(){literal}{{/literal}
+		$("#signature-pad").show();
+		$("#signature-display").hide();
+		drawImage();
+	{literal}}{/literal});
+{literal}}{/literal});
+//$("button").click(drawImage);
+</script>

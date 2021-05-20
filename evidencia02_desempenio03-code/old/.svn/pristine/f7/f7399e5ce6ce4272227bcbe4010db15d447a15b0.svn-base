@@ -1,0 +1,1090 @@
+<?
+
+ class CMS485 extends MY_Controller {
+
+	function CMS485 () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/cms485");
+		
+		$this->tpl->assign('no_commit_form', !$this->hasPermission(6));
+		
+		$this->tpl->assign('prognosis_list', $this->parametermdl->getByType(43));
+		
+	}
+
+	function index ( $patient_id, $cms485_id=null ) {
+    $patient = $this->patientmdl->getById($patient_id);
+		$this->tpl->assign('patient', 		$patient);
+		$this->tpl->assign('agency', 		$this->agencymdl->getByAgencyId($this->getAgencyId()));
+		$this->tpl->assign('nurse_list', 	$this->teammdl->getAll($patient_id, array(1)));
+		$this->tpl->assign('doctor_list', 	$this->teammdl->getAll($patient_id, array(9)));
+		$this->tpl->assign('doctor_office_list',  $this->patientdoctorofficemdl->get($patient_id, false));
+		
+		$this->tpl->assign(array('patient_id' => $patient_id, 'entity_id' => $patient_id));
+		$this->tpl->assign(array('cms485_id' => $cms485_id, 'record_id' => $cms485_id));
+		
+		$this->tpl->assign('faction', 'index');
+		
+		if ($this->validation->run() == TRUE) {			
+			$this->assignPostData($this->episodemdl);			
+			$this->episodemdl->update($cms485_id);
+			
+			$doctor_order = $this->docdoctorordermdl->getById($this->episodemdl->doc_doctor_order_id);
+			
+			if (@$doctor_order->tab_023_order_status == 1) {
+				$this->docdoctorordermdl->updatePhysician($doctor_order->doc_doctor_order_id, $this->input->post('doctor_office_id'));
+			}
+			
+			$doctorOfficeUsers = $this->usagymdl->getByAgencyId($this->input->post('doctor_office_id'), null, null, 7);
+			
+			if (count($doctorOfficeUsers)) {
+				$doctorOfficeAdmin = $doctorOfficeUsers[0];
+				$this->episodemdl->updateFlex($cms485_id, 'phys_user_id', $doctorOfficeAdmin->us_agy_id); // assigning previous doctor
+			}
+			
+			$this->tpl->assign('success_string', "CMS 485" . $this->lang->line('grl_upd_msg'));
+			
+		}
+		
+		$_POST = array();
+		
+		$episode = $this->episodemdl->getById($cms485_id);
+		$doctororder = $this->docdoctorordermdl->getById($episode->doc_doctor_order_id);
+		$this->assignObject($doctororder);
+		$this->assignObject($episode);
+		
+		$soc = $this->socmdl->getById($episode->soc_id);
+		$this->assignObject($soc);
+		
+		if ($episode->doctor_office_id) {
+			$this->tpl->assign('doctor_office',  $this->agencymdl->getByAgencyId($episode->doctor_office_id));
+		}
+
+		$this->tpl->assign("tab_page", true);
+		if (($patient->agency_id == $this->getAgencyId()) && $this->hasPermission(15)) {
+			$this->tpl->assign('commit_form', true);
+		}else{
+      $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+      
+      if($this->getAgencyType() == 'C' AND $agency->agency_status == 'SA' AND $this->getUserProfileId() == 3 ) {
+        $this->tpl->assign('commit_form', true);
+      }      
+    } 
+    
+    
+    
+		$this->tpl->assign_include("dynamic_tpl", "patient/cms485/form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function add ( $soc_id ) {
+		
+		$soc		     = $this->socmdl->getById($soc_id);
+		$patient	     = $this->patientmdl->getById($soc->patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$current_episode = $this->episodemdl->getCurrent($soc_id);
+		
+		if (!($this->hasPermission(6) || ($agency->agency_status == 'SA' AND $this->getAgencyType() == 'C'))) {
+			return;
+		}
+		
+		$start_date = strtotime("+ 1 day", mysql_to_unix($current_episode->episode_end_date));
+		$end_date   = strtotime("+ 60 day", mysql_to_unix($current_episode->episode_end_date));
+		
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign('soc_id', $soc_id);
+			$this->tpl->assign('start_date', standard_date($start_date));
+			$this->tpl->assign('end_date',   standard_date($end_date));
+			$this->tpl->assign_include("dynamic_tpl", "patient/cms485/new_episode_confirm");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			// doctor order
+			/*$this->docdoctorordermdl->order_by_user_id = $this->getUsAgyId();
+			$this->docdoctorordermdl->order_date = date('Y-m-d');
+			$this->docdoctorordermdl->doc_doctor_order_type_id = 1;
+			$this->docdoctorordermdl->doctor_office_id = $current_episode->doctor_office_id;
+			$this->docdoctorordermdl->insert($patient->patient_id, 2);
+			$this->docdoctorordermdl->updateFlex($this->docdoctorordermdl->doc_doctor_order_id, 'sent_date', date('Y-m-d'));
+			
+			$this->episodemdl->insert($soc_id, standard_date($start_date, 'MYSQL_NOTIME'), $this->docdoctorordermdl->doc_doctor_order_id);*/
+			$this->episodemdl->insert($soc_id, standard_date($start_date, 'MYSQL_NOTIME'));
+			
+			if ($current_episode->phys_user_id) {
+				$this->episodemdl->updateFlex($this->episodemdl->cms485_id, 'phys_user_id', $current_episode->phys_user_id); // assigning previous doctor
+			}
+			
+			if ($current_episode->doctor_office_id) {
+				$this->episodemdl->updateFlex($this->episodemdl->cms485_id, 'doctor_office_id', $current_episode->doctor_office_id); // assigning previous doctor
+			}
+			
+			$emailtext = $this->emailtextmdl->get(6);
+			$this->messagemdl->user_from = $this->getUsAgyId();
+			$this->messagemdl->msg_subject = str_replace('{patient_name}', $patient->first_name . " " . $patient->last_name, $emailtext->email_subject);
+			$this->messagemdl->msg_text = str_replace('{patient_name}', $patient->first_name . " " . $patient->last_name, $emailtext->email_content);
+			$this->messagemdl->insert();
+			
+			// $team = $this->teammdl->get($soc->patient_id);
+			$team = $this->teammdl->getAll($soc->patient_id, null, true, array(), 'I');
+			
+			if ($team) {
+				foreach ($team as $member) {
+					//if ($member->discipline_id != 9) { // no doctors
+					if ($member->profile_id == 3) { // Contractors users
+						$this->usermessagemdl->insert($this->messagemdl->msg_id, $member->us_agy_id, 0);
+					}
+				}
+			}
+
+			
+			echo "<SCRIPT>parent.document.location = '" . $this->config->config["index_url"] . "patient/mypatient/edit/" . $soc->patient_id . "'</SCRIPT>";
+			
+		}
+		
+	}
+	
+	function pdf ( $cms485_id, $update=true ) {
+		
+		// saving before printing pdf
+		$this->assignPostData($this->episodemdl);
+		if ($update && $update != 'false') $this->episodemdl->update($cms485_id);
+		
+		// pdf instructions
+		$episode 	 = $this->episodemdl->getById($cms485_id);
+		$doctororder = $this->docdoctorordermdl->getById($episode->doc_doctor_order_id);
+		$agency	 	 = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$patient 	 = $this->patientmdl->getById($episode->patient_id);
+		$icds 	 	 = $this->episodeicdmdl->get($cms485_id);
+		$medications = $this->episodemedicationmdl->get($cms485_id);
+		$eo_list 	 = $this->parametermdl->getByType(19);
+		
+		// removing new line character
+		$episode->dme_and_supplies 			= str_replace("\n", " ", $episode->dme_and_supplies);
+		$episode->safety_measures  			= str_replace("\n", " ", $episode->safety_measures);
+		$episode->nutritional_requirements 	= str_replace("\n", " ", $episode->nutritional_requirements);
+		$episode->allergies			 		= str_replace("\n", " ", $episode->allergies);
+		$episode->orders_discip_21 			= str_replace("\n", " ", $episode->orders_discip_21);
+		$episode->goal_rehab_disch_22 		= str_replace("\n", " ", $episode->goal_rehab_disch_22);
+		
+		
+		$path_ticket = realpath("style/images/icon_enable.gif");
+		
+		$__FONT['PDF']['SIZE'] = 8;
+		$__FONT['PDF']['FORM_LARGE'] = 9;	
+		$__FONT['PDF']['FORM_MEDIUM'] = 8;		
+		$__FONT['PDF']['FORM_SMALL'] = 6;
+        
+		
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+		$pdf = $this->fpdf;
+		
+
+		$pdf->AddPage();
+		
+		$cero_x = 11;
+		$cero_y = 28;		
+				
+		$pdf->SetDrawColor(130,100);				
+		$pdf->SetFont('Arial', 'B', 6.5);		
+		$pdf->Text(11, 28, "Department of Health and Human Services");
+		$pdf->Text(11, 34, "Centers for Medicare & Medicaid Services");
+		
+		$pdf->SetFont('Arial', 'B', 7);	
+		$pdf->Text(481, 28, "Form Approved");
+		$pdf->Text(481, 35, "OMB No. 0938-0357");
+		
+		$pdf->SetLineWidth( 0.9 );
+		$pdf->Line(11, 37.5, 576, 37.5);
+		
+		$pdf->SetFont('Arial','B',10 );	
+		$pdf->Text(148, 47, "HOME   HEALTH   CERTIFICATION   AND   PLAN   OF   CARE");				
+				
+		$pdf->SetLineWidth( 0.3 );
+		$pdf->Line(11, 48, 576, 48);
+		
+		
+		$pdf->Line(11, 74, 576, 74);
+		$pdf->Line(134, 48, 134, 74);
+		$pdf->Line(218, 48, 218, 74);
+		$pdf->Line(399, 48, 399, 74);
+		$pdf->Line(499, 48, 499, 74);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );	
+		$pdf->Text(11, 58, '1. Patient\'s HI Claim No.                  2. Start Of Care Date   3. Certification Period' .
+						   '                                               4. Medical Record No.         5. Provider No.');	
+		
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+		$pdf->Text(20,  70, $patient->medicare_id);
+		$pdf->Text(145, 70, standard_date(mysql_to_unix($episode->estimated_soc_date)));
+		$pdf->Text(255, 70, standard_date(mysql_to_unix($episode->episode_start_date)));		
+		$pdf->Text(320, 70, standard_date(mysql_to_unix($episode->episode_end_date)));				
+		$pdf->Text(410, 70, $patient->medical_rec_nbr);		
+		$pdf->Text(502, 70, $agency->medicare_lic_nbr);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 83, '6. Patient\'s Name and Address                                                                            7. Provider\'s Name, Address and Telephone Number');
+		
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+		$pdf->Text(20,  93, $patient->first_name . " " . $patient->last_name);
+		$pdf->Text(20, 101, $patient->address . ($patient->address2 ? ', '.$patient->address2 : ''));
+		//$pdf->Text(20, 109, $patient->address2);
+		$pdf->Text(20, 109, $patient->city . ", " . $patient->state_name_long . ", " . $patient->zip1);
+		$pdf->Text(20, 117, $patient->phone_home);
+		
+		$pdf->Text(300,  93, $agency->agency_name);
+		$pdf->Text(300, 101, $agency->address);
+		$pdf->Text(300, 109, $agency->city . ", " . $agency->state_name_long . ", " . $agency->zip);
+		$pdf->Text(300, 117, $agency->phone_primary . " (Fax: " . $agency->fax . "   Contact Name: " . $agency->contact_name . ")");
+						
+		$pdf->Line(11, 120, 576, 120);
+		
+		$pdf->Line(288, 74, 288, 361);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 127, '8. Date of Birth                                                            9. Sex');
+							
+		$pdf->Rect(229, 121, 8.4, 8.4);
+		if ($patient->tab_002_sex == 1){ 
+			$pdf->Image($path_ticket, 230, 122, 6);
+		}
+		$pdf->Rect(258, 121, 8.4, 8.4);
+		if ($patient->tab_002_sex == 2){ 
+			$pdf->Image($path_ticket, 259, 122, 6);
+		}
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(240, 127, 'M          F');						
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+		$pdf->Text(80, 127, standard_date(mysql_to_unix($patient->date_birth)));
+		
+		$pdf->SetLineWidth( 0.3 );
+		$pdf->Line(11, 130, 576, 130);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 137, '11. ICD-9-CM   Principal Diagnosis                                            Date');
+		
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(15,  147, @$icds[0]->icd9_code);
+		$pdf->Text(232, 147, standard_date(mysql_to_unix(@$icds[0]->icd_date)) . " " . substr(@$eo_list[@$icds[0]->tab_019_on_exa], 0, 1));
+		$pdf->SetXY(63, 141);
+		$pdf->MultiCell(166, 8, @$icds[0]->icd9_name);
+		
+		$pdf->Line(11, 150, 288, 150);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 157, '12. ICD-9-CM   Surgical Diagnosis                                             Date');
+		
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(15,  167, @$icds[1]->icd9_code);
+		$pdf->Text(232, 167, standard_date(mysql_to_unix(@$icds[1]->icd_date)) . " " . substr(@$eo_list[@$icds[1]->tab_019_on_exa], 0, 1));
+		$pdf->SetXY(63, 161);
+		$pdf->MultiCell(166, 8, @$icds[1]->icd9_name);
+		
+		$pdf->Line(11, 170, 288, 170);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 177, "13. ICD-9-CM   Other Pertinent Procedure                                 Date");
+		
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		
+		if (count($icds) >= 3) {
+			
+			$count = 0;
+			foreach (array_slice($icds, 2, 5) as $icd) {
+
+				$pdf->Text(15,  187 + $count, $icd->icd9_code);
+				$pdf->Text(232, 187 + $count, standard_date(mysql_to_unix($icd->icd_date)) . " " . substr(@$eo_list[$icd->tab_019_on_exa], 0, 1));
+				$pdf->SetXY(63, 181 + $count);
+				$pdf->MultiCell(166, 8, $icd->icd9_name);
+				
+				$count += 10;
+				
+			}
+			
+		}
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(290, 127, '10. Medications: Dose/Frequency/Route (N)ew (C)hanged');
+		
+		$pdf->Text(290, 138, 'Medication');		
+		$pdf->Text(370, 138, 'Dose');				
+		$pdf->Text(420, 138, 'Frequency');				
+		$pdf->Text(480, 138, 'Route');				
+		$pdf->Text(552, 138, 'N/C');
+		
+		$count = 0;
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+		
+		foreach (array_slice($medications, 0, 9) as $medication) {
+
+			$pdf->Text(290, 147 + $count, $medication->med_descrip);
+			$pdf->Text(370, 147 + $count, $medication->med_dose);
+			$pdf->Text(420, 147 + $count, $medication->med_frecuency);
+			$pdf->Text(480, 147 + $count, $medication->tab_description);
+			$pdf->Text(552, 147 + $count, ($medication->med_newcharge == 2 ? 'C' : 'N'));
+			
+			$count += 10;
+			
+		}
+
+		$pdf->Line(11, 230, 576, 230);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 237, "14. DME and Supplies");
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->SetXY(8, 240);
+		$pdf->MultiCell(280, 8, substr($episode->dme_and_supplies, 0, 170));
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(290, 237, '15. Safety Measures');
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->SetXY(287, 240);
+		$pdf->MultiCell(280, 8, substr($episode->safety_measures, 0, 170));
+		
+		$pdf->Line(11, 265, 576, 265);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 272, "16. Nutritional Requirements");
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->SetXY(8, 275);
+		$pdf->MultiCell(280, 8, substr($episode->nutritional_requirements, 0, 170));
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(290, 272, '17. Allergies');
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->SetXY(287, 275);
+		$pdf->MultiCell(280, 8, substr($episode->allergies, 0, 170));
+		
+		$pdf->Line(11, 300, 576, 300);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 307, "18.A. Functional Limitations");
+		
+		$pdf->Rect(22, 310, 8.4, 8.4);
+		if ($episode->amputation == 1) {
+			$pdf->Image($path_ticket, 23, 311, 6); 
+		} 
+		$pdf->Text(15, 317, '1      Amputation');
+		
+		$pdf->Rect(130, 310, 8.4, 8.4);
+		if ($episode->paralysis == 1) {
+			$pdf->Image($path_ticket, 131, 311, 6); 
+		} 
+		$pdf->Text(123, 317, '5      Paralysis');
+		
+		$pdf->Rect(210, 310, 8.4, 8.4);
+		if ($episode->leagally_blind == 1) {
+			$pdf->Image($path_ticket, 211, 311, 6); 
+		} 
+		$pdf->Text(203, 317, '9      Legally Blind');
+		
+		
+		$pdf->Rect(22, 320, 8.4, 8.4);
+		if ($episode->bowell_incontinence == 1) {
+			$pdf->Image($path_ticket, 23, 321, 6); 
+		} 
+		$pdf->Text(15, 327, '2      Bowel/Bladder');
+		$pdf->Text(15, 337, '        (Incontinence)');
+		
+		$pdf->Rect(130, 320, 8.4, 8.4);
+		if ($episode->endurance == 1) {
+			$pdf->Image($path_ticket, 131, 321, 6); 
+		} 
+		$pdf->Text(123, 327, '6      Endurance');
+		
+		$pdf->Rect(210, 320, 8.4, 8.4);
+		if ($episode->dyspnea == 1) {
+			$pdf->Image($path_ticket, 211, 321, 6); 
+		} 
+		$pdf->Text(203, 327, 'A      Dyspnea With');
+		$pdf->Text(203, 337, '         Minimal Exertion');
+		
+		
+		$pdf->Rect(22, 340, 8.4, 8.4);
+		if ($episode->contracture == 1) {
+			$pdf->Image($path_ticket, 23, 341, 6); 
+		} 
+		$pdf->Text(15, 347, '3      Contracture');
+		
+		$pdf->Rect(130, 340, 8.4, 8.4);
+		if ($episode->ambulation == 1) {
+			$pdf->Image($path_ticket, 131, 341, 6); 
+		} 
+		$pdf->Text(123, 347, '7      Ambulation');
+		
+		$pdf->Rect(210, 340, 8.4, 8.4);
+		if ($episode->other_lim == 1) {
+			$pdf->Image($path_ticket, 211, 341, 6); 
+		} 
+		$pdf->Text(203, 347, 'B      Other (Specify)');
+		
+		
+		$pdf->Rect(22, 350, 8.4, 8.4);
+		if ($episode->hearing == 1) {
+			$pdf->Image($path_ticket, 23, 351, 6); 
+		} 
+		$pdf->Text(15, 357, '4      Hearing');
+		
+		$pdf->Rect(130, 350, 8.4, 8.4);
+		if ($episode->speech == 1) {
+			$pdf->Image($path_ticket, 131, 351, 6); 
+		} 
+		$pdf->Text(123, 357, '8      Speech');
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(290, 307, "18.B. Activities Permitted");
+		
+		
+		$pdf->Rect(302, 310, 8.4, 8.4);
+		if ($episode->bedrest == 1) {
+			$pdf->Image($path_ticket, 303, 311, 6); 
+		} 
+		$pdf->Text(295, 317, '1      Complete Bedrest');
+		
+		$pdf->Rect(400, 310, 8.4, 8.4);
+		if ($episode->partial_weight_bearing == 1) {
+			$pdf->Image($path_ticket, 401, 311, 6); 
+		} 
+		$pdf->Text(393, 317, '6      Partial Weight Bearing');
+		
+		$pdf->Rect(510, 310, 8.4, 8.4);
+		if ($episode->wheelchair == 1) {
+			$pdf->Image($path_ticket, 511, 311, 6); 
+		} 
+		$pdf->Text(503, 317, 'A      Wheelchair');
+		
+		
+		$pdf->Rect(302, 320, 8.4, 8.4);
+		if ($episode->bedrest_brp == 1) {
+			$pdf->Image($path_ticket, 303, 321, 6); 
+		} 
+		$pdf->Text(295, 327, '2      Bedrest BRP');
+		
+		$pdf->Rect(400, 320, 8.4, 8.4);
+		if ($episode->independent_at_home == 1) {
+			$pdf->Image($path_ticket, 401, 321, 6); 
+		} 
+		$pdf->Text(393, 327, '7      Independent At Home');
+		
+		$pdf->Rect(510, 320, 8.4, 8.4);
+		if ($episode->walker == 1) {
+			$pdf->Image($path_ticket, 511, 321, 6); 
+		} 
+		$pdf->Text(503, 327, 'B      Walker');
+		
+		
+		$pdf->Rect(302, 330, 8.4, 8.4);
+		if ($episode->up_as_tolerated == 1) {
+			$pdf->Image($path_ticket, 303, 331, 6); 
+		} 
+		$pdf->Text(295, 337, '3      Up As Tolerated');
+		
+		$pdf->Rect(400, 330, 8.4, 8.4);
+		if ($episode->crutches == 1) {
+			$pdf->Image($path_ticket, 401, 331, 6); 
+		} 
+		$pdf->Text(393, 337, '6      Crutches');
+		
+		$pdf->Rect(510, 330, 8.4, 8.4);
+		if ($episode->no_restrictions == 1) {
+			$pdf->Image($path_ticket, 511, 331, 6); 
+		} 
+		$pdf->Text(503, 337, 'C      No Restrictions');
+		
+		
+		$pdf->Rect(302, 340, 8.4, 8.4);
+		if ($episode->transfer_bed_chair == 1) {
+			$pdf->Image($path_ticket, 303, 341, 6); 
+		} 
+		$pdf->Text(295, 347, '4      Transfer Bed/Chair');
+		
+		$pdf->Rect(400, 340, 8.4, 8.4);
+		if ($episode->cane == 1) {
+			$pdf->Image($path_ticket, 401, 341, 6); 
+		} 
+		$pdf->Text(393, 347, '7      Cane');
+		
+		$pdf->Rect(510, 340, 8.4, 8.4);
+		if ($episode->other_specify == 1) {
+			$pdf->Image($path_ticket, 511, 341, 6); 
+		} 
+		$pdf->Text(503, 347, 'D      Other (Specify)');
+		
+		
+		$pdf->Rect(302, 350, 8.4, 8.4);
+		if ($episode->exercises_prescribed == 1) {
+			$pdf->Image($path_ticket, 303, 351, 6); 
+		} 
+		$pdf->Text(295, 357, '5      Exercises Prescribed');
+		
+		
+		$pdf->Line(11, 361, 576, 361);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 370, "19. Mental Status");
+		
+		$pdf->Rect(130, 363, 8.4, 8.4);
+		if ($episode->oriented == 1) {
+			$pdf->Image($path_ticket, 131, 364, 6); 
+		} 
+		$pdf->Text(123, 370, '1      Oriented');
+		
+		$pdf->Rect(210, 363, 8.4, 8.4);
+		if ($episode->forgetful == 1) {
+			$pdf->Image($path_ticket, 211, 364, 6); 
+		} 
+		$pdf->Text(203, 370, '3      Forgetful');
+		
+		$pdf->Rect(302, 363, 8.4, 8.4);
+		if ($episode->disoriented == 1) {
+			$pdf->Image($path_ticket, 303, 364, 6); 
+		} 
+		$pdf->Text(295, 370, '5      Disoriented');
+		
+		$pdf->Rect(400, 363, 8.4, 8.4);
+		if ($episode->agitated == 1) {
+			$pdf->Image($path_ticket, 401, 364, 6); 
+		} 
+		$pdf->Text(393, 370, '7      Agitated');
+		
+		
+		$pdf->Rect(130, 373, 8.4, 8.4);
+		if ($episode->comatose == 1) {
+			$pdf->Image($path_ticket, 131, 374, 6); 
+		} 
+		$pdf->Text(123, 380, '2      Comatose');
+		
+		$pdf->Rect(210, 373, 8.4, 8.4);
+		if ($episode->depressed == 1) {
+			$pdf->Image($path_ticket, 211, 374, 6); 
+		} 
+		$pdf->Text(203, 380, '4      Depressed');
+		
+		$pdf->Rect(302, 373, 8.4, 8.4);
+		if ($episode->lethargic == 1) {
+			$pdf->Image($path_ticket, 303, 374, 6); 
+		} 
+		$pdf->Text(295, 380, '6      Lethargic');
+		
+		$pdf->Rect(400, 373, 8.4, 8.4);
+		if ($episode->other_mental == 1) {
+			$pdf->Image($path_ticket, 401, 374, 6); 
+		} 
+		$pdf->Text(393, 380, '8      Other');
+		
+		
+		$pdf->Line(11, 384, 576, 384);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 393, "20. Prognosis");
+		
+		
+		$pdf->Rect(130, 386, 8.4, 8.4);
+		if ($episode->prognosis_20 == 1) {
+			$pdf->Image($path_ticket, 131, 387, 6); 
+		} 
+		$pdf->Text(123, 393, '1      Poor');
+		
+		$pdf->Rect(210, 386, 8.4, 8.4);
+		if ($episode->prognosis_20 == 2) {
+			$pdf->Image($path_ticket, 211, 387, 6); 
+		} 
+		$pdf->Text(203, 393, '2      Guarded');
+		
+		$pdf->Rect(302, 386, 8.4, 8.4);
+		if ($episode->prognosis_20 == 3) {
+			$pdf->Image($path_ticket, 303, 387, 6); 
+		} 
+		$pdf->Text(295, 393, '3      Fair');
+		
+		$pdf->Rect(400, 386, 8.4, 8.4);
+		if ($episode->prognosis_20 == 4) {
+			$pdf->Image($path_ticket, 401, 387, 6); 
+		} 
+		$pdf->Text(393, 393, '4      Good');
+		
+		$pdf->Rect(510, 386, 8.4, 8.4);
+		if ($episode->prognosis_20 == 5) {
+			$pdf->Image($path_ticket, 511, 387, 6); 
+		} 
+		$pdf->Text(503, 393, '5      Excellent');
+		
+		
+		$pdf->Line(11, 397, 576, 397);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 406, "21. Orders for Discipline and Treatments (Specify Amount/Frequency/Duration)");
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->SetXY(8, 409);
+		$pdf->MultiCell(570, 8, substr($episode->orders_discip_21, 0, 2300));
+		
+		
+		$pdf->Line(11, 571, 576, 571);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 580, "22. Goals/Rehabilitation Potential/Discharge Plans");
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->SetXY(8, 583);
+		$pdf->MultiCell(570, 8, substr($episode->goal_rehab_disch_22, 0, 1600));
+		
+		
+		$pdf->Line(288, 702, 288, 821);
+		
+		
+		$pdf->Line(11, 702, 576, 702);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 711, "23. Nurse's Signature and Date of Verbal SOC Where Applicable");
+		$pdf->Text(290, 711, "25. Date HHA Received Signed POT");
+		
+		
+		$pdf->Line(11, 735, 576, 735);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 744, "24. Physician's Name and Address");
+		
+		if ($doctororder->doctor_office_id) { // printing doctor information
+			
+			$doctorOffice = $this->agencymdl->getByAgencyId($episode->doctor_office_id);
+			
+			$pdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$pdf->Text(11, 754, $doctorOffice->agency_name);
+			$pdf->Text(11, 764, $doctorOffice->address);			
+			$pdf->Text(11, 774, $doctorOffice->city . ", " . $doctorOffice->state_name_long . " " . $doctorOffice->zip);
+			$pdf->Text(11, 784, $doctorOffice->phone_primary);
+			
+		}
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(290, 744, "26.");
+    $pdf->Rect(304, 738, 8.4, 8.4);
+		if ($episode->is_certify == 1){ 		
+			$pdf->Image($path_ticket, 305, 739, 6);
+		}
+		$pdf->Text(304+15, 744, 'I certify/recertify that this patient is confined to his/her home and');
+		$pdf->Text(304, 754, 'needs intermittent skilled nursing care, physical therapy and/or speech');
+		$pdf->Text(304, 764, 'therapy or continues to need occupational therapy. The patient is under');
+		$pdf->Text(304, 774, 'my care, and I have authorized the services on this plan of care and will');
+		$pdf->Text(304, 784, 'periodically review the plan.');
+		
+		
+		$pdf->Line(11, 788, 576, 788);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 797, "27. Attending Physician's Signature and Date Signed");
+		
+		$pdf->Text(290, 797, "28.");
+		$pdf->Text(304, 797, 'Anyone who misrepresents, falsifies, or conceals essential information');	
+		$pdf->Text(304, 807, 'required for payment of Federal funds may be subject to fine, imprisonment,');
+		$pdf->Text(304, 817, 'or civil penalty under applicable Federal laws.');	
+		
+		
+		$pdf->Line(11, 821, 576, 821);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+		$pdf->Text(11, 830, "Form CMS-485 (C-3) (02-94) (Formerly HCFA-485) (Print Aligned)");
+		
+		
+		
+		
+		if (count($icds) > 7 || 								// icd code
+		   count($medications) > 9 ||							// medications
+		   strlen($episode->dme_and_supplies) > 170 ||			// texts
+		   strlen($episode->safety_measures) > 170 ||
+		   strlen($episode->nutritional_requirements) > 170 ||
+		   strlen($episode->allergies) > 170 ||
+		   strlen($episode->orders_discip_21) > 2300 ||
+		   strlen($episode->goal_rehab_disch_22) > 1600
+ 		   ) {
+		   	
+		   	$pdf->AddPage();
+		   	
+		   	
+			$cero_x = 11;
+			$cero_y = 28;	
+			$eje_y_ini = 30;	
+					
+			$pdf->SetDrawColor(130,100);				
+			$pdf->SetFont('Arial','B',6.5);		
+			$pdf->Text(11, 28, "Department of Health and Human Services");
+			$pdf->Text(11, 34, "Centers for Medicare & Medicaid Services");
+	
+			$pdf->SetFont('Arial','B',7);	
+			$pdf->Text(481, 28, "Form Approved");
+			$pdf->Text(481, 35, "OMB No. 0938-0357");				
+			
+			$pdf->SetLineWidth( 0.9 );
+			$pdf->Line(11, 37, 576, 37);
+					
+			$pdf->SetFont('Arial','B',12 );	
+			$pdf->Text(41, 55, "ADDENDUM TO:");	
+			$pdf->Rect(191, 43, 15, 15);		
+			$pdf->Text(211, 55, "PLAN OF TREATMENT");				
+			$pdf->Rect(371, 43, 15, 15);			
+			$pdf->Text(391, 55, "MEDICAL UPDATE");	
+			
+			$pdf->Image($path_ticket, 193, 44, 11);	
+			
+			$pdf->SetLineWidth( 0.3 );
+			$pdf->Line(11, 63, 576, 63);
+			
+			$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );	
+			$pdf->Text(11, 71, '1. Patient\'s HI Claim No.                  2. Start Of Care Date   3. Certification Period' .
+						   '                                               4. Medical Record No.         5. Provider No.');	
+						   
+			$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$pdf->Text(20,  81, $patient->medicare_id);
+			$pdf->Text(145, 81, standard_date(mysql_to_unix($episode->estimated_soc_date)));
+			$pdf->Text(255, 81, standard_date(mysql_to_unix($episode->episode_start_date)));		
+			$pdf->Text(320, 81, standard_date(mysql_to_unix($episode->episode_end_date)));				
+			$pdf->Text(410, 81, $patient->medical_rec_nbr);		
+			$pdf->Text(502, 81, $agency->medicare_lic_nbr);
+						   
+
+			$pdf->Line(134, 63, 134, 85);
+			$pdf->Line(218, 63, 218, 85);
+			$pdf->Line(399, 63, 399, 85);
+			$pdf->Line(499, 63, 499, 85);
+			
+			$pdf->Line(11, 85, 576, 85);
+			
+			$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+			$pdf->Text(11, 94, '6. Patient\'s Name                                                           ' .
+							   '                                        7. Provider\'s Name');
+						
+			
+			$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$pdf->Text(20, 104, $patient->first_name . " " . $patient->last_name);		
+			$pdf->Text(295, 104, $agency->agency_name);	
+			
+			$pdf->Line(288, 85, 288, 109);
+			
+			$pdf->Line(11, 109, 576, 109);
+			
+			$pdf->Line(61, 109, 61, 120);
+			
+			
+			$eje_y = 120;
+			
+			if (count($medications) > 9) {
+				
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 10");
+				$pdf->Text(80, 	$eje_y, "Medications");
+				$pdf->Text(200, $eje_y, "Dose");
+				$pdf->Text(300, $eje_y, "Frequency");
+				$pdf->Text(400, $eje_y, "Route");
+				$pdf->Text(550, $eje_y, "N/C");
+				
+				
+				$count = 0;
+				$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+				$eje_y += 10;
+
+				for ($i = 0; $i <= 0; $i++) {
+					
+					foreach (array_slice($medications, 9) as $medication) {
+		
+						$pdf->Line(61, $eje_y-10, 61, $eje_y);
+		
+						$pdf->Text(80, 	$eje_y, $medication->med_descrip);
+						$pdf->Text(200, $eje_y, $medication->med_dose);
+						$pdf->Text(300, $eje_y, $medication->med_frecuency);
+						$pdf->Text(400, $eje_y, $medication->tab_description);
+						$pdf->Text(550, $eje_y, ($medication->med_newcharge == 2 ? 'C' : 'N'));
+						
+						$eje_y += 10;
+						
+						if ($eje_y > 830) {
+							$pdf->AddPage();
+							$eje_y = $eje_y_ini;
+						}
+						
+					}
+					
+				}
+				
+			}
+			
+			
+			if (count($icds) > 7) {
+				
+				$pdf->Line(61, $eje_y-10, 61, $eje_y+10);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 13");
+				$pdf->Text(80, 	$eje_y, "ICD-9-CM");
+				$pdf->Text(140, $eje_y, "Procedure");
+				$pdf->Text(500, $eje_y, "Date");
+				$pdf->Text(560, $eje_y, "E/O");
+				
+				
+				$count = 0;
+				$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+				$eje_y += 10;
+				
+				for ($i = 0; $i <= 0; $i++) {
+					foreach (array_slice($icds, 7) as $icd) {
+		
+						$pdf->Line(61, $eje_y-10, 61, $eje_y);
+		
+						$pdf->Text(80, 	$eje_y, $icd->icd9_code);
+						$pdf->Text(140, $eje_y, $icd->icd9_name);
+						$pdf->Text(500, $eje_y, standard_date(mysql_to_unix($icd->icd_date)));
+						$pdf->Text(560, $eje_y, substr(@$eo_list[$icd->tab_019_on_exa], 0, 1));
+						
+						$eje_y += 10;
+						
+						if ($eje_y > 830) {
+							$pdf->AddPage();
+							$eje_y = $eje_y_ini;
+						}
+						
+					}
+				}
+				
+			}
+
+
+			if (strlen($episode->dme_and_supplies) > 170) {
+				
+				$pdf->Line(61, $eje_y-10, 61, $eje_y);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 14");
+				
+				$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+				foreach (str_split(substr($episode->dme_and_supplies, 170), 100) as $substring) {
+					
+					$pdf->Line(61, $eje_y-10, 61, $eje_y);
+					
+					$pdf->Text(80, 	$eje_y, $substring);
+					$eje_y += 10;
+					
+					if ($eje_y > 830) {
+						$pdf->AddPage();
+						$eje_y = $eje_y_ini;
+					}
+					
+				}
+				
+			}
+			
+			
+			if (strlen($episode->safety_measures) > 170) {
+				
+				$pdf->Line(61, $eje_y-10, 61, $eje_y);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 15");
+				
+				$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+				foreach (str_split(substr($episode->safety_measures, 170), 100) as $substring) {
+					
+					$pdf->Line(61, $eje_y-10, 61, $eje_y);
+					
+					$pdf->Text(80, 	$eje_y, $substring);
+					$eje_y += 10;
+					
+					if ($eje_y > 830) {
+						$pdf->AddPage();
+						$eje_y = $eje_y_ini;
+					}
+					
+				}
+				
+			}
+			
+			
+			if (strlen($episode->nutritional_requirements) > 170) {
+				
+				$pdf->Line(61, $eje_y-10, 61, $eje_y);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 16");
+				
+				$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+				foreach (str_split(substr($episode->nutritional_requirements, 170), 100) as $substring) {
+					
+					$pdf->Line(61, $eje_y-10, 61, $eje_y);
+					
+					$pdf->Text(80, 	$eje_y, $substring);
+					$eje_y += 10;
+					
+					if ($eje_y > 830) {
+						$pdf->AddPage();
+						$eje_y = $eje_y_ini;
+					}
+					
+				}
+				
+			}
+			
+
+			if (strlen($episode->allergies) > 170) {
+				
+				$pdf->Line(61, $eje_y-10, 61, $eje_y);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 17");
+				
+				$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+				foreach (str_split(substr($episode->allergies, 170), 100) as $substring) {
+					
+					$pdf->Line(61, $eje_y-10, 61, $eje_y);
+					
+					$pdf->Text(80, 	$eje_y, $substring);
+					$eje_y += 10;
+					
+					if ($eje_y > 830) {
+						$pdf->AddPage();
+						$eje_y = $eje_y_ini;
+					}
+					
+				}
+				
+			}
+			
+			
+			if (strlen($episode->orders_discip_21) > 2300) {
+				
+				$pdf->Line(61, $eje_y-10, 61, $eje_y);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 21");
+				
+				$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+				foreach (str_split(substr($episode->orders_discip_21, 2300), 100) as $substring) {
+					
+					$pdf->Line(61, $eje_y-10, 61, $eje_y);
+					
+					$pdf->Text(80, 	$eje_y, $substring);
+					$eje_y += 10;
+					
+					if ($eje_y > 830) {
+						$pdf->AddPage();
+						$eje_y = $eje_y_ini;
+					}
+					
+				}
+				
+			}
+			
+			
+			if (strlen($episode->goal_rehab_disch_22) > 1600) {
+				
+				$pdf->Line(61, $eje_y-10, 61, $eje_y);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Item 22");
+				
+				$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+				foreach (str_split(substr($episode->goal_rehab_disch_22, 1600), 100) as $substring) {
+					
+					$pdf->Line(61, $eje_y-10, 61, $eje_y);
+					
+					$pdf->Text(80, $eje_y, $substring);
+					$eje_y += 10;
+					
+					if ($eje_y > 830) {
+						$pdf->AddPage();
+						$eje_y = $eje_y_ini;
+					}
+					
+				}
+				
+			}
+			
+			if ($eje_y > 750) {
+				$pdf->Line(61, $eje_y-10, 61, 830);
+				$pdf->AddPage();
+				$eje_y = $eje_y_ini;
+			}
+			
+			
+			$pdf->Line(61, $eje_y-10, 61, 750);
+			
+			$eje_y = 750;
+			
+			$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+
+
+			$pdf->Line(11, $eje_y, 576, $eje_y);
+			$pdf->Line(485, $eje_y, 485, $eje_y+70);
+
+			$eje_y += 10;
+			$pdf->Text(11, 	$eje_y, "Signature of Physician");
+			$pdf->Text(491, $eje_y, 'Date');
+			
+			$eje_y += 25;
+			$pdf->Line(11, $eje_y, 576, $eje_y);
+			
+			$eje_y += 10;
+			$pdf->Text(11, 	$eje_y, "Optional Name/Signature of Nuerse/Therapist");
+			$pdf->Text(491, $eje_y, 'Date');
+			
+			$eje_y += 25;
+			$pdf->Line(11, $eje_y, 576, $eje_y);
+			
+			$eje_y += 10;
+			$pdf->Text(11, $eje_y, 'Form CMS-487 (C-3) (02-94) (Formerly HCFA-487) (Print Aligned)');
+			
+			
+		   	
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		$this->fpdf->Output('cms485.pdf','D');
+		
+	}
+	
+ }

@@ -1,0 +1,273 @@
+{literal}
+<style type="text/css" media="screen">
+	.#gmap {
+	    height: 100%;
+  	}
+
+	.marker-labels {
+		color: white;
+		background-color: blue;
+		font-family: "Lucida Grande", "Arial", sans-serif;
+		font-size: 10px;
+		font-weight: bold;
+		text-align: center;
+		width: 30px;
+		white-space: nowrap;
+	}	
+</style>
+{/literal}
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center">
+  <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Clinicians around Patient</td>
+  </tr> 
+  <tr><td colspan="2" height="10"></td></tr>
+  <tr>
+  	<td colspan="2">
+  		<font size="4">Find clinicians Within: </font>
+  		<select id="radius_km" onchange="canShowCloseClinicians(true)">
+			 <option value="1">1 km</option>
+			 <option value="2">2 km</option>
+			 <option value="5">5 km</option>
+			 <option value="10">10 km</option>
+			 <option value="20" selected="selected">20 km</option>
+			 <option value="50">50 km</option>
+			 <option value="100">100 km</option>
+			 <option value="150">150 km</option>
+			 <option value="200">200 km</option>
+			 <option value="300">300 km</option>
+			 <option value="400">400 km</option>
+			 <option value="500">500 km</option>
+			 <option value="600">600 km</option>
+			 <option value="700">700 km</option>
+			 <option value="800">800 km</option>
+			 <option value="900">900 km</option>
+			 <option value="1000">1000 km</option> 
+		</select>
+ 		<small>(Change distance to find your clinicians)</small>
+		 <div id="loading" style="font-size: 16px; text-align: center;">
+		 	Loading...	
+		 </div>
+  	</td>
+  </tr>
+  <tr>
+    <td height="100%" valign="top" colspan="2">
+
+	    <div style="width:99.5%; height:100%;" id="gmap">
+	       	
+	    </div>
+
+    </td>
+  </tr>
+</table>
+
+{literal}
+<script>
+	var map;
+	var radius_circle;
+	var patient_cords;
+	{/literal}
+		var data = JSON.parse('{$clinicians_json}');
+		var patient = JSON.parse('{$patient_json}');
+	{literal}
+	var clinicians_cords = [];
+	var markers_on_map = [];
+	var loaded_everything = false;
+	
+	// console.log(data.clinicians);
+
+	function initMap() {
+	  	$('#loading').html('Loadin Map...').show();
+	  	if (!patient.address) {
+	  		alert("Patient Address is empty. So we can't find clinicians in your selected distance.");
+	  	}
+	  	geocoder = new google.maps.Geocoder();
+	    geocoder.geocode({
+			'address': patient.address
+	    }, function(results, status) {      
+	    	if (status == google.maps.GeocoderStatus.OK) {
+			    patient_cords =  results[0].geometry.location;  
+			    // console.log('patient cords'+patient_cords);
+	    		map = new google.maps.Map(document.getElementById('gmap'), {
+			    	center: patient_cords,
+			    	zoom: 12
+			    });
+			  	google.maps.event.addListenerOnce(map, 'idle', function(){
+				    //loaded fully
+				    loadCliniciansCords();
+				    
+				    var new_marker = new google.maps.Marker({
+	  					position: patient_cords,
+	  					map: map,
+	  				});
+
+	  				
+	  				var infoWindow = new google.maps.InfoWindow({
+	  					content: '<h4>Patient: '+patient.last_name+' '+patient.first_name+'</h4><br>Address: '+patient.address
+	  				});
+	  				new_marker.addListener('click', function(){
+	  					infoWindow.open(map, new_marker);
+	  				});
+
+				});
+			}        
+	    });    
+	}
+
+	function loadCliniciansCords(){		
+		$('#loading').html('Loading Clinicians...').show();
+	  	for (var index = 0; index < data.clinicians.length; index++) {
+	  		if (clinicians_cords[index]) {
+	  			// console.log('cords exist');
+	  			continue;
+	  		}
+
+	  		if(!data.clinicians[index].address){
+	  			// console.log('address empty');
+	  			clinicians_cords[index] = {};
+	  			if (clinicians_cords.length == data.clinicians.length) {
+		        	showCloseClinicians();
+		        	$('#loading').hide();
+		        	loaded_everything = true;
+		        	break;
+		        } 
+	  			continue;
+	  		}
+	  		// console.log('index: '+index);
+
+	  		if(data.clinicians[index].geo_lat && data.clinicians[index].geo_lng){
+	  			clinicians_cords[index] = new google.maps.LatLng(data.clinicians[index].geo_lat, data.clinicians[index].geo_lng);
+	  			 if (clinicians_cords.length == data.clinicians.length) {
+		        	showCloseClinicians();
+		        	$('#loading').hide();
+		        	loaded_everything = true;
+		        } else {
+		        	loadCliniciansCords();
+		        }
+	  		} else {
+		  		geocoder = new google.maps.Geocoder();
+			    geocoder.geocode({
+			    	'address': data.clinicians[index].address
+			    }, function(results, status) {
+			    	// console.log(status);
+			    	if (status == google.maps.GeocoderStatus.OK) {
+					    clinicians_cords[index] = results[0].geometry.location;
+					    // console.log('found');
+			        	// console.log(clinicians_cords.length+':::'+data.clinicians.length);
+				        if (clinicians_cords.length == data.clinicians.length) {
+				        	showCloseClinicians();
+				        	$('#loading').hide();
+				        	loaded_everything = true;
+				        } else {
+				        	loadCliniciansCords();
+				        }		    		
+
+					} else if (status == google.maps.GeocoderStatus.OVER_QUERY_LIMIT) { 
+						setTimeout("loadCliniciansCords()", 2000);					
+					} else if(status == google.maps.GeocoderStatus.ZERO_RESULTS){
+						// ZERO_RESULTS
+						// console.log('no result');
+						clinicians_cords[index] = {};
+						if (clinicians_cords.length == data.clinicians.length) {
+				        	showCloseClinicians();
+				        	$('#loading').hide();
+				        	loaded_everything = true;
+				        } else{
+							loadCliniciansCords();
+				        }
+					} else {
+						// console.log(status);
+						// console.log('unknown');
+						clinicians_cords[index] = {};
+						if (clinicians_cords.length == data.clinicians.length) {
+				        	showCloseClinicians();
+				        	$('#loading').hide();
+				        	loaded_everything = true;
+				        } else {
+							loadCliniciansCords();
+				        }
+					}
+			    });
+	  		}
+
+	    	break;
+		    
+	  	}
+	}
+
+	function canShowCloseClinicians(onload){
+		if (onload) {
+			if (!loaded_everything) {
+				return;
+			} else {
+				showCloseClinicians();
+			}
+		} else {			
+			if (!loaded_everything) {
+		  		alert('Map is still loading. try after finished loading.');
+		  	} else {
+		  		showCloseClinicians();
+		  	}
+		}
+	}
+
+  	function showCloseClinicians() {
+	  	var radius_km = $('#radius_km').val();
+	  	
+	  	//remove all circles and markers from map before displaying new ones
+	  	if (radius_circle) {
+	  		radius_circle.setMap(null);
+	  		radius_circle = null;
+	  	}
+	  	for (var i = 0; i < markers_on_map.length; i++) {
+	  		if (markers_on_map[i]) {
+	  			markers_on_map[i].setMap(null);
+	  			markers_on_map[i] = null;
+	  		}
+	  	}
+		
+	  	radius_circle = new google.maps.Circle({
+	  		center: patient_cords,
+	  		radius: radius_km * 1000,
+	  		// clickable: false,
+	  		zoom: 12,
+	  		map: map
+	  	});
+		if(radius_circle) 
+			map.fitBounds(radius_circle.getBounds());
+
+  		clinicians_cords.forEach(function(location, j){
+  			if (location.lat) {	  				
+	  			//distance in meters between your location and the marker
+	  			var distance_from_location = google.maps.geometry.spherical.computeDistanceBetween(patient_cords, location); 
+	  			if (distance_from_location <= radius_km * 1000) {
+	  				var icon = {
+					    url: "http://maps.google.com/mapfiles/ms/icons/blue.png",
+					    scaledSize: new google.maps.Size(35, 35), 
+					    labelOrigin: new google.maps.Point(17, 10)
+					};
+
+	  				var new_marker = new google.maps.Marker({
+	  					position: location,
+	  					map: map,
+	  					label: {color: 'white', fontSize: '10px', text: data.clinicians[j].short_description, fontWeight: 'bold'},
+	  					icon: icon
+	  				});
+
+	  				var descipline = data.clinicians[j].short_description ? '( '+data.clinicians[j].short_description+' )' : '';
+
+	  				var infoWindow = new google.maps.InfoWindow({
+	  					content: '<h4>Clinician: '+data.clinicians[j].last_name+' '+data.clinicians[j].first_name+descipline+'</h4><br>Address: '+data.clinicians[j].address+'<br><b>Distance: '+(distance_from_location/1000).toFixed(2)+'km </b>'
+	  				});
+	  				new_marker.addListener('click', function(){
+	  					infoWindow.open(map, new_marker);
+	  				});
+	  				markers_on_map.push(new_marker);
+
+	  			}
+  			}
+  		});
+  	}
+</script>
+{/literal}
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBy5FYliiTZgc5mZPSoQmt_XwXRtaju4FY&callback=initMap&libraries=geometry,places&ext=.js"
+    async defer></script>

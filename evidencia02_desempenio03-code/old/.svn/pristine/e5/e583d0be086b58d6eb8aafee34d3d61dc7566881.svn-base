@@ -1,0 +1,421 @@
+<?
+
+ class Credential extends MY_Controller {
+
+	var $rules = array ('tab_086_credential_type'	=> 'required',
+						'expiration_date'			=> 'required');
+
+	function Credential () {
+		parent::MY_Controller();
+		$this->load->model('us1usercredentialsmdl');
+		$this->load->model('agencycredentialtypemdl');
+		$this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+		$this->tpl->assign("resource_path", "useragency/credential");
+		$this->tpl->assign('tab_page', true);
+	}
+
+	function index ( $us_agy_id, $title="no", $back="no" ) {
+		$additional_buttons = array();
+		$additional_buttons['Send Credential'] = 'sendCredentials()';
+		if ($title=="yes") {
+			$userUsAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+			$this->tpl->assign('list_title', "Credentials: {$userUsAgy->first_name} {$userUsAgy->last_name}");
+		}
+		if ($back=="yes") {
+			$additional_buttons['Back'] = 'history.go(-1)';
+			// $this->tpl->assign('additional_buttons',array('Back'=>"history.go(-1)"));
+		}
+		$this->tpl->assign('additional_buttons', $additional_buttons);
+		// $this->tpl->assign('noedit', true);		
+		$this->tpl->assign('no_grid_buttons', true);
+		if ($this->getAgencyType() == 'C' OR $this->getAgencyType() == 'A') {
+			$this->tpl->assign('no_grid_buttons', false);
+			$this->tpl->assign("add_sufix", "Credential");
+		}
+		$this->tpl->assign("entity_id", $us_agy_id);
+		
+		// disable paginatin
+		$this->tpl->assign("paginate", 0);
+
+		$this->tpl->assign_include("filter_tpl", "useragency/credential/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}	
+	
+	function add ( $us_agy_id ) {
+		$this->load->model('us1usercredentialsmdl');		
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('entity_id', $us_agy_id);
+		$this->tpl->assign('resource_index', 'index');
+		
+		$userUsAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+		// var_dump($user->user_id);
+		$rules = array('tab_086_credential_type'		=> 'trim|required');
+
+		$fields = array('tab_086_credential_type'		=> 'Credential Type');
+
+		if ($this->input->post('verify_expiration') != 'no') {
+			$rules['credential_id'] = 'trim|required|alpha_numeric';
+			$rules['expiration_date'] = 'required';
+
+			$fields['credential_id'] = 'Credential Id';
+			$fields['expiration_date'] = 'Expiration Date';
+
+			$rules['alert_days'] = 'trim|required|numeric';
+			$fields['alert_days'] = 'Alert Days';
+		}
+						
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign('show_status_field', true);
+			// $this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+			$this->tpl->assign('type_list', $this->agencycredentialtypemdl->getList($userUsAgy->agency_id, true) );
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "account/credential_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->us1usercredentialsmdl);
+			$user_credential_id = $this->us1usercredentialsmdl->insert($userUsAgy->user_id);
+			if($_FILES['attachment']['error']==0){
+				$fname = time().'_'.basename($_FILES['attachment']['name']);
+				$fname = str_replace(" ","_",$fname);
+				$fname = str_replace("%","_",$fname);
+				$fname = str_replace("#","",$fname);
+				$attachment = $fname;
+				if(move_uploaded_file($_FILES['attachment']['tmp_name'], FCPATH.'/datastore/credential/'.$fname)) {
+				  $this->us1usercredentialsmdl->update_attachment($user_credential_id, $attachment);
+				}
+			}
+			$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_add_msg'));
+			$this->index($us_agy_id);
+		}
+	}
+
+	function __daysLeft($expiration_date=null){
+	    if(!$expiration_date)
+	    return 0;
+	    
+	    $expiration_time = strtotime($expiration_date);    
+	    $now = time();        
+	    $days_left = floor(($expiration_time-$now)/86400);            
+	    return $days_left;
+  	}
+  
+	function __needto_alert($credential){
+	    if(!$credential->expiration_date)
+	    return false;
+		
+		if ($credential->verify_expiration == 'no') {
+			return false;
+		}
+
+	    $now = time();
+	    $alert = false;
+	    $expiration_time = strtotime($credential->expiration_date);
+	    
+	    if($expiration_time < $now)
+	    	$alert = true;    
+	    else{
+	     	$days_left = $this->__daysLeft($credential->expiration_date);
+	     	if($days_left <= $credential->alert_days)
+	     		$alert = true;    
+	    }
+	    return $alert;
+  	}
+  
+	function grid ( $us_agy_id ) {
+		$userUsAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+		$credentials = $this->us1usercredentialsmdl->getById($userUsAgy->user_id, null, null, $userUsAgy->agency_id);
+    	// $credentials = $this->usagycredentialmdl->getByUsAgyId($us_agy_id);
+    
+    	$now = time();    
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=ch", " "));
+		$head->append($this->xml->Element("column", "width=7;align=center", "Alert"));
+		$head->append($this->xml->Element("column", "width=20", "Credential Type"));
+		$head->append($this->xml->Element("column", "width=20", "Credential Id"));
+		$head->append($this->xml->Element("column", "width=15;align=center",  "Expiration Date"));
+		$head->append($this->xml->Element("column", "width=10;align=center;sort=int",  "Days to expire"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Status"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Attachment"));
+		$head->append($this->xml->Element("column", "width=*", "Notes"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($credentials as $credential) {
+			$cell = $this->xml->Element("row", "id=" . $credential->user_credential_id);
+			$cell->append($this->xml->Element("cell", null, "0"));
+			if($this->__needto_alert($credential)){
+				//$cell->append($this->xml->Element("cell", "title=alert..", $this->config->config["base_url"] . "style/images/exclamation.gif"));
+				//$cell->append($this->xml->Element("cell", null, base_url().'style/images/exclamation.gif'));
+
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<img src="'.base_url().'style/images/exclamation.gif" />')));
+			}
+			else
+				$cell->append($this->xml->Element("cell", null, ''));
+
+			$days_left = $this->__daysLeft($credential->expiration_date);
+			if($days_left < 0)
+				$days_left = 0;
+      
+			$cell->append($this->xml->Element("cell", null, $credential->tab_description));
+			$cell->append($this->xml->Element("cell", null, $credential->credential_id));
+			// $cell->append($this->xml->Element("cell", null, (!is_null($credential->expiration_date)) ? standard_date(mysql_to_unix($credential->expiration_date)) : null));
+			$cell->append($this->xml->Element("cell", null, (!is_null($credential->expiration_date)) ? $credential->expiration_date : null));
+      		$cell->append($this->xml->Element("cell", null, $days_left));
+
+      		$cell->append($this->xml->Element("cell", null, $credential->status));
+      
+			if($credential->attachment_id > 0 AND $credential->attachment!=""){
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<a href="'.base_url().'datastore/credential/'.$credential->attachment.'" target="_blank" title="View credential">View credential</a>')));
+			}else{
+				$cell->append($this->xml->Element("cell", null, ''));
+			}
+      
+			if($credential->notes!="")
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<img src="'.base_url().'style/images/icon_note.jpg" title="'.$credential->notes.'" alt="'.$credential->notes.'" />')));
+			else
+				$cell->append($this->xml->Element("cell", null, ''));
+      
+			$document->append($cell);
+		}
+		
+	}
+	
+	/*function add ( $us_agy_id ) {
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign('faction', 'add');
+		$this->validation->set_rules($this->rules);
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/credential_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->usagycredentialmdl);
+			$us_agy_credential_id = $this->usagycredentialmdl->insert();
+				if($_FILES['attachment']['error']==0){
+				$fname = time().'_'.basename($_FILES['attachment']['name']);
+				$fname = str_replace(" ","_",$fname);
+				$fname = str_replace("%","_",$fname);
+				$fname = str_replace("#","",$fname);
+				$attachment = $fname;
+				if(move_uploaded_file($_FILES['attachment']['tmp_name'], FCPATH.'/datastore/credential/'.$fname)) {
+				  $this->usagycredentialmdl->update_attachment($us_agy_credential_id, $attachment);
+				}
+			}
+			$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_add_msg'));
+			$this->index($us_agy_id);
+		}
+	}
+	*/
+	function edit ( $us_agy_id, $user_credential_id ) {		
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign('record_id', $user_credential_id);
+		$this->tpl->assign('faction', 'edit');
+		if ($this->getAgencyType() == 'C' OR $this->getAgencyType() == 'A') {
+			$this->tpl->assign('no_commit_form', false);
+		} else {
+			$this->tpl->assign('no_commit_form', true);
+		}
+		
+		$userUsAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+
+		$this->assignObject($this->us1usercredentialsmdl->getByCredentialId($user_credential_id));
+		// $this->assignObject($this->usagycredentialmdl->getById($user_credential_id));
+		
+		$this->tpl->assign('resource_index', 'index');
+		$rules = array('tab_086_credential_type'		=> 'trim|required');
+
+		$fields = array('tab_086_credential_type'		=> 'Credential Type');
+						
+		if ($this->input->post('verify_expiration') != 'no') {
+			$rules['credential_id'] = 'trim|required|alpha_numeric';
+			$rules['expiration_date'] = 'required';
+
+			$fields['credential_id'] = 'Credential Id';
+			$fields['expiration_date'] = 'Expiration Date';
+
+			$rules['alert_days'] = 'trim|required|numeric';
+			$fields['alert_days'] = 'Alert Days';
+		}
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign('show_status_field', true);
+			// $this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+			$this->tpl->assign('type_list', $this->agencycredentialtypemdl->getList($userUsAgy->agency_id, true) );
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "account/credential_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			if($_FILES['attachment']['error']==0){
+		        $fname = time().'_'.basename($_FILES['attachment']['name']);
+		        $fname = str_replace(" ","_",$fname);
+		        $fname = str_replace("%","_",$fname);
+		        $fname = str_replace("#","",$fname);
+		        $attachment = $fname;
+		        if(move_uploaded_file($_FILES['attachment']['tmp_name'], FCPATH.'/datastore/credential/'.$fname)) {
+		          $this->us1usercredentialsmdl->update_attachment($user_credential_id, $attachment);
+		        }
+	    	}
+			$this->assignPostData($this->us1usercredentialsmdl);
+			$this->us1usercredentialsmdl->update($user_credential_id);
+			
+			$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($us_agy_id);
+			
+		}
+	}
+	
+	function delete ( $us_agy_id, $user_credential_id ) {
+		$credential = $this->us1usercredentialsmdl->getByCredentialId($user_credential_id);
+		if (!empty($credential)) {
+			$this->us1usercredentialsmdl->delete($user_credential_id);
+			if ($credential->attachment) {
+				@unlink(FCPATH."datastore/credential/".$credential->attachment);
+			}
+			$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_del_msg'));
+			$this->index($us_agy_id);
+		} else {
+			exit('Credential Not Found');
+		}	
+	}
+
+	function send_credentials($us_agy_id, $record_ids = null){
+		if (is_null($record_ids)) {
+			exit('At least one Credential must be selected');
+		}
+
+		$recods = explode(",", $record_ids);
+		// $visits = array();
+		// foreach ($recods as $visit_log_id) {
+		// 	$visit_log = $this->visitlogmdl->getById($visit_log_id);
+		// 	if($visit_log->visit_status_id != 1) {
+		// 		exit('<font color="red">Can\'t reassign; some tasks/visits are not in Schedule Status</font>');		
+		// 	}
+		// 	$visits[$visit_log_id]  = $visit_log;
+		// }
+
+		// $user = $this->usagymdl->getByUsAgyId($user_id);
+
+		
+		$rules = array (
+          'agency_id' 	=> 'required',
+          'email'		=> 'required'
+        );
+	    $fields = array(
+	        'agency_id' => 'Agency',
+	        'email' => 'Agency Email'
+	    );
+
+	    $this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		$company_info = $this->agencymdl->getByAgencyId($this->getAgencyId());      
+		$this->tpl->assign("company_email", $company_info->agency_email);
+		$contractor_info = $this->usermdl->getById($this->session->userdata('user_id')); 
+
+		if ($this->validation->run() == FALSE) {
+			// $user_list = $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false, false, null, array(), null, 1, array(), $user->major_discip_id, array($user_id));
+
+			// print_r($user_list); exit();
+
+			$this->tpl->assign("us_agy_id", $us_agy_id);
+			$this->tpl->assign("record_ids", $record_ids);
+			// $this->tpl->assign("user_list", $user_list);
+
+			if ($this->getAgencyType() == 'C') {
+                $agency_list = array();
+                foreach ($this->agencycontractormdl->getByContractor($this->getAgencyId(), null, true, 1) as $value) {
+                    $agency_list[$value->agency_id] = $value->agency_name;
+                }
+
+                $this->tpl->assign("agency_list", $agency_list);
+            }            
+			
+			$this->tpl->assign_include("dynamic_tpl", "useragency/credential/send_credentail_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$credentialList = array();
+			$attachments = array();
+			foreach ($recods as $user_credential_id) {
+				$credential = $this->us1usercredentialsmdl->getByCredentialId($user_credential_id);
+				
+				$credentialList[] = 'Credential: '.$credential->tab_description."\n".'Credential Id: '.$credential->credential_id."\n".'Attachment: '.(($credential->attachment_id > 0 AND $credential->attachment!="") ? 'Available' : 'Not Available');
+
+				if ($credential->attachment_id > 0 AND $credential->attachment!="") {
+					$attachments[] = FCPATH.'datastore/credential/'.$credential->attachment;
+				}
+			}
+
+			// print_r($attachments); echo "<hr>";
+
+			$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".implode("\n\n\n", $credentialList)."\n\n\n" . ($this->input->post('notes') != "" ? "Message: ".$this->input->post('notes') : "");
+			// echo "<pre>".$body."</pre><hr>";
+			$userUsAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+			$subject = "Therapist (".$userUsAgy->last_name." ".$userUsAgy->first_name.") Credentials from ".$company_info->agency_name." - ".$contractor_info->first_name." ".$contractor_info->last_name;
+
+			$this->load->library('email');
+			$this->email->from('noreply@homehealthsoft.com', $company_info->agency_name);
+			$this->email->to($this->input->post('email')); 
+
+			$cc_emails = array();
+			$additional_email_str = $this->input->post('additional_email');
+	      	if ($additional_email_str) {
+	        	$additional_email_array = explode(",", $additional_email_str);
+	        	if(!empty($additional_email_array)) {
+		          	foreach($additional_email_array as $k => $v) {
+		            	$cc_emails[] = trim($v);
+		          	}
+
+	        	}
+	      	}
+	      	if(!empty($cc_emails)) {
+          		$this->email->cc($cc_emails);
+          	}
+
+			$this->email->subject($subject);
+			$this->email->message($body);   
+
+			foreach ($attachments as $file) {
+				$this->email->attach($file);
+			}
+
+			$this->email->send();	
+			// echo $this->email->print_debugger(); echo "<hr>";
+			$this->email->clear();
+
+			if($this->input->post('email_copy_company') == '1'){
+				$this->email->from('noreply@homehealthsoft.com', $company_info->agency_name);
+				$this->email->to($company_info->agency_email);        
+				$this->email->subject("Copy of ".$subject);
+				$this->email->message($body);      
+				$this->email->send();
+			}
+			$this->email->clear(true);
+
+			$count = count($recods);
+			echo "<font color='green'>Successfully sent {$count} credentials </font>";
+			// echo '<script>parent.loadGrid()</script>';
+		}
+	}
+
+	function get_agency_email($agency_id) {
+		$agency_info = $this->agencymdl->getByAgencyId($agency_id);      
+		// $this->tpl->assign("agency_email", $agency_info->agency_email);
+
+		echo json_encode(array(
+            'email' => $agency_info->agency_email,
+        ));
+        exit();
+	}
+ }

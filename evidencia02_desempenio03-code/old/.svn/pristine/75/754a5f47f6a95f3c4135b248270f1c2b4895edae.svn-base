@@ -1,0 +1,68 @@
+<?
+
+ class PayrollRateByDisciplineMdl extends Model {
+
+	var $payroll_rate_by_discipline_id;
+	var $contractor_id; 	 	
+	var $visit_type_id;
+	var $rate_effective_date;
+	var $payroll_visit_rate;	
+	var $modify_user_id;
+	var $modify_date;
+
+	function PayrollRateByDisciplineMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $payroll_rate_by_discipline_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = payroll_rate_by_discipline.visit_type_id');    
+		$this->db->join('agy_agency', 'agy_agency.agency_id = payroll_rate_by_discipline.contractor_id');
+		$this->db->join('us1_user' , 'us1_user.user_id = payroll_rate_by_discipline.modify_user_id' , 'left');
+		$this->db->where("payroll_rate_by_discipline.payroll_rate_by_discipline_id", $payroll_rate_by_discipline_id);		
+		$query = $this->db->get('payroll_rate_by_discipline');
+		return $query->row();
+	}
+  
+  
+	function getByContractorId ( $contractor_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = payroll_rate_by_discipline.visit_type_id');    
+        $this->db->join('us1_user' , 'us1_user.user_id = payroll_rate_by_discipline.modify_user_id' , 'left');
+    	$this->db->where("payroll_rate_by_discipline.contractor_id", $contractor_id);		
+    	$this->db->order_by("vit_visit_type.visit_description", "ASC");		
+		$this->db->order_by("payroll_rate_by_discipline.rate_effective_date", "DESC");		
+    	$query = $this->db->get('payroll_rate_by_discipline');
+		return $query->result();
+	}
+	
+	function getRate ( $contractor_id,  $visit_type_id, $visit_date) {	
+		$this->db->where("payroll_rate_by_discipline.contractor_id", $contractor_id);		
+		$this->db->where("payroll_rate_by_discipline.visit_type_id", $visit_type_id);	
+		$this->db->where("payroll_rate_by_discipline.rate_effective_date <= '{$visit_date}'");		
+		$this->db->order_by('payroll_rate_by_discipline.rate_effective_date','DESC');
+		$query = $this->db->get('payroll_rate_by_discipline');		
+		if ($query->num_rows() > 0) {
+			return $query->row()->payroll_visit_rate;
+		}
+		return false;		
+	}
+	
+  	function updateFlex($payroll_rate_by_discipline_id, $attribute, $value, $where = 'payroll_rate_by_discipline_id') {
+		$this->db->where($where, $payroll_rate_by_discipline_id);
+		$this->db->set($attribute, $value);
+		$this->db->update('payroll_rate_by_discipline');
+	}
+  
+	function insert ( $contractor_id ) {		
+		$this->contractor_id = $contractor_id;		
+		$this->db->insert('payroll_rate_by_discipline', $this);
+		$this->payroll_rate_by_discipline_id = $this->db->insert_id();		
+	}	
+	
+	function delete ( $payroll_rate_by_discipline_id ) {		
+		$this->db->where('payroll_rate_by_discipline_id', $payroll_rate_by_discipline_id);		
+		$this->db->delete('payroll_rate_by_discipline'); 		
+	}
+
+ }

@@ -1,0 +1,194 @@
+  <tr>
+    <td colspan="4" class="subtitle">
+			<table width="100%">
+			<tr>
+			<td>
+				<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Visit Date and Time
+			</td>	
+			<td style="text-align:right;">
+				{if $prev_visit_log_id != null}<a href="{$index_url}{$resource_path}/index/{$prev_visit_log_id}">Previous</a> {if $next_visit_log_id != ""}| <a href="{$index_url}{$resource_path}/index/{$next_visit_log_id}">Next</a>{/if}
+				{elseif $next_visit_log_id != null}<a href="{$index_url}{$resource_path}/index/{$next_visit_log_id}">Next</a>{/if}
+			</td>	
+			</tr>
+			</table>
+		</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+		<td colspan="2">		
+			<table width="100%">
+				<tr>			
+				<td class="ftitle">Visit Date</td>
+				<td>
+					<input type="text" id="visit_date_time" name="visit_date_time" value="{$visit_date_time}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_time'), document.getElementById('fecha_help'));return false;" >
+				</td>
+				</tr>
+			</table>	
+		</td>
+		
+		<td colspan="2">		
+			<table width="100%">
+				<tr>			
+				<td class="ftitle" style="width:30%;" valign="top">Visit Performed by</td>
+				<td valign="top">
+					{$visit_user_id_name}
+				</td>
+				</tr>
+			</table>	
+		</td>
+		
+  </tr>
+	<tr><td colspan="2">
+		<table width="100%">
+			<tr>
+				<td class="ftitle">Visit Time in</td>
+				<td align="left">
+					{*html_select_time display_seconds=false use_24_hours=false minute_interval=5 time=$visited_time_in prefix='visited_time_in_'*}
+					<input type="text" name="visited_time_in_hm" id="visited_time_in_hm" value="{$visited_time_in|truncate:5:"":true}" size="5" maxlength="5" onchange="update_visit_time_out(event);" />
+					
+					{* html_select_time display_seconds=false use_24_hours=true minute_interval=5 time=$visited_time_in prefix='visited_time_in_' all_extra='onchange="update_visit_time_out();"' *}
+					{* Duration <input type="text" name="visit_duration" id="visit_duration" value="{date_diff date1="2012-01-01 $visited_time_in" date2="2012-01-01 $visited_time_out" interval="mins"}" size="2" maxlength="2" onkeypress="number_only(event)" onkeyup="update_visit_time_out(event);"/> min *}
+					
+					Duration <input type="number" name="visit_duration" id="visit_duration" value="{$visit_duration}" size="3" maxlength="3" {if $billable_YN eq "1"}min="15"{else}min="0"{/if} max="{$maximum_duration}" onchange="update_visit_time_out(event);" /> min
+					<script type="text/javascript" src="{$base_url}style/maskedinput.js"></script>
+		
+		
+		
+					{literal}
+						<script>
+						jQuery(function($){
+							$("#visited_time_in_hm").mask("99:99");
+							{/literal}
+							{if !$gov_program}
+							// $("#visit_duration").mask("99");
+							{/if}
+							{literal}
+
+							$("input[name='billable_YN']").change(function(){
+								console.log($("input[name='billable_YN']:checked").val());
+								if($("input[name='billable_YN']:checked").val() == '1') {
+									$('#visit_duration').attr('min', '15');
+								} else {
+									$('#visit_duration').attr('min', '0');
+								}
+							});
+
+							$("#visit_duration").keydown(function (e) {
+						        // Allow: backspace, delete, tab, escape, enter and .
+						        if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+						             // Allow: Ctrl/cmd+A
+						            (e.keyCode == 65 && (e.ctrlKey === true || e.metaKey === true)) ||
+						             // Allow: Ctrl/cmd+C
+						            (e.keyCode == 67 && (e.ctrlKey === true || e.metaKey === true)) ||
+						             // Allow: Ctrl/cmd+X
+						            (e.keyCode == 88 && (e.ctrlKey === true || e.metaKey === true)) ||
+						             // Allow: home, end, left, right
+						            (e.keyCode >= 35 && e.keyCode <= 39)) {
+						                 // let it happen, don't do anything
+						                 return;
+						        }
+						        // Ensure that it is a number and stop the keypress
+						        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+						            e.preventDefault();
+						        }
+						    });
+						});
+		
+						
+						function update_visit_time_out(evt){
+							
+							var time_in = document.getElementById('visited_time_in_hm').value;
+							if(time_in.toString().length == 2 && time_in.indexOf(':') < 0 ){
+								document.getElementById('visited_time_in_hm').value = time_in+':';
+								return;
+							}
+							if(time_in.toString().length < 5)
+							return;
+							
+							ghour = time_in.substring(0,2);
+							gmin = time_in.substring(3,5);
+							if(ghour.indexOf(':') >= 0 || gmin.indexOf(':') >= 0)
+							{
+								return;
+							}
+														
+							ghour = parseInt(ghour,10);
+							gmin = parseInt(gmin,10);
+							
+							if(ghour > 23 || gmin > 59)
+							{
+								alert('Invalid visit time in');
+								return;
+							}
+							
+
+							gduration = parseInt(document.getElementById('visit_duration').value,10);
+							gtime = ghour*60+gmin+gduration;
+							
+							ghour = parseInt((gtime/60),10);
+							gmin = gtime - ghour*60;
+							if(ghour > 23)
+							{
+								alert('Invalid time in and out');
+								//return;
+							}
+							if(ghour.toString().length==1)
+							ghour = '0'+ghour;
+							if(gmin.toString().length==1)
+							gmin = '0'+gmin;
+							
+							document.getElementById('visited_time_out_hm_lbl').innerHTML = ghour+':'+gmin;
+							document.getElementById('visited_time_out_hm').value = ghour+':'+gmin;
+						}
+						</script>
+					{/literal}
+				</td>
+		</tr>
+		</table>
+		</td>
+		<td colspan="2">		
+			<table width="100%">
+				<tr>			
+				<td class="ftitle" style="width:30%;">Visit Time out</td>
+				<td>
+					{*html_select_time display_seconds=false use_24_hours=false minute_interval=5 time=$visited_time_out prefix='visited_time_out_'*}
+					<label id="visited_time_out_hm_lbl">{$visited_time_out|truncate:5:"":true}</label>
+					 <input type="hidden" name="visited_time_out_hm" id="visited_time_out_hm" value="{$visited_time_out|truncate:5:"":true}" size="5" maxlength="5"  readonly="" /> 
+				</td>
+				</tr>
+			</table>	
+		</td>
+	</tr>
+	<tr>
+	<td colspan="2">
+		{if $visit_type_id eq '113' || $visit_type_id eq '115' || $visit_type_id eq '116' || $visit_type_id eq '117' || $visit_type_id eq '118' || $visit_type_id eq '119'}
+			<input type="hidden" name="mileage" value="0" size="3" maxlength="3">
+			<table width="100%" border="0">
+				<tr>
+					<td class="ftitle">Billable </td>
+					<td align="left">{html_radios options=$logic_list checked=$billable_YN name='billable_YN' id='billable_YN'}</td>				
+				</tr>
+		 	</table>
+		{else}
+			<table width="100%" border="0">
+				<tr>
+					<td class="ftitle" style="width:5%">Mileage </td>
+					<td style="width:1%; padding-left:8px;"><input type="text" name="mileage" value="{$mileage}" size="3" maxlength="3"></td>
+					<td align="left" style="width:15%;">Billable {html_radios options=$logic_list checked=$billable_YN name='billable_YN' id='billable_YN'}</td>				
+				</tr>
+			 </table>
+			
+		{/if}
+	</td>
+	<td colspan="2">
+		<table width="100%" border="0">
+			<tr>
+				<td class="ftitle">Visit Number / Status: <span style="margin-left:10px; padding:5px; line-height: 26px; background-color:{$visit_tab_status_color}">({$visit_log_number})&nbsp;/&nbsp;{$tab_description}</span></td>
+			</tr>
+		 </table>
+	</td>
+	</tr>	 

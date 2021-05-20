@@ -1,0 +1,65 @@
+<?
+
+ class ProfileGroupMdl extends Model {
+
+	var $profile_group_id;
+	var $profile_id;
+  	var $group_id;
+
+	function ProfileGroupMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $profile_group_id ) {
+	
+		$this->db->join('x_profile', 'x_profile.profile_id = x_profile_group.profile_id');
+		$this->db->join('y_control', 'y_control.group_id = x_profile_group.group_id');
+		
+		$this->db->where('profile_group_id', $profile_group_id);
+		
+		$query = $this->db->get('x_profile_group');
+		return $query->row();
+		
+	}
+
+	function getByProfile ( $profile_id ) {
+	
+		$this->db->join('y_control', 'y_control.group_id = x_profile_group.group_id');
+		
+		$this->db->where('profile_id', $profile_id);
+		
+		$query = $this->db->get('x_profile_group');
+		return $query->result();
+	
+	}
+	
+	function getDisponibleByProfile ( $profile_id ) {
+	
+		$this->db->where('group_id NOT IN (SELECT group_id FROM x_profile_group WHERE profile_id = ' . $profile_id . ')');
+		$this->db->order_by('group_name');
+		
+		$query = $this->db->get('y_control');
+		return $query->result2('group_id', 'group_name');			
+	
+	}
+	
+	function insert ( $profile_id, $group_id ) {
+		
+		$this->profile_id = $profile_id;
+		$this->group_id = $group_id;
+		
+		$this->db->insert('x_profile_group', $this);
+		
+	}
+	
+	function delete ( $profile_group_id ) {
+	
+		$this->db->where('profile_group_id', $profile_group_id);
+		
+		$this->db->delete('x_profile_group');
+		
+	}
+	
+ }

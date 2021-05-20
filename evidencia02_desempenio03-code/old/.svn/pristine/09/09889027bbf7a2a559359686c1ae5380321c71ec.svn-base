@@ -1,0 +1,55 @@
+<?
+
+ class Prtprintqueuemdl extends Model {
+	var $prt_id;
+	var $user_id;
+	var $patient_id;
+	var $doc_type;
+	var $doc_description;
+	var $doc_id;
+	var $print_status;
+	var $creation_datetime;
+
+	function Prtprintqueuemdl () {
+
+		parent::Model();
+		
+	}
+
+	function insert(){
+		$this->db->insert('prt_print_queue',$this);
+	}	
+	function show( $us_agy_id ){
+		$this->db->select('prt_print_queue.*,vis_visit_log.*, CONCAT(us_agy.first_name," ",us_agy.last_name) as user_name, CONCAT(pat_patient.first_name," ",pat_patient.last_name) as patient_name, vit_visit_type.visit_program');
+
+		$this->db->join('vis_visit_log','vis_visit_log.visit_log_id = prt_print_queue.doc_id','left');
+		$this->db->join('us_agy','us_agy.user_id = prt_print_queue.user_id','left');
+		$this->db->join('pat_patient','pat_patient.patient_id = prt_print_queue.patient_id','left');
+		$this->db->join('vit_visit_type','vit_visit_type.visit_type_id = vis_visit_log.visit_type_id','left');
+
+		$this->db->where('us_agy_id',$us_agy_id);
+		$this->db->order_by('creation_datetime','DESC');
+
+		return $this->db->get('prt_print_queue')->result();		
+	}
+
+	function get($prt_id){
+		$this->db->select('prt_print_queue.*,vis_visit_log.*, CONCAT(us_agy.first_name," ",us_agy.last_name) as user_name, CONCAT(pat_patient.first_name," ",pat_patient.last_name) as patient_name, vit_visit_type.visit_program');
+		$this->db->order_by('creation_datetime','DESC');
+		$this->db->join('vis_visit_log','vis_visit_log.visit_log_id = prt_print_queue.doc_id','left');
+		$this->db->join('us_agy','us_agy.user_id = prt_print_queue.user_id','left');
+		$this->db->join('pat_patient','pat_patient.patient_id = prt_print_queue.patient_id','left');
+		$this->db->join('vit_visit_type','vit_visit_type.visit_type_id = vis_visit_log.visit_type_id','left');
+		$this->db->where('prt_id',$prt_id);
+		return $this->db->get('prt_print_queue')->row();		
+	}
+	
+	function updatePrintStatus($prt_id){
+		$this->db->where('prt_id',$prt_id);
+		$this->db->update('prt_print_queue',array('print_status'=>$this->print_status));
+	}	
+	
+	function delete($prt_id){
+		$this->db->delete('prt_print_queue',array('prt_id'=>$prt_id));
+	}
+ }

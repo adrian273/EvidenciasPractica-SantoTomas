@@ -1,0 +1,144 @@
+<?php
+
+class Trash extends MY_Controller {
+
+	function Trash() {
+		parent::MY_Controller();
+
+		$this->tpl->assign("resource_path", "mail/trash");
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('no_grid_buttons', true);
+	}
+
+	function index() {
+		$this->session->set_userdata('task_return', "mail/trash/index");
+		$this->tpl->assign("back_path", "trash");
+
+		$this->tpl->assign_include("filter_tpl", "mail/toolbar");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function grid () {
+
+		if (!is_null($this->input->post('msg_ids'))) {
+			$this->movetoTrash($this->input->post('msg_ids'));
+		}
+
+		$config =& get_config();
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;type=ch", " "));
+		$head->append($this->xml->Element("column", "width=*", "Subject"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Date"));
+		$head->append($this->xml->Element("column", "width=15;type=link;align=center", "Attached file"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->messagemdl->getListTrash($this->getUsAgyId(), $this->getUsAgyId()) as $msg) {
+
+			$cell = $this->xml->Element("row", "id=" . $msg->msg_id);
+			$cell->append($this->xml->Element("cell", null, "0"));
+			$cell->append($this->xml->Element("cell", null, $msg->msg_subject));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($msg->msg_date), 'USA_DATE_TIME')));
+			
+			$cdata = '<![CDATA[';
+			if ($msg->msg_attachment != "") {
+				$attachments = explode("||", $msg->msg_attachment);
+				foreach ($attachments as $key=>$file) {
+					$cdata .= '<a href="'.$this->config->config['base_url']."datastore/attachment/".$file.'" target="_blank">file '.($key+1).'</a> &nbsp; ';
+				}
+			}
+
+			$cdata .= ']]>';
+			$cell->append($this->xml->Element("cell", null, $cdata));
+
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function edit($msg) {
+
+		$config =& get_config();
+		header("Location: " . $config['index_url'] . "mail/read/msg/" . $msg . "/trash");
+	}
+
+	function messageTrash ( $message_id, $return_to_index=true ) {
+		
+		$message 	= $this->messagemdl->get($message_id);
+		$recipients = $this->usermessagemdl->getByMessageId($message_id);
+
+		// deleting forever if is recipient
+		if (array_key_exists($this->getUsAgyId(), $recipients)) {
+			$this->usermessagemdl->setMsgTrash($message_id, $this->getUsAgyId(), 2);
+		}
+		
+		// deleting forever if is sender
+		if ($message->user_from == $this->getUsAgyId()) {
+			$this->messagemdl->setMsgTrash($message_id, $this->getUsAgyId(), 2);
+		}
+		
+		if ($return_to_index) {
+			$this->index();
+		}
+		
+	}
+	
+	function movetoTrash ( $msg_ids ) {
+
+		$msg_ids = explode(",", $msg_ids);
+
+		foreach ($msg_ids as $id) {
+			$this->messageTrash($id, false);
+		}
+
+	}
+
+	function emptyTrash() {
+
+		foreach($this->messagemdl->getListTrash($this->getUsAgyId(), $this->getUsAgyId()) as $msg) {
+
+			$recipients = $this->usermessagemdl->getByMessageId($msg->msg_id);
+			
+			// deleting forever if is recipient
+			if (array_key_exists($this->getUsAgyId(), $recipients)) {
+				$this->usermessagemdl->setMsgTrash($msg->msg_id, $this->getUsAgyId(), 2);
+			}
+			
+			// deleting forever if is sender
+			if ($msg->user_from == $this->getUsAgyId()) {
+				$this->messagemdl->setMsgTrash($msg->msg_id, $this->getUsAgyId(), 2);
+			}
+
+		}
+		
+		$this->index();
+		
+	}
+	
+	function returnToFolder ( $message_id ) {
+		
+		$message 	= $this->messagemdl->get($message_id);
+		$recipients = $this->usermessagemdl->getByMessageId($message_id);
+
+		// deleting forever if is recipient
+		if (array_key_exists($this->getUsAgyId(), $recipients)) {
+			$this->usermessagemdl->setMsgTrash($message_id, $this->getUsAgyId(), 0);
+		}
+		
+		// deleting forever if is sender
+		if ($message->user_from == $this->getUsAgyId()) {
+			$this->messagemdl->setMsgTrash($message_id, $this->getUsAgyId(), 0);
+		}
+		
+		$this->index();
+		
+	}
+
+}

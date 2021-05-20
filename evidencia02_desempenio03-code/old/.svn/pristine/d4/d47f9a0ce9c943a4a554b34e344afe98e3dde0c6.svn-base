@@ -1,0 +1,44 @@
+<?php
+
+class DisciplineMdl extends Model {
+	
+	var $discipline_id;
+	var $short_description;
+	var $description;
+	var $color;
+	var $cal_backcolor;
+	var $cal_forecolor;
+	
+	function DisciplineMdl () {
+	
+		parent::Model();
+	
+	}
+	
+	function get ( $normal_result=true ) {
+		
+		$query = $this->db->get('dis_discipline');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('discipline_id', 'description');
+	}
+
+	function getByIds ($ids, $normal_result=true, $col="description" ) {
+		$this->db->where_in('discipline_id', $ids);
+		$query = $this->db->get('dis_discipline');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('discipline_id', $col);
+	}
+	
+	function getById ( $discipline_id ) {
+	
+		$this->db->where('discipline_id', $discipline_id);
+	
+		$query = $this->db->get('dis_discipline');
+		return $query->row();			
+	
+	}	
+} 

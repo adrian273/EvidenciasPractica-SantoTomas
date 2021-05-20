@@ -1,0 +1,131 @@
+
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<input type="hidden" value="" name="visit_date_ini" id="visit_date_ini_print" >
+<input type="hidden" value="" name="visit_date_fin" id="visit_date_fin_print" >
+<input type="hidden" value="{$confirmed}" name="confirmed" >
+
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+		<tr>
+			<td colspan="2">
+				<center style="padding-top: 5px; font-weight: bold;;">Select visits below and click submit button <input type="button" name="submit" value="Submit" onclick="addSelectedToInvoice(this)"></center>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<div id="toolbarObj" style="float: left"></div>
+			</td>
+		</tr>
+	</table>
+
+
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		//webBar.addSeparator('sp1', 3);
+		//webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>
+
+
+<script language="JavaScript" type="text/javascript">
+    var dhxWins;
+		  
+	function editRegister ( id ) {literal}{{/literal}
+		return false;
+	{literal}}{/literal}
+  
+	function addSelectedToInvoice(btn) {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+
+			$(btn).val('Processing...');
+			
+			var url = "{$index_url}{$resource_path}/add_visit_to_invoice/{$invoice_id}/{$agency_contractor_id}/{$patient_id}";
+			var params = $('form#gform').serialize();
+			{literal}
+			$.ajax({
+				type: "POST",
+				// dataType: 'json',
+				url: url,
+				data: params,
+				success: function(data){
+					$(btn).val("Submit");
+					if (data=='-1') {
+						{/literal}alert('Invoice Not found');{literal}
+						return;
+					}else if (data=='-2') {
+						alert('This is a special Invoice. You can\'t add visits to this');
+						return;
+					}else if (data=='-3') {
+						alert('A visit already sent to an invoice.');
+						return;
+					}else if(data=='1'){						
+						alert('Successfully Added to invoice ');
+						window.parent.parent.location.reload(true);
+					} else {
+						alert('visits can\'t be Added to invoice no#'+invoice_no);
+						return;
+					}
+				},	
+				error: function (data, status, e)
+				{
+					$(btn).val("Submit");
+					alert("An error occured. Please check your internet connection. Or contact with administrator.");
+				}
+			});		
+			{/literal}
+		{literal}
+		}else{
+		{/literal}   
+			alert('Please select visit.');
+    	{literal}
+    	}
+    	{/literal}
+	{literal}
+	}
+	{/literal}   	  
+		  
+</script>
+  
+
+ 

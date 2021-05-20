@@ -1,0 +1,33 @@
+<?php
+
+ class SpVisitUnitMdl extends Model {
+
+	var $sp_visit_unit_id; 	 	
+	var $gov_program;
+	var $duration_from;
+	var $duration_thru;
+	var $units;
+
+	function SpVisitUnitMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $gov_program, $duration ) {
+	
+		$this->db->where('gov_program', $gov_program);
+
+		$this->db->where('duration_from <=', $duration);
+		$this->db->where("duration_thru >=", $duration);
+	
+		$row = $query = $this->db->get('sp_visit_units')->row();
+		if (empty($row)) {
+			return null;
+		} else {
+			return $row->units;
+		}
+
+	}
+	
+ }

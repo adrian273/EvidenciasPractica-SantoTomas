@@ -1,0 +1,356 @@
+<?php
+
+class Fixsignature extends MY_Controller {
+
+	function Fixsignature () {	
+      parent::MY_Controller();
+      $this->tpl->assign("resource_path", "script/fixsignature");
+      $this->load->config('constants');  
+      $this->counter = 0;
+
+      // echo "<h1>This is just a test. Not actual import.</h1>";
+  }
+
+  function index () {
+
+    $this->db->select('vis_visit_log.visit_log_id, vis_visit_log.visit_type_id, vis_visit_log.visit_date_time, vis_visit_log.visit_user_id, vis_visit_log.signature, vit_visit_type.visit_program, pat_patient.first_name, pat_patient.last_name, pat_patient.patient_id, agy_agency.agency_name');
+    
+    $this->db->join('cms_485',        'cms_485.cms485_id = vis_visit_log.cms485_id');
+    $this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient',      'soc_start_of_care.patient_id = pat_patient.patient_id');
+    $this->db->join('vit_visit_type',     'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+    $this->db->join('agy_agency',      'agy_agency.agency_id = pat_patient.agency_id');
+
+    $this->db->where('vis_visit_log.visit_date_time >=', '2020-10-01');
+    $this->db->where_in('vis_visit_log.visit_status_id', array(3,8));
+    $this->db->order_by('vis_visit_log.visit_date_time', 'desc');
+
+    $query = $this->db->get('vis_visit_log');
+    $visits = $query->result();
+
+    $upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+    $this->load->model('form3625mdl');
+
+    foreach ($visits as $visit) {
+      
+      $issues = array();
+      $fixed = array();
+      if ($visit->signature != "") {
+        if (!file_exists($upload_path . $visit->signature)) {
+          // patient signature file missing
+          $issues[] = "<u>patient signature</u> ";
+          
+          if ($found = $this->getPreviousVisitByPatient($visit)) {
+            // $signature_file_name = "pt_signature_" . $visit->visit_log_id . ".jpg";
+            $signature_file_name =  $visit->signature;
+            // echo "copy '".$found->signature ."' to ". $signature_file_name."<br>";
+            // if(copy($upload_path . $found->signature, $upload_path. $signature_file_name)) {
+              $fixed[] = "<u>patient signature</u> ";
+            // }
+          }
+        }
+      }
+
+      if ($visit->visit_program != null) {
+        $visit_type_mdl = $visit->visit_program.'mdl';
+        $this->load->model($visit_type_mdl);
+        $visit_program = $this->$visit_type_mdl->get($visit->visit_log_id);
+        
+        if (isset($visit_program->clinician_signature) AND $visit_program->clinician_signature != "") {
+          if (!file_exists($upload_path . $visit_program->clinician_signature)) {
+            // clinician signature file missing
+            $issues[] = "<u>clinician signature</u> ";
+            
+            if ($found = $this->getPreviousVisitByClinician($visit, $visit_program)) {
+              // $signature_file_name = "pt_signature_" . $visit->visit_log_id . ".jpg";
+              $signature_file_name =  $visit_program->clinician_signature;
+              // echo "copy '".$found->clinician_signature ."' to ". $signature_file_name."<br>";
+              // if(copy($upload_path . $found->clinician_signature, $upload_path. $signature_file_name)) {
+                $fixed[] = "<u>clinician signature</u> ";
+              // }
+            }
+          }
+        }
+
+        if (isset($visit_program->wsuperv_signature) AND $visit_program->wsuperv_signature != "") {
+          if (!file_exists($upload_path . $visit_program->wsuperv_signature)) {
+            // Supervisor Signature file missing
+            $issues[] = "<u>Supervisor Signature</u> ";
+            // $this->detected($visit, "<u>Supervisor Signature</u> file missing");
+            // continue;
+          }
+        }
+
+        $form3625 = $this->form3625mdl->get($visit->visit_log_id);  
+        if (!empty($form3625)) {
+            if (isset($form3625->clinician_3625_signature) AND $form3625->clinician_3625_signature != "") {
+                if (!file_exists($upload_path . $form3625->clinician_3625_signature)) {
+                    // clinician 3625 signature file missing
+                    $issues[] = "<u>clinician 3625 signature</u> ";
+                    
+                    if (isset($visit_program->clinician_signature) AND $visit_program->clinician_signature != "" AND file_exists($upload_path . $visit_program->clinician_signature)) {
+                        $signature_file_name =  $form3625->clinician_3625_signature;
+                        // echo "copy '".$visit_program->clinician_signature ."' to ". $signature_file_name."<br>";
+                        // if(copy($upload_path . $visit_program->clinician_signature, $upload_path. $signature_file_name)) {
+                          $fixed[] = "<u>clinician 3625 signature</u> ";
+                        // }
+                    } else  {
+                        if ($found = $this->getPreviousVisitByClinician($visit, $visit_program)) {
+                            $signature_file_name =  $form3625->clinician_3625_signature;
+                            // echo "copy '".$found->clinician_signature ."' to ". $signature_file_name."<br>";
+                            // if(copy($upload_path . $found->clinician_signature, $upload_path. $signature_file_name)) {
+                              $fixed[] = "<u>clinician 3625 signature</u> ";
+                            // }
+                        }
+                    }
+                }
+            }
+
+            if (isset($form3625->pat_3625_signature) AND $form3625->pat_3625_signature != "") {
+                if (!file_exists($upload_path . $form3625->pat_3625_signature)) {
+                    // patient 3625 signature file missing
+                    $issues[] = "<u>patient 3625 signature</u> ";
+
+                    if (isset($visit->signature) AND $visit->signature != "" AND file_exists($upload_path . $visit->signature)) {
+                        $signature_file_name =  $form3625->pat_3625_signature;
+                        // echo "copy '".$visit->signature ."' to ". $signature_file_name."<br>";
+                        // if(copy($upload_path . $visit->signature, $upload_path. $signature_file_name)) {
+                          $fixed[] = "<u>patient 3625 signature</u> ";
+                        // }
+                    } else  {
+                        if ($found = $this->getPreviousVisitByPatient($visit)) {
+                            $signature_file_name =  $form3625->pat_3625_signature;
+                            // echo "copy '".$found->signature ."' to ". $signature_file_name."<br>";
+                            // if(copy($upload_path . $found->signature, $upload_path. $signature_file_name)) {
+                              $fixed[] = "<u>patient 3625 signature</u> ";
+                            // }
+                        }
+                    }
+                }
+            }
+        }
+      }
+
+      if (!empty($issues)) {
+        $this->detected_report($visit, $issues, $fixed);
+      }
+    }
+  }
+
+  function fixnow () {
+
+    $this->db->select('vis_visit_log.visit_log_id, vis_visit_log.visit_type_id, vis_visit_log.visit_date_time, vis_visit_log.visit_user_id, vis_visit_log.signature, vit_visit_type.visit_program, pat_patient.first_name, pat_patient.last_name, pat_patient.patient_id, agy_agency.agency_name');
+    
+    $this->db->join('cms_485',        'cms_485.cms485_id = vis_visit_log.cms485_id');
+    $this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient',      'soc_start_of_care.patient_id = pat_patient.patient_id');
+    $this->db->join('vit_visit_type',     'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+    $this->db->join('agy_agency',      'agy_agency.agency_id = pat_patient.agency_id');
+
+    $this->db->where('vis_visit_log.visit_date_time >=', '2020-10-01');
+    $this->db->where_in('vis_visit_log.visit_status_id', array(3,8));
+    $this->db->order_by('vis_visit_log.visit_date_time', 'desc');
+
+    $query = $this->db->get('vis_visit_log');
+    $visits = $query->result();
+
+    $upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+    $this->load->model('form3625mdl');
+
+    foreach ($visits as $visit) {
+      // if ($visit->visit_log_id != 417537) {
+      //   continue;
+      // }
+
+      $issues = array();
+      $fixed = array();
+      if ($visit->signature != "") {
+        if (!file_exists($upload_path . $visit->signature)) {
+          // patient signature file missing
+          $issues[] = "<u>patient signature</u> ";
+          
+          if ($found = $this->getPreviousVisitByPatient($visit)) {
+            // $signature_file_name = "pt_signature_" . $visit->visit_log_id . ".jpg";
+            $signature_file_name =  $visit->signature;
+            // echo "copy '".$found->signature ."' to ". $signature_file_name."<br>";
+            if(copy($upload_path . $found->signature, $upload_path. $signature_file_name)) {
+              $fixed[] = "<u>patient signature</u> ";
+            }
+          }
+        }
+      }
+
+      if ($visit->visit_program != null) {
+        $visit_type_mdl = $visit->visit_program.'mdl';
+        $this->load->model($visit_type_mdl);
+        $visit_program = $this->$visit_type_mdl->get($visit->visit_log_id);
+        
+        if (isset($visit_program->clinician_signature) AND $visit_program->clinician_signature != "") {
+          if (!file_exists($upload_path . $visit_program->clinician_signature)) {
+            // clinician signature file missing
+            $issues[] = "<u>clinician signature</u> ";
+            
+            if ($found = $this->getPreviousVisitByClinician($visit, $visit_program)) {
+              // $signature_file_name = "pt_signature_" . $visit->visit_log_id . ".jpg";
+              $signature_file_name =  $visit_program->clinician_signature;
+              // echo "copy '".$found->clinician_signature ."' to ". $signature_file_name."<br>";
+              if(copy($upload_path . $found->clinician_signature, $upload_path. $signature_file_name)) {
+                $fixed[] = "<u>clinician signature</u> ";
+              }
+            }
+          }
+        }
+
+        if (isset($visit_program->wsuperv_signature) AND $visit_program->wsuperv_signature != "") {
+          if (!file_exists($upload_path . $visit_program->wsuperv_signature)) {
+            // Supervisor Signature file missing
+            $issues[] = "<u>Supervisor Signature</u> ";
+            // $this->detected($visit, "<u>Supervisor Signature</u> file missing");
+            // continue;
+          }
+        }
+
+        $form3625 = $this->form3625mdl->get($visit->visit_log_id);  
+        if (!empty($form3625)) {
+            if (isset($form3625->clinician_3625_signature) AND $form3625->clinician_3625_signature != "") {
+                if (!file_exists($upload_path . $form3625->clinician_3625_signature)) {
+                    // clinician 3625 signature file missing
+                    $issues[] = "<u>clinician 3625 signature</u> ";
+                    
+                    if (isset($visit_program->clinician_signature) AND $visit_program->clinician_signature != "" AND file_exists($upload_path . $visit_program->clinician_signature)) {
+                        $signature_file_name =  $form3625->clinician_3625_signature;
+                        // echo "copy '".$visit_program->clinician_signature ."' to ". $signature_file_name."<br>";
+                        if(copy($upload_path . $visit_program->clinician_signature, $upload_path. $signature_file_name)) {
+                          $fixed[] = "<u>clinician 3625 signature</u> ";
+                        }
+                    } else  {
+                        if ($found = $this->getPreviousVisitByClinician($visit, $visit_program)) {
+                            $signature_file_name =  $form3625->clinician_3625_signature;
+                            // echo "copy '".$found->clinician_signature ."' to ". $signature_file_name."<br>";
+                            if(copy($upload_path . $found->clinician_signature, $upload_path. $signature_file_name)) {
+                              $fixed[] = "<u>clinician 3625 signature</u> ";
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isset($form3625->pat_3625_signature) AND $form3625->pat_3625_signature != "") {
+                if (!file_exists($upload_path . $form3625->pat_3625_signature)) {
+                    // patient 3625 signature file missing
+                    $issues[] = "<u>patient 3625 signature</u> ";
+
+                    if (isset($visit->signature) AND $visit->signature != "" AND file_exists($upload_path . $visit->signature)) {
+                        $signature_file_name =  $form3625->pat_3625_signature;
+                        // echo "copy '".$visit->signature ."' to ". $signature_file_name."<br>";
+                        if(copy($upload_path . $visit->signature, $upload_path. $signature_file_name)) {
+                          $fixed[] = "<u>patient 3625 signature</u> ";
+                        }
+                    } else  {
+                        if ($found = $this->getPreviousVisitByPatient($visit)) {
+                            $signature_file_name =  $form3625->pat_3625_signature;
+                            // echo "copy '".$found->signature ."' to ". $signature_file_name."<br>";
+                            if(copy($upload_path . $found->signature, $upload_path. $signature_file_name)) {
+                              $fixed[] = "<u>patient 3625 signature</u> ";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+      }
+
+      if (!empty($issues)) {
+        $this->detected($visit, $issues, $fixed);
+      }
+    }
+  }
+
+  private function detected_report($visit, $issues, $fixed) {
+    $this->counter++;
+    echo "#".$this->counter. "# Patient: ".$visit->first_name." ".$visit->last_name.", Agency: ".$visit->agency_name.", visit_log_id=".$visit->visit_log_id.", visit_date_time=".$visit->visit_date_time."<br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Missing: <font color='red'>" . implode(", ", $issues)."</font>";
+    echo "<br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Can be Imported: ".(count($fixed) > 0 ? "<font color='green'>".implode(", ", $fixed)."</font>" : "<font color='red'>None</font>")."<hr><br><br>";
+  }
+
+  private function detected($visit, $issues, $fixed) {
+    $this->counter++;
+    echo "#".$this->counter. "# Patient: ".$visit->first_name." ".$visit->last_name.", Agency: ".$visit->agency_name.", visit_log_id=".$visit->visit_log_id.", visit_date_time=".$visit->visit_date_time."<br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Was Missing: <font color='red'>" . implode(", ", $issues)."</font>";
+    echo "<br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Successfully Imported: ".(count($fixed) > 0 ? "<font color='green'>".implode(", ", $fixed)."</font>" : "<font color='red'>None</font>")."<hr><br><br>";
+
+    // if ($this->counter == 1) {
+    //   exit();
+    // }
+  }
+
+  private function getPreviousVisitByPatient($visit) {
+    $upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+
+
+    $this->db->select('vis_visit_log.visit_log_id, vis_visit_log.visit_type_id, vis_visit_log.visit_date_time, vis_visit_log.visit_user_id, vis_visit_log.signature, vit_visit_type.visit_program, pat_patient.first_name, pat_patient.last_name, pat_patient.patient_id, agy_agency.agency_name');
+
+    $this->db->join('cms_485',              'cms_485.cms485_id = vis_visit_log.cms485_id');
+    $this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient',          'soc_start_of_care.patient_id = pat_patient.patient_id');
+    $this->db->join('vit_visit_type',     'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+    $this->db->join('agy_agency',      'agy_agency.agency_id = pat_patient.agency_id');
+
+    $this->db->where('vis_visit_log.visit_date_time <', $visit->visit_date_time);
+    $this->db->where('vis_visit_log.visit_log_id !=', $visit->visit_log_id);
+    $this->db->where('vis_visit_log.signature IS NOT NULL');
+    $this->db->where_in('vis_visit_log.visit_status_id', array(3,8));
+    $this->db->where('pat_patient.patient_id', $visit->patient_id);
+
+    $this->db->order_by('vis_visit_log.visit_date_time', 'desc');
+    $this->db->limit(1);
+    $query = $this->db->get('vis_visit_log');   
+    if ($query->num_rows() > 0) {
+      $row = $query->row();
+      if (file_exists($upload_path . $row->signature)) {
+        return $row;
+      } else {
+        return $this->getPreviousVisitByPatient($row);
+      }
+    } else {
+      return false;
+    }
+  }
+
+  private function getPreviousVisitByClinician($visit, $visit_program) {
+    $upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+
+    $this->db->select('vis_visit_log.visit_log_id, vis_visit_log.visit_type_id, vis_visit_log.visit_date_time, vis_visit_log.visit_user_id, vis_visit_log.signature, vit_visit_type.visit_program, pat_patient.first_name, pat_patient.last_name, pat_patient.patient_id, agy_agency.agency_name');
+
+    $this->db->join('cms_485',              'cms_485.cms485_id = vis_visit_log.cms485_id');
+    $this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient',          'soc_start_of_care.patient_id = pat_patient.patient_id');
+    $this->db->join('vit_visit_type',     'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+    $this->db->join('agy_agency',      'agy_agency.agency_id = pat_patient.agency_id');
+
+    $this->db->where('vis_visit_log.visit_date_time <', $visit->visit_date_time);
+    $this->db->where('vis_visit_log.visit_log_id !=', $visit->visit_log_id);
+    // $this->db->where('vis_visit_log.signature IS NOT NULL');
+    $this->db->where_in('vis_visit_log.visit_status_id', array(3,8));
+    // $this->db->where('pat_patient.patient_id', $visit->patient_id);
+    $this->db->where('vis_visit_log.visit_user_id', $visit->visit_user_id);
+
+    $this->db->order_by('vis_visit_log.visit_date_time', 'desc');
+    $this->db->limit(1);
+    $query = $this->db->get('vis_visit_log');   
+    if ($query->num_rows() > 0) {
+      $row = $query->row();
+
+      $visit_type_mdl = $row->visit_program.'mdl';
+      $this->load->model($visit_type_mdl);
+      $row_program = $this->$visit_type_mdl->get($row->visit_log_id);
+
+      if (isset($row_program->clinician_signature) AND $row_program->clinician_signature != "" AND file_exists($upload_path . $row_program->clinician_signature) ) {
+        return $row_program;
+      } else {
+        return $this->getPreviousVisitByClinician($row, $row_program);
+      }
+    } else {
+      return false;
+    }
+  }    
+
+}

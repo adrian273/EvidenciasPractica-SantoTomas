@@ -1,0 +1,1084 @@
+<?php
+
+include 'visitform.php';
+
+class stev extends VisitForm
+{
+
+    public function stev()
+    {
+
+        parent::VisitForm();
+
+        $this->load->model('stevmdl');
+
+        $this->tpl->assign("resource_path", "task/stev");
+        $this->tpl->assign(array(
+            "tab_page" => true,
+        ));
+
+        $this->tpl->assign('tab_43_list', $this->parametermdl->getByType(43));
+        $this->tpl->assign('tab_87_list', $this->parametermdl->getByType(87));
+        $this->tpl->assign('tab_92_list', $this->parametermdl->getByType(92));
+        $this->tpl->assign('tab_32_list', $this->parametermdl->getByType(32));
+        $this->tpl->assign('tab_93_list', $this->parametermdl->getByType(93));
+        $this->tpl->assign('tab_98_list', $this->parametermdl->getByType(98));
+        $this->tpl->assign('validatationVisit', true);
+    }
+
+    public function index($visit_log_id, $action = 'task', $window = 'self')
+    {
+
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        if (!count($this->stevmdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+
+            $stevs = $this->stevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id);
+
+            if (count($stevs) == 0) {
+                $stpns = $this->stevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id, true); // look all STEV of current SOC
+            }
+
+            if (count($stevs)) {
+                $stev = $stevs[count($stevs) - 1];
+
+                $prev_visit_log_id = $stev->visit_log_id;
+
+                $not_to_import = array(
+                    'visit_log_id',
+                    'st_evaluation_id',
+                    'upload_document_name',
+                    'upload_document_name2',
+                );
+                foreach ($stev as $k => $v) {
+                    if (!in_array($k, $not_to_import) and property_exists($this->stevmdl, $k)) {
+                        $this->stevmdl->$k = $v;
+                    }
+
+                }
+
+                if (count($this->stevmdl->get($visit_log_id))) {
+                    $this->stevmdl->visit_log_id = $visit_log_id;
+                    $this->stevmdl->update($visit_log_id);
+                } else {
+                    $this->stevmdl->visit_log_id = $visit_log_id;
+                    $this->stevmdl->insert($visit_log_id);
+                }
+
+            }
+
+            $stevs = $this->stevmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($stevs)) {
+                $stev = $stevs[0];
+
+                $next_visit_log_id = $stev->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        } else {
+
+            $stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($stevs)) {
+                $stev = $stevs[count($stevs) - 1];
+
+                $prev_visit_log_id = $stev->visit_log_id;
+            }
+
+            $stevs = $this->stevmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($stevs)) {
+                $stev = $stevs[0];
+
+                $next_visit_log_id = $stev->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        }
+
+        $rules = array(
+            'visit_duration' => 'required|callback_checkduration',
+        );
+
+        $fields = array(
+            'visit_duration' => 'Visit Duration',
+        );
+
+        $this->validation->set_fields($fields);
+        $this->validation->set_rules($rules);
+
+        if ($this->validation->run() == true) {
+            if ($this->updateFormEdition($visit_log_id)) {
+                $this->assignPostData($this->stevmdl);
+
+                if ($this->input->post('ther_na') == 1 or $this->input->post('ther_na') == '1') {
+                    $this->stevmdl->ther_name = null;
+                    $this->stevmdl->ther_implem_plan = null;
+                    $this->stevmdl->ther_follow_plan = null;
+                    $this->stevmdl->ther_raport_pat_fam = null;
+                    $this->stevmdl->ther_eval_plan = null;
+                } else {
+                    $this->stevmdl->ther_na = null;
+                }
+
+                $stev = $this->stevmdl->get($visit_log_id);
+                if (count($stev)) {
+                    $this->stevmdl->st_evaluation_id = $stev->st_evaluation_id;
+                    $this->stevmdl->update($visit_log_id);
+                } else {
+                    $this->stevmdl->insert($visit_log_id);
+                }
+
+                //echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+                if ($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id and $this->visitlogmdl->visit_status_id == 8) {
+                    // when tasks are "sent for approval" they should be copied to the vt_st_evaluation_copy table
+                    $this->db->query("REPLACE INTO vt_st_evaluation_copy SELECT * FROM `vt_st_evaluation` WHERE visit_log_id = {$visit_log_id}");
+                }
+
+                $this->load->helper('ajax');
+                if (isAjax()) {
+                    echo "1";
+                    exit;
+                }
+            }
+
+            $this->formRedirection($visit_log_id);
+
+            $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        }
+
+        $this->assignObject($visitlog);
+        $stev = $this->stevmdl->get($visit_log_id);
+        if (empty($stev)) {
+            $stev = $this->stevmdl->getEmpty();
+        }
+        $this->assignObject($stev);
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            4,
+            5,
+        )));
+        $this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            4,
+        )));
+
+        $additional_buttons = array();
+        
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                if ($stev->upload_document_name OR $stev->upload_document_name2) {
+                    $additional_buttons['Change Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                    $additional_buttons['Remove Document'] = 'removeScannedDocument(' . $visit_log_id . ')';
+                } else {
+                    $additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument(' . $visit_log_id . ')';
+                }
+            }
+        }
+
+        $additional_buttons['Patient Signature'] = 'capture_pt_signature(' . $visit_log_id . ')';
+        $this->tpl->assign('additional_buttons', $additional_buttons);
+
+        $this->getPatientInfo($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/stev");
+        $this->setfbase($visit_log_id, $action);
+
+        // For user with profile=Company or Agency Manager, for notes w/scanned documents,
+        // we need to also display button "Save" in addition to "Submit for approval"
+        if ($stev->upload_document_name
+            and $visitlog->visit_user_id != $this->getUsAgyId()
+            and ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2)
+            and ($this->getUserProfileId() == 1 or $this->getUserProfileId() == 3)) {
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/fbase");
+        }
+
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    public function capture_pt_signature($visit_log_id)
+    {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        // $stev = $this->stevmdl->get($visit_log_id);
+        //echo FCPATH;
+        $rules = array(
+            'signature' => 'required',
+        );
+        $this->validation->set_rules($rules);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+
+        if ($this->validation->run() == false) {
+            // get the image name based on the visit_log_id
+            // $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+            //echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+            if (isset($visitlog->signature)) {
+                $this->tpl->assign("signature", $visitlog->signature);
+            }
+            $this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+            $this->tpl->view("task/ibase", $this->lang->language);
+        } else {
+            if (!is_null($this->input->post('signature'))) {
+                /*if (empty($stev)) {
+                $this->stevmdl->visit_log_id = $visit_log_id;
+                $this->stevmdl->insert($visit_log_id);
+                }*/
+
+                $signature = $this->input->post('signature');
+                $temp_array = explode(",", $signature);
+                $encoded_image = $temp_array[1];
+                $decoded_image = base64_decode($encoded_image);
+                $signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+                $upload_path = str_replace("\\", "/", FCPATH) . "upload/signatures/";
+
+                file_put_contents($upload_path . $signature_file_name, $decoded_image);
+                $this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+
+                $config = &get_config();
+
+                echo 'Signature has been captured and saved successfully.';
+                echo '<script>
+					setTimeout(function(){
+						parent.location.href=\'' . $config["index_url"] . 'task/stev/index/' . $visit_log_id . '?r=' . time() . '#anchor_pt_signature\';
+					}, 2000);
+				</script>';
+            }
+        }
+    }
+
+    public function upload_document($visit_log_id)
+    {
+        $can_upload = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 or $visitlog->visit_status_id == 2 or $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_upload = true;
+            }
+        }
+
+        if (!$can_upload) {
+            exit('Can\'t Upload!');
+        }
+
+        if ((isset($_FILES['document']) and $_FILES['document']['error'] == 0) OR (isset($_FILES['document2']) AND $_FILES['document2']['error']==0)) {
+            $config = &get_config();
+
+            // Save form 
+            $fname = "";
+            $fname2 = "";
+
+            if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+                $fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+                $fname = str_replace(" ", "_", $fname);
+                $fname = str_replace("%", "_", $fname);
+                $fname = str_replace("#", "", $fname);
+                $fname = str_replace("&", "", $fname);
+                $fname = str_replace(":", "-", $fname);
+                
+                if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH . '/datastore/stev/' . $fname)) {
+                    $fname = "";
+                }
+            }
+
+            if (isset($_FILES['document2']) AND $_FILES['document2']['error']==0) {
+                $fname2 = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document2']['name'], PATHINFO_EXTENSION);
+                $fname2 = str_replace(" ","_",$fname2);
+                $fname2 = str_replace("%","_",$fname2);
+                $fname2 = str_replace("#","",$fname2);
+                $fname2 = str_replace("&","",$fname2);
+                $fname2 = str_replace(":","-",$fname2);
+                if (!move_uploaded_file($_FILES['document2']['tmp_name'], FCPATH.'/datastore/stev/'.$fname2)) {
+                    $fname2 = "";
+                }
+            }
+
+
+            // $fname = microtime()."_".$fname;
+            if($fname OR $fname2) {
+                $stev = $this->stevmdl->get($visit_log_id);
+
+                if (empty($stev)) {
+                    $this->stevmdl->visit_log_id = $visit_log_id;
+                    $this->stevmdl->upload_document_name = $fname;
+                    $this->stevmdl->upload_document_name2 = $fname2;
+                    $this->stevmdl->insert($visit_log_id);
+                } else {
+                    if ($fname) {
+                        @unlink(FCPATH . '/datastore/stev/' . $stev->upload_document_name);
+                        $this->stevmdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+                    }
+
+                    if ($fname2) {
+                        @unlink(FCPATH . '/datastore/stev/' . $stev->upload_document_name2);
+                        $this->stevmdl->updateFlex($visit_log_id, 'upload_document_name2', $fname2);
+                    }
+                }
+
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+                $this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+
+                echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='" . $config["index_url"] . "task/stev/index/" . $visit_log_id . "';</SCRIPT>";
+            } else {
+                exit("Document Upload Failed!");
+            }
+        } else {
+            if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 AND isset($_FILES['document2']['error']) AND $_FILES['document2']['error'] != 0) {
+                $error_string = $this->tpl->get_template_vars('error_string');
+                $error_string .= "<br>Please select Document";
+                $this->tpl->assign("error_string", $error_string);
+            }
+            
+            $stev = $this->stevmdl->get($visit_log_id);
+            $this->assignObject($stev);
+
+            $this->tpl->assign("visit_log_id", $visit_log_id);
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/upload_stev_document");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        }
+    }
+
+    function pre_remove_document($visit_log_id){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+
+        $stev = $this->stevmdl->get($visit_log_id);
+        $this->assignObject($stev);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign_include("dynamic_tpl", "task/documents/remove_stev_document");
+        
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function remove_document($visit_log_id, $doc_number){
+        $can_remove = false;
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+        if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+            if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+                $can_remove = true;
+            }
+        }
+
+        if (!$can_remove) {
+            exit('Can\'t Remove document!');
+        }
+        $stev = $this->stevmdl->get($visit_log_id);
+        
+        switch ($doc_number) {
+            case '1':
+                if (isset($stev->upload_document_name)) {
+                    @unlink(FCPATH.'/datastore/stev/'.$stev->upload_document_name);
+                    $this->stevmdl->updateFlex($visit_log_id, 'upload_document_name', null);
+                }
+                break;
+            case '2':
+                if (isset($stev->upload_document_name2)) {
+                    @unlink(FCPATH.'/datastore/stev/'.$stev->upload_document_name2);
+                    $this->stevmdl->updateFlex($visit_log_id, 'upload_document_name2', null);
+                }
+                break;
+            default:
+                exit('Document Not found.');
+                break;
+        }
+        
+        echo "1";exit();
+
+    }
+
+    public function index_archive($visit_log_id, $action = 'task', $window = 'self')
+    {
+        $this->load->model('stevarchivemdl');
+        $visitlog = $this->visitlogmdl->getByIdArchive($visit_log_id);
+
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+        $prev_visit_log_id = null;
+        $next_visit_log_id = null;
+
+        if (!count($this->stevarchivemdl->get($visit_log_id)) or $visitlog->visit_status_id == 1) {
+
+            $stevs = $this->stevarchivemdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id);
+
+            if (count($stevs) == 0) {
+                $stpns = $this->stevarchivemdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id, true); // look all STEV of current SOC
+            }
+
+            if (count($stevs)) {
+                $stev = $stevs[count($stevs) - 1];
+
+                $prev_visit_log_id = $stev->visit_log_id;
+
+                /*$not_to_import = array (
+            'visit_log_id',
+            'st_evaluation_id'
+            );
+            foreach ($stev as $k => $v) {
+            if (!in_array($k, $not_to_import) AND property_exists($this->stevarchivemdl, $k))
+            $this->stevarchivemdl-> $k = $v;
+            }
+
+            if (count($this->stevarchivemdl->get($visit_log_id))) {
+            $this->stevarchivemdl->visit_log_id = $visit_log_id;
+            $this->stevarchivemdl->update($visit_log_id);
+            } else {
+            $this->stevarchivemdl->visit_log_id = $visit_log_id;
+            $this->stevarchivemdl->insert($visit_log_id);
+            }*/
+
+            }
+
+            $stevs = $this->stevarchivemdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+
+            if (count($stevs)) {
+                $stev = $stevs[0];
+
+                $next_visit_log_id = $stev->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        } else {
+
+            $stevs = $this->stevarchivemdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($stevs)) {
+                $stev = $stevs[count($stevs) - 1];
+
+                $prev_visit_log_id = $stev->visit_log_id;
+            }
+
+            $stevs = $this->stevarchivemdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($stevs)) {
+                $stev = $stevs[0];
+
+                $next_visit_log_id = $stev->visit_log_id;
+            }
+
+            $this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+            $this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+        }
+
+        $this->assignObject($visitlog);
+        $this->assignObject($this->stevarchivemdl->get($visit_log_id));
+
+        /*if ($this->validation->run() == TRUE) {
+        $this->updateFormEdition($visit_log_id);
+
+        $this->assignPostData($this->stevarchivemdl);
+
+        if ($this->input->post('ther_na') == 1 OR $this->input->post('ther_na') == '1') {
+        $this->stevarchivemdl->ther_name = null;
+        $this->stevarchivemdl->ther_implem_plan = null;
+        $this->stevarchivemdl->ther_follow_plan = null;
+        $this->stevarchivemdl->ther_raport_pat_fam = null;
+        $this->stevarchivemdl->ther_eval_plan = null;
+        } else {
+        $this->stevarchivemdl->ther_na = null;
+        }
+
+        $stev = $this->stevarchivemdl->get($visit_log_id);
+        if (count($stev)) {
+        $this->stevarchivemdl->st_evaluation_id = $stev->st_evaluation_id;
+        $this->stevarchivemdl->update($visit_log_id);
+        } else {
+        $this->stevarchivemdl->insert($visit_log_id);
+        }
+
+        $this->load->helper('ajax');
+        if (isAjax()) {
+        echo "1";
+        exit;
+        }
+        $this->formRedirection($visit_log_id);
+        }*/
+
+        $this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            4,
+            5,
+        )));
+        $this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array(
+            4,
+        )));
+
+        $this->getPatientInfoArchive($visit_log_id);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign("window", $window);
+        $this->tpl->assign_include("dynamic_form", "task/documents/stev");
+        $this->setfbasearchive($visit_log_id, $action);
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    public function pdf($visit_log_id)
+    {
+        $this->load->helper('visit_pdf');
+        stev_pdf($visit_log_id, 'D');
+        return;
+    }
+
+    public function edit_template($tpl_id)
+    {
+        $tpl_type = 'stev';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $this->tpl->assign("tpl_type", $tpl_type);
+        // $this->tpl->assign("entity_id", $tpl_type);
+        $this->tpl->assign("record_id", $tpl_id);
+        $this->tpl->assign("faction", 'edit_template');
+        $this->tpl->assign("resource_delete", 'delete_template');
+        // $this->tpl->assign("no_delete_form", true);
+
+        // $this->validation->set_rules(array('template_name' => 'required'));
+        // $this->validation->set_fields(array('template_name' => 'Template Name'));
+
+        $template_field = "tpl_{$tpl_type}_name";
+        $template = $this->visitformtplmdl->get($tpl_id);
+
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to edit this template");
+        }
+
+        if ($this->validation->run() == false) {
+            $this->assignObject($template);
+
+            $this->lang->language['grl_cancel'] = 'Back';
+            $this->tpl->assign("back_url", $back_url);
+            $this->tpl->assign("tpl_type_external_resource", "{$tpl_type}_external_resource");
+            $this->tpl->assign("tpl_type_form", "{$tpl_type}_form");
+            $this->tpl->assign("form_title", "Edit Template");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "user/templates/edit_data");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        } else {
+            $this->assignPostData($this->visitformtplmdl);
+            $this->visitformtplmdl->tpl_stev_name = $template->tpl_stev_name;
+            $this->visitformtplmdl->update($tpl_id);
+
+            $this->tpl->assign('gmessage', "Template has been updated");
+            redirect("task/stev/edit_template/" . $tpl_id);
+        }
+    }
+
+    public function delete_template($tpl_id)
+    {
+        $tpl_type = 'stev';
+        $back_url = $this->session->userdata('task_return');
+
+        $this->load->model('tpl' . $tpl_type . 'mdl', 'visitformtplmdl');
+        $template = $this->visitformtplmdl->get($tpl_id);
+        if (empty($template)) {
+            exit("Template Not Found!");
+        }
+
+        if ($template->user_id != $this->getUserId()) {
+            exit("You are not authorized to delete this template");
+        }
+
+        $this->visitformtplmdl->delete($tpl_id, $this->getUserId());
+        if ($back_url) {
+            redirect($back_url);
+        } else {
+            redirect("user/templates");
+        }
+    }
+
+    public function checkduration($visit_duration)
+    {
+        if (!is_numeric($visit_duration)) {
+            $this->validation->set_message('checkduration', "Error: please enter number only in visit duration field.");
+            return false;
+        }
+
+        if ($visit_duration > 300) {
+            $this->validation->set_message('checkduration', "Error: visit duration can be 300 minutes maximum.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public function validation_visit($visit_log_id)
+    {
+
+        $this->load->model('agencysettingsmdl');
+		$agency_conf = $this->agencysettingsmdl->get($this->getAgencyId());
+		$msg = 0;
+		$validation_success = 0;
+
+        if ($agency_conf->st_validation == '1') {
+          
+            $rules = array(
+                'visit_duration' => 'callback_checkduration',
+                'primary_diag' => 'required',
+                //'primary_diag_date' => 'required',
+                'secondary_diag' => 'required',
+                //'secondary_diag_date' => 'required',
+                'tab_32_assess_type' => 'required',
+                'st_plan_care' => 'callback_validate_st_plan[st_plan_care]',
+                'st_poc_discussed_other' => 'callback_validate_st_poc[st_poc_discussed_other]',
+                'prior_service' => 'required',
+                'physical_limit' => 'required',
+                'tab_43_rehab_poten' => 'required',
+                'mental_status' => 'callback_validate_mental_status[mental_status]',
+                'p1_sa_bp' => 'required',
+                'system_bp_right_left' => 'required',
+                'system_sitt_lyi_stand' => 'required',
+                'system_o2_sat' => 'required',
+                'system_skin' => 'required',
+                'tab_75_pain_assessment' => 'required',
+                'pain_location' => 'required',
+                'pain_control' => 'required',
+                'functional_limitations' => 'callback_validate_func_limit[functional_limitations]',
+                'func_limit_other' => 'callback_validate_func_limit_other[func_limit_other]',
+                'pertinent_history' => 'required',
+                'home_evaluation' => 'callback_validate_home_evaluation[home_evaluation]',
+                'home_ev_wit_spouse' => 'callback_validate_ev_wit_spouse[home_ev_wit_spouse]',
+                'home_ev_lives_with_other' => 'callback_validate_lwo[home_ev_lives_with_other]',
+                'home_ev_level' => 'required',
+                'safety_measure' => 'callback_validate_safety_measure[safety_measure]',
+                'safety_other' => 'callback_validate_safety_other[safety_other]',
+                'treatment' => 'callback_validate_treatment[treatment]',
+                'treat_other' => 'callback_validate_treat_other[treat_other]',
+                'general_i' => 'callback_validate_general_i[general_i]',
+                'treat_plan' => 'required',
+                'assesment' => 'required',
+                'problem_date1' => 'required',
+                'problem_date2' => 'required',
+                'problem_date3' => 'required',
+                'problem_date4' => 'required',
+                'hp_discharge' => 'required',
+                'discharge_summary_desc' => 'required',
+                'limitations' => 'required',
+                'goals' => 'required',
+                'home_YN' => 'required|callback_validate_home_YN[home_YN]',
+                'home_bound_status' => 'callback_validate_home_bound_status[home_bound_status]',
+                'home_other' => 'callback_validate_home_other[home_other]',
+                'frequency_duration' => 'required',
+                'tab_93_apha_audi_compre' => 'required',
+                'tab_93_apha_sing_words' => 'required',
+                'tab_93_apha_sente_direct' => 'required',
+                'tab_93_apha_parag' => 'required',
+                'tab_93_verb_expre_word_recall' => 'required',
+                'tab_93_verb_expre_sent_form' => 'required',
+                'tab_93_verb_expre_visual_conf_nam' => 'required',
+                'tab_93_verb_expre_repe' => 'required',
+                'tab_93_verb_expre_auto_speech' => 'required',
+                'tab_93_verb_expre_yes_no_reponse' => 'required',
+                'tab_93_verb_expre_aprax' => 'required',
+                'tab_93_read_compre_match_level' => 'required',
+                'tab_93_read_compre_sing_words' => 'required',
+                'tab_93_read_compre_senten' => 'required',
+                'tab_93_read_compre_paragr' => 'required',
+                'tab_93_read_compre_paragr' => 'required',
+                'tab_93_writt_expre_fine_motor' => 'required',
+                'tab_93_writt_expre_sig' => 'required',
+                'tab_93_writt_expre_coping' => 'required',
+                'tab_93_writt_expre_indep_letter_words' => 'required',
+                'tab_93_writt_expre_dysarthia' => 'required',
+                'tab_93_writt_expre_respir' => 'required',
+                'tab_93_writt_expre_phona' => 'required',
+                'tab_93_writt_expre_resonan' => 'required',
+                'tab_93_writt_expre_articul' => 'required',
+                'tab_93_writt_expre_prosody' => 'required',
+                'tab_93_non_oral_feed_food_consist' => 'required',
+                'tab_93_non_oral_feed_post_assists' => 'required',
+                'tab_93_non_oral_feed_oral_phase' => 'required',
+                'tab_93_non_oral_feed_pharyn_phase' => 'required',
+                'tab_93_non_oral_feed_esopha_phase' => 'required',
+                'tab_93_right_cva_def_atten_mem_reten' => 'required',
+                'tab_93_right_cva_def_self_monitor_judment' => 'required',
+                'tab_93_right_cva_def_laryn_patho' => 'required',
+                'tab_93_right_cva_def_need_for_augment_comm' => 'required',
+                'tab_93_right_cva_def_gesture_sign' => 'required',
+                'tab_93_right_cva_def_comm_board' => 'required',
+                'tab_93_right_cva_def_electrolarynx' => 'required',
+                'ther_name' => 'required',
+                'ther_implem_plan' => 'required',
+                'ther_follow_plan' => 'required',
+                'ther_raport_pat_fam' => 'required',
+                'ther_eval_plan' => 'required',
+                'ther_notes' => 'required',
+                'addendum' => 'required',
+            );
+
+            $fields = array(
+                'primary_diag' => 'Primary Diagnosis',
+                //'primary_diag_date' => 'Primary Diagnosis Date',
+                'secondary_diag' => 'Therapy Diagnosis',
+                //'secondary_diag_date' => 'Therapy Diagnosis Date',
+                'tab_32_assess_type' => 'Assessment Type',
+                'prior_service' => 'Prior ST Services Received',
+                'physical_limit' => 'Physical Limitations',
+                'tab_43_rehab_poten' => 'Rehab Potencial',
+                'system_bp' => 'BP',
+                'system_bp_right_left' => 'L or R',
+                'system_bp_sitt_lyi_stand' => 'Sitting or Lying or Standing',
+                'system_hr' => 'HR',
+                'system_o2_sat' => '02 Sat',
+                'system_skin' => 'Skin',
+                'tab_75_pain_assessment' => 'Pain Assessment',
+                'pain_location' => 'Location',
+                'pain_control' => 'Control Paint Control',
+                'pertinent_history' => 'Pertinent History of Current Illness',
+                'home_ev_level' => 'Single or Multi Level',
+                'treat_plan' => 'Treatment Plan',
+                'assesment' => 'Assesment',
+                'problem_date1' => 'Problem Date Met column 1',
+                'problem_date2' => 'Problem Date Met column 2',
+                'problem_date3' => 'Problem Date Met column 3',
+                'problem_date4' => 'Problem Date Met column 4',
+                'hp_discharge' => 'H & P Update or Discharge Summary',
+                'discharge_summary_desc' => 'H & P Update or Discharge Summary Description',
+                'limitations' => 'Limitations',
+                'goals' => 'Goals',
+                'home_YN' => 'Home Bound Status',
+                'frequency_duration' => 'Frequency Duration',
+                'tab_93_apha_audi_compre' => 'Auditory Comprehension',
+                'tab_93_apha_sing_words' => 'Single Words',
+                'tab_93_apha_sente_direct' => 'Sentences / Directions',
+                'tab_93_apha_parag' => 'Paragraphs',
+                'tab_93_verb_expre_word_recall' => 'Word recall',
+                'tab_93_verb_expre_sent_form' => 'Sentence formulation',
+                'tab_93_verb_expre_visual_conf_nam' => 'Visual confrontation naming',
+                'tab_93_verb_expre_repe' => 'Repetition',
+                'tab_93_verb_expre_auto_speech' => 'Automatic speech',
+                'tab_93_verb_expre_yes_no_reponse' => 'Yes / no response',
+                'tab_93_verb_expre_aprax' => 'Apraxia',
+                'tab_93_read_compre_match_level' => 'Matching level',
+                'tab_93_read_compre_sing_words' => 'Single words',
+                'tab_93_read_compre_senten' => 'Sentences',
+                'tab_93_read_compre_paragr' => 'Paragraphs',
+                'tab_93_writt_expre_fine_motor' => 'Fine motor',
+                'tab_93_writt_expre_sig' => 'Signature',
+                'tab_93_writt_expre_coping' => 'Coping',
+                'tab_93_writt_expre_indep_letter_words' => 'Independent',
+                'tab_93_writt_expre_dysarthia' => 'Dysarthria',
+                'tab_93_writt_expre_respir' => 'Repiration',
+                'tab_93_writt_expre_phona' => 'Phonation',
+                'tab_93_writt_expre_resonan' => 'Resonance',
+                'tab_93_writt_expre_articul' => 'Articulation',
+                'tab_93_writt_expre_prosody' => 'Prosody',
+                'tab_93_non_oral_feed_food_consist' => 'Food consistency',
+                'tab_93_non_oral_feed_post_assists' => 'Postural assists',
+                'tab_93_non_oral_feed_oral_phase' => 'Oral phase',
+                'tab_93_non_oral_feed_pharyn_phase' => 'Pharyngeal phase',
+                'tab_93_non_oral_feed_esopha_phase' => 'Esophageal phase',
+                'tab_93_right_cva_def_atten_mem_reten' => 'Attention, memory, retention',
+                'tab_93_right_cva_def_self_monitor_judment' => 'Self-monitoring, judment',
+                'tab_93_right_cva_def_laryn_patho' => 'Laryngeal Pathology',
+                'tab_93_right_cva_def_need_for_augment_comm' => 'Need for Augmentative Communication',
+                'tab_93_right_cva_def_gesture_sign' => 'Gesture/sign',
+                'tab_93_right_cva_def_comm_board' => 'Communication board',
+                'tab_93_right_cva_def_electrolarynx' => 'Electrolarynx',
+                'ther_name' => 'Name of Therapist being Evaluated',
+                'ther_implem_plan' => 'Implemented Plan of Care?',
+                'ther_follow_plan' => 'Followed Plan of Care?',
+                'ther_raport_pat_fam' => 'Demonstrated good rapport with patient/family?',
+                'ther_eval_plan' => 'Evaluation of Plan of Care',
+                'ther_notes' => 'Supervisor Notes',
+                'addendum' => 'Addendum',
+            );
+
+            $this->validation->set_rules($rules);
+            $this->validation->set_fields($fields);
+
+            if ($this->validation->run() == true) {
+                $validation_success = 1;
+            } else {
+                $msg = $this->validation->get_error_msg();
+            }
+        } else {
+            $validation_success = 2;
+        }
+        echo json_encode(array('validation_success' => $validation_success, 'msg' => $msg));
+        exit;
+    }
+
+    public function validate_st_plan($st_plan_care)
+    {
+        $config = array(
+            'name_callback' => 'validate_st_plan',
+            'value' => $st_plan_care,
+            'msg' => 'ST Plan of Care',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_st_poc($st_poc_discussed_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_st_poc',
+            'value_other' => $st_poc_discussed_other,
+            'value_other_desc' => $this->input->post('st_poc_discussed_other_desc'),
+            'msg' => 'ST Plan of Care Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_mental_status($mental_status)
+    {
+        $config = array(
+            'name_callback' => 'validate_mental_status',
+            'value' => $mental_status,
+            'msg' => 'Mental Status',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_func_limit($functional_limitations)
+    {
+        $config = array(
+            'name_callback' => 'validate_func_limit',
+            'value' => $functional_limitations,
+            'msg' => 'Functional Limitations',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_func_limit_other($func_limit_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_func_limit_other',
+            'value_other' => $func_limit_other,
+            'value_other_desc' => $this->input->post('func_limit_other_desc'),
+            'msg' => 'Functional Limitations Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_home_evaluation($home_evaluation)
+    {
+        $config = array(
+            'name_callback' => 'validate_home_evaluation',
+            'value' => $home_evaluation,
+            'msg' => 'Home Evaluation',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_ev_wit_spouse($home_ev_wit_spouse)
+    {
+        $config = array(
+            'name_callback' => 'validate_ev_wit_spouse',
+            'value_other' => $home_ev_wit_spouse,
+            'value_other_desc' => $this->input->post('home_ev_with_spouse_desc'),
+            'msg' => 'Lives w/Spouse Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    // Home Evaluation Other validation
+    public function validate_lwo($home_ev_lives_with_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_lwo',
+            'value_other' => $home_ev_lives_with_other,
+            'value_other_desc' => $this->input->post('home_ev_other_desc'),
+            'msg' => 'Home Evaluation Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_safety_measure($safety_measure)
+    {
+        $config = array(
+            'name_callback' => 'validate_safety_measure',
+            'value' => $safety_measure,
+            'msg' => '	Safety Measure',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_safety_other($safety_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_safety_other',
+            'value_other' => $safety_other,
+            'value_other_desc' => $this->input->post('safety_other_desc'),
+            'msg' => 'Safety Measure Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_treatment($treatment)
+    {
+        $config = array(
+            'name_callback' => 'validate_treatment',
+            'value' => $treatment,
+            'msg' => 'Treatment',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_treat_other($treat_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_treat_other',
+            'value_other' => $treat_other,
+            'value_other_desc' => $this->input->post('treat_other_desc'),
+            'msg' => 'Treatment Other ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_general_i($general_i)
+    {
+        $config = array(
+            'name_callback' => 'validate_general_i',
+            'value' => $general_i,
+            'msg' => 'General',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_home_bound_status($home_bound_status)
+    {
+        $config = array(
+            'name_callback' => 'validate_home_bound_status',
+            'value' => $home_bound_status,
+            'msg' => 'Home Bound Status ',
+        );
+        if ($this->validate_check($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_home_other($home_other)
+    {
+        $config = array(
+            'name_callback' => 'validate_home_other',
+            'value_other' => $home_other,
+            'value_other_desc' => $this->input->post('home_other_desc'),
+            'msg' => 'Home Bound Status  ',
+        );
+        if ($this->validate_other($config) === false) {
+            return false;
+        } else {
+            return true;
+        }
+
+    }
+
+    public function validate_check($item = array())
+    {
+        if ($item['value'] == "0") {
+            $this->validation->set_message("{$item['name_callback']}", 'Check at least one value in ' . $item['msg']);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function validate_other($item = array())
+    {
+        if ($item['value_other']) {
+            if (!$item['value_other_desc'] || $item['value_other_desc'] === "") {
+                $this->validation->set_message("{$item['name_callback']}", $item['msg'] . "Description Required");
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+
+}

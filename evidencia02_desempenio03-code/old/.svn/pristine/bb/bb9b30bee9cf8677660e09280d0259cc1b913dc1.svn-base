@@ -1,0 +1,176 @@
+<?php
+
+ class Address extends MY_Controller {
+
+	function Address () {
+		parent::MY_Controller();
+		$this->load->model('UserAddressMdl');
+		$this->tpl->assign("resource_path", "useragency/address");
+		$this->tpl->assign('tab_page', true);
+	}
+
+	function index ($us_agy_id) {
+		//$addresses = $this->UserAddressMdl->getById(1);
+		//echo "<pre>"; print_r($addresses); echo "</pre>";
+		
+		$this->tpl->assign(array("list_title" => "Address / Service Area", "add_sufix" => "Address / Service Area"));
+		
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign_include("filter_tpl", "useragency/gfilter_address");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+  
+	function grid ( $us_agy_id ) {
+		$user = $this->usagymdl->getByUsAgyId($us_agy_id);
+		$addresses = $this->UserAddressMdl->getByUserId($user->user_id);
+    
+    	$now = time();    
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=20", "Street"));
+		$head->append($this->xml->Element("column", "width=20", "City"));
+		$head->append($this->xml->Element("column", "width=15",  "State"));
+		$head->append($this->xml->Element("column", "width=*", "Zipcode"));
+		$head->append($this->xml->Element("column", "width=*", "Address Type"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		$address = "";
+		foreach ($addresses as $address) {
+			$cell = $this->xml->Element("row", "id=" . $address->user_address_id);
+
+      
+			$cell->append($this->xml->Element("cell", null, $address->street));
+			$cell->append($this->xml->Element("cell", null, $address->city));
+			$cell->append($this->xml->Element("cell", null, $address->state_name_long));
+			$cell->append($this->xml->Element("cell", null, $address->zipcode));
+			if ($address->address_type === 'serv')
+				$address = "Service Area";
+			else 
+				$address = "Address";
+			$cell->append($this->xml->Element("cell", null, $address));
+			$document->append($cell);
+		}
+		
+	}	
+	
+	function add ( $us_agy_id ) {
+		$this->load->model('UserAddressMdl');	
+		$this->load->model('AgencyServiceAreaMdl');	
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('entity_id', $us_agy_id);
+		$this->tpl->assign('resource_index', 'index');
+		
+		$user = $this->usagymdl->getByUsAgyId($us_agy_id);
+		
+		$agency_state = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		// var_dump($user->user_id);
+		$city = $this->AgencyServiceAreaMdl->getCity();
+		
+		$rules = array();
+		$fields = array();
+		
+		/*$rules = array('street' => 'trim|required', 'city' => 'required', 'state_id' => 'trim|required', 'zipcode' => 'required');
+		$fields = array('street' => 'Street', 'city' => 'City', 'state_id' => 'State', 'zipcode' => 'Zipcode');
+		*/
+		if (!$this->input->post('address_type')) {
+			$rules['address_type'] = 'required';
+			$fields['address_type'] = 'Address Type';
+		}
+		else if ($this->input->post('address_type') === 'serv') {
+			$rules['city'] = 'required';
+			$fields['city'] = 'city';
+		} else {
+			
+			$rules = array('street' => 'trim|required', 'city' => 'required', 'state_id' => 'trim|required', 'zipcode' => 'required');
+			$fields = array('street' => 'Street', 'city' => 'City', 'state_id' => 'State', 'zipcode' => 'Zipcode');
+		}
+		//$this->tpl->assign('city_list', $city);		
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign("adress_type_list", array('real' => 'Real address', 'serv' => 'Service Area'));
+			$this->tpl->assign('state_id', @$agency_state->state_id);
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/address_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->UserAddressMdl);
+			$user_address_id = $this->UserAddressMdl->insert($us_agy_id, $user->user_id);
+			$this->tpl->assign('gmessage', "Address" . $this->lang->line('grl_add_msg'));
+			$this->index($us_agy_id);
+		}
+	}
+
+	function edit ( $us_agy_id, $user_address_id ) {		
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign('record_id', $user_address_id);
+		$this->tpl->assign('faction', 'edit');
+		$this->load->model('AgencyServiceAreaMdl');	
+		$city = $this->AgencyServiceAreaMdl->getCity();
+
+		$this->assignObject($this->UserAddressMdl->getById($user_address_id));
+		$this->tpl->assign("adress_type_list", array('real' => 'Address', 'serv' => 'Service Area'));
+		$this->tpl->assign('resource_index', 'index');
+		$rules = array();
+		$fields = array();
+		if (!$this->input->post('address_type')) {
+			$rules['address_type'] = 'required';
+			$fields['address_type'] = 'Address Type';
+		}
+		else if ($this->input->post('address_type') === 'serv') {
+			$rules['city'] = 'required';
+			$fields['city'] = 'city';
+		} else {
+			$rules = array('street' => 'trim|required', 'city' => 'required', 'state_id' => 'trim|required', 'zipcode' => 'required');
+			$fields = array('street' => 'Street', 'city' => 'City', 'state_id' => 'State', 'zipcode' => 'Zipcode');
+		}
+		
+		$this->tpl->assign('city_list', $city);		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/address_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->UserAddressMdl);
+			$this->UserAddressMdl->update($user_address_id);
+			
+			$this->tpl->assign('gmessage', "Address" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($us_agy_id);
+			
+		}
+	}
+	
+	function delete ( $us_agy_id, $user_address_id ) {
+		$address = $this->UserAddressMdl->getById($user_address_id);
+		if (!empty($address)) {
+			$this->UserAddressMdl->delete($user_address_id);
+			$this->tpl->assign('gmessage', "Address" . $this->lang->line('grl_del_msg'));
+			$this->index($us_agy_id);
+		} else {
+			exit('Address Not Found');
+		}	
+	}
+
+	function filterAdrress($us_agy_id, $type) {
+		$this->load->model('AgencyServiceAreaMdl');	
+		$user = $this->usagymdl->getByUsAgyId($us_agy_id);
+		if ($type == 'serv') {
+			$city = $this->AgencyServiceAreaMdl->getFilterCity($user->user_id, 'serv', $user->agency_id);
+		}  
+		else {
+			$city = array();
+		}
+		
+		echo json_encode($city);
+	}
+ }

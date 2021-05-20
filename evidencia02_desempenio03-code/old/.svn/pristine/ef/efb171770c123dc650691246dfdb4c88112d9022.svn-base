@@ -1,0 +1,30 @@
+<?
+
+ class icdMdl extends Model {
+
+	var $icd9_id;
+	var $icd9_code;
+	var $icd9_name;
+
+	function icdMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function suggest ( $icd9_code=null, $limit=6 ) {
+		
+		if (!is_null($icd9_code)) {
+			$this->db->like('icd9_code', $icd9_code);
+//			$this->db->or_like('icd9_name', $icd9_code);
+		}
+		
+		$this->db->limit($limit);
+		
+		$query = $this->db->get('icd9_master');
+		return $query->result();
+		
+	}
+	
+	
+ }

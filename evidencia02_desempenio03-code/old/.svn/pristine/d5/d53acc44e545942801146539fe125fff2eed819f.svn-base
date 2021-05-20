@@ -1,0 +1,573 @@
+<?php
+
+class MessageMdl extends Model {
+
+	var $msg_id;
+	var $user_from;
+	var $msg_date;
+	var $msg_subject;
+	var $msg_text;
+	var $msg_attachment;
+	var $patient_id;
+	var $msg_trash		= 0;
+	var $visit_log_id;
+	var $msg_type;
+	
+	function MessageMdl() {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $msg_id ) {
+
+		$this->db->select("*, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as sender_complete_name");
+		$this->db->join('us_agy', 'msg_message.user_from = us_agy_id', 'left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->where("msg_id",$msg_id);
+
+		$query = $this->db->get("msg_message");
+		return $query->row();
+		
+	}	
+    
+    function getCountInboxNew($user_id){
+        $sql = "SELECT count(*)
+                FROM `msg_message` 
+                JOIN `user_message` ON `msg_message`.`msg_id` = `user_message`.`msg_id`
+                LEFT JOIN `us_agy` ON `msg_message`.`user_from` = `us_agy`.`us_agy_id`
+                WHERE `user_message`.`user_to` = '".$user_id."' AND `user_message`.`msg_status` = 0 AND `user_message`.`msg_read` = 0";
+       $query = $this->db->query($sql);  
+       return $query->result();                  
+    }
+
+    function getCountInboxUnread($user_id){
+        $sql = "SELECT `msg_message`.`msg_id`
+                FROM `msg_message` 
+                JOIN `user_message` ON `msg_message`.`msg_id` = `user_message`.`msg_id`    
+                LEFT JOIN `us_agy` ON `msg_message`.`user_from` = `us_agy`.`us_agy_id`            
+                WHERE `user_message`.`user_to` = '".$user_id."' AND `user_message`.`msg_status` = 0 AND `user_message`.`msg_read` = 0";
+       $query = $this->db->query($sql);  
+       return $query->num_rows();                         
+    }
+
+    function getCountComnotes($user_id){
+        $sql = "SELECT `msg_message`.`msg_id`
+                FROM `msg_message` 
+                JOIN `user_message` ON `msg_message`.`msg_id` = `user_message`.`msg_id` AND `msg_message`.`msg_type`='comnote'
+                JOIN `us_agy` ON `msg_message`.`user_from` = `us_agy`.`us_agy_id`            
+                WHERE `user_message`.`user_to` = '".$user_id."' AND `user_message`.`msg_status` = 0 AND `user_message`.`msg_read` = 0";
+       $query = $this->db->query($sql);  
+       return $query->num_rows();
+    }
+    
+	function getInbox( $user_id ) {
+
+		$this->db->select("*, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as sender_complete_name");
+		
+		$this->db->join('user_message', 'user_message.msg_id = msg_message.msg_id');
+		$this->db->join('us_agy', 'msg_message.user_from = us_agy_id', 'left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->where("user_to", $user_id);
+		$this->db->where("msg_status", "0");
+		if($this->input->post('keyword') AND $this->input->post('keyword') != ""){
+			$this->db->like("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)", $this->input->post('keyword'));      
+			$this->db->or_like("msg_subject", $this->input->post('keyword'));      
+			$this->db->or_like("msg_text", $this->input->post('keyword'));      
+		}
+
+		if ($this->input->post('email_type') != '') {
+			switch ($this->input->post('email_type')) {
+				case '1':
+					$this->db->where("user_message.email_type", 1);
+					break;
+				case '2':
+					$this->db->where("user_message.msg_important", 1);
+					break;
+				case '3':
+					$this->db->where("(user_message.msg_important IS NULL OR user_message.msg_important != 1)");
+					$this->db->where("(user_message.email_type IS NULL OR user_message.email_type != 1)");
+					break;
+			}
+		}
+
+		$this->db->order_by("msg_message.msg_date", "DESC");
+
+		$query = $this->db->get("msg_message");    
+		return $query->result();
+
+	}
+	
+	function getSent ( $us_agy_id, $order="DESC" ) {
+
+		$this->db->where("user_from", $us_agy_id);
+		$this->db->where("msg_trash", 0);
+    if($this->input->post('keyword') AND $this->input->post('keyword') != ""){      
+      $this->db->like("msg_subject", $this->input->post('keyword'));      
+      $this->db->or_like("msg_text", $this->input->post('keyword'));      
+    }
+		if(!is_null($order))
+    $this->db->orderby("msg_id", $order);
+
+		$query = $this->db->get("msg_message m");
+
+		return $query->result();
+	}
+	function getSent2 ( $us_agy_id , $term = false ) {
+		$this->db->select('msg_message.*, CONCAT(us1_user.first_name," ",us1_user.last_name) as sent_by, CONCAT(pat_patient.first_name," ",pat_patient.last_name) as for_patient');
+		$this->db->where("msg_trash", 0);
+		$this->db->where("user_from", $us_agy_id);
+		$this->db->join('us_agy','us_agy.us_agy_id=msg_message.user_from');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('pat_patient','pat_patient.patient_id=msg_message.patient_id','left');
+		if($term)
+		{
+			$this->db->where("(CONCAT(us1_user.first_name,' ',us1_user.last_name)  LIKE '%".$term."%' OR CONCAT(pat_patient.first_name,' ',pat_patient.last_name) LIKE '%".$term."%')");
+		}
+		$query = $this->db->get("msg_message");
+
+		return $query->result();
+	}
+
+	function getByVisitId($visit_log_id){
+		$this->db->select("*, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as sender_complete_name");
+		$this->db->join('us_agy', 'msg_message.user_from = us_agy_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->where("visit_log_id",$visit_log_id);
+		$query = $this->db->get("msg_message");
+		return $query->row();
+	}
+	
+     function getComNotes($agency_id, $keyword = false, $user_id ="", $patient_ids=array(), $cms485_id=null){   
+    
+		$sql = "SELECT msg_message.*, CONCAT_WS(' ', pat_patient.last_name, pat_patient.first_name) as patient_name, CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) as user_name, agy_agency.agency_name, msg_message.msg_attachment 
+		FROM `msg_message`
+		INNER JOIN `pat_patient` ON `msg_message`.`patient_id` = `pat_patient`.`patient_id` 
+		INNER JOIN `us_agy` ON `msg_message`.`user_from` = `us_agy`.`us_agy_id`  
+		INNER JOIN `us1_user` ON us1_user.user_id = us_agy.user_id  
+		JOIN `agy_agency` ON `agy_agency`.`agency_id`= `pat_patient`.`agency_id` ";
+
+		if (!is_null($cms485_id)) {
+			$sql .= "JOIN `vis_visit_log` ON `vis_visit_log`.`visit_log_id` = `msg_message`.`visit_log_id` AND `vis_visit_log`.`cms485_id` = '{$cms485_id}'";
+		}
+		
+		//$sql.= " WHERE `pat_patient`.`agency_id` = '".$agency_id."' ";  //commented by shareful for make the communication note availble for contractor
+		
+		if( $this->input->post('modal') == 1 ){
+			//added by shareful for make the communication note availble for contractor            
+			if(sizeof($patient_ids) > 0){
+				$sql.= " WHERE `msg_message`.`patient_id` IN ( ".implode(",",$patient_ids).") ";
+				if($user_id != ""){
+					$sql.= " AND `us_agy`.`user_id` = '".$user_id."'";    
+				}
+			
+			}else{
+				if($keyword =="" && $user_id != ""){
+					$sql.= "WHERE `pat_patient`.`agency_id` = '".$agency_id."'  AND `us_agy`.`user_id` = '".$user_id."'";    
+				}else{
+					$sql.= " WHERE `pat_patient`.`agency_id` = '".$agency_id."' ";
+				}
+			}
+			
+			// STATUS
+			if( $this->input->post('status_id') != 0 ) {	
+				$sql.= " AND pat_patient.tab_013_status = ".(int) $this->input->post('status_id');
+			
+			}
+			// PATIENT NAME
+			if( strlen( trim( $this->input->post('patient_name') ) ) > 0 ) {	
+				$patient_name = trim( $this->input->post('patient_name') ) ;
+				//
+				
+				$sql.= " AND ( pat_patient.first_name LIKE '%".addslashes( $patient_name )."%' OR pat_patient.last_name LIKE '%".addslashes( $patient_name )."%' )";
+			
+			}
+			// CLINITIAN
+			$create_user_id	= preg_replace("/[^0-9]/", "", $this->input->post('clinitian') );
+			if( strlen( $create_user_id ) > 0 ) 
+			{	
+				$sql.= " AND msg_message.user_from = ".(int) $create_user_id;
+			
+			}
+			
+			//DATE FROM
+			if ($date_from = $this->input->post('date_from')) 
+			{
+				$sql.= " AND msg_message.msg_date >= '".standard_date(human_to_unix($date_from), 'MYSQL_NOTIME')."'";
+			
+			}
+			//DATE TO
+			if ($date_to = $this->input->post('date_to')) 
+			{
+				$sql.= " AND msg_message.msg_date <= '".standard_date(human_to_unix($date_to), 'MYSQL_NOTIME')."'";            
+			}
+			
+			if($keyword){
+				if(strpos($sql, "WHERE ")===false){
+					$sql.= " WHERE (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%')"; 
+				}else{
+					$sql.= " AND (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%')"; 
+				}
+			
+			}
+			
+		} else {
+			//added by shareful for make the communication note availble for contractor            
+			if(sizeof($patient_ids) > 0){
+				$sql.= " WHERE `msg_message`.`patient_id` IN ( ".implode(",",$patient_ids).") ";
+				if($user_id != ""){
+					$sql.= " AND `us_agy`.`user_id` = '".$user_id."'";    
+				}
+			
+			}else{
+				if($user_id != ""){
+					$sql.= "WHERE `pat_patient`.`agency_id` = '".$agency_id."'  AND `us_agy`.`user_id` = '".$user_id."'";    
+				}else{
+					$sql.= " WHERE `pat_patient`.`agency_id` = '".$agency_id."' ";
+				}
+			}
+
+			//DATE FROM
+			if ($date_from = $this->input->post('date_from')) 
+			{
+				$sql.= " AND msg_message.msg_date >= '".standard_date(human_to_unix($date_from), 'MYSQL_NOTIME')."'";
+			
+			}
+			//DATE TO
+			if ($date_to = $this->input->post('date_to')) 
+			{
+				$sql.= " AND msg_message.msg_date <= '".standard_date(human_to_unix($date_to), 'MYSQL_NOTIME')."'";            
+			}
+			
+		
+			// end 
+			
+			if($keyword){
+				if(strpos($sql, "WHERE ")===false){
+					$sql.= " WHERE (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR msg_message.msg_subject LIKE '%".$keyword."%' OR msg_message.msg_text LIKE '%".$keyword."%')"; 
+				}else{
+					$sql.= " AND (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR msg_message.msg_subject LIKE '%".$keyword."%' OR msg_message.msg_text LIKE '%".$keyword."%')"; 
+				}
+			
+			}			
+		}
+		
+		if(strpos($sql, "WHERE ")===false) {
+			$sql .= " WHERE msg_type='comnote'";
+		} else {
+			$sql .= " AND msg_type='comnote'";
+		}
+		
+		$sql.=" ORDER BY `msg_message`.`msg_date` DESC";
+	    //echo $sql;
+		$query = $this->db->query($sql);  
+		return $query->result();
+    }
+    
+    
+    function getPat_note($agency_id, $keyword = false, $user_id ="", $patient_ids=array()){   
+    
+		$sql = "SELECT pat_note.*, CONCAT_WS(' ', pat_patient.last_name, pat_patient.first_name) as patient_name, CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) as user_name, agy_agency.agency_name, msg_message.msg_attachment 
+		FROM `pat_note` 
+		JOIN `msg_message` ON `pat_note`.`msg_id` = `msg_message`.`msg_id`
+		INNER JOIN `pat_patient` ON `pat_note`.`patient_id` = `pat_patient`.`patient_id` 
+		INNER JOIN `us_agy` ON `pat_note`.`creation_user` = `us_agy`.`us_agy_id`  
+		INNER JOIN `us1_user` ON us1_user.user_id = us_agy.user_id 
+		JOIN `agy_agency` ON `agy_agency`.`agency_id`= `pat_patient`.`agency_id` ";
+		
+		//$sql.= " WHERE `pat_patient`.`agency_id` = '".$agency_id."' ";  //commented by shareful for make the communication note availble for contractor
+		
+		if( $this->input->post('modal') == 1 ){
+			//added by shareful for make the communication note availble for contractor            
+			if(sizeof($patient_ids) > 0){
+				$sql.= " WHERE `pat_note`.`patient_id` IN ( ".implode(",",$patient_ids).") ";
+				if($user_id != ""){
+					$sql.= " AND `us_agy`.`user_id` = '".$user_id."'";    
+				}
+			
+			}else{
+				if($keyword =="" && $user_id != ""){
+					$sql.= "WHERE `pat_patient`.`agency_id` = '".$agency_id."'  AND `us_agy`.`user_id` = '".$user_id."'";    
+				}else{
+					$sql.= " WHERE `pat_patient`.`agency_id` = '".$agency_id."' ";
+				}
+			}
+			
+			// STATUS
+			if( $this->input->post('status_id') != 0 ) {	
+				$sql.= " AND pat_patient.tab_013_status = ".(int) $this->input->post('status_id');
+			
+			}
+			// PATIENT NAME
+			if( strlen( trim( $this->input->post('patient_name') ) ) > 0 ) {	
+				$patient_name = trim( $this->input->post('patient_name') ) ;
+				//
+				
+				$sql.= " AND ( pat_patient.first_name LIKE '%".addslashes( $patient_name )."%' OR pat_patient.last_name LIKE '%".addslashes( $patient_name )."%' )";
+			
+			}
+			// CLINITIAN
+			$create_user_id	= preg_replace("/[^0-9]/", "", $this->input->post('clinitian') );
+			if( strlen( $create_user_id ) > 0 ) 
+			{	
+				$sql.= " AND pat_note.creation_user = ".(int) $create_user_id;
+			
+			}
+			
+			//DATE FROM
+			if ($date_from = $this->input->post('date_from')) 
+			{
+				$sql.= " AND pat_note.creation_date_time >= '".standard_date(human_to_unix($date_from), 'MYSQL_NOTIME')."'";
+			
+			}
+			//DATE TO
+			if ($date_to = $this->input->post('date_to')) 
+			{
+				$sql.= " AND pat_note.creation_date_time <= '".standard_date(human_to_unix($date_to), 'MYSQL_NOTIME')."'";            
+			}
+			
+			if($keyword){
+				if(strpos($sql, "WHERE ")===false){
+					$sql.= " WHERE (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%')"; 
+				}else{
+					$sql.= " AND (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%')"; 
+				}
+			
+			}
+			/*if($keyword && $user_id != ""){
+				if(strpos($sql, "WHERE ")===false)
+					$sql.= " WHERE (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%') AND `pat_note`.`creation_user` = '".$user_id."'";  
+				else  
+					$sql.= " AND (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%') AND `pat_note`.`creation_user` = '".$user_id."'";  
+			}*/
+		} else {
+			//added by shareful for make the communication note availble for contractor            
+			if(sizeof($patient_ids) > 0){
+				$sql.= " WHERE `pat_note`.`patient_id` IN ( ".implode(",",$patient_ids).") ";
+				if($user_id != ""){
+					$sql.= " AND `us_agy`.`user_id` = '".$user_id."'";    
+				}
+			
+			}else{
+				if($user_id != ""){
+					$sql.= "WHERE `pat_patient`.`agency_id` = '".$agency_id."'  AND `us_agy`.`user_id` = '".$user_id."'";    
+				}else{
+					$sql.= " WHERE `pat_patient`.`agency_id` = '".$agency_id."' ";
+				}
+			}
+			
+		
+			// end 
+			
+			if($keyword){
+				if(strpos($sql, "WHERE ")===false){
+					$sql.= " WHERE (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%')"; 
+				}else{
+					$sql.= " AND (CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) LIKE '%".$keyword."%' OR CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) LIKE '%".$keyword."%' OR pat_note.notes_descrip LIKE '%".$keyword."%')"; 
+				}
+			
+			}
+			/*if($keyword && $user_id != ""){
+				if(strpos($sql, "WHERE ")===false)
+					$sql.= " WHERE `pat_note`.`creation_user` = '".$user_id."'";  
+				else  
+					$sql.= " AND `pat_note`.`creation_user` = '".$user_id."'";  
+			}*/
+		}
+		
+		
+		
+		$sql.=" ORDER BY `pat_note`.`creation_date_time` DESC";
+	    //echo $sql;
+		$query = $this->db->query($sql);  
+		return $query->result();
+    }
+    
+    
+    function getPatnoteByID($note_id = 0){   
+         if(!$note_id)
+         return array();
+         
+         $sql = " SELECT pat_note.*, 
+		 				 msg_message.msg_subject, 
+						 msg_message.msg_attachment, 
+                         CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) as patient_name, 
+                         CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) as user_name,
+                         agy_agency.agency_name,
+                         agy_agency.address as agency_address,
+                         agy_agency.phone_primary as agency_phone_cell, 
+                         agy_agency.fax as agency_fax,
+                         agy_agency.city,
+                         agy_agency.zip,
+                         sta_states.state_name_long,
+                         sta_states.state_name_short
+             FROM `pat_note` 
+                         JOIN `pat_patient` ON `pat_note`.`patient_id` = `pat_patient`.`patient_id` 
+                         JOIN `us_agy` ON `pat_note`.`creation_user` = `us_agy`.`us_agy_id` 
+                         JOIN `us1_user` ON us1_user.user_id = us_agy.user_id 
+						 JOIN `msg_message` ON `pat_note`.`msg_id` = `msg_message`.`msg_id` 
+                         JOIN `agy_agency` ON `agy_agency`.`agency_id`= `pat_patient`.`agency_id` 
+                         JOIN sta_states ON `agy_agency`.`state_id` = `sta_states`.`state_id`
+             WHERE `pat_note`.`note_id` = '".$note_id."'";
+         //echo $sql;
+         $query = $this->db->query($sql);
+         return $query->row_array();
+    }
+
+    function getComNoteByID($msg_id = 0){   
+         if(!$msg_id)
+         return array();
+         
+         $sql = " SELECT msg_message.*, 
+		 				 CONCAT_WS(' ',pat_patient.first_name, pat_patient.last_name) as patient_name, 
+                         CONCAT_WS(' ',`us1_user`.first_name, `us1_user`.last_name) as user_name,
+                         agy_agency.agency_name,
+                         agy_agency.address as agency_address,
+                         agy_agency.phone_primary as agency_phone_cell, 
+                         agy_agency.fax as agency_fax,
+                         agy_agency.city,
+                         agy_agency.zip,
+                         sta_states.state_name_long,
+                         sta_states.state_name_short
+             FROM `msg_message` 
+                         JOIN `pat_patient` ON `msg_message`.`patient_id` = `pat_patient`.`patient_id` 
+                         JOIN `us_agy` ON `msg_message`.`user_from` = `us_agy`.`us_agy_id` 
+                         JOIN `us1_user` ON us1_user.user_id = us_agy.user_id 
+						 JOIN `agy_agency` ON `agy_agency`.`agency_id`= `pat_patient`.`agency_id` 
+                         JOIN sta_states ON `agy_agency`.`state_id` = `sta_states`.`state_id`
+             WHERE `msg_message`.`msg_id` = '".$msg_id."'";
+         //echo $sql;
+         $query = $this->db->query($sql);
+         return $query->row_array();
+     }
+     
+	function getListTrash($user_from, $user_to) {
+
+		$this->db->join('user_message um', 'um.msg_id=m.msg_id', 'left');
+		$where = "(msg_trash = '1' AND user_from =$user_from ) OR ( user_to =$user_to AND msg_status = 1)";
+		$this->db->where($where);
+
+		$this->db->group_by('m.msg_id');
+
+		$query = $this->db->get("msg_message m");
+
+		return $query->result();
+	}
+
+	function getMsgById($msg_id) {
+
+		$this->db->where("user_msg_id",$msg_id);
+		$this->db->join("user_message um","um.msg_id=m.msg_id");
+
+		$query	= $this->db->get("msg_message m");
+
+		return $query->row();
+	}
+
+	function getUserMsg($user_from) {
+
+		$this->db->select("us1_user.first_name,us1_user.last_name");
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+
+		$this->db->where("us_agy_id",$user_from);
+		$query = $this->db->get("us_agy");
+
+		return $query->row();
+	}
+
+	function getUserIdByMsgId($msg_id) {
+
+		$this->db->where("msg_id",$msg_id);
+		$query = $this->db->get("user_message");
+
+		return $query->row();
+	}
+
+	function getUserListByMsgId($msg_id) {
+		$this->db->select("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as user_name");
+		$this->db->join('us_agy', 'user_message.user_to = us_agy_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->where("msg_id",$msg_id);
+		$query = $this->db->get("user_message");
+
+		return $query->result();
+	}
+	
+	function insert() {
+		// created a msg object to fix the sql error on inserting msg. 
+		// cms_485_id was added sometime to $this object from mail/compose controller.
+		$msg = new stdClass();
+		$msg->user_from = $this->user_from;
+		$msg->msg_date = $this->msg_date;
+		$msg->msg_subject = $this->msg_subject;
+		$msg->msg_text = $this->msg_text;
+		$msg->msg_attachment = $this->msg_attachment;
+		$msg->patient_id = $this->patient_id;
+		$msg->msg_trash = $this->msg_trash;
+		$msg->visit_log_id = $this->visit_log_id;
+
+		$this->db->insert("msg_message", $msg);
+		$this->msg_id = $this->db->insert_id();
+		
+		return $this->db->insert_id();
+	}
+
+	function upload($msg_id,$msg_attachment) {
+    $this->msg_attachment = $msg_attachment;
+		$this->db->update("msg_message",array('msg_attachment'=>$msg_attachment),array('msg_id'=>$msg_id));
+	}
+
+	function setUserFrom($msg_id,$user_from) {
+
+		$this->db->update("msg_message", array('user_from'=>$user_from), array('msg_id'=>$msg_id));
+	}
+
+	function checkMsgOwner($msg_id) {
+
+		$this->db->where("msg_id",$msg_id);
+
+		$query = $this->db->get("msg_message");
+
+		return $query->row();
+	}
+
+	function setPatient($msg_id,$patient_id) {
+
+		$this->db->update("msg_message",array('patient_id'=>$patient_id),array('msg_id'=>$msg_id));
+	}
+
+	function setMsgTrash ( $msg_id, $user_from, $msg_trash=1 ) {
+		
+		$this->db->set('msg_trash', $msg_trash);
+		$this->db->where('msg_id', $msg_id);
+		$this->db->where('user_from', $user_from);
+		$this->db->where('msg_trash', $msg_trash-1);
+
+		$this->db->update('msg_message');
+	}
+
+	function deleteMsg($msg_id) {
+
+		$this->db->delete('msg_message', array('msg_id' => $msg_id));
+	}
+
+	function checkSender($msg_id) {
+
+		$this->db->select("user_from");
+		$this->db->where("msg_id",$msg_id);
+
+		$query = $this->db->get("msg_message");
+
+		return $query->row();
+	}
+
+	function updateFlex($msg_id, $attribute, $value, $where = 'msg_id') {
+
+		$this->db->where($where, $msg_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('msg_message');
+
+	}
+
+}

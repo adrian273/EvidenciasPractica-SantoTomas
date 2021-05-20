@@ -1,0 +1,231 @@
+<?php
+
+ class Visits extends MY_Controller {
+
+	function Visits () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "printqueue/visits");
+	}
+
+	function index () {
+	
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("noedit", true);
+		
+    
+	    // MODAL FILTER
+	 		// GET info para selects
+	    // LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		$this->tpl->assign("no_advance_filter" , true );
+		$this->tpl->assign("status_list" , $this->mparams->get_pacient_status_list() );
+		$this->tpl->assign("visit_type_list" , $this->mparams->get_visit_type_list( true ) );
+		$this->tpl->assign("visit_status_list" , $this->mparams->get_visit_status_list( false ) );
+		// $this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( null, false ) );
+		
+    
+		$this->tpl->assign_include("filter_tpl", "printqueue/actions");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid () {
+		
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+    $head->append($this->xml->Element("column", "width=3;type=ch", " "));		
+		$head->append($this->xml->Element("column", "width=10", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=15", "Created by User"));
+		$head->append($this->xml->Element("column", "width=10", "Task Type"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=10", "Print Status"));
+		$head->append($this->xml->Element("column", "width=7;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link;sort=na", "#cspan"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link;sort=na", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+
+		$document->append($head);
+		
+		foreach ($this->visitprintqueuemdl->get($this->getAgencyId(), $this->input->post('queue_status')) as $prtqueue) {
+			
+			$cell = $this->xml->Element("row", "id=" . $prtqueue->prt_visit_print_queue_id);
+      $cell->append($this->xml->Element("cell", null, "0"));
+			//$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($prtqueue->creation_datetime))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($prtqueue->visit_date_time))));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->user_name));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->visit_description));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->patient_name));
+
+			$prtStatus = $prtqueue->prt_visit_print_queue_status == "PE" ? "Pending Print" : "Printed";			
+			$cell->append($this->xml->Element("cell", null, $prtStatus));
+			
+			$cell->append($this->xml->Element("cell", null, "Edit Status^javascript:modalEdit(".$prtqueue->prt_visit_print_queue_id.")"));
+			$cell->append($this->xml->Element("cell", null, "Remove^javascript:deleteQueue(".$prtqueue->prt_visit_print_queue_id.")"));
+			$cell->append($this->xml->Element("cell", null, "Print^".$this->config->config['index_url']."task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id));
+
+/* 			$cell->append($this->xml->Element("cell", null, '<![CDATA[<a href="'.$this->config->config['index_url'].'task/'.$prtqueue->visit_program.'/pdf/'.$prtqueue->doc_id.'">Print</a> | <a href="'.$this->config->config['index_url'].'administrator/prtqueue/delete/'.$prtqueue->prt_id.'">Delete</a>]]>')); */
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function modalEdit ( $prt_id, $val=null ) {
+		
+		$this->tpl->assign("entity_id", $prt_id);
+		$this->tpl->assign("faction", 'modalEdit');
+
+		$prtqueue = $this->visitprintqueuemdl->getById($prt_id);			
+
+		$this->tpl->assign('status_options', array(
+		                                "PE" => 'PENDING PRINT',
+		                                "PR" => 'PRINTED'));
+		                                
+		$this->tpl->assign('status_id', $prtqueue->prt_visit_print_queue_status);
+		
+				
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign("prtqueue", $prtqueue);		
+				
+			$this->tpl->assign_include("dynamic_tpl", "printqueue/prtqueue_status_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->visitprintqueuemdl);
+			$this->visitprintqueuemdl->prt_visit_print_queue_status = $this->input->post('print_status');
+			$this->visitprintqueuemdl->updatePrintStatus($prt_id);
+			
+			echo "<SCRIPT>parent.loadGrid();parent.cancelModal()</SCRIPT>";
+			
+		}
+	
+	}
+
+	function delete($prt_id){
+		
+		$document = $this->xml->Document();
+		$prtqueue = $this->visitprintqueuemdl->getById($prt_id);			
+		
+		if ($prtqueue->prt_visit_print_queue_status == 'PR') {
+			
+			$this->visitprintqueuemdl->delete($prt_id);
+			$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+			
+		} else {
+			
+			$document->append($this->xml->Element('alert', null, "Document must be printed first!"));
+			return;
+			
+		}
+		
+	}
+  
+  function deleteSelected(){
+    $document = $this->xml->Document();
+    if (!is_null($this->input->post('record_ids'))) {
+      $record_ids = $this->input->post('record_ids');
+      $recods = explode(",", $record_ids);
+      if(count($recods) > 0){
+        $deleted_count = 0;
+        foreach($recods as $prt_id){    		
+      		$prtqueue = $this->visitprintqueuemdl->getById($prt_id);			
+      		
+      		if ($prtqueue->prt_visit_print_queue_status == 'PR') {    			
+      			$this->visitprintqueuemdl->delete($prt_id);
+      			$deleted_count++;
+      		} else {
+      			
+      			//$document->append($this->xml->Element('alert', null, "Document must be printed first!"));
+      			//return;
+      			
+      		}
+        }
+        if($deleted_count>0){  
+          if(count($recods) == $deleted_count)
+          $document->append($this->xml->Element('js', 'script=loadGrid()', null));  
+          else
+          {                       
+            $document->append($this->xml->Element('alert', null, $deleted_count.' documents has been deleted and '.(count($recods) - $deleted_count).' documents  must be printed first before delete.'));  
+            $document->append($this->xml->Element('js', 'script=loadGrid()', null));
+          }
+        }else{
+          $document->append($this->xml->Element('alert', null, 'Selected documents must be printed first to delete!'));  
+          $document->append($this->xml->Element('js', 'script=loadGrid()', null));
+        }
+      }else{
+        $document->append($this->xml->Element('alert', null, "Please select the document first to delete!"));
+      }      
+      
+    }else{
+      $document->append($this->xml->Element('alert', null, "Please select the document first to delete!"));
+    }
+		
+	}
+	
+  	function pdf(){
+  		if (!is_null($this->input->post('record_ids'))) {
+      		//$this->load->library('Wick');
+
+			//var_dump($this->input->post('record_ids'));exit;
+  			$record_ids = $this->input->post('record_ids');
+  			$recods = explode(",", $record_ids);
+
+  			$filenames = array();
+  			$this->load->helper('visit_pdf');
+
+  			foreach ($this->visitprintqueuemdl->getByIds($this->getAgencyId(), $recods) as $prtqueue) {
+
+  				if ($prtqueue->visit_program == null) {          
+  					continue;
+  				}
+
+  				$method = $prtqueue->visit_program.'_pdf';
+
+  				if(!function_exists($method)){
+        			//echo "br<>".$method;
+  					continue;
+  				}
+
+  				$this->load->model($prtqueue->visit_program.'mdl');
+
+  				if(!isset($filenames[$prtqueue->visit_log_id])){
+  					$filenames[$prtqueue->visit_log_id] = $method($prtqueue->visit_log_id);
+  				}
+		        //break;
+		        //$this->config->config['index_url']."task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id;
+  			}
+
+
+			/** 
+			* New Code support >= PHP 5.3.0
+			*/
+			require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+			require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+			require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+			// and we can do stuff
+			$pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+			foreach($filenames as $name){
+				$pdf->addPDF($name, 'all');
+			}      
+			$pdf->merge('download', 'all.pdf');
+			// End of code for PHP >= 5.3.0
+			
+			foreach($filenames as $name){
+				@unlink($name);
+			} 
+
+		}
+  	}
+  
+ }
+
+ 

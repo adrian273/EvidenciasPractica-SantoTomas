@@ -1,0 +1,45 @@
+
+	 <form name="add_event_form" id="add_event_form" method="POST" onsubmit="return false">
+	<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="6"> 
+	  <tr>
+	    <td class="ftitle">Task Date</td>
+	    <td id="day_add_event">
+	    	{$visit_date|date_format}
+	    </td>
+	  </tr>
+	  
+	  <tr>
+	    <td class="ftitle" nowrap>Task time</td>
+	    <td>
+	    	<input type="text" name="visit_time_hour" value="" size="3" style="text-align: center" maxlength="2"> : 
+	    	<input type="text" name="visit_time_min" value="" size="3" style="text-align: center" maxlength="2">
+	    	<select name="time_type">
+	    		<option value="0">A</option>
+	    		<option value="12">P</option>
+	    	</select>
+	    </td>
+	  </tr>
+	  
+	  <tr>
+	    <td class="ftitle" nowrap>Task Type</td>
+	    <td>
+			{html_options options=$visit_type_list selected=$visit_type_id name='visit_type_id'} *
+		</td>
+	  </tr>
+	  
+	  <tr>
+	    <td class="ftitle" nowrap>Patient &nbsp;&nbsp;&nbsp;</td>
+	    <td>
+			{html_options options=$patient_list selected=$patient_id name='patient_id'} *
+		</td>
+	  </tr>
+	  
+	  <tr>
+	    <td colspan="2" height="100%" valign="bottom">
+	  		<input type="button" class="btn" value="{$grl_save}" onclick="ajax('{$index_url}{$resource_path}/addEvent', ajaxParseAction, 'add_event_form');">
+	      	<input type="button" class="btn" value="{$grl_cancel}" onclick="tt_HideInit()">
+		    <input type="hidden" name="visit_date" value="{$visit_date|date_format}">
+		</td>
+	  </tr>
+	</table>
+   </form>

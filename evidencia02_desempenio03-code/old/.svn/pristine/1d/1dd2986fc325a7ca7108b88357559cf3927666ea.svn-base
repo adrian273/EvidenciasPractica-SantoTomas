@@ -1,0 +1,45 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/{$faction}/{$entity_id}">
+  <tr>
+    <td class="ftitle" style="width:35%;">Doctor Order Status</td>
+    <td>
+      {html_options first_option='' options=$order_status_list selected=$tab_023_doctor_order_status name='tab_023_doctor_order_status'}
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Date Sent to Physician</td>
+    <td>
+      <input type="text" id="sent_to_physician_date" name="sent_to_physician_date" value="{if $sent_to_physician_date neq "0000-00-00 00:00:00"}{$sent_to_physician_date|date_format}{/if}" 
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+    <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('sent_to_physician_date'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Sent via</td>
+    <td>
+      {html_radios name='tab105_delivery_sent_via' options=$delivery_types_list selected=$tab105_delivery_sent_via}
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Date Signed by Physician</td>
+    <td>
+      <input type="text" id="signed_by_physician_date" name="signed_by_physician_date" value="{if $signed_by_physician_date neq "0000-00-00 00:00:00"}{$signed_by_physician_date|date_format}{/if}" 
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+    <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('signed_by_physician_date'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" valign="top">Agency Comments</td>
+    <td height="100" valign="top">
+      <textarea name="agency_comments" style="height: 100%; width: 100%" wrap="auto">{$agency_comments}</textarea>
+    </td>
+  </tr>
+  <tr> 
+    <td></td>
+    <td valign="bottom">
+      <input type="submit" name="submit" class="btn" value="Send">
+      <input type="button" class="btn" value="{$grl_cancel}" onclick="parent.cancelModal2()">
+    </td>
+  </tr>
+ </form>
+</table> 

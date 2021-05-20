@@ -1,0 +1,59 @@
+<?php
+
+class PatientContactsMdl extends Model {
+
+    var $contact_id;
+    var $patient_id;
+    var $contact_tab112;
+    var $last_name;
+    var $first_name;
+    var $email;
+    var $phone;
+    var $phone_ext;
+    var $make_default;
+    var $notes;
+    var $change_date;
+
+
+    function  PatientContactsMdl() {
+        parent::Model();
+    }
+
+    function getPatientContacts( $patient_id ) {
+        return $this->db->query("
+            select  * from pat_contacts
+            left join tab_parameters on tab_type = 112 
+            where tab_value = contact_tab112 
+            and patient_id = $patient_id order by tab_value asc;
+        ")->result();
+    }
+
+    function getById( $id ) {
+        $this->db->where('contact_id', $id);
+        return $this->db->get('pat_contacts')->row();
+    }
+
+    function getByIds( $ids ) {
+        $this->db->where_in('contact_id', $ids);
+        return $this->db->get('pat_contacts')->result();
+    }
+
+    function insert () {
+        $this->contact_id = null;
+        $this->change_date = date('Y-m-d H:i:s');
+        $this->db->insert("pat_contacts", $this);
+        $contact_id = $this->db->insert_id();
+        return $contact_id;
+    }
+
+    function update ( $id ) {
+        $this->change_date = date('Y-m-d H:i:s');
+        $this->db->where('contact_id', $id);
+        $this->db->update('pat_contacts', $this);
+    }
+
+    function delete ( $id ) {
+        $this->db->delete("pat_contacts", array("contact_id" => $id));
+    }
+
+}

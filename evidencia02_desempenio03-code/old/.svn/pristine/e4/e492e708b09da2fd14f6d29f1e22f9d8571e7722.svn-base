@@ -1,0 +1,447 @@
+<div style="padding: 5px;">
+    <form action="{$index_url}contractor/patients/insert_settings/{$entity_id}" id="agency_settings)" name="agency_settings)" method="POST">
+        <input type="hidden" name="discipline_id[]" value="13">
+        <input type="hidden" name="discipline_id[]" value="14">
+        <input type="hidden" name="discipline_id[]" value="15">
+        <input type="hidden" name="discipline_id[]" value="16">
+        <input type="hidden" name="discipline_id[]" value="17">
+        <input type="hidden" name="discipline_id[]" value="18">
+        <table border="0" width="100%" cellpadding="2" cellspacing="0">
+            {if $gmessage != ''}
+            <tr>
+                <td nowrap align="center" colspan="6">
+                <span class="tbl_msg_ok" style="height: 25px">{$gmessage}</span>
+                </td>
+            </tr>
+            {/if} 
+            {if !$no_commit_form}
+            <tr>
+                <td colspan="6"><input type="submit" class="btn" name="button" value="Save" onclick=""></td>
+            </tr>
+            {/if}
+			
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Default Visit Duration</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2" width="20%"> Default&nbsp;Visit&nbsp;Duration</td>
+                <td colspan="4"><label>
+                    <input type="number" name="contractor_default_duration" id="visit_duration" value="{$agency_contract_detail->contractor_default_duration}" size="5" maxlength="3" min="15" step="1"> minutes
+                </td>
+            </tr>
+			
+			
+			{if $therapy_type eq 'S'}
+			<tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+			<tr>
+                <td class="ftitle" colspan="2"> Agency Deals With Groups </td>
+                <td colspan="4"><label>
+                    <input type="radio" name="deals_with_groups" value="1" {if $deals_with_groups eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="deals_with_groups" value="0" {if $deals_with_groups neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Set up for Yes-Waiver Patient</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Validate Case # </td>
+                <td colspan="4"><label>
+                    <input type="radio" name="validate_medical_rec_nbr" value="1" {if $validate_medical_rec_nbr eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="validate_medical_rec_nbr" value="0" {if $validate_medical_rec_nbr neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Set up for Yes-Waiver Music Progress note PDF</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Supervisor Signature Required for Yes-Waiver </td>
+                <td colspan="4"><label>
+                    <input type="radio" name="superv_sign_require" value="1" {if $superv_sign_require eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="superv_sign_require" value="0" {if $superv_sign_require neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Set up for Invoice Additional Info</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Include Additional Info in Invoice</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="invoice_include_additonal_info" value="1" {if $invoice_include_additonal_info eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="invoice_include_additonal_info" value="0" {if $invoice_include_additonal_info neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr style="display: none;">
+                <td class="ftitle" colspan="2"> Sort Invoice By Last Name</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="sort_invoice_by_lastname" value="1" {if $sort_invoice_by_lastname eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="sort_invoice_by_lastname" value="0" {if $sort_invoice_by_lastname neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Print Therapist Name in invoice</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="print_therapist_name_in_invoice" value="1" {if $print_therapist_name_in_invoice eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="print_therapist_name_in_invoice" value="0" {if $print_therapist_name_in_invoice neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Print Agency or Contractor on Notes</td>
+                <td  colspan="4"><label>
+                    <input type="radio" name="print_agency_or_contractor_on_notes" value="agency" {if $print_agency_or_contractor_on_notes eq 'agency'} checked="checked"{/if} >
+                    Agency</label>
+                    &nbsp;
+                    <label>  <input type="radio" name="print_agency_or_contractor_on_notes" value="contractor" {if $print_agency_or_contractor_on_notes eq 'contractor'} checked="checked"{/if}>
+                    Contractor</label>
+					&nbsp;
+                    <label>  <input type="radio" name="print_agency_or_contractor_on_notes" value="both" {if $print_agency_or_contractor_on_notes eq 'both'} checked="checked"{/if}>
+                    Both</label>
+                    {if $agency->state_id eq "45" AND $agy_prod[0]->tab111_product_id eq "3"}
+                        <label>[Currently, only available for: Yes-Waiver and Contractor Name]</label>
+                        <label for=""></label>
+                    {/if}
+                </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2" valign="top"> <label for="special_billing_instructions">Special Billing Instructions</label></td>
+                <td colspan="4"><textarea id="special_billing_instructions" name="special_billing_instructions" cols="100" rows="5">{$agency_contract_detail->special_billing_instructions}</textarea></td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2" valign="top"> <label for="other_instructions">Other Instructions</label></td>
+                <td colspan="4"><textarea id="other_instructions" name="other_instructions" cols="100" rows="5">{$agency_contract_detail->other_instructions}</textarea></td>
+            </tr>	
+			
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+			
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Send Invoice to </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Send Invoice to Patient</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="send_invoice_to_patient" value="1" {if $send_invoice_to_patient eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="send_invoice_to_patient" value="0" {if $send_invoice_to_patient neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Set up for Form 8606-A</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> CMA Vendor Number</td>
+                <td><input type="text" name="F8606A_CMA_vendor_nbr" value="{$F8606A_CMA_vendor_nbr}"></td>
+                <td colspan="3"></td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Invoice Terms</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Invoice Terms</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="invoice_terms" value="1" {if $invoice_terms eq '1'} checked="checked"{/if} >
+                    Due on Receipt</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="invoice_terms" value="0" {if $invoice_terms neq '1'} checked="checked"{/if}>
+                    Nbr of Days
+                    <input type="text" name="invoice_due_days" value="{$agency->invoice_due_days}" size="3" maxlength="3">
+                    </label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Set up for Form 3625</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Agency Type</td>
+                <td><label>
+                    <input type="radio" name="F3625_agency_type" id="dsa" value="DSA" {if $F3625_agency_type eq 'DSA' OR !$F3625_agency_type} checked="checked"{/if} >
+                    DSA</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="F3625_agency_type" id="cma" value="CMA" {if $F3625_agency_type eq 'CMA'} checked="checked"{/if}>
+                    CMA</label>
+                </td>
+                <td class="ftitle" style="text-align: center;"> Contract No.</td>
+                <td><input type="text" name="F3625_contract_no" value="{$F3625_contract_no}"></td>
+                <td></td>
+            </tr>
+            <tr style="display: none;">
+                <td class="ftitle" colspan="2"> Billing Unit Measure</td>
+                <td colspan="4"><select name="F3625_measure_unit">
+                        <option value="">Select One</option>
+                        <option value="1" {if $F3625_measure_unit eq 1} selected="selected"{/if}>1 Hour= 1 Unit</option>
+                        <option value="4" {if $F3625_measure_unit eq 4} selected="selected"{/if}>1 Hour= 4 Units</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Email Visit Notes</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="F3625_req_visit" value="1" {if $F3625_req_visit eq '1'  } checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="F3625_req_visit" value="0" {if $F3625_req_visit neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Requires Signatures in F3625</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="F3625_req_sig" value="1" {if $F3625_req_sig neq '0'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="F3625_req_sig" value="0" {if $F3625_req_sig eq '0'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp;</td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Form 3625 Settings: Authorized Service</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td width="25%" style="text-align: center;"><b>Discipline</b></td>
+                <td width="15%" style="text-align: center;"><b>15. Service Code</b></td>
+                <td width="15%" style="text-align: center;"><b>16. Bill Code</b></td>
+                <td width="15%" style="text-align: center;"><b>17. Requisition Fee</b></td>
+                <td width="15%" style="text-align: center;"><b>18. Requisition Fee Service Code</b></td>
+                <td width="15%" style="text-align: center;"><b>19. Requisition Fee Bill Code</b></td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">AQUATIC</td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box15[]" value="{$settings[13]->F3625_box15}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box16[]" value="{$settings[13]->F3625_box16}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box17[]" value="{$settings[13]->F3625_box17}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box18[]" value="{$settings[13]->F3625_box18}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box19[]" value="{$settings[13]->F3625_box19}"></td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">BEHAVIORAL</td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box15[]" value="{$settings[14]->F3625_box15}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box16[]" value="{$settings[14]->F3625_box16}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box17[]" value="{$settings[14]->F3625_box17}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box18[]" value="{$settings[14]->F3625_box18}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box19[]" value="{$settings[14]->F3625_box19}"></td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">MASSAGE</td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box15[]" value="{$settings[15]->F3625_box15}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box16[]" value="{$settings[15]->F3625_box16}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box17[]" value="{$settings[15]->F3625_box17}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box18[]" value="{$settings[15]->F3625_box18}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box19[]" value="{$settings[15]->F3625_box19}"></td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">MUSIC</td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box15[]" value="{$settings[16]->F3625_box15}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box16[]" value="{$settings[16]->F3625_box16}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box17[]" value="{$settings[16]->F3625_box17}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box18[]" value="{$settings[16]->F3625_box18}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box19[]" value="{$settings[16]->F3625_box19}"></td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">RECREATION</td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box15[]" value="{$settings[17]->F3625_box15}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box16[]" value="{$settings[17]->F3625_box16}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box17[]" value="{$settings[17]->F3625_box17}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box18[]" value="{$settings[17]->F3625_box18}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box19[]" value="{$settings[17]->F3625_box19}"></td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">THBR</td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box15[]" value="{$settings[18]->F3625_box15}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box16[]" value="{$settings[18]->F3625_box16}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box17[]" value="{$settings[18]->F3625_box17}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box18[]" value="{$settings[18]->F3625_box18}"></td>
+                <td style="text-align: center;"><input size="8" type="text" name="F3625_box19[]" value="{$settings[18]->F3625_box19}"></td>
+            </tr>
+			
+			
+			
+			
+			
+            {else}
+			
+			
+			
+			
+			
+            {*
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Requires Co-Signature</td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Requires Co-Signature in PTPN</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="ptpn_req_co_sign" value="1" {if $ptpn_req_co_sign eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="ptpn_req_co_sign" value="0" {if $ptpn_req_co_sign neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            *}
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Invoice Terms</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2" width="20%"> Invoice Terms</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="invoice_terms" value="1" {if $invoice_terms eq '1'} checked="checked"{/if} >
+                    Due on Receipt</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="invoice_terms" value="0" {if $invoice_terms neq '1'} checked="checked"{/if}>
+                    Nbr of Days
+                    <input type="text" name="invoice_due_days" value="{$agency->invoice_due_days}" size="3" maxlength="3">
+                    </label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr>
+                <td colspan="6" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Set up for Invoice Additional Info</td>
+            </tr>
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            <tr style="display: none;">
+                <td class="ftitle" colspan="2"> Sort Invoice By Last Name</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="sort_invoice_by_lastname" value="1" {if $sort_invoice_by_lastname eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="sort_invoice_by_lastname" value="0" {if $sort_invoice_by_lastname neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Print Therapist Name in invoice</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="print_therapist_name_in_invoice" value="1" {if $print_therapist_name_in_invoice eq '1'} checked="checked"{/if} >
+                    Yes</label>
+                    &nbsp;
+                    <label>
+                    <input type="radio" name="print_therapist_name_in_invoice" value="0" {if $print_therapist_name_in_invoice neq '1'} checked="checked"{/if}>
+                    No</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2"> Print Agency or Contractor on Notes</td>
+                <td colspan="4"><label>
+                    <input type="radio" name="print_agency_or_contractor_on_notes" value="agency" {if $print_agency_or_contractor_on_notes eq 'agency'} checked="checked"{/if} >
+                    Agency</label>
+                    &nbsp;
+                    <label>  <input type="radio" name="print_agency_or_contractor_on_notes" value="contractor" {if $print_agency_or_contractor_on_notes eq 'contractor'} checked="checked"{/if}>
+                    Contractor</label>
+					&nbsp;
+                    <label>  <input type="radio" name="print_agency_or_contractor_on_notes" value="both" {if $print_agency_or_contractor_on_notes eq 'both'} checked="checked"{/if}>
+                    Both</label>
+                </td>
+            </tr>			
+            <tr>
+                <td class="ftitle" colspan="2" valign="top"> <label for="special_billing_instructions">Special Billing Instructions</label></td>
+                <td colspan="4"><textarea id="special_billing_instructions" name="special_billing_instructions" cols="100" rows="5">{$agency_contract_detail->special_billing_instructions}</textarea></td>
+            </tr>
+            <tr>
+                <td class="ftitle" colspan="2" valign="top"> <label for="other_instructions">Other Instructions</label></td>
+                <td colspan="4"><textarea id="other_instructions" name="other_instructions" cols="100" rows="5">{$agency_contract_detail->other_instructions}</textarea></td>
+            </tr>
+			
+			
+			
+			
+			
+            {/if}
+            <tr>
+                <td colspan="6">&nbsp </td>
+            </tr>
+            {if !$no_commit_form}
+            <tr>
+                <td colspan="6"><input type="submit" class="btn" name="button" value="Save" onclick=""></td>
+            </tr>
+            {/if}
+        </table>
+    </form>
+</div>

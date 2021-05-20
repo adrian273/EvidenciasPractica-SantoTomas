@@ -1,0 +1,92 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td nowrap style="">
+		<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="4"> 
+		 <form id="gform_modal" method="POST" onsubmit="$('#grid_paginal').html("");$('#grid_area').html("");load_grid_from_modal( this );return false;">
+			<input type="hidden" name="modal" value="1"/>
+			<input type="hidden" name="visit_type_str" id="visit_type_str" value=""/>
+		  <tr>
+			<td colspan="5" height="10"></td>
+		  </tr> 
+		  <tr>
+			<td class="ftitle" colspan="5">Advanced Visit Search</td>
+		  </tr>
+			<tr>
+				<td style="width:20%;"><label for="">Patient Status</label></td>
+				<td style="width:20%;" align="left">{html_options first_option='All' options=$status_list name='status_id'}</td>
+				<td><label for="">Patient Name</label></td>				
+				<td ><input type="text" id="patient_name" name="patient_name" value=""></td>				
+				<td>
+					<input type="submit" name="submit" class="btn" value="Search">
+					<input type="reset" name="reset" class="btn" value="Reset">
+				</td>
+			</tr>
+			<tr>
+				<td>
+				<a href="javascript: addToWindow()">Select Visit Type</a>
+				</td>
+				<td align="left">
+				<div id="visit_type_list">
+					<p id="msg_visit_type">All</p>
+				</div>
+				<!-- {html_options first_option='All' options=$visit_type_list multiple='multiple' size='5' id='visit_type' name='visit_type'} -->
+				</td>
+				<td><label for="">Visit Status</label></td>				
+				<td align="left">{html_options first_option='All' options=$visit_status_list name='visit_status'}</td>
+				<td align="left">&nbsp;</td>
+			</tr>
+			<tr>
+				<td><label for="">Visit From Date</label></td>
+				<td>
+					<input type="text" id="date_from" name="date_from" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+					<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" >				</td>
+				<td><label for="">Visit End date</label></td>				
+				<td>
+					<input type="text" id="date_to" name="date_to" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+					<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" >				</td>
+				<td>&nbsp;</td>
+			</tr>
+			<tr>
+				<td><label for="">Clinician </label></td>
+				<td align="left">{html_options first_option='All' options=$clinician_list name='clinitian'}</td>
+				{*<td>Certification From</td>
+				<td colspan="2">
+					<input type="text" id="date_cert_from" name="date_cert_from" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+					<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_cert_from'), document.getElementById('date_cert_to'));return false;" >
+
+					&nbsp;&nbsp;&nbsp;Thru Date
+					<input type="text" id="date_cert_to" name="date_cert_to" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+					<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('date_cert_from'), document.getElementById('date_cert_to'));return false;" >
+				</td>*}
+				<td><label for="">Agency</label></td>
+				<td align="left">{html_options first_option='All' options=$agency_list name='agency_id'}</td>
+			</tr>
+		  <tr> 
+		  	  <td style="width:20%;">&nbsp;</td>
+		  	  <td valign="bottom" colspan="4" style="text-align:left;padding-top:20px;">&nbsp;</td>
+		  </tr>
+		 </form>
+		</table>
+    </td>
+  </tr>
+</table>
+<!-- -->
+</td>
+<tr><td>
+<!-- -->
+<div id="modal_filter" style="width:300px;height:300px;position:absolute;top:0px;right:30px;z-index:10;background:#F4F4F4;border:solid 2px #C9DAE1; padding:10px;display:none;">
+
+
+</div>
+<!-- script -->
+<script type="text/javascript" src="{$base_url}/style/jquery/base.js"></script>
+<style>
+	{literal}
+		.visit_type_style_box {
+			font-size: 12px;
+			width: 100%;
+			overflow-y: scroll;
+			height: 130px;
+		}
+	{/literal}
+</style>

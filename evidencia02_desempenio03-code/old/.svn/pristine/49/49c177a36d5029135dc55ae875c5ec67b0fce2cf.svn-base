@@ -1,0 +1,180 @@
+
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  {*<tr> 
+    <td nowrap>
+       Communications Notes:
+        <input type="radio" name="userID" onclick="loadGrid()"  value="all" checked id="at1"> <label for="at1">All</label>
+        <input type="radio" name="userID" onclick="loadGrid()" value="my_com" id="at2"> <label for="at2">My Communications</label> |
+        Patient/User Name: 
+        <input type="text" name="keyword" id="keyword">
+        <input type="submit" value="Search">
+        <input type="submit" onclick="setValue('keyword', '')" value="clear">
+    </td>
+  </tr>*}
+	<tr>
+	<td>
+		<div id="toolbarObj" style="float: left"></div>
+		<div id="toolbarObj2" style="float: right">		{*<a style="float:right; padding-top:5px;" href="" onclick="$('#modal_filter').toggle();return false ;"><strong>Advanced Filters</strong></a>*}</div>
+		<div style="clear:both"></div>
+		{*<div id="toolbarObj3" style="position:absolute; left:0; bottom:0;"></div>	*}
+		<input type="hidden" value="" name="record_ids" id="record_ids">		
+	</td>
+	</tr>
+</table> 
+<!-- -->
+</td>
+</form>
+<tr><td>
+<!-- -->
+<div id="modal_filter" style="width:300px;height:300px;position:absolute;top:75px;right:30px;z-index:10;background:#F4F4F4;border:solid 2px #C9DAE1; padding:10px;display:none;">
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="4"> 
+	 <form id="gform_modal" method="POST" onsubmit="load_grid_from_modal( this );return false;">
+		<input type="hidden" name="modal" value="1"/>
+	  <tr>
+		<td colspan="2" height="10"></td>
+	  </tr> 
+	  <tr>
+		<td class="ftitle" colspan="2">Advanced Filters</td>
+	  </tr>
+		<tr>
+			<td style="width:50%;"><label for="">Patient Status</label></td>
+			<td align="left">{html_options first_option='All' options=$status_list name='status_id'}</td>
+		</tr>
+		<tr>
+			<td><label for="">Patient Name</label></td>
+			<td ><input type="text" id="patient_name" name="patient_name" value=""></td>
+		</tr>		
+		<tr>
+			<td><label for="">From date</label></td>
+			<td>
+				<input type="text" id="date_from" name="date_from" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td><label for="">End date</label></td>
+			<td>
+				<input type="text" id="date_to" name="date_to" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td><label for="">Created by User </label></td>
+			<td align="left">{html_options first_option='All' options=$clinician_list name='clinitian'}</td>
+		</tr>
+	  <tr> 
+		<td valign="bottom" colspan="2" style="text-align:right;padding-top:20px;">
+			<input type="submit" name="submit" class="btn" value="Search">
+			<input type="reset" name="reset" class="btn" value="Reset">
+			<input type="reset" class="btn" value="Close" onclick="$('#modal_filter').hide();">
+		</td>
+	  </tr>
+	 </form>
+	</table> 
+
+</div>
+<!-- script -->
+<script type="text/javascript" src="{$base_url}/style/jquery/base.js"></script>
+
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+	function printSelected() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}{$resource_path}/pdfSelected';
+			gform.target='_blank';
+			gform.submit();
+		{literal}}{/literal}   
+	{literal}}{/literal}   	 
+	 
+	function edit_com_note(patient_id, note_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 350, 200);
+			w2.setText("Edit Communication date");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/mail/comnotes/edit_com_note/"+patient_id+"/"+note_id);
+			
+    	
+  {literal}}{/literal}
+
+
+</script>
+
+<script language="JavaScript" type="text/javascript">
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		webBar.addSeparator('sp1', 3);
+   	webBar.addButton("print", 4, "Print", "icon_printer.png");
+    
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;
+		case 'print':
+		  printSelected()
+		  break;
+		{literal}}{/literal}
+    {literal}}{/literal});
+    
+  /*  
+    var webBar2 = new dhtmlXToolbarObject("toolbarObj2", "standard");
+    webBar2.setIconsPath("{$base_url}style/images/");
+    webBar2.addButton("new", 1, " Create Communication", "pen0.png");
+    
+    webBar2.attachEvent("onClick", function(eid){literal}{{/literal}
+		parent.document.location.href='{$index_url}mail/compose/index/{$back_path}';
+		{literal}}{/literal});
+*/
+/*    var webBar3 = new dhtmlXToolbarObject("toolbarObj3", "standard");
+    webBar3.setIconsPath("{$base_url}style/images/");
+    webBar3.addButton("new", 1, " Create Communication", "pen0.png");
+    
+    webBar3.attachEvent("onClick", function(eid){literal}{{/literal}
+		document.location.href='{$index_url}mail/compose/index/comnotes/';
+		
+    {literal}}{/literal});
+*/
+	function delete_note ( patient_id, note_id) {literal}{{/literal}
+		if(confirm("Are you sure you want to delete this note?")){literal}{{/literal}
+			ajax("{$index_url}mail/comnotes/delete/" + patient_id + "/" + note_id , ajaxParseAction);
+	  {literal}}{/literal}
+	{literal}}{/literal}
+	
+</script>

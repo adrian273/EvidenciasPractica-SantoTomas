@@ -1,0 +1,50 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td height="20">
+    	From Date: <input type="text" id="date" name="date" value="{$date|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false);" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date'),  document.getElementById('date_to'));return false;" >
+		
+		TO Date: <input type="text" id="date_to" name="date_to" value="" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('date'), document.getElementById('date_to'));return false;" >
+		
+		<input type="submit" value="Search">
+    </td>
+  </tr>
+</table>
+<iframe name="inner_frame" id="inner_frame" frameborder="0" width="100" height="1"></iframe>
+<script type="text/javascript">
+    function do_printAgenda(date){literal}{{/literal}
+    	if(!date)
+    	{literal}{{/literal}
+    		alert('Please select a date!');
+    	{literal}}{/literal}
+    	else
+    	{literal}{{/literal}
+			 d=date.split("-");    	
+			 month=d[0];
+			 day=d[1];
+			 year=d[2];
+       document.location = "{$index_url}/calendar/do_print/{$user_id}/"+year+"/"+month+"/"+day+"/"+"/{$visit_type_id}";
+			 
+    	{literal}}{/literal}
+    {literal}}{/literal}
+
+
+    function do_users_printAgenda(date){literal}{{/literal}
+        if(!date)
+        {literal}{{/literal}
+            alert('Please select a date!');
+        {literal}}{/literal}
+        else
+        {literal}{{/literal}
+             d=date.split("-");     
+             month=d[0];
+             day=d[1];
+             year=d[2];
+             document.location = "{$index_url}/calendar/do_users_print/{$record_ids}/"+year+"/"+month+"/"+day+"/"+"/{$visit_type_id}";
+             
+        {literal}}{/literal}
+    {literal}}{/literal}
+</script>

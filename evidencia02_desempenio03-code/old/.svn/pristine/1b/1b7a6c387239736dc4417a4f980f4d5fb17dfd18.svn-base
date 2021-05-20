@@ -1,0 +1,142 @@
+<?
+
+ class Facility extends MY_Controller {
+
+	var $rules;
+
+	function Facility () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "facility");
+		
+		$this->tpl->assign('facility_type_list', $this->parametermdl->getByType(31));
+		
+		$this->rules = array ('facility_name'			=> 'required',
+							  'tab_031_fac_type'		=> 'required',
+							  'phone1'  				=> 'valid_phone',
+							  'phone2'  				=> 'valid_phone',
+							  'fax'  				 	=> 'valid_phone',
+							  'email'  					=> 'valid_email',
+							  'contact_cell_phone'  	=> 'valid_phone',
+							  'contact_email'  			=> 'valid_email');
+		
+	}
+	
+	function index () {
+
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		$this->tpl->assign(array("list_title" => "Facilities", "add_sufix" => "Facility"));
+		$this->tpl->assign_include("filter_tpl", "facility/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=30", "Facility"));
+		$head->append($this->xml->Element("column", "width=*",  "Contact Name"));
+		$head->append($this->xml->Element("column", "width=35", "Type"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->facilitymdl->get($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_031_fac_type')) as $facility) {
+			
+			$cell = $this->xml->Element("row", "id=" . $facility->facility_id);
+			$cell->append($this->xml->Element("cell", null, $facility->facility_id));
+			$cell->append($this->xml->Element("cell", null, $facility->facility_name));
+			$cell->append($this->xml->Element("cell", null, $facility->contact_name));
+			$cell->append($this->xml->Element("cell", null, $facility->tab_description));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add () {
+		
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Facility");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "facility/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->facilitymdl);
+			$this->facilitymdl->insert($this->getAgencyId());
+			
+			$this->tpl->assign('gmessage', $this->facilitymdl->facility_name . $this->lang->line('grl_add_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function edit ( $facility_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $facility_id);
+		
+		$this->assignObject($this->facilitymdl->getByFacilityId($facility_id));
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Edit Facility");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "facility/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->facilitymdl);
+			$this->facilitymdl->update($facility_id, $this->getAgencyId());
+			
+			$this->tpl->assign('gmessage', $this->facilitymdl->facility_name . $this->lang->line('grl_upd_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function delete ( $facility_id ) {
+		
+		$facility = $this->facilitymdl->getByFacilityId($facility_id);
+		
+		$this->facilitymdl->delete($facility_id);
+		
+		$this->tpl->assign('gmessage', $facility->facility_name . $this->lang->line('grl_del_msg'));
+		$this->index();
+		
+	}
+
+	function suggest ( $keyword ) {
+		
+			$this->xml->root_name = "results";
+			$document = $this->xml->Document();
+			
+			if (is_null($keyword)) { return; } // if string null, return no results
+			
+			foreach ($this->facilitymdl->suggest($this->getAgencyId(), $keyword) as $facility) {
+				$document->append($this->xml->Element("rs", "id=" . $facility->facility_id . ";info=", $facility->facility_name));
+			}
+
+		
+	}
+	
+ }

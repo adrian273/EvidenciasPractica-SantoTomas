@@ -1,0 +1,55 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr id="lala"> 
+    <td nowrap>
+		<label><input type="radio" name="agency_filter" id="agency_filter_all" value="all" onclick="loadGrid();afterload();" checked="checked" /> <b>All Invoices</b></label>
+		<label><input type="radio" name="agency_filter" id="agency_filter_due" value="due" onclick="loadGrid();afterload();" /><b> Balance Due</b></label>
+		<label><input type="radio" name="agency_filter" id="agency_filter_paid" value="paid" onclick="loadGrid();afterload();" /><b> Paid</b></label>
+    </td>
+    <td align="right" style="padding-left: 20px" nowrap>
+		<!-- <b>TOTAL</b> 
+		Bill Amount: <b id="total_amount">{$total_amount}</b>&nbsp;&nbsp;
+		Paid: <b id="total_paid">{$total_paid}</b>&nbsp;&nbsp;
+		Balance: <b id="total_balance">{$total_balance}</b>&nbsp;&nbsp; -->
+    </td>    
+  </tr>
+  <tr>
+  	<td nowrap>
+  		&nbsp;&nbsp;<b>Invoice From</b>&nbsp;&nbsp;
+  		<input type="text" id="invoice_from_date" name="invoice_from_date" value="" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('invoice_from_date'), document.getElementById('invoice_to_date'));return false;" >
+		
+		<b>To</b>&nbsp;&nbsp;&nbsp;
+    	<input type="text" id="invoice_to_date" name="invoice_to_date" value="" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('invoice_from_date'), document.getElementById('invoice_to_date'));return false;" >
+
+		&nbsp;&nbsp;&nbsp;
+		<input type="button" value="Update" onclick="loadGrid();afterload();">
+  	</td>
+  	<td nowrap style="text-align: right;">
+		<input type="text" name="keyword" value="" placeholder="Search for Agency..." onkeyup="loadGrid();afterload();" />
+    </td>
+     
+  </tr>
+</table> 
+<script>
+
+	
+  function invoices (agency_contractor_id) {literal}{{/literal}			
+			//alert("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}" +"/"+str1+"/"+str2);
+			document.location = "{$index_url}{$resource_path}/{$resource_edit|default:"edit"}" +"/"+agency_contractor_id;					
+    {literal}}{/literal}
+    
+	{literal}
+	function updateTotalBalance(balance, amount, paid){
+		document.getElementById('total_balance').innerHTML = balance;
+		document.getElementById('total_amount').innerHTML = amount;
+		document.getElementById('total_paid').innerHTML = paid;
+	}
+	{/literal}
+
+	function afterload () {literal}{{/literal}
+		ajax("{$index_url}contractor/invoices/total_balance/", ajaxParseAction, 'gform');
+	{literal}}{/literal}
+</script>

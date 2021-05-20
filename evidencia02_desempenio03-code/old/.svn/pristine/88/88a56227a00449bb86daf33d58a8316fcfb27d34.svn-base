@@ -1,0 +1,253 @@
+<?php
+
+/**
+ * 
+ */
+class Late_task_visit extends MY_Controller
+{
+	
+	function Late_task_visit() {
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/late_task_visit");
+		$this->tpl->assign(array("tab_page" => true));
+	}
+
+	function index() {
+		/*$this->session->unset_userdata('task_return');     
+	    $user_id = $this->session->userdata('user_id');
+	    $user_info = $this->usermdl->getById($user_id);    
+		$this->tpl->assign('open_new_window', $user_info->open_new_window);
+
+	    $pending_visit_arr = array('Returned');
+	    $visit_status_id = array();
+	    $visit_status_id[] = 1;            
+	    $returned_visits = $this->visitlogmdl->getVisitTaskList($this->getUsAgyId(), null, null, null, $visit_status_id, null, null, null, date("Y-m-d"));
+	    $this->tpl->assign('no_returned_visits', sizeof($returned_visits));
+	    
+		$this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign('load_pending_status', 0);
+		$this->tpl->assign('visit_status_type', 'visit_status_id_p_v');
+		*/
+	    
+		$agency_status = 1;
+	    $agency_list = $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false, $agency_status);
+	    $this->tpl->assign("agency_list", $agency_list);  
+
+	    // $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+	    // $this->tpl->assign("default_pat_filter_agency", $usAgy->default_pat_filter_agency);  
+
+		$this->tpl->assign(array(
+			"no_grid_buttons" => true,
+			"noedit" => true,
+		));
+		$this->load->model('visitlog/task/mparams');
+		$clinician_status = 1;
+		$this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( $this->getAgencyId() , "C", $clinician_status ) );
+
+	 	$this->tpl->assign('additional_buttons', array('Email late Visits/Tasks'=>'send_email()'));
+
+    	// $this->tpl->assign("paginate", 'false'); 
+    	$this->tpl->assign("items_per_page", 999999999999); 
+    	// Default 3 days old
+    	$this->tpl->assign("number_day_old", 3);
+
+
+        $date_start = date('d-m-Y');
+        $current_date = strtotime ( '-30 day' , strtotime ( $date_start ) ) ;
+        $current_date = date ( 'm-d-Y' , $current_date );
+
+        $final_date = strtotime ( '-3 day' , strtotime ( $date_start ) ) ;
+        $final_date = date ( 'm-d-Y' , $final_date );
+
+    	$this->tpl->assign("current_date_default", $current_date);
+        $this->tpl->assign("final_date_default", $final_date);
+		$this->tpl->assign_include("filter_tpl", "task/late_task_visit_g");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+		
+	}
+
+	function grid () {
+	      $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+	      if ($usAgy->default_pat_filter_agency != $this->input->post('agency_id')) {
+	        $this->usagymdl->updateFlex($this->getUsAgyId(), 'default_pat_filter_agency', $this->input->post('agency_id'));
+	      }
+
+		$gdata = array();
+
+		$visit_status_list = $this->parametermdl->getByType(83);
+	    $visit_status_type = $this->input->post('visit_status_type');
+	    $visit_status_id = array();
+	    $visit_status_id[] = 1; // values: visit_status_id (schelud, in progress, return)
+	    $visit_status_id[] = 2;
+	    $visit_status_id[] = 5;
+	    // $gdata = $this->visitlogmdl->getVisitTaskList($this->getUsAgyId(), null, null, $this->input->post('visit_type_id'), $visit_status_id, $this->input->post('keyword'), $this->getAgencyId());
+		$patient_status_discharged = 3;
+	    $gdata = $this->visitlogmdl->getLateTaskList($this->input->post('clinician'), $this->getAgencyId(), null, null, null, null, $patient_status_discharged);
+	           
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$head = $this->xml->Element("head");
+	    if (count($gdata)) {
+	    	$head->append($this->xml->Element("column", "width=3;type=ch", " "));
+	    }
+		$head->append($this->xml->Element("column", "width=8", "Date"));
+		$head->append($this->xml->Element("column", "width=20", "Clinician"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=17",  "Visit/Task Name"));
+		$head->append($this->xml->Element("column", "width=12",  "Send Date"));
+   		$head->append($this->xml->Element("column", "width=10",  "Status"));
+		$head->append($this->xml->Element("column", "width=*",  "Agency Name"));
+		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		$this->load->helper('general');
+		if (count($gdata)) {
+			$to_count = array();
+			foreach ( $gdata as $visit ) {				
+				$cm = $this->usagymdl->getByUsAgyId($visit->case_manager_user_id);
+				$asigned_by = $this->usagymdl->getByUsAgyId($visit->visit_asigned_by);
+				$visti_timespan = mysql_to_unix($visit->visit_date_time);
+
+				$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+				$cell->append($this->xml->Element("cell", null, "0"));
+				$cell->append($this->xml->Element("userdata", 'name=date_diff', (mysql_to_unix(standard_date(mysql_to_unix($visit->visit_date_time), 'MYSQL_NOTIME')) - mysql_to_unix(date('Y-m-d')))));
+		        // Date column
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')));	
+		        // v
+		        $user = $this->usagymdl->getByUsAgyId($visit->visit_user_id );
+		        $cell->append($this->xml->Element("cell", null, $user->last_name. " " .$user->first_name ));
+		        // patient name column
+				$cell->append($this->xml->Element("cell", null, $visit->last_name. " " .$visit->first_name ));
+				/*$qstr = "";
+				if($visit->visit_type_id == 104) {
+				$month = date("m",strtotime($visit->visit_date_time));
+					switch ($month) {
+						case "01":
+						case "02":
+						case "03":
+							$qstr = "Q1";
+							break;
+						case "04":
+						case "05":
+						case "06":
+							$qstr = "Q2";
+							break;
+						case "07":
+						case "08":
+						case "09":
+							$qstr = "Q3";
+							break;
+						case "10":
+						case "11":
+						case "12":
+							$qstr = "Q4";
+							break;
+						default:
+							break;
+					}
+				}*/
+				$qstr = calculate_q_text($visit);
+				$cell->append($this->xml->Element("cell", null, $visit->visit_description. " ".$qstr));
+				
+				if (is_null($visit->sent_to_physician_date) OR $visit->sent_to_physician_date == '0000-00-00 00:00:00') {
+					$cell->append($this->xml->Element("cell", null, null));
+				} else {
+					$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->sent_to_physician_date), 'USA_DATE')));	
+				}
+
+				$cell->append($this->xml->Element("cell", null, $visit->tab_description));	
+		        $patient      = $this->patientmdl->getById($visit->patient_id);
+		        $agency       = $this->agencymdl->getByAgencyId($patient->agency_id);
+		        // Agency name column
+
+		        $cell->append($this->xml->Element("cell", null, $agency->agency_name));
+				$document->append($cell);	
+			}
+		
+		} else {
+			$cell = $this->xml->Element("row");
+			$cell->append($this->xml->Element("cell", null, "No data to display"));
+			$document->append($cell);
+		}
+	}
+
+	function email_visits($clinician_id, $record_ids = null){
+		
+		if (is_null($record_ids)) {
+			exit('At least one Task/Visit must be selected');
+		}
+
+		$clinician = $this->usagymdl->getByUsAgyId($clinician_id);
+		$records = explode(",", $record_ids);
+		
+		$visits = array();
+		foreach ($records as $visit_log_id) {			
+			$visit_log = $this->visitlogmdl->getById($visit_log_id);
+			$visits[] = $visit_log; 
+		}
+		
+		if(count($visits) == 0) {
+			exit("Error: No records have been selected.");
+		}
+
+		$this->tpl->assign("clinician_id", $clinician_id);
+		$this->tpl->assign("record_ids", $record_ids);
+
+		$rules = array (
+          'subject' 	=> 'required',
+          'email' 	=> 'required'
+        );
+	    $fields = array(
+	        'subject' => 'Email Subject',
+	        'email' => 'Email'
+	    );
+
+	    $this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		// $patient = $this->patientmdl->getById($patient_id);
+		
+		if ($this->validation->run() == FALSE) {
+			$email_to = $clinician->email;
+			
+			$this->tpl->assign("email_to", $email_to);
+			$this->tpl->assign("send_date", date('Y-md'));
+
+			$this->tpl->assign('subject', 'Please turn in late documentation');
+	      	$this->tpl->assign_include("dynamic_tpl", "task/confirm_email_late_visits");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+	    }else{
+	    	$recods = explode(",", $record_ids);
+	    	$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			// $contractor_info = $this->usermdl->getById($this->session->userdata('user_id'));    
+			
+			$this->load->library('email');
+			$this->email->from('noreply@homehealthsoft.com', $company->agency_name);
+			$this->email->to($this->input->post('email'));			
+			
+			$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary<br><br>\n\n".$this->input->post('description');
+			$body .= "<br><br>\n\n";
+			foreach ($visits as $key => $visit) {
+				$sent_date = standard_date(human_to_unix($this->input->post('send_date')), 'MYSQL_NOTIME');
+				$this->visitlogmdl->updateSentToPhysician($visit->visit_log_id, $sent_date);
+
+				$patient = $this->patientmdl->getById($visit->patient_id); 
+				$body .= ($key+1).". <b>Visit Date:</b> ".standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')." <b>Patient:</b> ".$patient->complete_name." <b>Visit Type:</b> ".$visit->visit_description." <b>Status:</b> ".$visit->tab_description."<br>\n";
+			}
+			
+			$this->email->set_mailtype("html"); 
+			$this->email->message($body);      
+			$subject = $this->input->post('subject');
+
+			$this->email->subject($subject);
+			$this->email->send();
+			// echo $this->email->print_debugger();
+			$this->email->clear(true);
+
+			echo "Email has been sent";
+	    }
+	}
+}

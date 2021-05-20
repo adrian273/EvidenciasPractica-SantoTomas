@@ -1,0 +1,40 @@
+<?
+
+ class DocDoctorOrderTypeMdl extends Model {
+
+	var $doc_doctor_order_type_id;
+  	var $doc_doctor_order_type_description;
+  	var $doc_doctor_order_type_program;
+
+	function DocDoctorOrderTypeMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $normal_result=true ) {
+	
+		$query = $this->db->get('doc_doctor_order_type');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('doc_doctor_order_type_id', 'doc_doctor_order_type_description');
+	
+	}
+	
+	function getAdd () {
+	
+		$this->db->where('doc_doctor_order_type_allow_add', 1);
+		return $this->get(false);
+	
+	}
+	
+	function getById ( $doc_doctor_order_type_id ) {
+	
+		$this->db->where('doc_doctor_order_type_id', $doc_doctor_order_type_id);
+		$query = $this->db->get('doc_doctor_order_type');
+		return $query->row();
+	
+	}
+
+ }

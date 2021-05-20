@@ -1,0 +1,39 @@
+<?php
+
+ class fixAgencyBalance extends Controller {
+
+	function fixAgencyBalance () {
+		parent::Controller();
+	}
+	
+	function index () {
+		$query = $this->db->get('invoice_view');		
+		$result = $query->result();
+		foreach ($result as $key => $invoice) {
+			$paid = (float)$invoice->total_payment;
+			$invoice_amount = (float) $invoice->invoice_amount;
+
+			// if ( ($invoice_amount - $paid) == 0) {
+			if ( $invoice->balance == 0) {
+				$this->db->where('invoice_id',$invoice->invoice_id);
+				$this->db->set('agency_balance', 0);
+				$this->db->set('agency_paid_status', 'PA');
+				$this->db->update('invoice_view');
+
+				echo "invoice_id: {$invoice->invoice_id}, changed agency balance to 0 and agency status to PAID<br>";
+				echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(invoice_amount = {$invoice_amount}, paid={$paid})<br><br>";
+			} else {
+				$this->db->where('invoice_id',$invoice->invoice_id);
+				$this->db->set('agency_balance', $invoice->balance);
+				$this->db->set('agency_paid_status', 'NP');
+				$this->db->update('company_invoice');
+
+				echo "invoice_id: {$invoice->invoice_id}, changed agency balance to {$invoice->balance} and agency status to NP<br>";
+				echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(invoice_amount = {$invoice_amount}, paid={$paid})<br><br>";
+			}
+		
+		}
+
+		echo "<br><br>FINISHED!";
+	}
+}

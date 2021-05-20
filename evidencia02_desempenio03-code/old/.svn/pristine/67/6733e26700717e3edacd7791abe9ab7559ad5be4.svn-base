@@ -1,0 +1,60 @@
+
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="6"> 
+	<form name="edit_event_form" id="edit_event_form" method="POST">
+		{if $error_string}
+		<tr>
+			<td class="error tbl_msg">{$error_string}</td>
+		</tr>
+		{/if}
+
+		<tr>
+			<td class="ftitle">Event Type:</td>
+		</tr>
+		<tr>
+			<td>
+				{html_options options=$type_list selected=$tab106_event_type name='tab106_event_type'}
+			</td>
+		</tr>
+		<tr>	
+			<td class="ftitle">Action Required </td>
+		</tr>	
+		<tr>
+			<td> 
+				<label><input type="radio" name="action_required" value="NO" checked="checked"> No </label>
+				<label><input type="radio"  name="action_required" value="YES"> Yes</label>
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">Action Req Date </td>
+		</tr>
+		<tr>
+			<td> 
+				<input type="text" name="action_date" id="action_date" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+                <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('action_date'), document.getElementById('fecha_help'));return false;" >
+			</td>
+		</tr>
+		
+		<tr>
+			<td class="ftitle" nowrap>Comments:</td>
+		</tr>
+		<tr>
+			<td nowrap>
+				<textarea name="event_comment" style="width: 100%;" wrap="auto" rows="6">{$event_comment}</textarea>
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">Visibility:</td>
+		</tr>
+		<tr>
+			<td>
+				{html_radios options=$visibility_list selected=$visibility name='visibility'}
+			</td>
+		</tr>
+		<tr>
+			<td nowrap height="100%" valign="bottom">
+				<input type="submit" class="btn" value="{$grl_save}">
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.cancelModal()">
+			</td>
+		</tr>
+	</form>
+</table>

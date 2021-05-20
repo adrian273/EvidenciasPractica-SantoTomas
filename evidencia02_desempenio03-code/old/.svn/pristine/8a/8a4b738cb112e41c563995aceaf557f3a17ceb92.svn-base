@@ -1,0 +1,37 @@
+<?
+
+ class Icd9_codes extends MY_Controller {
+
+	function Icd9_codes () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/front");
+		
+	}
+
+	function index () {
+		
+		if ($this->hasPermission(14) || $this->getUserProfileId() == 3) $this->tpl->assign('full_tab', true);
+		
+		$this->tpl->assign_include("dynamic_tpl", "sys_tables/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+  function icd_codes(){
+  	if ($this->hasPermission(14) || $this->getUserProfileId() == 3) $this->tpl->assign('full_tab', true);
+		
+		$this->tpl->assign_include("dynamic_tpl", "sys_tables/icd_codes");
+		$this->tpl->view("parts/ibase", $this->lang->language);	
+  }
+	function icd_9_cm(){
+    echo "**Pending";exit;
+  }
+  
+  function icd_10_cm(){
+    echo "**Pending";exit;
+  }
+  
+  function templates(){
+    echo "* this module is not active at this time *";exit;
+  }
+ }

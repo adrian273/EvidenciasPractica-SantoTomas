@@ -1,0 +1,108 @@
+<script language="JavaScript" type="text/javascript">
+	
+	function refreshVisitType ( us_agy_id, vt_id, visit_type_id ) {literal}{{/literal}
+  	
+  		ajaxComboBox('{$index_url}visittype/getVisitOptionsByDisc/', '{$visit_user_disc_selected}/'+visit_type_id, 'vt_' + vt_id);
+	  	
+	{literal}}{/literal}
+	
+</script>
+	<!--<input type="hidden" name="visit_user_id" value="{$user->us_agy_id}">-->
+	<input type="hidden" name="cms_485_mcaid_pa_visits_id" value="{$cms_485_mcaid_pa_visits_id}"  />
+	<input type="hidden" name="confirm_last_ev_date" id="confirm_last_ev_date" value="0"  />
+	<table border="0" width="100%" cellpadding="0" cellspacing="6"> 
+	  <tr>
+	    <td class="ftitle">Task Date</td>
+	    <td class="ftitle">Task time</td>
+	    <td class="ftitle" nowrap>User/Clinician &nbsp;&nbsp;&nbsp;</td>
+	    <td class="ftitle">Task Type</td>
+	    <!--<td class="ftitle">Comments</td>-->
+	  </tr>
+	  
+	  {section name=event loop=$event_dates}
+	  <tr>
+	    <td id="day_add_event">
+	    	{$event_dates_fixed[event]}
+	    	<input type="hidden" name="visit_date[]" value="{$event_dates[event]}">
+	    </td>
+	    <td>
+	    	<input type="text" name="visit_time_hour[]" value="{$visit_time_hour[event]|default:$__visit_time_Hour}" size="3" style="text-align: center" maxlength="2"> : 
+	    	<input type="text" name="visit_time_min[]" value="{$visit_time_min[event]|default:$__visit_time_Minute}" size="3" style="text-align: center" maxlength="2">
+	    	{* <select name='time_type[]'>
+	    	{foreach item=time_type_loop key=time_type_loop_key from=$time_type_list}
+	    		<option value="{$time_type_loop_key}" {if $time_type_loop_key == $time_type[event] OR $__visit_time_Meridian}selected{/if}>{$time_type_loop}</option>
+	    	{/foreach }
+	    	</select> *}
+	    </td>
+	    <td>
+			{*{$user->first_name} {$user->last_name} {$visit_user_id}*}
+			{html_options options=$team_list selected=$visit_user_ids[event] name='visit_user_id[]' onchange="refreshVisitType(this.value, '$event_dates[event]')" disabled=disabled}
+
+			<input type="hidden" name='visit_user_id[]' value="{$visit_user_ids[event]}" >
+			<input type="hidden" name='visit_user_disc[]' value="{$visit_user_disc_selected}" >
+
+		</td>
+		<td>
+			{html_options options=$visit_type_list selected=$visit_type_id[event]|default:$default_visit_type name='visit_type_id[]' id="vt_$event_dates[event]"} *
+			{if $visit_user_ids[event] && $visit_type_id[event]}
+				<script>
+				// setTimeout("refreshVisitType({$visit_user_ids[event]}, '{$event_dates[event]}', '{$visit_type_id[event]}')", 500*{$smarty.section.event.index});				
+				</script>
+			{/if}
+		</td>
+		<!--
+	    <td>
+		  <textarea name='visit_comments[]' rows="5" cols="30" wrap="auto"></textarea>
+		</td>
+		-->
+	  </tr>
+	  {/section}
+
+	  <tr>
+	    <td colspan="2">
+		</td>
+	  </tr>
+	</table>
+	
+<script language="JavaScript" type="text/javascript">
+	var dhxWins;  
+
+    function submitForm(){literal}{{/literal}	
+    	gform.submit();
+	{literal}}{/literal}
+
+	{if $verify_prev_ev_failed}
+	setTimeout('confirmPrevEval()', 2000);
+	function confirmPrevEval() {literal}{{/literal}		
+		if (confirm('{$verify_prev_ev_failed_msg}')) {literal}{{/literal}
+			setValue('confirm_last_ev_date', 1);
+			submitForm();
+		{literal}}{/literal}
+	{literal}}{/literal}
+	{/if}
+
+	{if $confirm_multi_schedule_overlap}
+	setTimeout('confirmMultiScheduleOverlap()', 2000);
+	{/if}
+	function confirmMultiScheduleOverlap() {literal}{{/literal}		
+		dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-170, (getWindowHeight()/2) - 160, 500, 300);
+		w1.setText("WARNING - Visits Conflicted");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}{$resource_path}/confirmMultiScheduleOverlap/0/{$patient_id}/{$cms485_id}/{$__visit_time_Hour}/{$__visit_time_Minute}/{$visit_user_id}/{$visit_date}/{$cms_485_mcaid_pa_visits_id}");
+	{literal}}{/literal}
+
+	function cancelModal () {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+</script>

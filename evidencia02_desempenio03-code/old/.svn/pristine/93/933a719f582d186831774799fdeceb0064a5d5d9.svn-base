@@ -1,0 +1,56 @@
+  <table>
+    <tr>
+      <td align="center"><font size="12"><b>------  Pre-Payroll Report--------</b></font></td>
+    </tr>
+    <tr><td><hr></td></tr>
+    <tr><td height="10"></td></tr>
+  </table>
+  
+  
+  
+  <table width="75%">
+    <tr>
+      <td align="left" width="20%"><b>Report Date: </b></td>
+      <td align="left" width="26%">{$report_date|date_format}</td>
+      <td align="left" width="26%"><b></b></td>
+      <td align="left" width="28%"></td>
+    </tr>
+    <tr>
+      <td align="left"><b>Payroll Period: </b></td>
+      <td align="left">{$visit_date_ini}  {$visit_date_fin}</td>
+      <td align="left"><b></b></td>
+      <td align="left"></td>
+    </tr>
+    <tr>
+      <td align="left"><b>User/Clinician: </b></td>
+      <td align="left">{$user->last_name} {$user->first_name}, {$user->short_description}</td>
+      <td align="left"><b>Nbr.Visits</b> = {$novisits}</td>
+      <td align="left"><b>Total Amount </b> = {$total}</td>
+    </tr>
+  </table>  
+  
+  <table>
+    <tr>
+      <td colspan="7"></td>
+    </tr>
+    <tr>
+      <td width="15%"><b>Visit Date</b></td>
+      <td width="20%"><b>Patient Name </b></td>
+      <td width="15%"><b>Visit Type</b></td>
+      <td width="5%"><b>Units </b></td>
+      <td width="15%"><b>Visit Amount </b></td>
+      <td width="10%"><b>Miles </b></td>
+      <td width="15%"><b>Total</b></td>      
+    </tr>
+    {foreach item=visit from=$visits}
+      <tr>
+        <td>{$visit->visit_date_time|date_format:"%m/%d/%Y":"":true}</td>
+        <td>{$visit->pat_first_name} {$visit->pat_last_name}</td>
+        <td>{$visit->visit_description}</td>
+        <td>{$visit->units}</td>
+        <td>$ {$visit->visit_amount|string_format:"%.2f"} &nbsp;&nbsp;{$visit->rate_picked_from}</td>
+        <td>$ {$visit->mileage_amount|string_format:"%.2f"} </td>
+        <td>${$visit->mileage_amount+$visit->visit_amount|string_format:"%.2f"}</td>
+      </tr>
+    {/foreach}        
+  </table>

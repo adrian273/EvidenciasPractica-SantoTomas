@@ -1,0 +1,41 @@
+<?
+
+ class PermissionMdl extends Model {
+
+	var $permission_id;
+	var $permission_header_id;
+  	var $permission_desc_short;
+  	var $permission_desc_long;
+  	var $permission_agency;
+  	var $permission_contractor;
+
+	function PermissionMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getAll () {
+		
+		$query = $this->db->get('per_permission');
+		return $query->result();
+		
+	}
+
+	function getByHeaderId ( $permission_header_id, $permission_type=null, $normal_result=true ) {
+
+		$this->db->select("*, CONCAT(permission_desc_short, ' - ', permission_desc_long) as permission_desc");
+
+		$this->db->where('permission_header_id', $permission_header_id);
+
+		if (!is_null($permission_type)) $this->db->where($permission_type, "1");
+
+		$query = $this->db->get('per_permission');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('permission_id', 'permission_desc');
+	
+	}
+	
+ }

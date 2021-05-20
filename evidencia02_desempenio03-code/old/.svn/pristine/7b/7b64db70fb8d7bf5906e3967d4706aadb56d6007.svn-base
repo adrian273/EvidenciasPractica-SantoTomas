@@ -1,0 +1,142 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="mis_visit_id" value="{$mis_visit_id}">
+  {include file="task/documents/top_base_msvt.tpl"}
+	  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Primary Diagnosis / Therapy Diagnosis</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td height="10">
+    	Primary Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Therapy Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>
+  <tr>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="primary_diag" rows="3" cols="50" wrap="auto">{$primary_diag}</textarea>*}
+      <input name="primary_diag_tmp" type="text" value="{$primary_diag}" size="50" maxlength="50">    	
+    </td>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="secondary_diag" rows="3" cols="50" wrap="auto">{$secondary_diag}</textarea>*}
+    	<input name="secondary_diag_tmp" type="text" value="{$secondary_diag}" size="50" maxlength="50">
+    </td>
+  </tr>
+  <tr>
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>	
+  <tr>
+    <td align="left" valign="top" colspan="2">
+    	<input type="text" id="primary_diag_date" name="primary_diag_date_tmp" value="{$primary_diag_date|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('primary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+		<td align="left" valign="top" colspan="2">
+    	<input type="text" id="secondary_diag_date" name="secondary_diag_date_tmp" value="{$secondary_diag_date|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('secondary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+  </tr>
+
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle">
+    	PATIENT DID NOT RECEIVE TREATMENT TODAY FOR THE FOLLOWING REASON(S):
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" height="10">
+    	{html_checkbox name='alter_caregiver' values='1' checked=$alter_caregiver} Alternate Caregiver available to provide care<br>
+    	{html_checkbox name='patient_refused' values='1' checked=$patient_refused} Patient refused services<br>
+    	{html_checkbox name='family_refused' values='1' checked=$family_refused} Family refused services<br>
+    	{html_checkbox name='patient_requested' values='1' checked=$patient_requested} Patient requested no visit today<br>
+    	{html_checkbox name='no_answer' values='1' checked=$no_answer} No answer to door<br>
+    	{html_checkbox name='other' values='1' checked=$other} Other
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4">
+    	Other<br>
+  		<textarea name="other_description" id="other_description" rows="10" cols="50" wrap="auto">{$other_description}</textarea>
+  		<br><img src="{$image_url}document_add.png" style="vertical-align: middle"> <a href="javascript:addTemplate('other_description', 5, 300);">Template</a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="4">
+    	Plan<br>
+  		<textarea name="plan" rows="10" cols="50" wrap="auto">{$plan}</textarea>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+    	{html_checkbox name='superv_notified' values='1' checked=$superv_notified} Supervisor Notified
+    </td>
+    <td colspan="2">
+    	{html_checkbox name='md_notified' values='1' checked=$md_notified} MD Notified
+    </td>
+  </tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+    var dhxWins;
+    
+    function addTemplate ( field, template_type, y_position ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", (getWindowWidht()/2)-250, y_position, 500, 340);
+		w2.setText("Select Template");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+	    w2.denyResize(); // deny resizing
+	    w2.denyMove(); 
+	    dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}systemtables/template/selectTemplate/" + template_type + "/" + field);
+		
+    {literal}}{/literal}
+    
+    function cancelModal2 () {literal}{{/literal}
+ 
+     	dhxWins.window('w2').close();
+    	
+    {literal}}{/literal}
+    
+ </script>
+ 

@@ -1,0 +1,1858 @@
+<tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Therapy Diagnosis</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+	  <tr>
+    <td height="10">
+    	Primary Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Therapy Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>
+  <tr>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="primary_diag" rows="3" cols="50" wrap="auto">{$primary_diag}</textarea>*}
+			<input type="text" name="primary_diag" value="{$primary_diag}"  size="27" maxlength="50" />
+    </td>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="secondary_diag" rows="3" cols="50" wrap="auto">{$secondary_diag}</textarea>*}
+			<input type="text" name="secondary_diag" value="{$secondary_diag}"  size="27" maxlength="50" />
+    </td>
+  </tr>
+  <tr>
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>	
+  <tr>
+    <td align="left" valign="top" colspan="2">
+    	<input type="text" id="primary_diag_date" name="primary_diag_date"  value="{$primary_diag_date|date_format:"%m-%d-%Y":"":true}"  
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('primary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+		<td align="left" valign="top" colspan="2">
+    	<input type="text" id="secondary_diag_date" name="secondary_diag_date" value="{$secondary_diag_date|date_format:"%m-%d-%Y":"":true}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('secondary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Vital Signs</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  
+  <tr>
+    <td colspan="4" height="10">
+    
+		<table border="0" width="100%" cellpadding="1" cellspacing="0"> 
+		  <tr class="subtitle">
+		    <td class="ftitle" style="width: auto" nowrap>Blood Pressure</td>
+		    <td><input type="text" name="bp" value="{$bp}" size="5"></td>
+		    <td class="ftitle" style="width: auto" nowrap>Temperature</td>
+		    <td><input type="text" name="temp" value="{$temp}" size="5"></td>
+		    <td class="ftitle" style="width: auto" nowrap>Respiratory/O2 Sat</td>
+		    <td><input type="text" name="resp" value="{$resp}" size="5"></td>
+		    <td class="ftitle" style="width: auto" nowrap>Pulse</td>
+		    <td><input type="text" name="pulse" value="{$pulse}" size="5"></td>
+		  </tr>
+		</table>    </td>
+  </tr>
+		
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Functional Activity</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" height="10">
+    
+		<table border="0" width="100%" cellpadding="1" cellspacing="0" class="tblgrl"> 
+		  <tr align="center" class="subtitle">
+		    <td align="left" width="10%" rowspan="2">Functional</td>
+		    <td colspan="8">ASSISTANCE LEVEL CONTACT</td>
+		    <td width="20%"></td>
+		    <td width="20%">NOTES</td>
+		  </tr>
+		  
+		  <tr align="center" class="subtitle">
+		    {foreach from=$tab_048_list_options key=options_id item=options_name}
+		    	<td onmouseover='Tip("{$tab_024_list_options[$options_id]}", OFFSETY, 0)' style="cursor: help; width: 10%;">{$options_name}</td>
+		    {/foreach}		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left">TRANSFERS</td>
+		  	<td></td>
+		  </tr>
+		   
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Sit to Stand</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_trans_sit_stand name='tab_024_trans_sit_stand' separator='</td>
+		  	<td>' onclick=activa1()}
+		  	<input type="text" value="{$trans_sit_stand_notes}" name="trans_sit_stand_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Standing Pivot</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_standing_pivot name='tab_024_standing_pivot' separator='</td><td>'}
+		  	<input type="text" value="{$standing_pivot_notes}" name="standing_pivot_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Shower/Tub</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_trans_shower_tub name='tab_024_trans_shower_tub' separator='</td><td>'}
+		  	<input type="text" value="{$trans_shower_tub_notes}" name="trans_shower_tub_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>GAIT TRAINING</td>
+		  	<td></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Rolling walker</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_rolling_walker name='tab_024_rolling_walker' separator='</td><td>'}
+		  	<input type="text" value="{$rolling_walker_notes}" name="rolling_walker_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Walker</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_walker name='tab_024_walker' separator='</td><td>'}
+		  	<input type="text" value="{$walker_notes}" name="walker_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Quad Cane / Cane</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_quad_cane name='tab_024_quad_cane' separator='</td><td>'}
+		  	<input type="text" value="{$quad_cane_notes}" name="quad_cane_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>No Device</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_no_device name='tab_024_no_device' separator='</td><td>'}
+		  	<input type="text" value="{$no_device_notes}" name="no_device_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>BED MOBILITY</td>
+		  	<td></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Supine to Sit</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_supine_to_sit name='tab_024_supine_to_sit' separator='</td><td>'}
+		  	<input type="text" value="{$supine_to_sit_notes}" name="supine_to_sit_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Rolling</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_rolling name='tab_024_rolling' separator='</td><td>'}
+		  	<input type="text" value="{$rolling_notes}" name="rolling_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>Scooting</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_scooting name='tab_024_scooting' separator='</td><td>'}
+		  	<input type="text" value="{$scooting_notes}" name="scooting_notes" maxlength="25"></td>
+		  </tr>
+		  
+		  <tr align="center" class="ftitle"> 
+		  	<td align="left" nowrap>WHEELCHAIR MOBILITY</td>
+		  	<td>{html_radios values=$tab_024_list_values checked=$tab_024_wheelchair_movility name='tab_024_wheelchair_movility' separator='</td><td>'}
+		  	<input type="text" value="{$wheelchair_movility_notes}" name="wheelchair_movility_notes" maxlength="25"></td>
+		  </tr>
+		</table>    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Reason Homebound</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  
+  <tr>
+    <td colspan="4" height="10">
+    
+		<table border="0" width="100%" cellpadding="1" cellspacing="0"> 
+		  <tr class="subtitle">
+		    <td>{html_checkbox name='bedbound_chair_wheelchair' values='1' checked=$bedbound_chair_wheelchair id='test'}</td>
+		    <td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('bedbound_chair_wheelchair')">Bedbound/Chair/Wheelchair bound</td>
+		    <td>{html_checkbox name='requires_assistive_device' values='1' checked=$requires_assistive_device}</td>
+		    <td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('requires_assistive_device')">Requires assistive device</td>
+		    <td>{html_checkbox name='poor_endurance' values='1' checked=$poor_endurance}</td>
+		    <td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('poor_endurance')">Poor endurance</td>
+		  </tr>
+		  
+		  <tr class="subtitle">
+		    <td>{html_checkbox name='unsteady_gait' values='1' checked=$unsteady_gait}</td>
+		    <td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('unsteady_gait')">Unsteady gait</td>
+		    <td>{html_checkbox name='fatigue' values='1' checked=$fatigue}</td>
+		    <td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('fatigue')">Fatigue</td>
+		  </tr>
+		  
+		  <tr class="subtitle">
+		    <td>{html_checkbox name='severe_disabling_pain' values='1' checked=$severe_disabling_pain}</td>
+		    <td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('severe_disabling_pain')">Severe disabling pain</td>
+		    <td>{html_checkbox name='needs_assis_leave_house' values='1' checked=$needs_assis_leave_house}</td>
+		    <td class="ftitle" style="width: auto" nowrap colspan="3" onclick="checkDataPT('needs_assis_leave_house')">Needs assistance to leave the house safely</td>
+		  </tr>
+		</table>    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Subjective</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+  	<td colspan="4">
+			<textarea name="subj_text" id="subj_text" cols="60" rows="5" onkeyup="chars_limit_notice('subj_text', 186)" maxlength="186">{$subj_text}</textarea>    
+		{assign var="subj_text_length" value=$subj_text|count_characters:true}
+		{assign var="subj_text_left" value="`$subj_text_length-186`"}
+			<div style="font-size:9px;{if $subj_text_left gt 0}display:none;{/if}" id="subj_text_note">
+				<label id="subj_text_chars_left">{$subj_text_left|abs}</label>characters left.
+			</div>
+    </td>
+  </tr> 
+  
+  
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Pain Section</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="4">
+    	<table width="100%">
+    		<tr>
+			    <td class="ftitle" valign="top">Pain Level</td>
+			    <td>{html_options options=$tab_075_pain_level_list selected=$tab_075_pain_level name='tab_075_pain_level'}</td>
+			    <td class="ftitle" valign="top">Modification of Pain:</td>
+			    <td  align="left">
+			    	<textarea name="modif_pain" id="modif_pain" cols="35" rows="1" onkeyup="chars_limit_notice('modif_pain', 60)" maxlength="60">{$modif_pain}</textarea>    
+					{assign var="modif_pain_length" value=$modif_pain|count_characters:true}
+					{assign var="modif_pain_left" value="`$modif_pain_length-60`"}
+						<div style="font-size:9px;{if $modif_pain_left gt 0}display:none;{/if}" id="modif_pain_note">
+							<label id="modif_pain_chars_left">{$modif_pain_left|abs}</label>characters left.
+						</div>
+			    </td>
+		  	</tr>
+		   	<tr>
+			    <td class="ftitle" valign="top">Time since pain meds taken:</td>
+			    <td><input type="text" name="subj_mins_since_last" value="{$subj_mins_since_last}" size="15"></td>
+			    <td class="ftitle" valign="top">Location:</td>
+			    <td align="left">
+			    	<textarea name="pain_location" id="pain_location" cols="35" rows="1" onkeyup="chars_limit_notice('pain_location', 40)" maxlength="40">{$pain_location}</textarea>    
+					{assign var="pain_location_length" value=$pain_location|count_characters:true}
+					{assign var="pain_location_left" value="`$pain_location_length-40`"}
+						<div style="font-size:9px;{if $pain_location_left gt 0}display:none;{/if}" id="pain_location_note">
+							<label id="pain_location_chars_left">{$pain_location_left|abs}</label>characters left.
+						</div>
+			    </td>
+			</tr>
+    	</table>
+    </td>
+  </tr>
+  
+  <!-- <tr>
+    <td colspan="2">{html_options options=$tab_075_pain_level_list selected=$tab_075_pain_level name='tab_075_pain_level'}</td>
+    <td colspan="2">
+    	<textarea name="modif_pain" id="modif_pain" cols="35" rows="1" onkeyup="chars_limit_notice('modif_pain', 60)" maxlength="60">{$modif_pain}</textarea>    
+		{assign var="modif_pain_length" value=$modif_pain|count_characters:true}
+		{assign var="modif_pain_left" value="`$modif_pain_length-60`"}
+			<div style="font-size:9px;{if $modif_pain_left gt 0}display:none;{/if}" id="modif_pain_note">
+				<label id="modif_pain_chars_left">{$modif_pain_left|abs}</label>characters left.
+			</div>
+    </td>
+  </tr> -->
+  
+ 
+  <!-- <tr>
+    <td colspan="2"><input type="text" name="subj_mins_since_last" value="{$subj_mins_since_last}" size="7"></td>
+    <td colspan="2">
+    	chars_limit_notice('pain_location', 40)" maxlength="40">{$pain_location}</textarea>    
+		{assign var="pain_location_length" value=$pain_location|count_characters:true}
+		{assign var="pain_location_left" value="`$pain_location_length-40`"}
+			<div style="font-size:9px;{if $pain_location_left gt 0}display:none;{/if}" id="pain_location_note">
+				<label id="pain_location_chars_left">{$pain_location_left|abs}</label>characters left.
+			</div>
+    </td>
+  </tr> -->
+  
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Modalities</td>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Balance Retraining</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  
+  <tr>
+     <td colspan="2" height="10">
+    	<label>{html_checkbox name='modalities_na' values='1' id='modalities_na' checked=$modalities_na} N/A </label>   </td> 
+    <td colspan="2" height="10">
+    	<label>{html_checkbox name='balance_training_na' values='1' id='balance_training_na' checked=$balance_training_na} N/A </label>   </td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10">
+		<textarea name="modalities_text" id="modalities_text" cols="35" rows="3" onkeyup="chars_limit_notice('modalities_text', 172)" maxlength="172">{$modalities_text}</textarea>    
+		{assign var="modalities_text_length" value=$modalities_text|count_characters:true}
+		{assign var="modalities_text_left" value="`$modalities_text_length-172`"}
+			<div style="font-size:9px;{if $modalities_text_left gt 0}display:none;{/if}" id="modalities_text_note">
+				<label id="modalities_text_chars_left">{$modalities_text_left|abs}</label>characters left.
+			</div>
+			
+		</td>
+    <td colspan="2" height="10">
+			<textarea name="balance_training_text" id="balance_training_text" cols="35" rows="3" onkeyup="chars_limit_notice('balance_training_text', 172)" maxlength="172">{$balance_training_text}</textarea>    
+		{assign var="balance_training_text_length" value=$balance_training_text|count_characters:true}
+		{assign var="balance_training_text_left" value="`$balance_training_text_length-172`"}
+			<div style="font-size:9px;{if $balance_training_text_left gt 0}display:none;{/if}" id="balance_training_text_note">
+				<label id="balance_training_text_chars_left">{$balance_training_text_left|abs}</label>characters left.
+			</div>
+		</td>
+  </tr> 
+
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Education / Training</td>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Therapeutic Exercises</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  
+  <tr>
+     <td colspan="2" height="10" valign="top">
+    	<table border="0" width="100%" cellpadding="1" cellspacing="0"> 
+					<tr class="subtitle">
+						<td>{html_checkbox name='educ_train_patient' values='1' checked=$educ_train_patient}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_patient')">Patient</td>
+						<td>{html_checkbox name='educ_train_caregiver' values='1' checked=$educ_train_caregiver}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_caregiver')">Caregiver</td>
+						<td>{html_checkbox name='educ_train_body_mechanics' values='1' checked=$educ_train_body_mechanics}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_body_mechanics')">Body Mechanics</td>
+					</tr>
+					
+					<tr class="subtitle">
+						
+						<td>{html_checkbox name='educ_train_positioning_turning' values='1' checked=$educ_train_positioning_turning}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_positioning_turning')">Positioning/Turning</td>
+						<td>{html_checkbox name='educ_train_safety_measures' values='1' checked=$educ_train_safety_measures}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_safety_measures')">Safety Measures</td>
+						<td>{html_checkbox name='educ_train_hip_precautions' values='1' checked=$educ_train_hip_precautions}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_hip_precautions')">Hip/Knee/Back Precautions</td>
+					</tr>
+					
+					<tr class="subtitle">
+						
+						<td>{html_checkbox name='educ_train_false_precautions' values='1' checked=$educ_train_false_precautions}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_false_precautions')">Falls Precautions</td>
+						<td>{html_checkbox name='educ_train_pain' values='1' checked=$educ_train_pain}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_pain')">Pain</td>
+						<td>{html_checkbox name='educ_train_energy_conserv' values='1' checked=$educ_train_energy_conserv}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_energy_conserv')">Energy Conservation</td>
+					</tr>
+		
+					<tr class="subtitle">						
+						<td>{html_checkbox name='educ_train_hep' values='1' checked=$educ_train_hep}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_hep')">HEP</td>
+						<td>{html_checkbox name='educ_train_other' values='1' checked=$educ_train_other}</td>
+						<td class="ftitle" style="width: auto" nowrap onclick="checkDataPT('educ_train_other')">Other</td>
+					</tr>					
+				</table>
+		 </td> 
+    <td colspan="2" height="10" valign="top">
+			<textarea name="ther_exer_comments" id="ther_exer_comments" cols="35" rows="5" onkeyup="chars_limit_notice('ther_exer_comments', 500)" maxlength="500">{$ther_exer_comments}</textarea>    
+			{assign var="ther_exer_comments_length" value=$ther_exer_comments|count_characters:true}
+			{assign var="ther_exer_comments_left" value="`$ther_exer_comments_length-500`"}
+				<div style="font-size:9px;{if $ther_exer_comments_left gt 0}display:none;{/if}" id="ther_exer_comments_note">
+					<label id="ther_exer_comments_chars_left">{$ther_exer_comments_left|abs}</label>characters left.
+				</div>
+		</td>
+  </tr> 
+	
+	<tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Response to Instructions</td>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Gait Training / Instructions provided</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  	
+  <tr>
+    <td colspan="2" height="10" valign="top">
+    	<table border="0" width="100%" cellpadding="1" cellspacing="0"> 
+				<tr>
+					<td colspan="2" height="10">
+						<label>{html_checkbox name='resp_instr_needs_further_instr' values='1' checked=$resp_instr_needs_further_instr} Needs further instruction </label>   </td>
+				</tr>  
+				<tr>
+					<td colspan="2" height="10">
+						<label>{html_checkbox name='resp_instr_able_perform_proced' values='1' checked=$resp_instr_able_perform_proced} Able to perform procedure </label>   </td>
+				</tr> 
+				<tr>
+					<td colspan="2" height="10">
+						<label>{html_checkbox name='resp_instr_repeats_instruct_comp_accur' values='1' checked=$resp_instr_repeats_instruct_comp_accur} 
+						Repeats instructions completely and accurately  </label>  </td>
+				</tr> 
+				<tr>
+					<td colspan="2" height="10">
+						<label>{html_checkbox name='resp_instr_verba_unders_hesit' values='1' checked=$resp_instr_verba_unders_hesit} 
+					Verbalizes understanding but hesitant to put into practice  </label>  </td>
+				</tr> 
+				 <tr>
+					<td colspan="2" height="10">
+						<textarea name="resp_instr_comments" id="resp_instr_comments" cols="35" rows="3" onkeyup="chars_limit_notice('resp_instr_comments', 170)" maxlength="170">{$resp_instr_comments}</textarea>    
+						{assign var="resp_instr_comments_length" value=$resp_instr_comments|count_characters:true}
+						{assign var="resp_instr_comments_left" value="`$resp_instr_comments_length-170`"}
+							<div style="font-size:9px;{if $resp_instr_comments_left gt 0}display:none;{/if}" id="resp_instr_comments_note">
+								<label id="resp_instr_comments_chars_left">{$resp_instr_comments_left|abs}</label>characters left.
+							</div>
+					</td>
+				</tr>  
+			</table>
+					
+		</td>
+    <td colspan="2" height="10" valign="top">
+			<textarea name="gait_comments" id="gait_comments" cols="35" rows="5" onkeyup="chars_limit_notice('gait_comments', 145)" maxlength="145">{$gait_comments}</textarea>
+			{assign var="gait_comments_length" value=$gait_comments|count_characters:true}
+			{assign var="gait_comments_left" value="`$gait_comments_length-145`"}
+				<div style="font-size:9px;{if $gait_comments_left gt 0}display:none;{/if}" id="gait_comments_note">
+					<label id="gait_comments_chars_left">{$gait_comments_left|abs}</label>characters left.
+				</div>
+		</td>
+  </tr> 
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Coordination of Care</td>
+		<input type="hidden" name="coordination_of_care" id="coordination_of_care" value="0"> 
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"><table width="100%" border="0">
+      <tr>
+        <td><table width="100%" border="0">
+          <tr>
+            <td width="20%" valign="top">
+						<label>{html_checkbox name='coord_md' class='coord' values='1' checked=$coord_md}MD</label> 
+						<label>{html_checkbox name='coord_rn' class='coord' values='1' checked=$coord_rn}RN</label>
+						<label>{html_checkbox name='coord_lvn' class='coord' values='1' checked=$coord_lvn}LVN</label> 
+						<label>{html_checkbox name='coord_aide' class='coord' values='1' checked=$coord_aide}Aide</label><br />
+						<label>{html_checkbox name='coord_pt' class='coord' values='1' checked=$coord_pt}PT</label>
+						<label>{html_checkbox name='coord_ot' values='1' class='coord' checked=$coord_ot}OT</label>
+						<label>{html_checkbox name='coord_st' values='1' class='coord' checked=$coord_st}ST</label>
+						<label>{html_checkbox name='coord_msw' values='1' class='coord' checked=$coord_msw}MSW</label><br />
+						<label>{html_checkbox name='coord_ptcg' values='1' class='coord' checked=$coord_ptcg}Pt/CG</label> 
+						<label>{html_checkbox name='coord_tl' values='1' class='coord' checked=$coord_tl}Team Leader</label>
+						<label>{html_checkbox name='coord_other' values='1' class='coord' checked=$coord_other}Other:</label>
+			    	<input name="coord_oth_text" type="text" value="{$coord_oth_text}" size="40" maxlength="70" /> 
+					</td>
+            <td width="80%" valign="top"><table border="0" width="100%" cellpadding="1" cellspacing="0">
+              <tr>
+                <td align="right" class="ftitle">
+					<label>[<input type="checkbox" name="rom_na" id="rom_na" value="1" {if $rom_na eq 1} checked="checked" {/if} > N/A]</label>
+					<b style="padding-left:33px;">ROM</b>
+					<input type="hidden" name="rom" id="rom" value="0">
+					<input type="hidden" name="rom_msg" value="ROM">
+					&nbsp;&nbsp;
+				</td>
+                <td class="ftitle2 rom_na_style"><label>Exer for UEs {html_checkbox name='ther_exer_rom_ues' class='ther_exer_rom' values='1' checked=$ther_exer_rom_ues}</label></td>
+                <td class="ftitle2 rom_na_style"><label>LEs {html_checkbox name='ther_exer_rom_les' class='ther_exer_rom' values='1' checked=$ther_exer_rom_les}</label></td>
+                <td class="ftitle2 rom_na_style"><input name="ther_exer_rom_nbr_exer" type="text" value="{$ther_exer_rom_nbr_exer|default:'0'}" size="4" maxlength="4" />
+                  ex
+                  <input name="ther_exer_rom_reps" type="text" value="{$ther_exer_rom_reps|default:'0'}" size="4" maxlength="4" />
+                  reps
+                  <input name="ther_exer_rom_sets" type="text" value="{$ther_exer_rom_sets|default:'0'}" size="4" maxlength="4" />
+                  set(s) </td>
+              </tr>
+              <tr>
+                <td align="right" class="ftitle">
+					<label>[<input type="checkbox" name="strength_na" id="strength_na" value="1" {if $strength_na eq 1} checked="checked" {/if}> N/A]</label>
+					<b style="padding-left:9px;">Strength</b>
+					<input type="hidden" name="strength" id="strength" value="0">
+					&nbsp;
+				</td>
+                <td class="ftitle2 strength_na_style"><label>Exer for UEs {html_checkbox name='ther_exer_stren_ues' class='ther_exer_stren' values='1' checked=$ther_exer_stren_ues}</label></td>
+                <td class="ftitle2 strength_na_style"><label>LEs {html_checkbox name='ther_exer_stren_les' class='ther_exer_stren' values='1' checked=$ther_exer_stren_les}</label></td>
+                <td class="ftitle2 strength_na_style"><input name="ther_exer_stren_nbr_exer" type="text" value="{$ther_exer_stren_nbr_exer|default:'0'}" size="4" maxlength="4" />
+                  ex
+                  <input name="ther_exer_stren_reps" type="text" value="{$ther_exer_stren_reps|default:'0'}" size="4" maxlength="4" />
+                  reps
+                  <input name="ther_exer_stren_sets" type="text" value="{$ther_exer_stren_sets|default:'0'}" size="4" maxlength="4" />
+                  set(s) </td>
+              </tr>
+            </table></td>
+          </tr>
+          
+        </table></td>
+      </tr>
+    </table></td>
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+    	Assessment / Progress Related to Patient's Goals    </td>
+	</tr>		
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+<!--  <tr>
+    <td colspan="4">
+    	{html_checkbox name='day30_assess' values='1' checked=$day30_assess} 30 day Reassessment    </td>
+  </tr> --> 
+  <tr>
+    <td colspan="4">
+			<textarea name="day30_assess_text" id="day30_assess_text" cols="60" rows="6" onkeyup="chars_limit_notice('day30_assess_text', 800)" >{$day30_assess_text}</textarea>    
+			{assign var="day30_assess_text_length" value=$day30_assess_text|count_characters:true}
+			{assign var="day30_assess_text_left" value="`$day30_assess_text_length-800`"}
+			<div style="font-size:9px;{if $day30_assess_text_left gt 0}display:none;{/if}" id="day30_assess_text_note">
+				After <label id="day30_assess_text_chars_left">{$day30_assess_text_left|abs}</label>characters text will go to addendum section.
+			</div>
+		</td>
+  </tr>
+
+
+
+  <tr class="tr_goals_ptpn">
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle">
+    	Short Term and Long Term Goals with Time Frames    </td>
+  </tr> 
+  <tr class="tr_goals_ptpn">
+    <td colspan="4" height="10"></td>
+  </tr>
+
+  <tr class="tr_goals_ptpn" {if !$p2_return_to_pre}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_return_to_pre}class="border-bottom"{/if}>
+    	  <label><input class="ptpn-goals" name="p2_return_to_pre"  type=checkbox value="1" {if $p2_return_to_pre}checked{/if}> Return to pre-injury / illness level of function within</label>
+        {html_options options=$tab_63_list name='p2_return_to_pre_weeks' selected=$p2_return_to_pre_weeks}   
+      <span style="float: right;">
+      	%Met {html_options options=$tab_109_list name='p2_return_to_pre_met' selected=$p2_return_to_pre_met}   
+        Date <input type="text" style="width: 85px;" id="p2_return_to_pre_on_date" name="p2_return_to_pre_on_date" value="{$p2_return_to_pre_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_return_to_pre_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+
+  <tr class="tr_goals_ptpn" {if !$p2_patient_will}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_patient_will}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_patient_will"  type=checkbox value="1" {if $p2_patient_will}checked{/if}> Patient will meet maximum potential </label>within
+    	{html_options options=$tab_63_list name='p2_patient_will_weeks' selected=$p2_patient_will_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_patient_will_met' selected=$p2_patient_will_met}   
+        Date <input type="text" style="width: 85px;" id="p2_patient_will_on_date" name="p2_patient_will_on_date" value="{$p2_patient_will_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_patient_will_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_return_to_opti}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_return_to_opti}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals"  name="p2_return_to_opti"  type=checkbox value="1" {if $p2_return_to_opti}checked{/if}> Return to optimal and safe functionality within</label>
+    	{html_options options=$tab_63_list name='p2_return_to_opti_weeks' selected=$p2_return_to_opti_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_return_to_opti_met' selected=$p2_return_to_opti_met}   
+        Date <input type="text" style="width: 85px;" id="p2_return_to_opti_on_date" name="p2_return_to_opti_on_date" value="{$p2_return_to_opti_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_return_to_opti_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_demost_eff}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_demost_eff}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals"  name="p2_demost_eff"  type=checkbox value="1" {if $p2_demost_eff}checked{/if}> Demonstrate effective pain management within</label>
+    	{html_options options=$tab_63_list name='p2_demost_eff_weeks' selected=$p2_demost_eff_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_demost_eff_met' selected=$p2_demost_eff_met}   
+        Date <input type="text" style="width: 85px;" id="p2_demost_eff_on_date" name="p2_demost_eff_on_date" value="{$p2_demost_eff_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_demost_eff_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+
+  <tr class="tr_goals_ptpn" {if !$p2_improv_bed_mov}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_improv_bed_mov}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_improv_bed_mov"  type=checkbox value="1" {if $p2_improv_bed_mov}checked{/if}> Improve bed mobility to</label> 
+		  <input name="p2_improv_bed_mov_desc1" type="text" value="{$p2_improv_bed_mov_desc1}" size="5" maxlength="10"> assist within 
+    	{html_options options=$tab_63_list name='p2_improv_bed_mov_weeks' selected=$p2_improv_bed_mov_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_improv_bed_mov_met' selected=$p2_improv_bed_mov_met}   
+        Date <input type="text" style="width: 85px;" id="p2_improv_bed_mov_on_date" name="p2_improv_bed_mov_on_date" value="{$p2_improv_bed_mov_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_improv_bed_mov_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+
+
+  <tr class="tr_goals_ptpn" {if !$p2_improv_bed_mov_indep}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_improv_bed_mov_indep}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals"  name="p2_improv_bed_mov_indep"  type=checkbox value="1" {if $p2_improv_bed_mov_indep}checked{/if}> Improve bed mobilty to independent within</label>
+    	{html_options options=$tab_63_list name='p2_improv_bed_mov_indep_weeks' selected=$p2_improv_bed_mov_indep_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_improv_bed_mov_indep_met' selected=$p2_improv_bed_mov_indep_met}   
+        Date <input type="text" style="width: 85px;" id="p2_improv_bed_mov_indep_on_date" name="p2_improv_bed_mov_indep_on_date" value="{$p2_improv_bed_mov_indep_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_improv_bed_mov_indep_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_improv_trans}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_improv_trans}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_improv_trans"  type=checkbox value="1" {if $p2_improv_trans}checked{/if}>  Improve transfers to</label>
+        <input name="p2_improv_trans_desc1" type="text" value="{$p2_improv_trans_desc1}" size="5" maxlength="10"> assist using 
+      	<input name="p2_improv_trans_desc2" type="text" value="{$p2_improv_trans_desc2}" size="5" maxlength="10"> within
+    	{html_options options=$tab_63_list name='p2_improv_trans_weeks' selected=$p2_improv_trans_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_improv_trans_met' selected=$p2_improv_trans_met}   
+        Date <input type="text" style="width: 85px;" id="p2_improv_trans_on_date" name="p2_improv_trans_on_date" value="{$p2_improv_trans_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_improv_trans_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_indep_trans}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_indep_trans}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals"  name="p2_indep_trans"  type=checkbox value="1" {if $p2_indep_trans}checked{/if}> Independent with transfer skills within</label>
+    	{html_options options=$tab_63_list name='p2_indep_trans_weeks' selected=$p2_indep_trans_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_indep_trans_met' selected=$p2_indep_trans_met}   
+        Date <input type="text" style="width: 85px;" id="p2_indep_trans_on_date" name="p2_indep_trans_on_date" value="{$p2_indep_trans_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_indep_trans_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_pat_indep}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_pat_indep}class="border-bottom"{/if}>
+    	<label><input  class="ptpn-goals" name="p2_pat_indep"  type=checkbox value="1" {if $p2_pat_indep}checked{/if}> Pt-Cg to be independent with safety issues within</label>
+    	{html_options options=$tab_63_list name='p2_pat_indep_weeks' selected=$p2_pat_indep_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_pat_indep_met' selected=$p2_pat_indep_met}   
+        Date <input type="text" style="width: 85px;" id="p2_pat_indep_on_date" name="p2_pat_indep_on_date" value="{$p2_pat_indep_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_pat_indep_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_improv_wheel}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_improv_wheel}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_improv_wheel"  type=checkbox value="1" {if $p2_improv_wheel}checked{/if}> Improve wheelchair use to </label>
+      	<input name="p2_improv_wheel_desc" type="text" value="{$p2_improv_wheel_desc}" size="5" maxlength="10"> within
+    	{html_options options=$tab_63_list name='p2_improv_wheel_weeks' selected=$p2_improv_wheel_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_improv_wheel_met' selected=$p2_improv_wheel_met}   
+        Date <input type="text" style="width: 85px;" id="p2_improv_wheel_on_date" name="p2_improv_wheel_on_date" value="{$p2_improv_wheel_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_improv_wheel_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_pat_ambul}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_pat_ambul}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_pat_ambul"  type=checkbox value="1" {if $p2_pat_ambul}checked{/if}> Patient will ambulate with </label>
+		  <input name="p2_pat_ambul_desc1" type="text" value="{$p2_pat_ambul_desc1}" size="5" maxlength="10"> device with
+		  <input name="p2_pat_ambul_desc2" type="text" value="{$p2_pat_ambul_desc2}" size="5" maxlength="10"> assist within 
+    	{html_options options=$tab_63_list name='p2_pat_ambul_weeks' selected=$p2_pat_ambul_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_pat_ambul_met' selected=$p2_pat_ambul_met}   
+        Date <input type="text" style="width: 85px;" id="p2_pat_ambul_on_date" name="p2_pat_ambul_on_date" value="{$p2_pat_ambul_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_pat_ambul_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_climb}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_climb}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_climb"  type=checkbox value="1" {if $p2_climb}checked{/if}> Pt will be able to climb stairs</label>
+		  <input name="p2_climb_desc1" type="text" value="{$p2_climb_desc1}" size="5" maxlength="10"> device with 
+		  <input name="p2_climb_desc2" type="text" value="{$p2_climb_desc2}" size="5" maxlength="10"> assit within
+    	{html_options options=$tab_63_list name='p2_tab_063_climb_weeks' selected=$p2_tab_063_climb_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_climb_met' selected=$p2_climb_met}   
+        Date <input type="text" style="width: 85px;" id="p2_climb_on_date" name="p2_climb_on_date" value="{$p2_climb_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_climb_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_indep_ambul}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_indep_ambul}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_indep_ambul"  type=checkbox value="1" {if $p2_indep_ambul}checked{/if}> Independent with ambulation with</label> 
+		  <input name="p2_indep_ambul_desc" type="text" value="{$p2_indep_ambul_desc}" size="5" maxlength="10"> assist within 
+    	{html_options options=$tab_63_list name='p2_indep_ambul_weeks' selected=$p2_indep_ambul_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_indep_ambul_met' selected=$p2_indep_ambul_met}   
+        Date <input type="text" style="width: 85px;" id="p2_indep_ambul_on_date" name="p2_indep_ambul_on_date" value="{$p2_indep_ambul_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_indep_ambul_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr  class="tr_goals_ptpn" {if !$p2_ambul_endur}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_ambul_endur}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_ambul_endur"  type=checkbox value="1" {if $p2_ambul_endur}checked{/if}> Ambulation endurance will be </label>
+		  <input name="p2_ambul_endur_desc1" type="text" value="{$p2_ambul_endur_desc1}" size="5" maxlength="10"> minutes or 
+		  <input name="p2_ambul_endur_desc2" type="text" value="{$p2_ambul_endur_desc2}" size="5" maxlength="10"> feet within 
+    	{html_options options=$tab_63_list name='p2_ambul_endur_weeks' selected=$p2_ambul_endur_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_ambul_endur_met' selected=$p2_ambul_endur_met}   
+        Date <input type="text" style="width: 85px;" id="p2_ambul_endur_on_date" name="p2_ambul_endur_on_date" value="{$p2_ambul_endur_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_ambul_endur_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+
+  <tr class="tr_goals_ptpn" {if !$p2_increa_stren_UE}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_increa_stren_UE}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_increa_stren_UE"  type=checkbox value="1" {if $p2_increa_stren_UE}checked{/if}> Increase strength of extremity </label>
+		  <input name="p2_increa_stren_UE_5" type="text" value="{$p2_increa_stren_UE_5}" size="25" maxlength="25"> within 
+    	{html_options options=$tab_63_list name='p2_increa_stren_UE_weeks' selected=$p2_increa_stren_UE_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_increa_stren_UE_met' selected=$p2_increa_stren_UE_met}   
+        Date <input type="text" style="width: 85px;" id="p2_increa_stren_UE_on_date" name="p2_increa_stren_UE_on_date" value="{$p2_increa_stren_UE_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_increa_stren_UE_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_increa_stren_LE}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_increa_stren_LE}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_increa_stren_LE"  type=checkbox value="1" {if $p2_increa_stren_LE}checked{/if}> Increase strength of extremity </label>
+		  <input name="p2_increa_stren_LE_5" type="text" value="{$p2_increa_stren_LE_5}" size="25" maxlength="25"> within
+    	{html_options options=$tab_63_list name='p2_increa_stren_LE_weeks' selected=$p2_increa_stren_LE_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_increa_stren_LE_met' selected=$p2_increa_stren_LE_met}   
+        Date <input type="text" style="width: 85px;" id="p2_increa_stren_LE_on_date" name="p2_increa_stren_LE_on_date" value="{$p2_increa_stren_LE_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_increa_stren_LE_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_increa_rom}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_increa_rom}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_increa_rom"  type=checkbox value="1" {if $p2_increa_rom}checked{/if}> Increase ROM of </label>
+  		<input name="p2_increa_rom_desc1" type="text" value="{$p2_increa_rom_desc1}" size="2" maxlength="10"> joint to 
+  		<input name="p2_increa_rom_desc2" type="text" value="{$p2_increa_rom_desc2}" size="2" maxlength="10"> degree flexion and 
+  		<input name="p2_increa_rom_desc3" type="text" value="{$p2_increa_rom_desc3}" size="2" maxlength="10"> degree ext. within 
+    	{html_options options=$tab_63_list name='p2_increa_rom_weeks' selected=$p2_increa_rom_weeks style='width: 60px'}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_increa_rom_met' selected=$p2_increa_rom_met}   
+        Date <input type="text" style="width: 85px;" id="p2_increa_rom_on_date" name="p2_increa_rom_on_date" value="{$p2_increa_rom_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_increa_rom_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_increa_rom2}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_increa_rom2}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_increa_rom2"  type=checkbox value="1" {if $p2_increa_rom2}checked{/if}> Increase ROM of </label>
+  		<input name="p2_increa_rom2_desc1" type="text" value="{$p2_increa_rom2_desc1}" size="2" maxlength="10"> joint to 
+  		<input name="p2_increa_rom2_desc2" type="text" value="{$p2_increa_rom2_desc2}" size="2" maxlength="10"> degree of 
+  		<input name="p2_increa_rom2_desc3" type="text" value="{$p2_increa_rom2_desc3}" size="2" maxlength="10"> within 
+    	{html_options options=$tab_63_list name='p2_increa_rom2_weeks' selected=$p2_increa_rom2_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_increa_rom2_met' selected=$p2_increa_rom2_met}   
+        Date <input type="text" style="width: 85px;" id="p2_increa_rom2_on_date" name="p2_increa_rom2_on_date" value="{$p2_increa_rom2_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_increa_rom2_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_demos_rom}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_demos_rom}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_demos_rom"  type=checkbox value="1" {if $p2_demos_rom}checked{/if}> Demonstrate ROM to WNL within</label> 
+    	{html_options options=$tab_63_list name='p2_demos_rom_weeks' selected=$p2_demos_rom_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_demos_rom_met' selected=$p2_demos_rom_met}   
+        Date <input type="text" style="width: 85px;" id="p2_demos_rom_on_date" name="p2_demos_rom_on_date" value="{$p2_demos_rom_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_demos_rom_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_demos_proper}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_demos_proper}class="border-bottom"{/if}>
+			<input type="hidden" name="demos_proper" id="demos_proper" value="0">
+    	<label><input class="ptpn-goals" name="p2_demos_proper"  type=checkbox value="1" {if $p2_demos_proper}checked{/if}> Demonstrate proper use of </label>
+  		<input name="p2_demos_proper_prosthe" class="d_proper"   type=checkbox id="p2_demos_proper_prosthe" value="1" {if $p2_demos_proper_prosthe}checked{/if}> Prosthesis 
+  		<input name="p2_demos_proper_brace" class="d_proper"   type=checkbox id="p2_demos_proper_brace" value="1" {if $p2_demos_proper_brace}checked{/if}> Brace 
+  		<input name="p2_demos_proper_splint" class="d_proper"  type=checkbox id="p2_demos_proper_splint" value="1" {if $p2_demos_proper_splint}checked{/if}> Splint within
+    	{html_options options=$tab_63_list name='p2_demos_proper_weeks' selected=$p2_demos_proper_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_demos_proper_met' selected=$p2_demos_proper_met}   
+        Date <input type="text" style="width: 85px;" id="p2_demos_proper_on_date" name="p2_demos_proper_on_date" value="{$p2_demos_proper_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_demos_proper_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_demos_proper_dme}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_demos_proper_dme}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_demos_proper_dme"  type=checkbox value="1" {if $p2_demos_proper_dme}checked{/if}> Demonstrate proper use of DME</label> within 
+    	{html_options options=$tab_63_list name='p2_demos_proper_dme_weeks' selected=$p2_demos_proper_dme_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_demos_proper_dme_met' selected=$p2_demos_proper_dme_met}   
+        Date <input type="text" style="width: 85px;" id="p2_demos_proper_dme_on_date" name="p2_demos_proper_dme_on_date" value="{$p2_demos_proper_dme_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_demos_proper_dme_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_tinetti_bal}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_tinetti_bal}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_tinetti_bal"  type=checkbox value="1" {if $p2_tinetti_bal}checked{/if}> Patient will have an increase in Tinetti Balance score to </label>
+		  <input name="p2_tinetti_bal_score" type="text" value="{$p2_tinetti_bal_score}" size="2" maxlength="4"> /28 within
+    	{html_options options=$tab_63_list name='p2_tinetti_bal_weeks' selected=$p2_tinetti_bal_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_tinetti_bal_met' selected=$p2_tinetti_bal_met}   
+        Date <input type="text" style="width: 85px;" id="p2_tinetti_bal_on_date" name="p2_tinetti_bal_on_date" value="{$p2_tinetti_bal_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_tinetti_bal_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_improv_score}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_improv_score}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_improv_score"  type=checkbox value="1" {if $p2_improv_score}checked{/if}> Improve balance score to </label>
+  		<input name="p2_improv_score_desc1" type="text" value="{$p2_improv_score_desc1}" size="10" maxlength="20"> using 
+  		<input name="p2_improv_score_desc2" type="text" value="{$p2_improv_score_desc2}" size="10" maxlength="20"> test.    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_improv_score_met' selected=$p2_improv_score_met}   
+        Date <input type="text" style="width: 85px;" id="p2_improv_score_on_date" name="p2_improv_score_on_date" value="{$p2_improv_score_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_improv_score_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_follow_exer}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_follow_exer}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_follow_exer"  type=checkbox value="1" {if $p2_follow_exer}checked{/if}> Pt-Cg will demonstrate ability to follow home exercise program by</label>
+    	<input type="text" style="width: 85px;" id="p2_follow_exer_date" name="p2_follow_exer_date" value="{$p2_follow_exer_date|date_format:"%m-%d-%Y":"":true}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+    	<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_follow_exer_date'), document.getElementById('fecha_help'));return false;" >    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_follow_exer_met' selected=$p2_follow_exer_met}   
+        Date <input type="text" style="width: 85px;" id="p2_follow_exer_on_date" name="p2_follow_exer_on_date" value="{$p2_follow_exer_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_follow_exer_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_other3}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_other3}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_other3"  type=checkbox value="1" {if $p2_other3}checked{/if}>  Other</label>
+    	<input name="p2_other3_desc" type="text" value="{$p2_other3_desc}" size="30" maxlength="56">
+    	{html_options options=$tab_63_list name='p2_other3_weeks' selected=$p2_other3_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_other3_met' selected=$p2_other3_met}   
+        Date <input type="text" style="width: 85px;" id="p2_other3_on_date" name="p2_other3_on_date" value="{$p2_other3_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_other3_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_other4}style="display: none;"{/if}>
+    <td colspan="4" {if $p2_other4}class="border-bottom"{/if}>
+    	<label><input class="ptpn-goals" name="p2_other4"  type=checkbox value="1" {if $p2_other4}checked{/if}> Other</label>
+    	<input name="p2_other4_desc" type="text" value="{$p2_other4_desc}" size="30" maxlength="56">
+    	{html_options options=$tab_63_list name='p2_other4_weeks' selected=$p2_other4_weeks}    
+      <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_other4_met' selected=$p2_other4_met}   
+        Date <input type="text" style="width: 85px;" id="p2_other4_on_date" name="p2_other4_on_date" value="{$p2_other4_on_date|date_format:"%m-%d-%Y":"":true}" 
+          onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_other4_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+    </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_other5}style="display: none;"{/if}>
+      <td colspan="4" {if $p2_other5}class="border-bottom"{/if}>
+          <label><input class="ptpn-goals" name="p2_other5"  type=checkbox value="1" {if $p2_other5}checked{/if}> Other</label>
+          <input name="p2_other5_desc" type="text" value="{$p2_other5_desc}" size="100" maxlength="100">
+          {html_options options=$tab_63_list name='p2_other5_weeks' selected=$p2_other5_weeks}
+          <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_other5_met' selected=$p2_other5_met}
+        Date <input type="text" style="width: 85px;" id="p2_other5_on_date" name="p2_other5_on_date" value="{$p2_other5_on_date|date_format:"%m-%d-%Y":"":true}"
+                    onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_other5_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+      </td>
+  </tr>
+  <tr class="tr_goals_ptpn" {if !$p2_other6}style="display: none;"{/if}>
+      <td colspan="4" {if $p2_other6}class="border-bottom"{/if}>
+          <label><input class="ptpn-goals" name="p2_other6"  type=checkbox value="1" {if $p2_other6}checked{/if}> Other</label>
+          <input name="p2_other6_desc" type="text" value="{$p2_other6_desc}" size="100" maxlength="100">
+          {html_options options=$tab_63_list name='p2_other6_weeks' selected=$p2_other6_weeks}
+          <span style="float: right;">
+        %Met {html_options options=$tab_109_list name='p2_other6_met' selected=$p2_other6_met}
+        Date <input type="text" style="width: 85px;" id="p2_other6_on_date" name="p2_other6_on_date" value="{$p2_other6_on_date|date_format:"%m-%d-%Y":"":true}"
+                    onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+        <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('p2_other6_on_date'), document.getElementById('fecha_help'));return false;" >
+      </span>
+      </td>
+  </tr>
+
+
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+    	D/C Planning/Plan    
+			<input type="hidden" name="dc_planning" id="dc_planning" value="0">
+			</td>
+  </tr>		
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+	
+  <tr>
+    <td colspan="4" valign="top">
+			<table width="100%" border="0">  
+				<tr>
+					<td colspan="4">
+						<label>{html_checkbox name='dc_plan_conti_progress' class='dc_plan' values='1' checked=$dc_plan_conti_progress} Continues to progress towards goals </label>   </td>
+				</tr> 
+				<tr>
+					<td colspan="4">
+						<label>{html_checkbox name='dc_plan_5_day_given' class='dc_plan' values='1' checked=$dc_plan_5_day_given} 5-day notification of discharge given  </label>  </td>
+				</tr> 
+				<tr>
+					<td colspan="4">
+						<label>{html_checkbox name='dc_plan_other' class='dc_plan' values='1' checked=$dc_plan_other} Other: </label>   </td>
+				</tr> 
+				<tr>
+					<td colspan="4">
+						<textarea name="dc_plan_comments" id="dc_plan_comments" cols="35" rows="3" onkeyup="chars_limit_notice('dc_plan_comments', 166)" maxlength="166">{$dc_plan_comments}</textarea>    
+						{assign var="dc_plan_comments_length" value=$dc_plan_comments|count_characters:true}
+						{assign var="dc_plan_comments_left" value="`$dc_plan_comments_length-166`"}
+						<div style="font-size:9px;{if $dc_plan_comments_left gt 0}display:none;{/if}" id="dc_plan_comments_note">
+							<label id="dc_plan_comments_chars_left">{$dc_plan_comments_left|abs}</label>characters left.
+						</div>
+					</td>
+				</tr> 
+        </table>
+		</td>
+  </tr>
+  
+<tr>
+	<td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+		Therapy Supervisory Communication Report    </td>
+	</tr> 
+	<tr>
+		<td colspan="4" height="10"></td>
+	</tr> 
+
+	<tr id="create-therapy-sup-report" {if $show_therapy_sup_report == 'yes'} style="display:none;"{/if}>
+		<td colspan="4" height="10">To create a Therapy Supervisory report <a href="javascript:void(0)" onclick="$('#therapy-sup-report').show();$('#create-therapy-sup-report').hide();$('#cancel-therapy-sup-report').show();setCheck('ther_na', false);">Click here</a></td>
+	</tr> 
+	<tr id="cancel-therapy-sup-report" {if $show_therapy_sup_report == 'no'} style="display:none;"{/if}>
+		<td colspan="4" height="10"><a href="javascript:void(0)" onclick="$('#therapy-sup-report').hide();$('#create-therapy-sup-report').show();$('#cancel-therapy-sup-report').hide();Funtherapy();setCheck('ther_na', true);">Click here</a> to Cancel Supervisory Report</td>
+	</tr> 		
+	<tr id="therapy-sup-report" {if $show_therapy_sup_report == 'no'} style="display:none;"{/if}>
+		<td colspan="4">
+			<table width="100%" border="0">  
+				<tr>
+				<td colspan="4" height="10">
+					{html_checkbox name='ther_na' values='1' id='ther_na' checked=$ther_na onclick="Funtherapy()"} N/A    </td>
+			</tr> 
+			
+				<tr>
+					<td colspan="4" height="10">
+						Name of Therapist being Evaluated:
+						{html_options options=$ther_name_list selected=$ther_name name='ther_name' id='ther_name' onchange="ther_na_check(this,'selecbox')"}	    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+				</tr> 
+				<tr>
+					<td colspan="4" height="20"></td>
+				</tr>
+			
+			<tr>
+			<td colspan="4" height="10">
+				<table width="100%" border="0">
+				 <tr>
+						<td width="50%" valign="top">
+						<table width="100%" border="0">
+							<tr>
+								<td colspan="4" height="10">
+									Assess the Following Areas of Care:	    </td>
+							</tr> 
+							<tr>
+								<td colspan="4" height="10">
+									<div style="width: 350px; float: left">Implemented Plan of Care?</div>
+									<div style="float: left">
+									
+									<label><input name="ther_implem_plan" value="-1" {if $ther_implem_plan eq '-1'}checked="checked"{/if} id="ther_implem_plan" onchange="ther_na_check(this,'radio')" type="radio">No</label>
+									<label><input name="ther_implem_plan" value="1" {if $ther_implem_plan eq '1'}checked="checked"{/if} id="ther_implem_plan" onchange="ther_na_check(this,'radio')" type="radio">Yes</label>
+
+									{* html_radios options=$logic_list checked=$ther_implem_plan name='ther_implem_plan' id='ther_implem_plan' onchange="ther_na_check(this,'radio')" *}</div>
+									</td>
+							</tr> 
+							<tr>
+								<td colspan="4" height="10">
+									<div style="width: 350px; float: left">Followed Plan of Care?</div>
+									<div style="float: left">
+										<label><input name="ther_follow_plan" value="-1" {if $ther_follow_plan eq '-1'}checked="checked"{/if} id="ther_follow_plan" onchange="ther_na_check(this,'radio')" type="radio">No</label>
+										<label><input name="ther_follow_plan" value="1" {if $ther_follow_plan eq '1'}checked="checked"{/if} id="ther_follow_plan" onchange="ther_na_check(this,'radio')" type="radio">Yes</label>
+										{* html_radios options=$logic_list checked=$ther_follow_plan name='ther_follow_plan' id='ther_follow_plan' onchange="ther_na_check(this,'radio')" *}
+									</div>	    
+		
+								</td>
+							</tr> 
+							<tr>
+								<td colspan="4" height="10">
+									<div style="width: 350px; float: left">Demonstrated good rapport with patient/family?</div>
+									<div style="float: left">
+										<label><input name="ther_raport_pat_fam" value="-1" {if $ther_raport_pat_fam eq '-1'}checked="checked"{/if} id="ther_raport_pat_fam" onchange="ther_na_check(this,'radio')" type="radio">No</label>
+										<label><input name="ther_raport_pat_fam" value="1" {if $ther_raport_pat_fam eq '1'}checked="checked"{/if} id="ther_raport_pat_fam" onchange="ther_na_check(this,'radio')" type="radio">Yes</label>
+										{* html_radios options=$logic_list checked=$ther_raport_pat_fam name='ther_raport_pat_fam' id='ther_raport_pat_fam' onchange="ther_na_check(this,'radio')" *}
+									</div>	    
+		
+								</td>
+							</tr>
+						</table></td>
+						<td width="50%" valign="top">
+							<table width="100%" border="0">
+								<tr>
+								<td colspan="4" height="10">
+									Evaluation of Plan of Care	    </td>
+								</tr> 
+								<tr>
+									<td colspan="4">
+										<textarea name="ther_eval_plan" id="ther_eval_plan" cols="35" rows="3" onchange="ther_na_check(this,'textarea')">{$ther_eval_plan}</textarea>	    </td>
+								</tr> 
+							</table>
+						</td>
+				 </tr>          
+					<tr>				
+							<td colspan="2">
+								<table width="100%" border="0">
+									<tr>
+									<td colspan="4" height="10">
+										Supervisor Notes	    </td>
+									</tr> 
+									<tr>
+										<td colspan="4">
+											<textarea name="ther_notes" id="ther_notes" cols="35" rows="3">{$ther_notes}</textarea>	    </td>
+									</tr> 
+								</table>
+							</td>
+					</tr> 
+				 </table></td>
+				</tr>
+				
+			</table>
+		</td>
+	</tr> 
+	
+	
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Supervising Therapist</td>
+  </tr>
+  <tr>
+    <td colspan="2"> {html_options options=$ther_supervisor_list selected=$ther_supervisor name='ther_supervisor'}</td>
+	<td colspan="2"> 
+		<input type="hidden" name="supervisor_signed" value="{$supervisor_signed}">
+	    {if $supervisor_signed eq 1} 
+	    	ELECTRONICALLY SIGNED
+	    {/if}	
+    </td>
+  </tr>    	
+<tr>
+	<td colspan="4" height="10">&nbsp;</td>
+	</tr>
+{*
+	<tr>
+      <td colspan="4" class="subtitle" id="anchor_pt_signature"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Signature</td>    
+    </tr> 
+    <tr>
+      <td>
+        <input class="btn" value="Patient Signature" onclick="capture_pt_signature({$visit_log_id})" type="button">
+      </td>
+      <td align="center">
+        {if $signature != ""}
+          <img src="{$base_url}upload/signatures/{$signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+      </td>
+    </tr>
+*}
+    
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Addendum</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+  	<td colspan="4">
+
+		<textarea name="addendum" cols="60" rows="5" wrap="auto">{$addendum}</textarea><br />  	</td>
+  </tr>	
+		
+  </tbody>
+</table> 
+
+
+
+<script>
+
+function capture_pt_signature(visit_log_id) {literal}{{/literal}
+	{if $visit_status_id eq 1}
+		setValue('visit_status_id', 2);
+	{/if}
+
+	autoSave()
+  //alert(visit_log_id);
+  //alert(grid.getCheckedRows(0));
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+  
+  var w2 = dhxWins.createWindow("w2", 10, 10, 750, 500);
+  w2.setText("Capture Patient Digital Signature");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove(); 
+  w2.button("close")._doOnClick = function() {literal}{{/literal}   
+    w2.close();
+  {literal}}{/literal}  
+  
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}/task/ptpn/capture_pt_signature/" + visit_log_id);
+{literal}}{/literal}
+</script>
+
+<script>
+
+var dhxWins;
+function uploadScannedDocument ( visit_log_id ) {literal}{{/literal}
+ 
+ 	dhxWins = new dhtmlXWindows();
+	dhxWins.enableAutoViewport(false);
+	dhxWins.attachViewportTo("vp_container");
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w1 = dhxWins.createWindow("w1", 10, 10, 450, 150);
+	w1.setText('Upload Scanned PT Progress Note document');
+	w1.button("park").hide();
+	w1.button("minmax1").hide();
+    w1.denyResize(); // deny resizing
+    w1.denyMove(); 
+    dhxWins.window('w1').center();
+    dhxWins.window('w1').setModal(true);
+	w1.attachURL("{$index_url}task/ptpn/upload_document/" + visit_log_id);
+	
+	pos = dhxWins.window('w1').getPosition();
+	dhxWins.window('w1').setPosition(pos[0], 60);
+
+{literal}}{/literal}
+
+function removeScannedDocument(visit_log_id) {literal}{{/literal}
+  dhxWins = new dhtmlXWindows();
+  dhxWins.enableAutoViewport(false);
+  dhxWins.attachViewportTo("vp_container");
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+  var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+  w1.setText('Remove Scanned PT Progress Note visit document');
+  w1.button("park").hide();
+  w1.button("minmax1").hide();
+  w1.denyResize(); // deny resizing
+  w1.denyMove(); 
+  dhxWins.window('w1').center();
+  dhxWins.window('w1').setModal(true);
+  w1.attachURL("{$index_url}task/ptpn/pre_remove_document/" + visit_log_id);
+
+  pos = dhxWins.window('w1').getPosition();
+  dhxWins.window('w1').setPosition(pos[0], 60);
+{literal}}{/literal}
+
+{literal}
+function Funtherapy() {
+    //switchDisplay('therapy');
+    setValue('ther_eval_plan', '');
+    setValue('ther_notes', '');
+	///selectOption('ther_supervisor', '');
+    selectOption('ther_name', '');
+    setCheck('ther_implem_plan', false);
+    setCheck('ther_follow_plan', false);
+    setCheck('ther_raport_pat_fam', false);
+}
+function ther_na_check(obj, type){
+	switch(type){
+		case 'selectbox': 
+			if(obj.options[obj.selectedIndex].value != "")
+				document.getElementById('ther_na').checked = false;
+			break;
+		case 'radio':	
+			var radioLength = obj.length;
+			if(radioLength == undefined)
+				if(obj.checked){
+					document.getElementById('ther_na').checked = false;
+					break;
+				}	
+				else{
+					break;
+				}
+					
+				for(var i = 0; i < radioLength; i++) {
+					if(obj[i].checked) {
+						document.getElementById('ther_na').checked = false;
+						break;
+					}
+				}
+				break;
+		default:
+			if(obj.value != "")
+				document.getElementById('ther_na').checked = false;
+			break;
+	}
+}
+
+
+{/literal}
+
+	function SupvisorSignature(){literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+        
+        var w1 = dhxWins.createWindow("w1", 10, 10, 500, 150);
+        w1.setText("Supervisor Password");
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').setModal(true);
+        dhxWins.window('w1').center();
+        w1.attachURL("{$index_url}/task/ptpn/supervisor_electronic_pass/{$visit_log_id}");
+        
+        dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+            
+            w1.hide();
+            w1.setModal(false);
+            
+        {literal}}{/literal});
+    {literal}}{/literal}
+
+</script>
+
+
+<script>
+{literal} 
+$(document).ready(function(){
+	{/literal}
+	{if !$track_goals_ptpn}
+		$('.tr_goals_ptpn').hide();
+	{/if}
+	{literal}
+	// $('.ptpn-goals').parent().parent().find(':input').attr('disabled', true);
+	/*$('.ptpn-goals').attr('disabled', true);
+	$('.ptpn-goals').change(function(){
+		$(this).parent().parent().toggleClass('border-bottom');
+	});*/
+
+	$('.ptpn-goals').click(function(event){
+		event.preventDefault();
+		return false;
+		// $(this).parent().parent().toggleClass('border-bottom');
+	});
+	//alert("asdf");
+	var modalities_text = $('#modalities_text').val();
+	var balance_training_text = $('#balance_training_text').val();
+
+	
+	$("#modalities_text").change(function() {
+		modalities_text = $(this).val();
+	});
+
+	/*$("#modalities_text").paste(function() {
+		modalities_text = $(this).val();
+	});
+	$("#modalities_text").keyup(function() {
+		modalities_text = $(this).val();
+	});*/
+
+	$("#balance_training_text").change(function() {
+		balance_training_text = $(this).val();
+	});	
+	
+	
+	$("#modalities_na").click(function(){
+		if($(this).is(':checked')) {
+			$('#modalities_text').val('');
+			//alert("Its checked");
+		} else {
+			$('#modalities_text').val(modalities_text);
+			//alert("Its not checked");
+		}
+	});
+	$("#balance_training_na").click(function(){
+		if($(this).is(':checked')) {
+			$('#balance_training_text').val('');
+		} else {
+			$('#balance_training_text').val(balance_training_text);
+		}
+	});
+});
+function activa1()
+{
+  if (document.tform.tab_024_trans_sit_stand[0].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[0].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[0].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[0].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[0].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[0].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[0].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[0].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[0].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[0].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[0].checked=true;
+		
+  }
+  if (document.tform.tab_024_trans_sit_stand[1].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[1].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[1].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[1].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[1].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[1].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[1].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[1].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[1].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[1].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[1].checked=true;
+  }  
+  if (document.tform.tab_024_trans_sit_stand[2].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[2].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[2].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[2].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[2].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[2].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[2].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[2].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[2].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[2].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[2].checked=true;
+	}  
+  if (document.tform.tab_024_trans_sit_stand[3].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[3].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[3].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[3].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[3].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[3].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[3].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[3].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[3].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[3].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[3].checked=true;
+  } 
+  if (document.tform.tab_024_trans_sit_stand[4].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[4].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[4].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[4].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[4].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[4].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[4].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[4].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[4].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[4].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[4].checked=true;
+  } 
+  if (document.tform.tab_024_trans_sit_stand[5].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[5].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[5].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[5].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[5].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[5].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[5].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[5].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[5].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[5].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[5].checked=true;
+  } 
+  if (document.tform.tab_024_trans_sit_stand[6].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[6].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[6].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[6].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[6].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[6].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[6].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[6].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[6].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[6].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[6].checked=true;
+  }
+  if (document.tform.tab_024_trans_sit_stand[7].checked==true)
+  {
+		if(document.tform.tab_024_standing_pivot[0].checked==true || document.tform.tab_024_standing_pivot[1].checked==true || document.tform.tab_024_standing_pivot[2].checked==true || document.tform.tab_024_standing_pivot[3].checked==true || document.tform.tab_024_standing_pivot[4].checked==true || document.tform.tab_024_standing_pivot[5].checked==true || document.tform.tab_024_standing_pivot[6].checked==true || document.tform.tab_024_standing_pivot[7].checked==true || document.tform.tab_024_standing_pivot[8].checked==true){
+						return;	
+		}																											
+		document.tform.tab_024_standing_pivot[7].checked=true;
+		
+		if(document.tform.tab_024_trans_shower_tub[0].checked==true || document.tform.tab_024_trans_shower_tub[1].checked==true || document.tform.tab_024_trans_shower_tub[2].checked==true || document.tform.tab_024_trans_shower_tub[3].checked==true || document.tform.tab_024_trans_shower_tub[4].checked==true || document.tform.tab_024_trans_shower_tub[5].checked==true || document.tform.tab_024_trans_shower_tub[6].checked==true || document.tform.tab_024_trans_shower_tub[7].checked==true || document.tform.tab_024_trans_shower_tub[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_trans_shower_tub[7].checked=true;
+		
+		if(document.tform.tab_024_rolling_walker[0].checked==true || document.tform.tab_024_rolling_walker[1].checked==true || document.tform.tab_024_rolling_walker[2].checked==true || document.tform.tab_024_rolling_walker[3].checked==true || document.tform.tab_024_rolling_walker[4].checked==true || document.tform.tab_024_rolling_walker[5].checked==true || document.tform.tab_024_rolling_walker[6].checked==true || document.tform.tab_024_rolling_walker[7].checked==true || document.tform.tab_024_rolling_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling_walker[7].checked=true;
+		
+		if(document.tform.tab_024_walker[0].checked==true || document.tform.tab_024_walker[1].checked==true || document.tform.tab_024_walker[2].checked==true || document.tform.tab_024_walker[3].checked==true || document.tform.tab_024_walker[4].checked==true || document.tform.tab_024_walker[5].checked==true || document.tform.tab_024_walker[6].checked==true || document.tform.tab_024_walker[7].checked==true || document.tform.tab_024_walker[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_walker[7].checked=true;
+		
+		if(document.tform.tab_024_quad_cane[0].checked==true || document.tform.tab_024_quad_cane[1].checked==true || document.tform.tab_024_quad_cane[2].checked==true || document.tform.tab_024_quad_cane[3].checked==true || document.tform.tab_024_quad_cane[4].checked==true || document.tform.tab_024_quad_cane[5].checked==true || document.tform.tab_024_quad_cane[6].checked==true || document.tform.tab_024_quad_cane[7].checked==true || document.tform.tab_024_quad_cane[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_quad_cane[7].checked=true;
+		
+		if(document.tform.tab_024_no_device[0].checked==true || document.tform.tab_024_no_device[1].checked==true || document.tform.tab_024_no_device[2].checked==true || document.tform.tab_024_no_device[3].checked==true || document.tform.tab_024_no_device[4].checked==true || document.tform.tab_024_no_device[5].checked==true || document.tform.tab_024_no_device[6].checked==true || document.tform.tab_024_no_device[7].checked==true || document.tform.tab_024_no_device[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_no_device[7].checked=true;
+		
+		if(document.tform.tab_024_supine_to_sit[0].checked==true || document.tform.tab_024_supine_to_sit[1].checked==true || document.tform.tab_024_supine_to_sit[2].checked==true || document.tform.tab_024_supine_to_sit[3].checked==true || document.tform.tab_024_supine_to_sit[4].checked==true || document.tform.tab_024_supine_to_sit[5].checked==true || document.tform.tab_024_supine_to_sit[6].checked==true || document.tform.tab_024_supine_to_sit[7].checked==true || document.tform.tab_024_supine_to_sit[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_supine_to_sit[7].checked=true;
+		
+		if(document.tform.tab_024_rolling[0].checked==true || document.tform.tab_024_rolling[1].checked==true || document.tform.tab_024_rolling[2].checked==true || document.tform.tab_024_rolling[3].checked==true || document.tform.tab_024_rolling[4].checked==true || document.tform.tab_024_rolling[5].checked==true || document.tform.tab_024_rolling[6].checked==true || document.tform.tab_024_rolling[7].checked==true || document.tform.tab_024_rolling[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_rolling[7].checked=true;
+		
+		if(document.tform.tab_024_scooting[0].checked==true || document.tform.tab_024_scooting[1].checked==true || document.tform.tab_024_scooting[2].checked==true || document.tform.tab_024_scooting[3].checked==true || document.tform.tab_024_scooting[4].checked==true || document.tform.tab_024_scooting[5].checked==true || document.tform.tab_024_scooting[6].checked==true || document.tform.tab_024_scooting[7].checked==true || document.tform.tab_024_scooting[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_scooting[7].checked=true;
+		
+		if(document.tform.tab_024_wheelchair_movility[0].checked==true || document.tform.tab_024_wheelchair_movility[1].checked==true || document.tform.tab_024_wheelchair_movility[2].checked==true || document.tform.tab_024_wheelchair_movility[3].checked==true || document.tform.tab_024_wheelchair_movility[4].checked==true || document.tform.tab_024_wheelchair_movility[5].checked==true || document.tform.tab_024_wheelchair_movility[6].checked==true || document.tform.tab_024_wheelchair_movility[7].checked==true || document.tform.tab_024_wheelchair_movility[8].checked==true){
+						return;	
+		}
+		document.tform.tab_024_wheelchair_movility[7].checked=true;
+  }             
+}
+if (document.tform.ther_na && document.tform.ther_na.checked==true)
+{
+   Funtherapy();
+}
+function chars_limit_notice(field, limit){
+		if(!field || !limit)
+		return;
+		
+		if(document.getElementById(field).value.length >= limit){
+			document.getElementById(field+'_note').style.display='none';
+		}else{
+			document.getElementById(field+'_chars_left').innerHTML = limit - document.getElementById(field).value.length;
+			document.getElementById(field+'_note').style.display='';
+		} 
+}
+{/literal}
+{if $warn_no_ptev_eval eq true}
+{literal}
+function warn_no_ptev_eval(){
+	var x = "No previous Evaluation";
+	$('<div>' + x + '</div>').dialog({
+			title: "Warning!",
+			resizable: false,
+			buttons: {													
+					Cancel: function() {
+							$(this).dialog("close");
+							//return false;
+					}
+			}
+	});
+}	
+warn_no_ptev_eval();
+{/literal}
+{/if}
+
+
+{literal}
+	$(document).ready(function() {
+			validate_modalities_na();
+			validate_checkbox('coordination_of_care', 'coord');
+			validate_checkbox('ther_exer_rom', 'rom');
+			validate_checkbox('strength', 'ther_exer_stren');
+			validate_checkbox('dc_planning', 'dc_plan');
+			romStrength('rom_na', 'rom_na_style');
+			romStrength('strength_na', 'strength_na_style');
+	});
+
+	$(".coord").change(function() {
+		validate_checkbox('coordination_of_care', 'coord');
+	});
+
+	$(".ther_exer_rom").change(function() {
+		validate_checkbox('rom', 'ther_exer_rom');
+	});
+
+	$(".ther_exer_stren").change(function() {
+		validate_checkbox('strength', 'ther_exer_stren');
+	});
+
+	$(".dc_plan").change(function() {
+		validate_checkbox('dc_planning', 'dc_plan');
+	});
+
+	$('#rom_na').change(function() {
+		romStrength('rom_na', 'rom_na_style');
+	});
+
+	$('#strength_na').change(function() {
+		romStrength('strength_na', 'strength_na_style');
+	})
+
+	function validate_modalities_na() {
+		if ($("#modalities_na").is(':checked')) {
+			$("#modalities_text").attr('disabled', true);
+		} else {
+			$("#modalities_text").attr('disabled', false);
+		}
+ 	}
+
+	 
+
+	 function validate_checkbox(name_id,name_class) {
+		$("#"+name_id).val(0);
+		$("."+name_class).each(function() {
+			if(this.checked) {
+				$("#"+name_id).val(1);
+			} else {
+					$("#"+name_id).val();
+			}
+		});
+	}
+
+	function checkDataPT(dom) {
+		if($("input[name="+dom+"]").is(':checked')) {
+			$("input[name="+dom+"]").attr('checked', false)
+		} else {
+			$("input[name="+dom+"]").attr('checked', true)
+		}
+	}
+
+	function romStrength(id, class_name) {
+		if ($("#"+id).is(':checked')) {
+			$("."+class_name).css('visibility', 'hidden');
+		} else {
+			$("."+class_name).css('visibility', 'visible');
+		}
+	}
+
+{/literal}
+
+</script>
+

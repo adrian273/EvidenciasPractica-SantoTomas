@@ -1,0 +1,5549 @@
+<?php
+
+ include('visitform.php');
+ 
+ class snpn extends VisitForm {
+	
+	function snpn () {
+	
+		parent::VisitForm();
+		$this->load->model('snpnmdl');
+		$this->load->model('snwamdl');
+		$this->tpl->assign("resource_path", "task/snpn");
+		$this->tpl->assign(array("tab_page" => true));
+		$this->tpl->assign('tab_25_list', $this->parametermdl->getByType(25));
+		$this->tpl->assign('tab_26_list', $this->parametermdl->getByType(26));
+		$this->tpl->assign('tab_30_list', $this->parametermdl->getByType(30));
+		
+	}
+
+	function index ( $visit_log_id, $action='task' ) {
+
+		$this->tpl->assign('task_page', 4);
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$this->assignObject($visitlog);
+		$this->assignObject($this->snpnmdl->get($visit_log_id));
+		$v11nursevisitid = $this->snpnmdl->get($visit_log_id);
+		if (count($v11nursevisitid)) $this->assignObject($this->snwamdl->get($v11nursevisitid->v11_nurse_visit_id));
+
+		if ($this->validation->run() == TRUE) {
+			
+			if($this->updateFormEdition($visit_log_id)){
+				$this->assignPostData($this->snpnmdl);
+				$this->assignPostData($this->snwamdl);
+				
+				$this->snpnmdl->GastroLastBM = standard_date(human_to_unix($this->snpnmdl->GastroLastBM), 'MYSQL');
+
+				$v11_nurse_visit_id = 0;
+				if (count($snpn = $this->snpnmdl->get($visit_log_id))) {
+					$this->snpnmdl->update($visit_log_id);
+					$v11_nurse_visit_id = $snpn->v11_nurse_visit_id;
+				} else {
+					$this->snpnmdl->insert($visit_log_id);
+					$v11_nurse_visit_id = $this->snpnmdl->v11_nurse_visit_id;
+				}
+
+				if (count($snwa = $this->snwamdl->get($v11_nurse_visit_id))) {
+					$this->snwamdl->update($v11_nurse_visit_id);
+				} else {
+					$this->snwamdl->insert($v11_nurse_visit_id);	
+				}
+
+						
+				$snpn = $this->snpnmdl->get($visit_log_id);
+				$snwa = $this->snwamdl->get($snpn->v11_nurse_visit_id);
+
+				$this->load->helper('ajax');
+				if (isAjax()) {
+					echo "1";
+					exit;
+				}
+
+				$this->tpl->assign('GastroLastBM', standard_date(mysql_to_unix($snpn->GastroLastBM), 'USA_DATE'));
+			}
+
+			$this->formRedirection($visit_log_id);
+			
+		}
+		
+		$this->tpl->assign('emp_name_list', $this->teammdl->getAll($visitlog->patient_id, array(1, 8, 12)));
+		$this->getPatientInfo($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/snpn");
+		$this->setfbase($visit_log_id, $action);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+
+	function pdf ( $visit_log_id ) {
+		// saving before printing pdf
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+		if (!$this->request->is_get() && ($visit_log->visit_status_id == 1 || $visit_log->visit_status_id == 2)) {
+			
+			$this->visitlogmdl->updateStatus($visit_log_id, 2);
+			$this->assignPostData($this->snpnmdl);
+			$this->snpnmdl->GastroLastBM = standard_date(human_to_unix($this->snpnmdl->GastroLastBM), 'MYSQL');
+		    $this->assignPostData($this->snwamdl);
+		    
+		    
+			if ($visit_log->visit_status_id == 2) {
+				
+				$snpn = $this->snpnmdl->get($visit_log_id); // snpn record
+				
+				$this->snpnmdl->update($visit_log_id);
+				$this->snwamdl->update($snpn->v11_nurse_visit_id);
+				
+			} else {
+
+				$this->snpnmdl->insert($visit_log_id);
+				$this->snwamdl->insert($this->snpnmdl->v11_nurse_visit_id);
+				
+			}
+					
+		}
+
+		// printing pdf
+		$snpn 	 	    = $this->snpnmdl->get($visit_log_id);
+		$snwa           = $this->snwamdl->get($snpn->v11_nurse_visit_id);
+		$patient    	= $this->patientmdl->getById($visit_log->patient_id);
+		$insurance 		= $this->patientinsurancemdl->getPrimaryInsurance($visit_log->patient_id);
+		$agency	    	= $this->agencymdl->getByAgencyId($patient->agency_id);
+		$episde_icd		= $this->episodeicdmdl->get($visit_log->cms485_id);
+		$emp_name   	= $this->usagymdl->getByUsAgyId(@$snpn->sup_empl_name_user_id);
+		$phys_user_id  	= $this->usagymdl->getByUsAgyId($visit_log->phys_user_id);
+    $assigned_to = $this->usagymdl->getByUsAgyId($visit_log->visit_user_id);
+
+		$tab_25			= $this->parametermdl->getByType(25);
+		$tab_25[NULL]   = NULL;
+		$tab_30			= $this->parametermdl->getByType(30);
+
+		
+
+		//$path_ticket = realpath("style/images/icon_enable.gif");
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+		$path_img1	 = realpath("style/images/task/snpn1.gif");
+
+		
+
+        $__FONT['PDF']['SIZE'] = 9;
+
+        $__FONT['PDF']['FORM_MEDIUM'] = 10;
+
+        $__FONT['PDF']['FORM_SMALL'] = 9;
+
+        $__FONT['PDF']['FORM_SMALL2'] = 9;
+
+        $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+
+        $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+
+        $__FONT['PDF']['FORM_arial8'] = 9.5;
+
+        
+
+		
+
+		$this->load->library('fpdf');
+
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+
+    $current_page = 1;
+    $total_page = 2;
+    if (strlen(@$snwa->WS3Site3)>0)
+    {
+      $total_page = 3;
+      
+      if (strlen(@$snpn->additional_comments)>0)
+      {
+        $total_page = 4;
+      }		
+
+    }elseif (strlen(@$snpn->additional_comments)>0)
+    {
+      $total_page = 3;
+    }		
+
+        $cero_x = 11;
+
+        $cero_y = 2;
+
+		$this->fpdf->Open();
+
+		
+
+		$pdf = $this->fpdf;
+
+		
+
+		
+
+		$this->fpdf->AddPage();
+
+		
+
+        $this->fpdf->SetDrawColor(130,100);
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $agency->agency_name); // agency name
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 22 ),"Licensed and Certified Home Health Agency");
+
+        
+
+        $this->fpdf->Rect(8,28, 577, 780);
+
+        
+
+        $this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 190),( $cero_y + 36 ),"SKILLED NURSE - PROGRESS NOTE                            " .
+
+        													"VISIT DATE: " . standard_date(mysql_to_unix($visit_log->visited_date))); // visit date
+
+    	$this->fpdf->Line(( $cero_x - 3 ) , ($cero_y + 40.5 ), ( $cero_x + 574 ), ($cero_y + 40.5 ));
+
+    	
+
+        $cero_y = 20;
+
+        $this->fpdf->SetTextColor(0,0,0);
+
+        $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+
+	    $this->fpdf->Text(( $cero_x + 0),( $cero_y + 32 ),"Patient Name: ");
+
+	    
+
+	    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+
+	    $this->fpdf->Text(( $cero_x + 60),( $cero_y + 32 ), $patient->first_name . " " . $patient->last_name); // pacient name
+
+	    
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->SetTextColor(0,0,0);
+
+
+
+        $this->fpdf->SetDrawColor(130,100);
+
+        if (!empty($insurance)) {
+        	$this->fpdf->Text(( $cero_x + 240),( $cero_y + 32 ), substr($insurance->tab_description, 0, 10)." #: ");
+	        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+	        $this->fpdf->Text(( $cero_x + 290),( $cero_y + 32 ), $insurance->ins_id); // medicare id
+    	} else {
+    		$this->fpdf->Text(( $cero_x + 240),( $cero_y + 32 ), "NA");
+    		$this->fpdf->Rect(($cero_x +230), ($cero_y +23.5), 8.4, 8.4);
+            $this->fpdf->Image($path_ticket, ($cero_x +231), ($cero_y +24.5), 6);        
+    	}
+        
+
+
+        
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+                $this->fpdf->Text(( $cero_x + 395 +20),( $cero_y + 32 ),"Medical Rec#: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 455 +20),( $cero_y + 32 ), $patient->medical_rec_nbr); // medicare id
+
+
+
+		
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 32 ), "  NA ");
+
+        $this->fpdf->Rect(( $cero_x + 380),($cero_y + 23.5), 8.4, 8.4);
+
+        
+
+        if (is_null($patient->medicare_id)){
+
+        	$this->fpdf->Image( $path_ticket, ( $cero_x + 381 ),($cero_y + 24.5),6);
+
+        }
+
+		
+
+        $this->fpdf->Text(( $cero_x + 375),( $cero_y + 42 ),"  SOC: ");
+
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 42 ), standard_date(mysql_to_unix($visit_log->estimated_soc_date))); // soc date
+
+        
+
+        // primary and second icd
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 42 ),"Primary Dx: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 42 ), @$episde_icd[0]->icd9_name);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 42 ),"Date: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']); 
+
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 42 ), (!is_null(@$episde_icd[0]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[0]->icd_date)) : ""));
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 52 ),"Second Dx: ");              
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 52 ), @$episde_icd[1]->icd9_name);
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 52 ),"Date: ");
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 52 ), (!is_null(@$episde_icd[1]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[1]->icd_date)) : ""));
+
+        
+
+
+
+        // start and end soc date
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 380),( $cero_y + 52 ),"From: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);                                
+
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_start_date)));
+
+
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 473),( $cero_y + 52 ),"To: ");
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 488),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_end_date)));
+
+        
+
+        
+
+        if ($visit_log->episode_start_date == $visit_log->estimated_soc_date)     {
+
+            $this->fpdf->Text(( $cero_x + 480),( $cero_y + 42 ),"   Certification");
+
+        } else {
+
+            $this->fpdf->Text(( $cero_x + 495),( $cero_y + 42 ),"   Recertif.");
+
+        }
+
+
+
+        $this->fpdf->Rect(( $cero_x + 473),($cero_y + 33.5), 8.4, 8.4);
+
+        $this->fpdf->Image( $path_ticket,( $cero_x + 474 ),($cero_y + 34.5),6);
+
+
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 62 ),"Physician: ");
+
+        
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+
+		$this->fpdf->Text(( $cero_x + 60),($cero_y + 62 ), @$phys_user_id->complete_name);
+
+
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 62 ), "Clinician:");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+
+        $this->fpdf->Text(( $cero_x + 288),(  $cero_y + 62 ), $visit_log->first_name . " " .  $visit_log->last_name);
+
+                
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 380),( $cero_y + 62 ), "Time In: ");
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(( $cero_x + 416),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in), 'USA_TIME_C'));
+
+        
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 473),( $cero_y + 62 ), "Time Out: ");
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(( $cero_x + 518),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out), 'USA_TIME_C'));
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        
+
+        
+
+        $cero_y =$cero_y+5;
+
+        $this->fpdf->SetLineWidth( 0.5 );
+
+        $this->fpdf->Line(8, 85, 584, 85);
+
+        
+
+        $this->fpdf->Rect(11, 87, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 95,"Visit");
+
+        if (@$snpn->visit_YN ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 88,6);
+
+        }
+
+        
+
+        
+
+		$item=100;
+
+		foreach ($this->parametermdl->getByType(25) as $b_not_b_id => $b_not_b) {
+
+			
+
+	        $this->fpdf->Text($item, 95, $b_not_b);
+
+			$pdf->Rect(($item - 11), 87, 8.4, 8.4);
+
+			
+
+            if ($b_not_b_id == @@$snpn->tab_25_Bill_Nonbill) {
+
+            	$pdf->Image($path_ticket, ($item - 10), 88, 6);
+
+            }
+
+			
+
+	        $item=$item+60;
+
+			
+
+		}
+
+		
+
+		
+
+		$item=290;
+
+		foreach ($this->parametermdl->getByType(26) as $sn_id => $sn) {
+
+			
+
+	        $this->fpdf->Text($item, 95, $sn);
+
+			$pdf->Rect(($item - 11), 87, 8.4, 8.4);
+
+			
+
+            if ($sn_id == @@$snpn->tab_26_SN) {
+
+            	$pdf->Image($path_ticket, ($item - 10), 88, 6);
+
+            }
+
+			
+
+	        $item=$item+55;
+
+			
+
+		}
+
+		
+
+		$this->fpdf->Text(510, 95, "Mileage: " );
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(550, 95, $visit_log->mileage);
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+		
+
+		$this->fpdf->Line(8, 98, 584, 98);
+
+		
+
+		
+
+		$this->fpdf->Text(20, 108, "Vital");
+
+		$this->fpdf->Text(20, 118, "Sign");
+
+		
+
+		$this->fpdf->Line(45, 98, 45, 121);
+
+		
+
+		$this->fpdf->Text(59, 113, "B/P");
+
+		
+
+		$this->fpdf->Line(90, 98, 90, 121);
+
+		$this->fpdf->Text(97, 108, "Lying");
+
+		
+
+		$this->fpdf->Line(130, 98, 130, 121);
+
+		$this->fpdf->Text(140, 108, "Sitting");
+
+		
+
+		$this->fpdf->Line(170, 98, 170, 121);
+
+		$this->fpdf->Text(183, 108, "Standing");
+
+		
+
+		$this->fpdf->Line(230, 98, 230, 121);
+
+		$this->fpdf->Text(244, 108, "Temp");
+
+		
+
+		$this->fpdf->Line(280, 98, 280, 121);
+
+		$this->fpdf->Text(301, 108, "Resp");
+
+		
+
+		$this->fpdf->Line(345, 98, 345, 121);
+
+		$this->fpdf->Text(361, 108, "Apical Pulse");
+
+		
+
+		$this->fpdf->Line(430, 98, 430, 121);
+
+		$this->fpdf->Text(456, 108, "Radical Pulse");
+
+		
+
+		$this->fpdf->Line(520, 98, 520, 121);
+
+		$this->fpdf->Text(531, 108, "Weight Labs");
+
+		
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(97, 118,  @$snpn->BpLying);
+
+		$this->fpdf->Text(140, 118, @$snpn->BpSitting);
+
+		$this->fpdf->Text(193, 118, @$snpn->BpStanding);
+
+		$this->fpdf->Text(246, 118, @$snpn->Temperature);
+
+		$this->fpdf->Text(305, 118, @$snpn->Respiration);
+
+		$this->fpdf->Text(381, 118, @$snpn->PulseApical);
+
+		$this->fpdf->Text(476, 118, @$snpn->PulseRadial);
+
+		$this->fpdf->Text(548, 118, @$snpn->Weight);
+
+
+
+
+
+		$this->fpdf->Line(8, 121, 584, 121);
+
+		
+
+		
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(11, 131, "PHYSICAL ASSESSMENT");
+
+		
+
+		
+
+		$this->fpdf->Line(8, 134, 584, 134);
+
+		
+
+		
+
+		$this->fpdf->Text(11, 144, "RESPIRATORY");
+
+
+
+        $this->fpdf->Rect(11, 146, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 154, "No Problem");
+
+        if (@$snpn->RespNoProblem ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 147,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(91, 146, 8.4, 8.4);
+
+        $this->fpdf->Text(103, 154, "Apnea");
+
+        if (@$snpn->RespApnea == 1) {
+
+            $this->fpdf->Image( $path_ticket, 92, 147,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(146, 146, 8.4, 8.4);
+
+        $this->fpdf->Text(158, 154, "Dyspnea with moderate exertion");
+
+        if (@$snpn->RespDyspnea == 1) {
+
+            $this->fpdf->Image( $path_ticket, 147, 147,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 156, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 164, "Resp Uneven");
+
+        if (@$snpn->RespUneven ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 157,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(91, 156, 8.4, 8.4);
+
+        $this->fpdf->Text(103, 164, "Cough");
+
+        if (@$snpn->RespCough == 1) {
+
+            $this->fpdf->Image( $path_ticket, 92, 157,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(146, 156, 8.4, 8.4);
+
+        $this->fpdf->Text(158, 164, "Sputum");
+
+        if (@$snpn->RespSputum == 1) {
+
+            $this->fpdf->Image( $path_ticket, 147, 157,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(209, 156, 8.4, 8.4);
+
+        $this->fpdf->Text(221, 164, "Rales");
+
+        if (@$snpn->RespRales == 1) {
+
+            $this->fpdf->Image( $path_ticket, 210, 157,6);
+
+        }
+
+
+
+
+
+        $this->fpdf->Text(11, 174, "Breath Sounds:");
+
+        
+
+        $this->fpdf->Rect(91, 166, 8.4, 8.4);
+
+        $this->fpdf->Text(103, 174, "Clear");
+
+        if (@$snpn->RespClear == 1) {
+
+            $this->fpdf->Image( $path_ticket, 92, 167,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(146, 166, 8.4, 8.4);
+
+        $this->fpdf->Text(158, 174, "Rhonchi");
+
+        if (@$snpn->RespRhonchi == 1) {
+
+            $this->fpdf->Image( $path_ticket, 147, 167,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(209, 166, 8.4, 8.4);
+
+        $this->fpdf->Text(221, 174, "Wheezing");
+
+        if (@$snpn->RespWheezing == 1) {
+
+            $this->fpdf->Image( $path_ticket, 210, 167,6);
+
+        }
+
+
+
+
+
+        $this->fpdf->Rect(11, 176, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 184, "0");
+
+		
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE'] - 3);													
+
+		$this->fpdf->Text(28, 182, "2");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(40-5, 184, @$snpn->RespOxigAmt);
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(31, 184, "  _____   Lts");	
+
+		
+
+        if (@$snpn->RespO2 ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 177, 6);
+
+        }
+
+		
+
+
+        $this->fpdf->SetFont('Arial','U',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(11, 194, "Other:");
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(38, 194, @$snpn->RespComments);
+
+
+
+
+
+		$this->fpdf->Line(304, 134, 304, 376);
+
+
+
+
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+
+
+		$this->fpdf->Text(309, 144, "GASTRO INTESTINAL");
+
+		
+
+        $this->fpdf->Rect(309, 146, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 154, "No Problem");
+
+        if (@$snpn->GastroNoprob ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 147,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(380, 146, 8.4, 8.4);
+
+        $this->fpdf->Text(392, 154, "Appetite Decreased");
+
+        if (@$snpn->GastroAppetDecr == 1) {
+
+            $this->fpdf->Image( $path_ticket, 381, 147,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(480, 154, "Weight:");
+
+        
+
+        $this->fpdf->Rect(515, 146, 8.4, 8.4);
+
+        $this->fpdf->Text(527, 154, "Loss");
+
+        if (@$snpn->tab_29_loss_gain == 1) {
+
+            $this->fpdf->Image( $path_ticket, 516, 147,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(550, 146, 8.4, 8.4);
+
+        $this->fpdf->Text(562, 154, "Gain");
+
+        if (@$snpn->tab_29_loss_gain == 2) {
+
+            $this->fpdf->Image( $path_ticket, 551, 147,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(545, 164, "Amt  ___");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(568, 164, @$snpn->GastroLossGainAmt);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Rect(309, 156, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 164, "Constipation");
+
+        if (@$snpn->GastroConstipation ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 157,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(380, 156, 8.4, 8.4);
+
+        $this->fpdf->Text(392, 164, "Incontinent");
+
+        if (@$snpn->GastroIcontinent == 1) {
+
+            $this->fpdf->Image( $path_ticket, 381, 157,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(457, 156, 8.4, 8.4);
+
+        $this->fpdf->Text(469, 164, "Last BM");
+
+        if (@$snpn->GastroLastBM != '') {
+
+            $this->fpdf->Image( $path_ticket, 458, 157,6);
+
+        }
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(505, 164, standard_date(mysql_to_unix(@$snpn->GastroLastBM), '%M/%d'));
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Rect(309, 166, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 174, "Nausea");
+
+        if (@$snpn->GastroNausea ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 167,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(380, 166, 8.4, 8.4);
+
+        $this->fpdf->Text(392, 174, "Vomiting");
+
+        if (@$snpn->GastroVomiting == 1) {
+
+            $this->fpdf->Image( $path_ticket, 381, 167,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(457, 166, 8.4, 8.4);
+
+        $this->fpdf->Text(469, 174, "Diarrhea");
+
+        if (@$snpn->GastroDiarrhea == 1) {
+
+            $this->fpdf->Image( $path_ticket, 458, 167,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(521, 166, 8.4, 8.4);
+
+        $this->fpdf->Text(533, 174, "Dysphagia");
+
+        if (@$snpn->GastroDysphagia == 1) {
+
+            $this->fpdf->Image( $path_ticket, 522, 167,6);
+
+        }
+
+        
+
+        
+
+        //$this->fpdf->Rect(309, 176, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 184, "Abdomen");
+
+        if (@$snpn->tab_28_GastroAbdomen > 0) {
+
+            //$this->fpdf->Image( $path_ticket, 310, 177,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(380, 176, 8.4, 8.4);
+
+        $this->fpdf->Text(392, 184, "Soft");
+
+        if (@$snpn->tab_28_GastroAbdomen == 1) {
+
+            $this->fpdf->Image( $path_ticket, 381, 177,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(457, 176, 8.4, 8.4);
+
+        $this->fpdf->Text(469, 184, "Firm");
+
+        if (@$snpn->tab_28_GastroAbdomen == 2) {
+
+            $this->fpdf->Image( $path_ticket, 458, 177,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(521, 176, 8.4, 8.4);
+
+        $this->fpdf->Text(533, 184, "Distended");
+
+        if (@$snpn->tab_28_GastroAbdomen == 3) {
+
+            $this->fpdf->Image( $path_ticket, 522, 177,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Text(309, 194, "Diet Compliance:");
+
+        
+
+        $this->fpdf->Rect(380, 186, 8.4, 8.4);
+
+        $this->fpdf->Text(392, 194, "Yes");
+
+        if (@$snpn->GastroDietCompliance_YN == 1) {
+
+            $this->fpdf->Image( $path_ticket, 381, 187,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(415, 186, 8.4, 8.4);
+
+        $this->fpdf->Text(427, 194, "No");
+
+        if (@$snpn->GastroDietCompliance_YN == '0') {
+
+            $this->fpdf->Image( $path_ticket, 416, 187,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(457, 186, 8.4, 8.4);
+
+        $this->fpdf->Text(469, 194, "Ostomy Care Taught");
+
+        if (@$snpn->GastroOstoTaught == 1) {
+
+            $this->fpdf->Image( $path_ticket, 458, 187,6);
+
+        }
+
+		
+
+        $this->fpdf->Rect(457, 196, 8.4, 8.4);
+
+        $this->fpdf->Text(469, 204, "Ostomy Care Performed");
+
+        if (@$snpn->GastroOstoPerformed == 1) {
+
+            $this->fpdf->Image( $path_ticket, 458, 197,6);
+
+        }
+
+		
+
+
+
+		$this->fpdf->Line(8, 207, 584, 207);
+
+		
+
+		
+
+		$this->fpdf->Text(11, 217, "NEURO");
+
+		
+
+        $this->fpdf->Rect(11, 219, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 227, "No Problem");
+
+        if (@$snpn->NeuroNoProb ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 220,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(91, 219, 8.4, 8.4);
+
+        $this->fpdf->Text(103, 227, "Alert");
+
+        if (@$snpn->NeuroAlert == 1) {
+
+            $this->fpdf->Image( $path_ticket, 92, 220,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(146, 219, 8.4, 8.4);
+
+        $this->fpdf->Text(158, 227, "Lethargic");
+
+        if (@$snpn->NeuroLethargic == 1) {
+
+            $this->fpdf->Image( $path_ticket, 147, 220,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(209, 219, 8.4, 8.4);
+
+        $this->fpdf->Text(221, 227, "Forgetful");
+
+        if (@$snpn->NeuroForget == 1) {
+
+            $this->fpdf->Image( $path_ticket, 210, 220,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 229, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 237, "Disoriented");
+
+        if (@$snpn->NeuroDisor ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 230,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(91, 229, 8.4, 8.4);
+
+        $this->fpdf->Text(103, 237, "Dizziness");
+
+        if (@$snpn->NeuroDizz == 1) {
+
+            $this->fpdf->Image( $path_ticket, 92, 230,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(146, 229, 8.4, 8.4);
+
+        $this->fpdf->Text(158, 237, "Tremors");
+
+        if (@$snpn->NeuroTremors == 1) {
+
+            $this->fpdf->Image( $path_ticket, 147, 230,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(209, 229, 8.4, 8.4);
+
+        $this->fpdf->Text(221, 237, "Agitated");
+
+        if (@$snpn->NeuroAgitaded == 1) {
+
+            $this->fpdf->Image( $path_ticket, 210, 230,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Text(11, 247, "Grasps:");
+
+        
+
+        $this->fpdf->Rect(70, 239, 8.4, 8.4);
+
+        $this->fpdf->Text(82, 247, "R");
+
+        if (@$snpn->NeuroGraspR == 1) {
+
+            $this->fpdf->Image( $path_ticket, 71, 240,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(91, 239, 8.4, 8.4);
+
+        $this->fpdf->Text(103, 247, "L");
+
+        if (@$snpn->NeuroGraspL == 1) {
+
+            $this->fpdf->Image( $path_ticket, 92, 240,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(131, 239, 8.4, 8.4);
+
+        $this->fpdf->Text(143, 247, "Pupils not equal and not reactive to light");
+
+        if (@$snpn->NeuroPupils == 1) {
+
+            $this->fpdf->Image( $path_ticket, 132, 240,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Text(11, 257, "Oriented to:");
+
+        
+
+        $this->fpdf->Rect(91, 249, 8.4, 8.4);
+
+        $this->fpdf->Text(103, 257, "Time");
+
+        if (@$snpn->NeuroOrienTime == 1) {
+
+            $this->fpdf->Image( $path_ticket, 92, 250,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(146, 249, 8.4, 8.4);
+
+        $this->fpdf->Text(158, 257, "Place");
+
+        if (@$snpn->NeuroOrienPlace == 1) {
+
+            $this->fpdf->Image( $path_ticket, 147, 250,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(209, 249, 8.4, 8.4);
+
+        $this->fpdf->Text(221, 257, "Person");
+
+        if (@$snpn->NeuroOrienPerson == 1) {
+
+            $this->fpdf->Image( $path_ticket, 210, 250,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(11, 267, "Other:");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(37, 267, @$snpn->NeuroOrienOther);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+
+
+        
+
+        $this->fpdf->Text(309, 217, "EARS/EYES/NOSE/THROAT");
+
+        
+
+
+
+        $this->fpdf->Rect(309, 219, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 227, "No Problem");
+
+        if (@$snpn->EENTnoProb ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 220,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(395, 219, 8.4, 8.4);
+
+        $this->fpdf->Text(407, 227, "Impaired Vision");
+
+        if (@$snpn->EENTImparedVision == 1) {
+
+            $this->fpdf->Image( $path_ticket, 396, 220,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(494, 219, 8.4, 8.4);
+
+        $this->fpdf->Text(506, 227, "Cataract/Glaucoma");
+
+        if (@$snpn->EENTCataract == 1) {
+
+            $this->fpdf->Image( $path_ticket, 495, 220,6);
+
+        }
+
+        
+
+
+
+        $this->fpdf->Rect(309, 229, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 237, "Deaf");
+
+        if (@$snpn->EENTDeaf ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 230,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(395, 229, 8.4, 8.4);
+
+        $this->fpdf->Text(407, 237, "Impaired Speech");
+
+        if (@$snpn->EENTImparedSpeech == 1) {
+
+            $this->fpdf->Image( $path_ticket, 396, 230,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(494, 229, 8.4, 8.4);
+
+        $this->fpdf->Text(506, 237, "Blind");
+
+        if (@$snpn->EENTBlind == 1) {
+
+            $this->fpdf->Image( $path_ticket, 495, 230,6);
+
+        }
+
+		
+
+		
+
+        $this->fpdf->Rect(309, 239, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 247, "Tinnitus");
+
+        if (@$snpn->EENTTinnitus ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 240,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(395, 239, 8.4, 8.4);
+
+        $this->fpdf->Text(407, 247, "Epistaxis");
+
+        if (@$snpn->EENTEpistaxis == 1) {
+
+            $this->fpdf->Image( $path_ticket, 396, 240,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(494, 239, 8.4, 8.4);
+
+        $this->fpdf->Text(506, 247, "Congestion");
+
+        if (@$snpn->EENTCongestion == 1) {
+
+            $this->fpdf->Image( $path_ticket, 495, 240,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(309, 249, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 257, "Impaired Hearing");
+
+        if (@$snpn->EENTImpairedHearing ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 250,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Line(8, 270, 584, 270);
+
+        
+
+        
+
+        $this->fpdf->Text(11, 280, "MUSCULOSKELETAL");
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 282, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 290, "No Problem");
+
+        if (@$snpn->MuscuNoprob ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 283,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(79, 282, 8.4, 8.4);
+
+        $this->fpdf->Text(91, 290, "Bedbound");
+
+        if (@$snpn->MuscuBedBound ==1) {
+
+            $this->fpdf->Image( $path_ticket, 80, 283,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(139, 282, 8.4, 8.4);
+
+        $this->fpdf->Text(151, 290, "Chairbound");
+
+        if (@$snpn->MuscuChairBound ==1) {
+
+            $this->fpdf->Image( $path_ticket, 140, 283,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(212, 282, 8.4, 8.4);
+
+        $this->fpdf->Text(224, 290, "Ambulatory Aid");
+
+        if (@$snpn->MuscuAmbAid ==1) {
+
+            $this->fpdf->Image( $path_ticket, 213, 283,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 300, "Unsteady Balance/Gait");
+
+        if (@$snpn->MuscuUnsteadBalanceGait ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 293,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(139, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(151, 300, "Amputations");
+
+        if (@$snpn->MuscuAmput ==1) {
+
+            $this->fpdf->Image( $path_ticket, 140, 293,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(212, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(224, 300, "Joint Pain/Stiffness");
+
+        if (@$snpn->MuscuJoitPainStiffness ==1) {
+
+            $this->fpdf->Image( $path_ticket, 213, 293,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 302, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 310, "Contracture");
+
+        if (@$snpn->MuscuContracture ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 303,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(79, 302, 8.4, 8.4);
+
+        $this->fpdf->Text(91, 310, "Paralysis");
+
+        if (@$snpn->MuscuParalysis ==1) {
+
+            $this->fpdf->Image( $path_ticket, 80, 303,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(139, 302, 8.4, 8.4);
+
+        $this->fpdf->Text(151, 310, "Arthritis");
+
+        if (@$snpn->MuscuArthritis ==1) {
+
+            $this->fpdf->Image( $path_ticket, 140, 303,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(212, 302, 8.4, 8.4);
+
+        $this->fpdf->Text(224, 310, "Falls");
+
+        if (@$snpn->MuscuFalls ==1) {
+
+            $this->fpdf->Image( $path_ticket, 213, 303,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Text(309, 280, "CIRCULATORY");
+
+
+
+        $this->fpdf->Rect(309, 282, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 290, "No Problem");
+
+        if (@$snpn->CircNoprob ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 283,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(380, 282, 8.4, 8.4);
+
+        $this->fpdf->Text(392, 290, "Heart Irregular");
+
+        if (@$snpn->CircNoprob ==1) {
+
+            $this->fpdf->Image( $path_ticket, 381, 283,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(460, 290, "Edema:");
+
+        
+
+//        $this->fpdf->Rect(492, 282, 8.4, 8.4);
+
+//        if (@$snpn->CircEdemaRLE > 0) {
+
+//            $this->fpdf->Image( $path_ticket, 493, 283,6);
+
+//        }
+
+        $this->fpdf->Text(504, 290, "RLE ___");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(524, 290, @$snpn->CircEdemaRLE);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+//        $this->fpdf->Rect(540, 282, 8.4, 8.4);
+
+//        if (@$snpn->CircEdemaLLE > 0) {
+
+//            $this->fpdf->Image( $path_ticket, 541, 283,6);
+
+//        }
+
+        $this->fpdf->Text(548, 290, "LLE ___");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(570, 290, @$snpn->CircEdemaLLE);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Rect(309, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(321, 300, "Gallop");
+
+        if (@$snpn->CircGallop ==1) {
+
+            $this->fpdf->Image( $path_ticket, 310, 293,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(380, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(392, 300, "Murmur");
+
+        if (@$snpn->CircMurmur ==1) {
+
+            $this->fpdf->Image( $path_ticket, 381, 293,6);
+
+        }
+
+        
+
+//        $this->fpdf->Rect(492, 292, 8.4, 8.4);
+
+//        if (@$snpn->CircEdemaRVE > 0) {
+
+//            $this->fpdf->Image( $path_ticket, 493, 293,6);
+
+//        }
+
+        $this->fpdf->Text(504, 300, "RUE ___");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(524, 300, @$snpn->CircEdemaRVE);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+//        $this->fpdf->Rect(540, 292, 8.4, 8.4);
+
+//        if (@$snpn->CircEdemaLVE > 0) {
+
+//            $this->fpdf->Image( $path_ticket, 541, 293,6);
+
+//        }
+
+        $this->fpdf->Text(548, 300, "LUE ___");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(570, 300, @$snpn->CircEdemaLVE);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        
+
+        $this->fpdf->Text(309, 310, "Peripheral Pulses:");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(383, 310, @$snpn->CircPeripheralPulses);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+
+
+		$this->fpdf->Line(8, 313, 584, 313);
+
+		
+
+		
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 323, "SKIN CONDITION");
+
+		
+
+        $this->fpdf->Rect(11, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 333, "No Problem");
+
+        if (@$snpn->SkinNoProb ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 326,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(87, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(99, 333, "Warm");
+
+        if (@$snpn->SkinWarm ==1) {
+
+            $this->fpdf->Image( $path_ticket, 88, 326,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(153, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(165, 333, "Cool");
+
+        if (@$snpn->SkinCool ==1) {
+
+            $this->fpdf->Image( $path_ticket, 154, 326,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(217, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(229, 333, "Cold");
+
+        if (@$snpn->SkinCold ==1) {
+
+            $this->fpdf->Image( $path_ticket, 218, 326,6);
+
+        }
+
+        
+
+
+
+        $this->fpdf->Rect(11, 335, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 343, "Clammy");
+
+        if (@$snpn->SkinClammy ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 336,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(87, 335, 8.4, 8.4);
+
+        $this->fpdf->Text(99, 343, "Turgor fair");
+
+        if (@$snpn->SkinTurgor ==1) {
+
+            $this->fpdf->Image( $path_ticket, 88, 336,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(153, 335, 8.4, 8.4);
+
+        $this->fpdf->Text(165, 343, "Diaphoretic");
+
+        if (@$snpn->SkinDiaphorectic ==1) {
+
+            $this->fpdf->Image( $path_ticket, 154, 336,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(217, 335, 8.4, 8.4);
+
+        $this->fpdf->Text(229, 343, "Skin Broken");
+
+        if (@$snpn->SkinBroken ==1) {
+
+            $this->fpdf->Image( $path_ticket, 218, 336,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 345, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 353, "Pale");
+
+        if (@$snpn->SkinPale ==1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 346,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(87, 345, 8.4, 8.4);
+
+        $this->fpdf->Text(99, 353, "Jaundice");
+
+        if (@$snpn->SkinJaundice ==1) {
+
+            $this->fpdf->Image( $path_ticket, 88, 346,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(153, 345, 8.4, 8.4);
+
+        $this->fpdf->Text(165, 353, "Cyanotic");
+
+        if (@$snpn->SkinCyanotic ==1) {
+
+            $this->fpdf->Image( $path_ticket, 154, 346,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(217, 345, 8.4, 8.4);
+
+        $this->fpdf->Text(229, 353, "Dry");
+
+        if (@$snpn->SkinDry ==1) {
+
+            $this->fpdf->Image( $path_ticket, 218, 346,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(11, 363, "Other:");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(38, 363, @$snpn->SkinComment);
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(309, 323, "GU STATUS");
+
+
+
+        $this->fpdf->Rect(307, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(319, 333, "No Problem");
+
+        if (@$snpn->GUStatNoPfrob ==1) {
+
+            $this->fpdf->Image( $path_ticket, 308, 326,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(370, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(382, 333, "Incontinent");
+
+        if (@$snpn->GUStatIncontinent ==1) {
+
+            $this->fpdf->Image( $path_ticket, 371, 326,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(433, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(445, 333, "Retention");
+
+        if (@$snpn->GUStatRetention ==1) {
+
+            $this->fpdf->Image( $path_ticket, 434, 326,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(489, 325, 8.4, 8.4);
+
+        $this->fpdf->Text(501, 333, "Dysuria-Freq _____");
+
+        if (@$snpn->GUStatDisuriaFreq ==1) {
+
+            $this->fpdf->Image( $path_ticket, 490, 326,6);
+
+        }
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(554, 333, @$snpn->GUStatDisuriaFreqValue);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Rect(307, 335, 8.4, 8.4);
+
+        $this->fpdf->Text(319, 343, "Catheter");
+
+        if (@$snpn->GUStatCatherer ==1) {
+
+            $this->fpdf->Image( $path_ticket, 308, 336,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(370, 335, 8.4, 8.4);
+
+        $this->fpdf->Text(382, 343, "Hematuria");
+
+        if (@$snpn->GUStatHematuria ==1) {
+
+            $this->fpdf->Image( $path_ticket, 371, 336,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(433, 335, 8.4, 8.4);
+
+        $this->fpdf->Text(445, 343, "Bladder Program");
+
+        if (@$snpn->GUStatBladderProgram ==1) {
+
+            $this->fpdf->Image( $path_ticket, 434, 336,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(307, 345, 8.4, 8.4);
+
+        $this->fpdf->Text(319, 353, "Foley Insertion");
+
+        if (@$snpn->GUStatFoleyInsert ==1) {
+
+            $this->fpdf->Image( $path_ticket, 308, 346,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(387, 345, 8.4, 8.4);
+
+        $this->fpdf->Text(399, 353, "Teaching Catheter Care");
+
+        if (@$snpn->GUStatTeach ==1) {
+
+            $this->fpdf->Image( $path_ticket, 388, 346,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(503, 345, 8.4, 8.4);
+
+        $this->fpdf->Text(515, 353, "Output _____ Lts");
+
+        if (@$snpn->GUStatTeachValue > 0) {
+
+            $this->fpdf->Image( $path_ticket, 504, 346,6);
+
+        }
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(539, 353, @$snpn->GUStatTeachValue);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Text(307, 363, "Urine:");
+
+        
+
+        $this->fpdf->Rect(333, 355, 8.4, 8.4);
+
+        $this->fpdf->Text(345, 363, "Clear");
+
+        if (@$snpn->GUStatUrineClear ==1) {
+
+            $this->fpdf->Image( $path_ticket, 334, 356,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(370, 355, 8.4, 8.4);
+
+        $this->fpdf->Text(382, 363, "Cloudy");
+
+        if (@$snpn->GUStatUrineCloudy ==1) {
+
+            $this->fpdf->Image( $path_ticket, 371, 356,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(414, 355, 8.4, 8.4);
+
+        $this->fpdf->Text(426, 363, "Odor");
+
+        if (@$snpn->GUStatUrineOdor ==1) {
+
+            $this->fpdf->Image( $path_ticket, 415, 356,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(454, 355, 8.4, 8.4);
+
+        $this->fpdf->Text(466, 363, "Sediment");
+
+        if (@$snpn->GUStatUrineSediment ==1) {
+
+            $this->fpdf->Image( $path_ticket, 455, 356,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(333, 365, 8.4, 8.4);
+
+        $this->fpdf->Text(345, 373, "Other:");
+
+        if (@$snpn->GUStatUrineOther != '') {
+
+            $this->fpdf->Image( $path_ticket, 334, 366,6);
+
+        }
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(370, 373, @$snpn->GUStatUrineOther);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+		$this->fpdf->Line(8, 376, 584, 376);
+
+		
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 386, "Glucometer:");
+
+		
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Rect(81, 378, 8.4, 8.4);
+
+		$this->fpdf->Text(93, 386, "N/A");
+
+        if (@$snpn->ClucoNotAplic != '') {
+
+            $this->fpdf->Image( $path_ticket, 82, 379,6);
+
+        }
+
+
+
+		$this->fpdf->Rect(120, 378, 8.4, 8.4);
+
+		$this->fpdf->Text(132, 386, "Control");
+
+        if (@$snpn->ClucoControl != '') {
+
+            $this->fpdf->Image( $path_ticket, 121, 379,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(187, 386, "Results:");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(221, 386, @$snpn->ClucoResults);
+
+		
+
+
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 396, "FSBS obtained from                          finger");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(95, 396, @$snpn->ClucoFSBSObtainFrom);
+
+		
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(187, 396, "Results:");
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(221, 396, @$snpn->ClucoFSBSResults);
+
+        
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Rect(518, 388, 8.4, 8.4);
+
+        $this->fpdf->Text(530, 396, "FBS");
+
+        if (@$snpn->ClucoFBS ==1) {
+
+            $this->fpdf->Image( $path_ticket, 519, 389, 6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(553, 388, 8.4, 8.4);
+
+        $this->fpdf->Text(565, 396, "RBS");
+
+        if (@$snpn->ClucoRBS ==1) {
+
+            $this->fpdf->Image( $path_ticket, 554, 389, 6);
+
+        }
+
+
+
+	
+
+		$this->fpdf->Line(8, 400, 584, 400);
+
+
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 410, "Injection of Medications:");
+
+		
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Rect(119, 402, 8.4, 8.4);
+
+		$this->fpdf->Text(131, 410, "N/A");
+
+        if (@$snpn->InjecMedicNotAplic == 1) {
+
+            $this->fpdf->Image( $path_ticket, 120, 403,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(192, 410, "Site:");
+
+        $this->fpdf->Text(372, 410, "Route:");
+
+
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(214, 410, @$snpn->InjecMedicSite);
+
+        $this->fpdf->Text(401, 410, @$snpn->InjecMedicRoute);
+
+
+
+
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+		$this->fpdf->Text(11, 420, "Medication:");
+
+		$this->fpdf->Text(192, 420, "Patient Response:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(60, 420, @$snpn->InjecMedicMedication);
+
+        $this->fpdf->Text(268, 420, @$snpn->InjecMedicPatientResp);
+
+        
+
+        
+
+        $this->fpdf->Line(8, 423, 584, 423);
+
+        
+
+
+
+        $pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 433, "Documentation of patient inability to perform insulin injections or other IM or SQ injections:");
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+		$this->fpdf->Rect(11, 435, 8.4, 8.4);
+
+		$this->fpdf->Text(23, 443, "The patient has impaired mental cognition.");
+
+        if (@$snpn->PatInhabImpairedMental == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 436,6);
+
+        }
+
+
+
+
+
+        $this->fpdf->Rect(11, 445, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 453, "The patient has impaired functional ability due to:");
+
+        if (@$snpn->PatInhabPoorHandDex == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 446,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(225, 445, 8.4, 8.4);
+
+        $this->fpdf->Text(237, 453, "Poor hand dexterity");
+
+        if (@$snpn->PatInhabPoorHandDex == 1) {
+
+            $this->fpdf->Image( $path_ticket, 226, 446,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(320, 445, 8.4, 8.4);
+
+        $this->fpdf->Text(332, 453, "Poor vision");
+
+        if (@$snpn->PatInhabPoorVision == 1) {
+
+            $this->fpdf->Image( $path_ticket, 321, 446,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(384, 445, 8.4, 8.4);
+
+        $this->fpdf->Text(396, 453, "Arthritic hands");
+
+        if (@$snpn->PatInhabArthriticHands == 1) {
+
+            $this->fpdf->Image( $path_ticket, 385, 446,6);
+
+        }
+
+		
+
+        $this->fpdf->Rect(461, 445, 8.4, 8.4);
+
+        $this->fpdf->Text(473, 453, "Poor hand/eye coordination");
+
+        if (@$snpn->PatInhabPoorHECoord == 1) {
+
+            $this->fpdf->Image( $path_ticket, 462, 446,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 456, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 464, "Paralisys:");
+
+        if (@$snpn->ParaRight == 1 || @$snpn->ParaLeft == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 457,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(69, 456, 8.4, 8.4);
+
+        $this->fpdf->Text(81, 464, "Right side");
+
+        if (@$snpn->ParaRight == 1) {
+
+            $this->fpdf->Image( $path_ticket, 70, 457,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(128, 456, 8.4, 8.4);
+
+        $this->fpdf->Text(140, 464, "Left side");
+
+        if (@$snpn->ParaLeft == 1) {
+
+            $this->fpdf->Image( $path_ticket, 129, 457,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(184, 456, 8.4, 8.4);
+
+        $this->fpdf->Text(196, 464, "Other:");
+
+        if (@$snpn->PatInhabOther == 1) {
+
+            $this->fpdf->Image( $path_ticket, 185, 457,6);
+
+        }
+
+        
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(223, 464, @$snpn->PatInhabOtherText);
+
+
+
+
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 466, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 474, "There is no able and willing caregiver to perform insulin injections or other IM or SQ injections.");
+
+        if (@$snpn->PatInhabNoWillingCaregiver == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 467,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(461, 466, 8.4, 8.4);
+
+        $this->fpdf->Text(473, 474, "N/A");
+
+        if (@$snpn->PatInhabNoWillingCaregiverNA == 1) {
+
+            $this->fpdf->Image( $path_ticket, 462, 467,6);
+
+        }
+
+
+
+
+
+		$this->fpdf->Line(8, 478, 584, 478);
+
+
+
+
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 488, "Additional clinical findings:");
+
+		
+
+		$this->fpdf->SetXY(8, 493);
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->MultiCell(576, 10, substr(@$snpn->AddClinicalFindings, 0, 284));
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+		$this->fpdf->Line(8, 528, 584, 528);
+
+		
+
+
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 538, "Skilled Nursing Care Performed:");
+
+		
+
+		$this->fpdf->SetXY(8, 541);
+
+       	$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->MultiCell(576, 10, substr(@$snpn->SkilledNursedCarePerformed, 0, 1206));
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Line(8, 675, 584, 675);
+
+
+
+
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 685, "Patient/Caregiver Response:");
+
+		
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Rect(11, 688, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 695, "Verbalize understanding");
+
+        if (@$snpn->PatCaregRespVerbal == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 689,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(135, 688, 8.4, 8.4);
+
+        $this->fpdf->Text(148, 695, "Need more teaching");
+
+        if (@$snpn->PatCaregRespNeedTeaching == 1) {
+
+            $this->fpdf->Image( $path_ticket, 136, 689,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(245, 688, 8.4, 8.4);
+
+        $this->fpdf->Text(258, 695, "Need more following");
+
+        if (@$snpn->PatCaregRespNeedMoreFollow == 1) {
+
+            $this->fpdf->Image( $path_ticket, 246, 689,6);
+
+        }
+
+        
+
+        
+
+        
+
+        $this->fpdf->Text(23, 706, "Other:");
+
+       
+
+
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(50, 706, @$snpn->PatCaregRespNeedMoreOther);
+
+
+
+
+
+		$this->fpdf->Line(8, 710, 584, 710);
+
+		
+
+
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 719, "Progress Toward Goals on POC:");
+
+		
+
+		$this->fpdf->SetXY(8, 722);
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->MultiCell(578, 10, substr(@$snpn->ProgTowaGoal, 0, 284));
+
+        
+
+        
+
+		$this->fpdf->Line(8, 753, 584, 753);
+
+		
+
+
+
+		$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 763, "New Identified Problems/Goals:");
+
+		
+
+		$this->fpdf->SetXY(8, 764);
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->MultiCell(578, 10, substr(@$snpn->NewIdentProbGoal, 0, 180));
+
+        $pdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);  
+        $this->fpdf->Text(511, 820+11, "      Page: ".$current_page." of ".$total_page);
+        $current_page++;
+        
+
+        
+
+        ######ÊPAGE 2 #######
+
+        $cero_x = 11;
+
+        $cero_y = 2;
+
+        
+
+		$this->fpdf->AddPage();
+
+		
+
+        $this->fpdf->SetDrawColor(130,100);
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $agency->agency_name); // agency name
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 22 ),"Licensed and Certified Home Health Agency");
+  
+
+        $this->fpdf->Rect(8,28, 577, 802);
+
+      
+
+        $this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 190),( $cero_y + 36 ),"SKILLED NURSE - PROGRESS NOTE                            " .
+
+        													"VISIT DATE: " . standard_date(mysql_to_unix($visit_log->visit_date_time))); // visit date
+
+    	$this->fpdf->Line(( $cero_x - 3 ) , ($cero_y + 40.5 ), ( $cero_x + 574 ), ($cero_y + 40.5 ));
+
+    	
+
+        $cero_y = 20;
+
+        $this->fpdf->SetTextColor(0,0,0);
+        $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(( $cero_x + 0),( $cero_y + 32 ),"Patient Name: ");
+
+    
+
+	    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(( $cero_x + 60),( $cero_y + 32 ), $patient->first_name . " " . $patient->last_name); // pacient name
+
+	    
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetTextColor(0,0,0);
+
+
+
+        $this->fpdf->SetDrawColor(130,100);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 32 ),"Medicare #: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 290),( $cero_y + 32 ), $patient->medicare_id); // medicare id
+
+        
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 395 +20),( $cero_y + 32 ),"Medical Rec#: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 455 +20),( $cero_y + 32 ), $patient->medical_rec_nbr); // medicare id
+
+                
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 32 ), "  NA ");
+        $this->fpdf->Rect(( $cero_x + 380),($cero_y + 23.5), 8.4, 8.4);
+
+        
+
+        if (is_null($patient->medicare_id)){
+        	$this->fpdf->Image( $path_ticket, ( $cero_x + 381 ),($cero_y + 24.5),6);
+        }
+
+		
+
+        $this->fpdf->Text(( $cero_x + 375),( $cero_y + 42 ),"  SOC: ");
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 42 ), standard_date(mysql_to_unix($visit_log->estimated_soc_date))); // soc date
+
+        
+
+        // primary and second icd
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 42 ),"Primary Dx: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 42 ), @$episde_icd[0]->icd9_name);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 42 ),"Date: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']); 
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 42 ), (!is_null(@$episde_icd[0]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[0]->icd_date)) : ""));
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 52 ),"Second Dx: ");              
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 52 ), @$episde_icd[1]->icd9_name);
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 52 ),"Date: ");
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 52 ), (!is_null(@$episde_icd[1]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[1]->icd_date)) : ""));
+
+        
+
+
+
+        // start and end soc date
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 380),( $cero_y + 52 ),"From: ");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);                                
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_start_date)));
+
+
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 473),( $cero_y + 52 ),"To: ");
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 488),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_end_date)));
+
+        
+
+        
+
+        if ($visit_log->episode_start_date == $visit_log->estimated_soc_date)     {
+
+            $this->fpdf->Text(( $cero_x + 480),( $cero_y + 42 ),"   Certification");
+
+        } else {
+
+            $this->fpdf->Text(( $cero_x + 495),( $cero_y + 42 ),"   Recertif.");
+
+        }
+
+
+
+        $this->fpdf->Rect(( $cero_x + 473),($cero_y + 33.5), 8.4, 8.4);
+
+        $this->fpdf->Image( $path_ticket,( $cero_x + 474 ),($cero_y + 34.5),6);
+
+
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 62 ),"Physician: ");
+
+
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+
+		$this->fpdf->Text(( $cero_x + 60),($cero_y + 62 ), @$phys_user_id->complete_name);
+
+
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 62 ), "Clinician:");
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+
+        $this->fpdf->Text(( $cero_x + 288),(  $cero_y + 62 ), $visit_log->first_name . " " .  $visit_log->last_name);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 380),( $cero_y + 62 ), "Time In: ");
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(( $cero_x + 416),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in), 'USA_TIME_C'));
+
+        
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        $this->fpdf->Text(( $cero_x + 473),( $cero_y + 62 ), "Time Out: ");
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+
+		$this->fpdf->Text(( $cero_x + 518),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out), 'USA_TIME_C'));
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+        
+
+        
+
+        $cero_y =$cero_y+5;
+
+        $this->fpdf->SetLineWidth( 0.5 );
+
+        $this->fpdf->Line(8, 85, 584, 85);
+
+        
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 95, "Pain Assessment");
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Rect(128, 87, 8.4, 8.4);
+
+        $this->fpdf->Text(140, 95, "No pain");
+
+        if (@$snpn->PaNPain == 1) {
+
+            $this->fpdf->Image( $path_ticket, 129, 88,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(225, 95, "Intensity:");
+
+        
+
+        $item=280;
+
+        foreach ($tab_30 as $pain_id => $pain) {
+
+	        
+
+	        $this->fpdf->Text($item, 95, $pain);
+
+			$pdf->Rect(($item - 11), 87, 8.4, 8.4);
+
+			
+
+            if ($pain_id == @@$snpn->tab_30_intensity) {
+
+            	$pdf->Image($path_ticket, ($item - 10), 88, 6);
+
+            }
+
+			
+
+			$item=$item+25;
+
+			
+
+        }
+
+        
+
+        $this->fpdf->Text(11, 105, "Location:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(50, 105, @$snpn->PaLocation);
+
+		
+
+		
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 115, "Duration:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(50, 115, @$snpn->PaDuration);
+
+		
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 125, "Current pain medication:");
+
+		
+
+		$this->fpdf->SetXY(8, 129);
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->MultiCell(578, 10, substr(@$snpn->PaMedication, 0, 190));
+
+
+
+
+
+
+
+		$this->fpdf->Line(8, 155, 584, 155);
+
+		
+
+		$this->fpdf->Line(395, 155, 395, 247);
+
+
+
+		$this->fpdf->Image( $path_img1, 420, 158, 150);
+
+
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+		$this->fpdf->Text(11, 165, "Stage I: Non-blanchable erythema if intact skin; healing of skin ulceration");
+
+				
+
+		$this->fpdf->Line(8, 168, 395, 168);
+
+		        
+
+		$this->fpdf->Text(11, 178, "Stage II: Partial thickness skin loss involving epidermis and/or dermis. The ulcer is superficial");
+
+		$this->fpdf->Text(11, 188, "and presents as an abrasion, blister or shallow crater.");
+
+		
+
+		
+
+		$this->fpdf->Line(8, 191, 395, 191);
+
+		        
+
+		$this->fpdf->Text(11, 201, "Stage III: Full-thickness skin loss involving damage or necrosis of subcutaneous tissue,");
+
+		$this->fpdf->Text(11, 211, "which may extend down to, but not through, underlying fascia. The ulcer presents as");
+
+		$this->fpdf->Text(11, 221, "a deep crater w/ or w/o undermining adjacent tissue.");
+
+		
+
+		
+
+		$this->fpdf->Line(8, 224, 395, 224);
+
+		        
+
+		$this->fpdf->Text(11, 234, "Stage IV: Full-thickness skin loss with extensive destruction, tissue necrosis, or damage to");
+
+		$this->fpdf->Text(11, 244, "muscle, bone or supporting structures (e.g., tendon, joint capsule, etc)");
+
+		
+
+
+
+		$this->fpdf->Line(8, 247, 584, 247);
+
+		
+
+		
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 257, "WOUND SITE 1: ");
+
+        
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(85, 257, @$snpn->WS1Site1);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 267, "Length:");
+
+		$this->fpdf->Text(210, 267, "Width:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(70, 267, @$snpn->WS1Length);
+
+		$this->fpdf->Text(240, 267, @$snpn->WS1Width);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 277, "Undermining:");
+
+		$this->fpdf->Text(210, 277, "Depth:");
+
+		$this->fpdf->Text(400, 277, "Tunneling:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(70, 277, @$snpn->WS1Under);
+
+		$this->fpdf->Text(240, 277, @$snpn->WS1Depth);
+
+		$this->fpdf->Text(445, 277, @$snpn->WS1Tunnel);
+
+		
+
+		
+
+		$this->fpdf->Line(8, 280, 584, 280);
+
+		
+
+		$this->fpdf->Line(304, 280, 304, 349);
+
+
+
+		
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 289, "Drainage");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 300, "Serous");
+
+        if (@$snpn->WS1DrainSerous == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 293,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(85, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(97, 300, "Serosang");
+
+        if (@$snpn->WS1DrainSerosang == 1) {
+
+            $this->fpdf->Image( $path_ticket, 86, 293,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(160, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(172, 300, "Purulent");
+
+        if (@$snpn->WS1DrainPurulent == 1) {
+
+            $this->fpdf->Image( $path_ticket, 161, 293,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Line(8, 303, 584, 303);
+
+
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 312, "Wound Bed Appearance");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 315, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 323, "Granulation");
+
+        if (@$snpn->WS1WoBeApGranul == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 316,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(85, 315, 8.4, 8.4);
+
+        $this->fpdf->Text(97, 323, "Slough");
+
+        if (@$snpn->WS1WoBeApSlough == 1) {
+
+            $this->fpdf->Image( $path_ticket, 86, 316, 6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(160, 315, 8.4, 8.4);
+
+        $this->fpdf->Text(172, 323, "Eschar");
+
+        if (@$snpn->WS1WoBeApEschar == 1) {
+
+            $this->fpdf->Image( $path_ticket, 161, 316,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(230, 315, 8.4, 8.4);
+
+        $this->fpdf->Text(242, 323, "Fibrotic");
+
+        if (@$snpn->WS1WoBeApFibrotic == 1) {
+
+            $this->fpdf->Image( $path_ticket, 231, 316,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Line(8, 326, 584, 326);
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 335, "Surrounding Tissue");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 338, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 346, "Erythema");
+
+        if (@$snpn->WS1SuTiErythema == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 339,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(85, 338, 8.4, 8.4);
+
+        $this->fpdf->Text(97, 346, "Maceration");
+
+        if (@$snpn->WS1SuTiMaceration == 1) {
+
+            $this->fpdf->Image( $path_ticket, 86, 339, 6);
+
+        }
+
+                
+
+        $this->fpdf->Line(8, 349, 584, 349);
+
+        
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 358, "Signs/Symptoms of Infection");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 361, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 369, "Fever");
+
+        if (@$snpn->WS1SignInfectFever == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 362,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(85, 361, 8.4, 8.4);
+
+        $this->fpdf->Text(97, 369, "Redness");
+
+        if (@$snpn->WS1SignInfectRedness == 1) {
+
+            $this->fpdf->Image( $path_ticket, 86, 362, 6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(160, 361, 8.4, 8.4);
+
+        $this->fpdf->Text(172, 369, "Swelling");
+
+        if (@$snpn->WS1SignInfectSwelling == 1) {
+
+            $this->fpdf->Image( $path_ticket, 161, 362,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(230, 361, 8.4, 8.4);
+
+        $this->fpdf->Text(242, 369, "Warmth");
+
+        if (@$snpn->WS1SignInfectWarmth == 1) {
+
+            $this->fpdf->Image( $path_ticket, 231, 362,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(300, 361, 8.4, 8.4);
+
+        $this->fpdf->Text(312, 369, "Other");
+
+        if (@$snpn->WS1SignInfectOther == 1) {
+
+            $this->fpdf->Image( $path_ticket, 301, 362,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(370, 361, 8.4, 8.4);
+
+        $this->fpdf->Text(382, 369, "N/A");
+
+        if (@$snpn->WS1SignInfectNA == 1) {
+
+            $this->fpdf->Image( $path_ticket, 371, 362,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Line(8, 372, 584, 372);
+
+
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(312, 289, "Amount");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(312, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(324, 300, "Small");
+
+        if (@$snpn->WS1AmtSmall == 1) {
+
+            $this->fpdf->Image( $path_ticket, 313, 293,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(385, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(397, 300, "Moderate");
+
+        if (@$snpn->WS1AmtMod == 1) {
+
+            $this->fpdf->Image( $path_ticket, 386, 293,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(460, 292, 8.4, 8.4);
+
+        $this->fpdf->Text(472, 300, "Large");
+
+        if (@$snpn->WS1AmtLarge == 1) {
+
+            $this->fpdf->Image( $path_ticket, 461, 293,6);
+
+        }
+
+
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(312, 312, "Odor");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(312, 315, 8.4, 8.4);
+
+        $this->fpdf->Text(324, 323, "None");
+
+        if (@$snpn->WS1OdorNone == 1) {
+
+            $this->fpdf->Image( $path_ticket, 313, 316,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(385, 315, 8.4, 8.4);
+
+        $this->fpdf->Text(397, 323, "Mild");
+
+        if (@$snpn->WS1OdorMild == 1) {
+
+            $this->fpdf->Image( $path_ticket, 386, 316,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(460, 315, 8.4, 8.4);
+
+        $this->fpdf->Text(472, 323, "Foul");
+
+        if (@$snpn->WS1OdorFoul == 1) {
+
+            $this->fpdf->Image( $path_ticket, 461, 316,6);
+
+        }
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 381, "Treatment");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Text(11, 391, "1) Cleanse with");
+
+        $this->fpdf->Text(11, 401, "2) Pat Dry with");
+
+        $this->fpdf->Text(11, 411, "3) Apply");
+
+        $this->fpdf->Text(11, 421, "4) Cover with");
+
+        $this->fpdf->Text(11, 431, "5) Secure with");
+
+        $this->fpdf->Text(11, 441, "Comments");
+
+
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(80, 391, @$snpn->WS1TreatCleanse);
+
+		$this->fpdf->Text(80, 401, @$snpn->WS1TreatPatDry);
+
+		$this->fpdf->Text(80, 411, @$snpn->WS1TreatApply);
+
+		$this->fpdf->Text(80, 421, @$snpn->WS1TreatCover);
+
+		$this->fpdf->Text(80, 431, @$snpn->WS1TreatSecure);
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		
+
+		$this->fpdf->Line(8, 392, 584, 392);
+
+		$this->fpdf->Line(8, 402, 584, 402);
+
+		$this->fpdf->Line(8, 412, 584, 412);
+
+		$this->fpdf->Line(8, 422, 584, 422);
+
+		$this->fpdf->Line(8, 432, 584, 432);
+
+		$this->fpdf->Line(77, 442, 580, 442);
+
+				
+
+		$this->fpdf->SetXY(77, 433);
+
+		$this->fpdf->MultiCell(498, 10, substr(@$snpn->WS1TreatComments, 0, 162));
+
+		
+
+		
+
+		$this->fpdf->Line(8, 456, 584, 456);
+
+		
+
+		
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 466, "WOUND SITE 2:");
+
+        
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(85, 466, @$snpn->WS2Site2);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 476, "Length:");
+
+		$this->fpdf->Text(210, 476, "Width:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(70, 476, @$snpn->WS2Length);
+
+		$this->fpdf->Text(240, 476, @$snpn->WS2Width);
+
+		
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 486, "Undermining:");
+
+		$this->fpdf->Text(210, 486, "Depth:");
+
+		$this->fpdf->Text(400, 486, "Tunneling:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(70, 486, @$snpn->WS2Under);
+
+		$this->fpdf->Text(240, 486, @$snpn->WS2Depth);
+
+		$this->fpdf->Text(445, 486, @$snpn->WS2Tunnel);
+
+
+
+
+
+		$this->fpdf->Line(8, 489, 584, 489);
+
+		
+
+		$this->fpdf->Line(304, 489, 304, 558);
+
+
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 498, "Drainage");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 501, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 509, "Serous");
+
+        if (@$snpn->WS2DrainSerous == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 502,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(85, 501, 8.4, 8.4);
+
+        $this->fpdf->Text(97, 509, "Serosang");
+
+        if (@$snpn->WS2DrainSerosang == 1) {
+
+            $this->fpdf->Image( $path_ticket, 86, 502,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(160, 501, 8.4, 8.4);
+
+        $this->fpdf->Text(172, 509, "Purulent");
+
+        if (@$snpn->WS2DrainPurulent == 1) {
+
+            $this->fpdf->Image( $path_ticket, 161, 502,6);
+
+        }
+
+
+
+
+
+		$this->fpdf->Line(8, 512, 584, 512);
+
+
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 521, "Wound Bed Appearance");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 524, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 532, "Granulation");
+
+        if (@$snpn->WS2WoBeApGranul == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 525,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(85, 524, 8.4, 8.4);
+
+        $this->fpdf->Text(97, 532, "Slough");
+
+        if (@$snpn->WS2WoBeApSlough == 1) {
+
+            $this->fpdf->Image( $path_ticket, 86, 525, 6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(160, 524, 8.4, 8.4);
+
+        $this->fpdf->Text(172, 532, "Eschar");
+
+        if (@$snpn->WS2WoBeApEschar == 1) {
+
+            $this->fpdf->Image( $path_ticket, 161, 525,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(230, 524, 8.4, 8.4);
+
+        $this->fpdf->Text(242, 532, "Fibrotic");
+
+        if (@$snpn->WS2WoBeApFibrotic == 1) {
+
+            $this->fpdf->Image( $path_ticket, 231, 525,6);
+
+        }
+
+
+
+
+
+        $this->fpdf->Line(8, 535, 584, 535);
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+        $this->fpdf->Text(11, 544, "Surrounding Tissue");
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+        $this->fpdf->Rect(11, 547, 8.4, 8.4);
+        $this->fpdf->Text(23, 555, "Erythema");
+        if (@$snpn->WS2SuTiErythema == 1) {
+            $this->fpdf->Image( $path_ticket, 12, 548,6);
+        }
+        $this->fpdf->Rect(85, 547, 8.4, 8.4);
+        $this->fpdf->Text(97, 555, "Maceration");
+        if (@$snpn->WS2SuTiMaceration == 1) {
+            $this->fpdf->Image( $path_ticket, 86, 548, 6);
+        }
+        $this->fpdf->Line(8, 558, 584, 558);
+
+      
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+        $this->fpdf->Text(11, 567, "Signs/Symptoms of Infection");
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(11, 570, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 578, "Fever");
+
+        if (@$snpn->WS2SignInfectFever == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 571,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(85, 570, 8.4, 8.4);
+
+        $this->fpdf->Text(97, 578, "Redness");
+
+        if (@$snpn->WS2SignInfectRedness == 1) {
+
+            $this->fpdf->Image( $path_ticket, 86, 571, 6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(160, 570, 8.4, 8.4);
+
+        $this->fpdf->Text(172, 578, "Swelling");
+
+        if (@$snpn->WS2SignInfectSwelling == 1) {
+
+            $this->fpdf->Image( $path_ticket, 161, 571,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(230, 570, 8.4, 8.4);
+
+        $this->fpdf->Text(242, 578, "Warmth");
+
+        if (@$snpn->WS2SignInfectWarmth == 1) {
+
+            $this->fpdf->Image( $path_ticket, 231, 571,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(300, 570, 8.4, 8.4);
+
+        $this->fpdf->Text(312, 578, "Other");
+
+        if (@$snpn->WS2SignInfectOther == 1) {
+
+            $this->fpdf->Image( $path_ticket, 301, 571,6);
+
+        }
+
+
+
+        $this->fpdf->Rect(370, 570, 8.4, 8.4);
+
+        $this->fpdf->Text(382, 578, "N/A");
+
+        if (@$snpn->WS2SignInfectNA == 1) {
+
+            $this->fpdf->Image( $path_ticket, 371, 571,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Line(8, 581, 584, 581);
+
+
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(312, 498, "Amount");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(312, 501, 8.4, 8.4);
+
+        $this->fpdf->Text(324, 509, "Small");
+
+        if (@$snpn->WS2AmtSmall == 1) {
+
+            $this->fpdf->Image( $path_ticket, 313, 502,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(385, 501, 8.4, 8.4);
+
+        $this->fpdf->Text(397, 509, "Moderate");
+
+        if (@$snpn->WS2AmtMod == 1) {
+
+            $this->fpdf->Image( $path_ticket, 386, 502,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(460, 501, 8.4, 8.4);
+
+        $this->fpdf->Text(472, 509, "Large");
+
+        if (@$snpn->WS2AmtLarge == 1) {
+
+            $this->fpdf->Image( $path_ticket, 461, 502,6);
+
+        }
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(312, 521, "Odor");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(312, 524, 8.4, 8.4);
+
+        $this->fpdf->Text(324, 532, "None");
+
+        if (@$snpn->WS2OdorNone == 1) {
+
+            $this->fpdf->Image( $path_ticket, 313, 525,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(385, 524, 8.4, 8.4);
+
+        $this->fpdf->Text(397, 532, "Mild");
+
+        if (@$snpn->WS2OdorMild == 1) {
+
+            $this->fpdf->Image( $path_ticket, 386, 525,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(460, 524, 8.4, 8.4);
+
+        $this->fpdf->Text(472, 532, "Foul");
+
+        if (@$snpn->WS2OdorFoul == 1) {
+
+            $this->fpdf->Image( $path_ticket, 461, 525,6);
+
+        }
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 590, "Treatment");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Text(11, 600, "1) Cleanse with");
+
+        $this->fpdf->Text(11, 610, "2) Pat Dry with");
+
+        $this->fpdf->Text(11, 620, "3) Apply");
+
+        $this->fpdf->Text(11, 630, "4) Cover with");
+
+        $this->fpdf->Text(11, 640, "5) Secure with");
+
+        $this->fpdf->Text(11, 650, "Comments");
+
+
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(80, 600, @$snpn->WS2TreatCleanse);
+
+		$this->fpdf->Text(80, 610, @$snpn->WS2TreatPatDry);
+
+		$this->fpdf->Text(80, 620, @$snpn->WS2TreatApply);
+
+		$this->fpdf->Text(80, 630, @$snpn->WS2TreatCover);
+
+		$this->fpdf->Text(80, 640, @$snpn->WS2TreatSecure);
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->SetXY(77, 642);
+
+		$this->fpdf->MultiCell(498, 10, substr(@$snpn->WS2TreatComments, 0, 162));
+
+		
+
+		$this->fpdf->Line(8, 601, 584, 601);
+
+		$this->fpdf->Line(8, 611, 584, 611);
+
+		$this->fpdf->Line(8, 621, 584, 621);
+
+		$this->fpdf->Line(8, 632, 584, 632);
+
+		$this->fpdf->Line(8, 642, 584, 642);
+
+		$this->fpdf->Line(77, 652, 580, 652);
+
+		$this->fpdf->Line(8, 665, 584, 665);
+
+
+
+
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 675, "Universal Precautions followed:");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(149, 667, 8.4, 8.4);
+
+        $this->fpdf->Text(160, 675, "Handwashing");
+
+        if (@$snpn->UPFollowHandwash == 1) {
+
+            $this->fpdf->Image( $path_ticket, 150, 668,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(219, 667, 8.4, 8.4);
+
+        $this->fpdf->Text(231, 675, "Gloves Worn");
+
+        if (@$snpn->UPFollowGloveWorn == 1) {
+
+            $this->fpdf->Image( $path_ticket, 220, 668,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(287, 667, 8.4, 8.4);
+
+        $this->fpdf->Text(299, 675, "Sharps Disposal");
+
+        if (@$snpn->UPFollowGloveWorn == 1) {
+
+            $this->fpdf->Image( $path_ticket, 288, 668,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(370, 667, 8.4, 8.4);
+
+		        $this->fpdf->Text(381, 675, "Other:");
+
+        if (@$snpn->UPFollowOther != '') {
+
+            $this->fpdf->Image( $path_ticket, 371, 668,6);
+
+        }       
+
+	
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(405, 675, @$snpn->UPFollowOther);
+
+
+
+
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+		$this->fpdf->Text(11, 685, "Homebound Status:");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(100, 685, @$snpn->HoBoStatusText);
+
+
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Rect(11, 687, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 695, "Taxing effort to leave home");
+
+        if (@$snpn->HoBoTaxing == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 688,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(140, 687, 8.4, 8.4);
+
+        $this->fpdf->Text(152, 695, "Need assistance poor endurance");
+
+        if (@$snpn->HoBoNeedAssist == 1) {
+
+            $this->fpdf->Image( $path_ticket, 141, 688,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(290, 687, 8.4, 8.4);
+
+        $this->fpdf->Text(302, 695, "Open/draining wound");
+
+        if (@$snpn->HoBoNeedAssist == 1) {
+
+            $this->fpdf->Image( $path_ticket, 291, 688,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(395, 687, 8.4, 8.4);
+
+        $this->fpdf->Text(407, 695, "Other:");
+
+        if (@$snpn->HoBoOther != '') {
+
+            $this->fpdf->Image( $path_ticket, 396, 688,6);
+
+        }
+
+
+
+
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(435, 695, @$snpn->HoBoOther);
+
+
+
+
+
+		$this->fpdf->Line(8, 698, 584, 698);
+
+		
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 708, "Coordination of Care:");
+
+        
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Rect(105, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(117, 708, "PT");
+
+        if (@$snpn->CoorCarePT == 1) {
+
+            $this->fpdf->Image( $path_ticket, 106, 701,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(135, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(147, 708, "CG");
+
+        if (@$snpn->CoorCareCG == 1) {
+
+            $this->fpdf->Image( $path_ticket, 136, 701,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(165, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(177, 708, "RN");
+
+        if (@$snpn->CoorCareRN == 1) {
+
+            $this->fpdf->Image( $path_ticket, 166, 701,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(195, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(207, 708, "LVN");
+
+        if (@$snpn->CoorCareLVN == 1) {
+
+            $this->fpdf->Image( $path_ticket, 196, 701,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(230, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(242, 708, "HHA");
+
+        if (@$snpn->CoorCareHHA == 1) {
+
+            $this->fpdf->Image( $path_ticket, 231, 701,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(265, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(277, 708, "OT");
+
+        if (@$snpn->CoorCareOT == 1) {
+
+            $this->fpdf->Image( $path_ticket, 266, 701,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(295, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(307, 708, "ST");
+
+        if (@$snpn->CoorCareST == 1) {
+
+            $this->fpdf->Image( $path_ticket, 296, 701,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(325, 700, 8.4, 8.4);
+
+        $this->fpdf->Text(337, 708, "MSW");
+
+        if (@$snpn->CoorCareMSW == 1) {
+
+            $this->fpdf->Image( $path_ticket, 326, 701,6);
+
+        }
+
+        
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(363, 708, "Discussion:");
+
+        
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(405, 708, @$snpn->CoorCareDiscuss);
+
+        
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 718, "Physician contact:");
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+		
+
+        $this->fpdf->Rect(105, 710, 8.4, 8.4);
+
+        $this->fpdf->Text(117, 718, "N/A");
+
+        if (@$snpn->PhyContactNA == 1) {
+
+            $this->fpdf->Image( $path_ticket, 106, 711,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(165, 710, 8.4, 8.4);
+
+        $this->fpdf->Text(177, 718, "Yes");
+
+        if (@$snpn->PhyContactYes == 1) {
+
+            $this->fpdf->Image( $path_ticket, 166, 711,6);
+
+        }
+
+        
+
+        $this->fpdf->Text(205, 718, "Discussion:");
+
+        
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(255, 718, @$snpn->PhyContactDiscuss);
+
+        
+
+        
+
+        $this->fpdf->Line(8, 721, 584, 721);
+
+        
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 731, "Discharge Planning");
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        
+
+        $this->fpdf->Rect(11, 733, 8.4, 8.4);
+
+        $this->fpdf->Text(23, 741, "Discharge when goals are met and skilled intervention is no longer needed");
+
+        if (@$snpn->DisWhenGoals == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 734,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(350, 733, 8.4, 8.4);
+
+        $this->fpdf->Text(362, 741, "5-day discharge notice given to patient/physician");
+
+        if (@$snpn->FiveDayNotice == 1) {
+
+            $this->fpdf->Image( $path_ticket, 351, 734,6);
+
+        }
+
+        
+
+        $this->fpdf->Line(8, 744, 584, 744);
+
+        
+
+        $this->fpdf->Line(332, 744, 332, 810);
+
+        
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(11, 754, "LVN/HHA Supervision");
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Rect(11, 756, 8.4, 8.4);
+
+        $this->fpdf->Text(21, 764, "Patient/Caregiver satisfied with care");
+
+        if (@$snpn->LVNSupPatSatisfied == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 757,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(182, 756, 8.4, 8.4);
+
+        $this->fpdf->Text(192, 764, "Change in ADL needs assessment");
+
+        if (@$snpn->LVNSupChangeADL == 1) {
+
+            $this->fpdf->Image( $path_ticket, 183, 757,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 766, 8.4, 8.4);
+
+        $this->fpdf->Text(21, 774, "Care provided according to assignment");
+
+        if (@$snpn->LVNSupCareProvAccor == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 767,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(182, 766, 8.4, 8.4);
+
+        $this->fpdf->Text(192, 774, "Employee courteous, respectful");
+
+        if (@$snpn->LVNSupEmplCorteous == 1) {
+
+            $this->fpdf->Image( $path_ticket, 183, 767,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 776, 8.4, 8.4);
+
+        $this->fpdf->Text(21, 784, "Continue frequency at ____________");
+
+        if (@$snpn->LVNSupContinueFreqAt == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 777,6);
+
+        }
+
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+        $this->fpdf->Text(112, 784, @$snpn->LVNSupContinueFreqAtText);
+
+        
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Rect(182, 776, 8.4, 8.4);
+
+        $this->fpdf->Text(192, 784, "Supervisory Visit Onsite");
+
+        if (@$snpn->LVNSupVisitOnsite == 1) {
+
+            $this->fpdf->Image( $path_ticket, 183, 777,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Text(335, 754, "Documentation of patient inability to perform wound care");
+
+
+
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+        $this->fpdf->Rect(335, 756, 8.4, 8.4);
+
+        $this->fpdf->Text(345, 764, "Patient's impaired functional ability to do wound care due to");
+
+        if (@$snpn->DocPatInab == 1) {
+
+            $this->fpdf->Image( $path_ticket, 336, 757,6);
+
+        }
+
+        
+
+
+
+        $this->fpdf->Rect(335, 766, 8.4, 8.4);
+
+        $this->fpdf->Text(345, 774, "poor vision");
+
+        if (@$snpn->DocPatInabPoorVsion == 1) {
+
+            $this->fpdf->Image( $path_ticket, 336, 767,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(395, 766, 8.4, 8.4);
+
+        $this->fpdf->Text(405, 774, "hand dexterity");
+
+        if (@$snpn->DocPatInabPoorHandDex == 1) {
+
+            $this->fpdf->Image( $path_ticket, 396, 767,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(467, 766, 8.4, 8.4);
+
+        $this->fpdf->Text(477, 774, "position of wound");
+
+        if (@$snpn->DocPatInabPosWound == 1) {
+
+            $this->fpdf->Image( $path_ticket, 468, 767,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(335, 776, 8.4, 8.4);
+
+        $this->fpdf->Text(345, 784, "The patient has impaired mental cognition");
+
+        if (@$snpn->DocPatInabImpMentalCogn == 1) {
+
+            $this->fpdf->Image( $path_ticket, 336, 777,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Rect(335, 786, 8.4, 8.4);
+
+        $this->fpdf->Text(345, 794, "There's no able and willing caregiver to perform wound care");
+
+        if (@$snpn->DocPatInabNoCaregiverPerf == 1) {
+
+            $this->fpdf->Image( $path_ticket, 336, 787,6);
+
+        }
+
+        
+
+        
+
+        $this->fpdf->Text(11, 797, "Employee Name:");
+
+        $this->fpdf->Text(85, 797, @$emp_name->complete_name);
+
+        
+
+        
+
+        $this->fpdf->Rect(11, 799, 8.4, 8.4);
+
+        $this->fpdf->Text(21, 807, "LVN");
+
+        if (@$snpn->LVNLVN == 1) {
+
+            $this->fpdf->Image( $path_ticket, 12, 800,6);
+
+        }
+
+        
+
+        $this->fpdf->Rect(45, 799, 8.4, 8.4);
+
+        $this->fpdf->Text(55, 807, "HHA");
+
+        if (@$snpn->LVNHHA == 1) {
+
+            $this->fpdf->Image( $path_ticket, 46, 800,6);
+
+        }        
+
+
+
+
+
+		$this->fpdf->Text(85, 807, "Instructed in:");
+
+		
+
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+
+		$this->fpdf->Text(140, 807, @$snpn->LVNInstruc);
+
+		
+
+		
+
+		$this->fpdf->Line(8, 810, 584, 810);
+
+
+
+
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+
+
+
+
+
+		$this->fpdf->Text(50, 817, "Nurse Signature: ________________________________________ ");
+		$this->fpdf->Text(370, 817, "Date:__________________");
+
+
+		if ($visit_log->sent_to_approve_date)
+		{
+			$this->fpdf->Text( 50 , 827, "Electronically signed by:__________________________________________________ Date_____________________________");
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			//$this->fpdf->Text(150,826, $visit_log -> first_name." ".$visit_log -> last_name);
+			$this->fpdf->Text(150,826, $assigned_to->first_name . " " . $assigned_to->last_name);
+			$this->fpdf->Text(423,826, standard_date(mysql_to_unix($visit_log->visit_date_time)));
+			//$this->fpdf->Text(423,826, standard_date(mysql_to_unix($visit_log->approve_date)));
+		}
+
+    $pdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);  
+    $this->fpdf->Text(511, 820+20, "      Page: ".$current_page." of ".$total_page);
+    $current_page++;
+
+        if (strlen(@$snwa->WS3Site3)>0)
+		{
+			$cero_x = 11;
+	
+			$cero_y = 2;
+	 
+			####### PAGE 3 ###########
+			$this->fpdf->AddPage();
+	
+			
+	
+			$this->fpdf->SetDrawColor(130,100);
+		
+			//$this->fpdf->Text(( $cero_x + 240),( $cero_y + 22 ),"WOUND ADDENDUM"); 		
+			
+			
+			$this->fpdf->Rect(8,28, 577, 763);
+			  
+			$cero_y = 8;
+	
+			$this->fpdf->SetTextColor(0,0,0);
+	
+			$this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->Text(( $cero_x + 0),( $cero_y + 32 ),"Patient Name: ");
+	
+			
+	
+			$this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->Text(( $cero_x + 60),( $cero_y + 32 ), $patient->first_name . " " . $patient->last_name); // pacient name
+	
+			
+	
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->SetTextColor(0,0,0);
+	
+	
+	
+			$this->fpdf->SetDrawColor(130,100);
+	
+			$this->fpdf->Text(( $cero_x + 230),( $cero_y + 32 ),"Medical Rec#: ");
+	
+			
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->Text(( $cero_x + 290),( $cero_y + 32 ),  $patient->medical_rec_nbr); // medicare id
+	
+			
+					
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+	
+					$this->fpdf->Text(( $cero_x + 395 +20),( $cero_y + 32 ), "VISIT DATE: " . standard_date(mysql_to_unix($visit_log->visited_date)));
+	
+			$this->fpdf->Line(8, 45, 584, 45);
+	
+			
+	
+	
+	
+	
+			####################################
+			$a=-202;
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 257+$a, "WOUND SITE 3: ");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(85, 257+$a, @$snwa->WS3Site3);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 267+$a, "Length:");
+			$this->fpdf->Text(210, 267+$a, "Width:");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 267+$a, @$snwa->WS3Length);
+			$this->fpdf->Text(240, 267+$a, @$snwa->WS3Width);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 277+$a, "Undermining:");
+			$this->fpdf->Text(210, 277+$a, "Depth:");
+			$this->fpdf->Text(400, 277+$a, "Tunneling:");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 277+$a, @$snwa->WS3Under);
+			$this->fpdf->Text(240, 277+$a, @$snwa->WS3Depth);
+			$this->fpdf->Text(445, 277+$a, @$snwa->WS3Tunnel);
+			
+			
+			$this->fpdf->Line(8, 280+$a, 584, 280+$a);
+	//		
+			$this->fpdf->Line(304, 280+$a, 304, 326+$a);
+	//
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 289+$a, "Drainage");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 300+$a, "Serous");
+			if (@$snwa->WS3DrainSerous == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 293+$a,6);
+			}
+			$this->fpdf->Rect(85, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 300+$a, "Serosang");
+			if (@$snwa->WS3DrainSerosang == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 293+$a,6);
+			}
+		
+			
+			$this->fpdf->Rect(160, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 300+$a, "Purulent");
+			if (@$snwa->WS3DrainPurulent == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 293+$a,6);
+			}
+			
+		   /////////////////////////////////////  
+	  
+		   
+			$this->fpdf->Line(8, 303+$a, 584, 303+$a);
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 312+$a, "Wound Bed Appearance");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 323+$a, "Granulation");
+			if (@$snwa->WS3WoBeApGranul == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 316+$a,6);
+			}
+	
+			$this->fpdf->Rect(85, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 323+$a, "Slough");
+			if (@$snwa->WS3WoBeApSlough == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 316+$a, 6);
+			}
+			
+			$this->fpdf->Rect(160, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 323+$a, "Eschar");
+			if (@$snwa->WS3WoBeApEschar == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(230, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(242, 323+$a, "Fibrotic");
+			if (@$snwa->WS3WoBeApFibrotic == 1) {
+				$this->fpdf->Image( $path_ticket, 231, 316+$a,6);
+			}
+			 
+	 //		
+			$this->fpdf->Line(145, 326+$a, 145, 349+$a);
+	//	        
+			$this->fpdf->Line(8, 326+$a, 584, 326+$a);
+		
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 335+$a, "Surrounding Tissue");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Rect(11, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 346+$a, "Erythema");
+			if (@$snwa->WS3SuTiErythema == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 339+$a,6);
+			}
+			$this->fpdf->Rect(85, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 346+$a, "Maceration");
+			if (@$snwa->WS3SuTiMaceration == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 339+$a, 6);
+			}
+				  
+			$this->fpdf->Line(8, 349+$a, 584, 349+$a);
+			
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(148, 335+$a, "Signs/Symptoms of Infection");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(148, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(160, 346+$a, "Fever");
+			if (@$snwa->WS3SignInfectFever == 1) {
+				$this->fpdf->Image( $path_ticket, 149, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(200, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(212, 346+$a, "Redness");
+			if (@$snwa->WS3SignInfectRedness == 1) {
+				$this->fpdf->Image( $path_ticket, 201, 339+$a, 6);
+			}
+			
+			$this->fpdf->Rect(270, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(282, 346+$a, "Swelling");
+			if (@$snwa->WS3SignInfectSwelling == 1) {
+				$this->fpdf->Image( $path_ticket, 271, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(340, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(352, 346+$a, "Warmth");
+			if (@$snwa->WS3SignInfectWarmth == 1) {
+				$this->fpdf->Image( $path_ticket, 341, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(410, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(422, 346+$a, "Other");
+			if (@$snwa->WS3SignInfectOther == 1) {
+				$this->fpdf->Image( $path_ticket, 411, 339+$a,6);
+			}
+	
+			$this->fpdf->Rect(480, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(492, 346+$a, "N/A");
+			if (@$snwa->WS3SignInfectNA == 1) {
+				$this->fpdf->Image( $path_ticket, 481, 339+$a,6);
+			}
+			
+			 
+			////$this->fpdf->Line(8, 372+$a, 584, 372+$a);
+	  
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 289+$a, "Amount");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 300+$a, "Small");
+			if (@$snwa->WS3AmtSmall == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 300+$a, "Moderate");
+			if (@$snwa->WS3AmtMod == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 300+$a, "Large");
+			if (@$snwa->WS3AmtLarge == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 293+$a,6);
+			}
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 312+$a, "Odor");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 323+$a, "None");
+			if (@$snwa->WS3OdorNone == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 323+$a, "Mild");
+			if (@$snwa->WS3OdorMild == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 323+$a, "Foul");
+			if (@$snwa->WS3OdorFoul == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 316+$a,6);
+			}
+			$a=$a-22; 
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 381+$a, "Treatment");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Text(11, 391+$a, "1) Cleanse with");
+			$this->fpdf->Text(11, 401+$a, "2) Pat Dry with");
+			$this->fpdf->Text(11, 411+$a, "3) Apply");
+			$this->fpdf->Text(11, 421+$a, "4) Cover with");
+			$this->fpdf->Text(11, 431+$a, "5) Secure with");
+			$this->fpdf->Text(11, 441+$a, "Comments");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(80, 391+$a, @$snwa->WS3TreatCleanse);
+			$this->fpdf->Text(80, 401+$a, @$snwa->WS3TreatPatDry);
+			$this->fpdf->Text(80, 411+$a, @$snwa->WS3TreatApply);
+			$this->fpdf->Text(80, 421+$a, @$snwa->WS3TreatCover);
+			$this->fpdf->Text(80, 431+$a, @$snwa->WS3TreatSecure);
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+	
+			$this->fpdf->Line(8, 392+$a, 584, 392+$a);
+			$this->fpdf->Line(8, 402+$a, 584, 402+$a);
+			$this->fpdf->Line(8, 412+$a, 584, 412+$a);
+			$this->fpdf->Line(8, 422+$a, 584, 422+$a);
+			$this->fpdf->Line(8, 432+$a, 584, 432+$a);
+			$this->fpdf->Line(77, 442+$a, 580, 442+$a);
+					
+			$this->fpdf->SetXY(77, 433+$a);
+			$this->fpdf->MultiCell(498, 10, substr(@$snwa->WS3TreatComments, 0, 162));
+			$this->fpdf->Line(8, 456+$a, 584, 456+$a);
+			####################################
+	
+	
+	
+			####################################
+			$a=-16;
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 257+$a, "WOUND SITE 4: ");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(85, 257+$a, @$snwa->WS4Site4);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 267+$a, "Length:");
+			$this->fpdf->Text(210, 267+$a, "Width:");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 267+$a, @$snwa->WS4Length);
+			$this->fpdf->Text(240, 267+$a, @$snwa->WS4Width);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 277+$a, "Undermining:");
+			$this->fpdf->Text(210, 277+$a, "Depth:");
+			$this->fpdf->Text(400, 277+$a, "Tunneling:");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 277+$a, @$snwa->WS4Under);
+			$this->fpdf->Text(240, 277+$a, @$snwa->WS4Depth);
+			$this->fpdf->Text(445, 277+$a, @$snwa->WS4Tunnel);
+			
+			
+			$this->fpdf->Line(8, 280+$a, 584, 280+$a);
+	//		
+			$this->fpdf->Line(304, 280+$a, 304, 326+$a);
+	//
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 289+$a, "Drainage");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 300+$a, "Serous");
+			if (@$snwa->WS4DrainSerous == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 293+$a,6);
+			}
+			$this->fpdf->Rect(85, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 300+$a, "Serosang");
+			if (@$snwa->WS4DrainSerosang == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 293+$a,6);
+			}
+		
+			
+			$this->fpdf->Rect(160, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 300+$a, "Purulent");
+			if (@$snwa->WS4DrainPurulent == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 293+$a,6);
+			}
+			
+		   /////////////////////////////////////  
+	  
+		   
+			$this->fpdf->Line(8, 303+$a, 584, 303+$a);
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 312+$a, "Wound Bed Appearance");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 323+$a, "Granulation");
+			if (@$snwa->WS4WoBeApGranul == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 316+$a,6);
+			}
+	
+			$this->fpdf->Rect(85, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 323+$a, "Slough");
+			if (@$snwa->WS4WoBeApSlough == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 316+$a, 6);
+			}
+			
+			$this->fpdf->Rect(160, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 323+$a, "Eschar");
+			if (@$snwa->WS4WoBeApEschar == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(230, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(242, 323+$a, "Fibrotic");
+			if (@$snwa->WS4WoBeApFibrotic == 1) {
+				$this->fpdf->Image( $path_ticket, 231, 316+$a,6);
+			}
+			 
+	 //		
+			$this->fpdf->Line(145, 326+$a, 145, 349+$a);
+	//	        
+			$this->fpdf->Line(8, 326+$a, 584, 326+$a);
+		
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 335+$a, "Surrounding Tissue");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Rect(11, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 346+$a, "Erythema");
+			if (@$snwa->WS4SuTiErythema == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 339+$a,6);
+			}
+			$this->fpdf->Rect(85, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 346+$a, "Maceration");
+			if (@$snwa->WS4SuTiMaceration == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 339+$a, 6);
+			}
+				  
+			$this->fpdf->Line(8, 349+$a, 584, 349+$a);
+			
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(148, 335+$a, "Signs/Symptoms of Infection");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(148, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(160, 346+$a, "Fever");
+			if (@$snwa->WS4SignInfectFever == 1) {
+				$this->fpdf->Image( $path_ticket, 149, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(200, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(212, 346+$a, "Redness");
+			if (@$snwa->WS4SignInfectRedness == 1) {
+				$this->fpdf->Image( $path_ticket, 201, 339+$a, 6);
+			}
+			
+			$this->fpdf->Rect(270, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(282, 346+$a, "Swelling");
+			if (@$snwa->WS4SignInfectSwelling == 1) {
+				$this->fpdf->Image( $path_ticket, 271, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(340, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(352, 346+$a, "Warmth");
+			if (@$snwa->WS4SignInfectWarmth == 1) {
+				$this->fpdf->Image( $path_ticket, 341, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(410, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(422, 346+$a, "Other");
+			if (@$snwa->WS4SignInfectOther == 1) {
+				$this->fpdf->Image( $path_ticket, 411, 339+$a,6);
+			}
+	
+			$this->fpdf->Rect(480, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(492, 346+$a, "N/A");
+			if (@$snwa->WS4SignInfectNA == 1) {
+				$this->fpdf->Image( $path_ticket, 481, 339+$a,6);
+			}
+			
+			 
+			////$this->fpdf->Line(8, 372+$a, 584, 372+$a);
+	  
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 289+$a, "Amount");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 300+$a, "Small");
+			if (@$snwa->WS4AmtSmall == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 300+$a, "Moderate");
+			if (@$snwa->WS4AmtMod == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 300+$a, "Large");
+			if (@$snwa->WS4AmtLarge == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 293+$a,6);
+			}
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 312+$a, "Odor");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 323+$a, "None");
+			if (@$snwa->WS4OdorNone == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 323+$a, "Mild");
+			if (@$snwa->WS4OdorMild == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 323+$a, "Foul");
+			if (@$snwa->WS4OdorFoul == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 316+$a,6);
+			}
+			$a=$a-22; 
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 381+$a, "Treatment");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Text(11, 391+$a, "1) Cleanse with");
+			$this->fpdf->Text(11, 401+$a, "2) Pat Dry with");
+			$this->fpdf->Text(11, 411+$a, "3) Apply");
+			$this->fpdf->Text(11, 421+$a, "4) Cover with");
+			$this->fpdf->Text(11, 431+$a, "5) Secure with");
+			$this->fpdf->Text(11, 441+$a, "Comments");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(80, 391+$a, @$snwa->WS4TreatCleanse);
+			$this->fpdf->Text(80, 401+$a, @$snwa->WS4TreatPatDry);
+			$this->fpdf->Text(80, 411+$a, @$snwa->WS4TreatApply);
+			$this->fpdf->Text(80, 421+$a, @$snwa->WS4TreatCover);
+			$this->fpdf->Text(80, 431+$a, @$snwa->WS4TreatSecure);
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+	
+			$this->fpdf->Line(8, 392+$a, 584, 392+$a);
+			$this->fpdf->Line(8, 402+$a, 584, 402+$a);
+			$this->fpdf->Line(8, 412+$a, 584, 412+$a);
+			$this->fpdf->Line(8, 422+$a, 584, 422+$a);
+			$this->fpdf->Line(8, 432+$a, 584, 432+$a);
+			$this->fpdf->Line(77, 442+$a, 580, 442+$a);
+					
+			$this->fpdf->SetXY(77, 433+$a);
+			$this->fpdf->MultiCell(498, 10, substr(@$snwa->WS4TreatComments, 0, 162));
+			$this->fpdf->Line(8, 456+$a, 584, 456+$a);
+			####################################
+	
+	
+			####################################
+			$a=170;
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 257+$a, "WOUND SITE 5: ");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(85, 257+$a, @$snwa->WS5Site5);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 267+$a, "Length:");
+			$this->fpdf->Text(210, 267+$a, "Width:");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 267+$a, @$snwa->WS5Length);
+			$this->fpdf->Text(240, 267+$a, @$snwa->WS5Width);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 277+$a, "Undermining:");
+			$this->fpdf->Text(210, 277+$a, "Depth:");
+			$this->fpdf->Text(400, 277+$a, "Tunneling:");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 277+$a, @$snwa->WS5Under);
+			$this->fpdf->Text(240, 277+$a, @$snwa->WS5Depth);
+			$this->fpdf->Text(445, 277+$a, @$snwa->WS5Tunnel);
+			
+			
+			$this->fpdf->Line(8, 280+$a, 584, 280+$a);
+	//		
+			$this->fpdf->Line(304, 280+$a, 304, 326+$a);
+	//
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 289+$a, "Drainage");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 300+$a, "Serous");
+			if (@$snwa->WS5DrainSerous == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 293+$a,6);
+			}
+			$this->fpdf->Rect(85, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 300+$a, "Serosang");
+			if (@$snwa->WS5DrainSerosang == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 293+$a,6);
+			}
+		
+			
+			$this->fpdf->Rect(160, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 300+$a, "Purulent");
+			if (@$snwa->WS5DrainPurulent == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 293+$a,6);
+			}
+			
+		   /////////////////////////////////////  
+	  
+		   
+			$this->fpdf->Line(8, 303+$a, 584, 303+$a);
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 312+$a, "Wound Bed Appearance");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 323+$a, "Granulation");
+			if (@$snwa->WS5WoBeApGranul == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 316+$a,6);
+			}
+	
+			$this->fpdf->Rect(85, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 323+$a, "Slough");
+			if (@$snwa->WS5WoBeApSlough == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 316+$a, 6);
+			}
+			
+			$this->fpdf->Rect(160, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 323+$a, "Eschar");
+			if (@$snwa->WS5WoBeApEschar == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(230, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(242, 323+$a, "Fibrotic");
+			if (@$snwa->WS5WoBeApFibrotic == 1) {
+				$this->fpdf->Image( $path_ticket, 231, 316+$a,6);
+			}
+			 
+	 //		
+			$this->fpdf->Line(145, 326+$a, 145, 349+$a);
+	//	        
+			$this->fpdf->Line(8, 326+$a, 584, 326+$a);
+		
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 335+$a, "Surrounding Tissue");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Rect(11, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 346+$a, "Erythema");
+			if (@$snwa->WS5SuTiErythema == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 339+$a,6);
+			}
+			$this->fpdf->Rect(85, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 346+$a, "Maceration");
+			if (@$snwa->WS5SuTiMaceration == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 339+$a, 6);
+			}
+				  
+			$this->fpdf->Line(8, 349+$a, 584, 349+$a);
+			
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(148, 335+$a, "Signs/Symptoms of Infection");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(148, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(160, 346+$a, "Fever");
+			if (@$snwa->WS5SignInfectFever == 1) {
+				$this->fpdf->Image( $path_ticket, 149, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(200, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(212, 346+$a, "Redness");
+			if (@$snwa->WS5SignInfectRedness == 1) {
+				$this->fpdf->Image( $path_ticket, 201, 339+$a, 6);
+			}
+			
+			$this->fpdf->Rect(270, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(282, 346+$a, "Swelling");
+			if (@$snwa->WS5SignInfectSwelling == 1) {
+				$this->fpdf->Image( $path_ticket, 271, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(340, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(352, 346+$a, "Warmth");
+			if (@$snwa->WS5SignInfectWarmth == 1) {
+				$this->fpdf->Image( $path_ticket, 341, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(410, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(422, 346+$a, "Other");
+			if (@$snwa->WS5SignInfectOther == 1) {
+				$this->fpdf->Image( $path_ticket, 411, 339+$a,6);
+			}
+	
+			$this->fpdf->Rect(480, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(492, 346+$a, "N/A");
+			if (@$snwa->WS5SignInfectNA == 1) {
+				$this->fpdf->Image( $path_ticket, 481, 339+$a,6);
+			}
+			
+			 
+			////$this->fpdf->Line(8, 372+$a, 584, 372+$a);
+	  
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 289+$a, "Amount");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 300+$a, "Small");
+			if (@$snwa->WS5AmtSmall == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 300+$a, "Moderate");
+			if (@$snwa->WS5AmtMod == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 300+$a, "Large");
+			if (@$snwa->WS5AmtLarge == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 293+$a,6);
+			}
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 312+$a, "Odor");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 323+$a, "None");
+			if (@$snwa->WS5OdorNone == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 323+$a, "Mild");
+			if (@$snwa->WS5OdorMild == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 323+$a, "Foul");
+			if (@$snwa->WS5OdorFoul == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 316+$a,6);
+			}
+			$a=$a-22; 
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 381+$a, "Treatment");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Text(11, 391+$a, "1) Cleanse with");
+			$this->fpdf->Text(11, 401+$a, "2) Pat Dry with");
+			$this->fpdf->Text(11, 411+$a, "3) Apply");
+			$this->fpdf->Text(11, 421+$a, "4) Cover with");
+			$this->fpdf->Text(11, 431+$a, "5) Secure with");
+			$this->fpdf->Text(11, 441+$a, "Comments");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(80, 391+$a, @$snwa->WS5TreatCleanse);
+			$this->fpdf->Text(80, 401+$a, @$snwa->WS5TreatPatDry);
+			$this->fpdf->Text(80, 411+$a, @$snwa->WS5TreatApply);
+			$this->fpdf->Text(80, 421+$a, @$snwa->WS5TreatCover);
+			$this->fpdf->Text(80, 431+$a, @$snwa->WS5TreatSecure);
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+	
+			$this->fpdf->Line(8, 392+$a, 584, 392+$a);
+			$this->fpdf->Line(8, 402+$a, 584, 402+$a);
+			$this->fpdf->Line(8, 412+$a, 584, 412+$a);
+			$this->fpdf->Line(8, 422+$a, 584, 422+$a);
+			$this->fpdf->Line(8, 432+$a, 584, 432+$a);
+			$this->fpdf->Line(77, 442+$a, 580, 442+$a);
+					
+			$this->fpdf->SetXY(77, 433+$a);
+			$this->fpdf->MultiCell(498, 10, substr(@$snwa->WS5TreatComments, 0, 162));
+			$this->fpdf->Line(8, 456+$a, 584, 456+$a);
+			####################################
+			
+			####################################
+			$a=357;
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 257+$a, "WOUND SITE 6: ");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(85, 257+$a, @$snwa->WS6Site6);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 267+$a, "Length:");
+			$this->fpdf->Text(210, 267+$a, "Width:");
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 267+$a, @$snwa->WS6Length);
+			$this->fpdf->Text(240, 267+$a, @$snwa->WS6Width);
+			
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 277+$a, "Undermining:");
+			$this->fpdf->Text(210, 277+$a, "Depth:");
+			$this->fpdf->Text(400, 277+$a, "Tunneling:");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(70, 277+$a, @$snwa->WS6Under);
+			$this->fpdf->Text(240, 277+$a, @$snwa->WS6Depth);
+			$this->fpdf->Text(445, 277+$a, @$snwa->WS6Tunnel);
+			
+			
+			$this->fpdf->Line(8, 280+$a, 584, 280+$a);
+	//		
+			$this->fpdf->Line(304, 280+$a, 304, 326+$a);
+	//
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 289+$a, "Drainage");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 300+$a, "Serous");
+			if (@$snwa->WS6DrainSerous == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 293+$a,6);
+			}
+			$this->fpdf->Rect(85, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 300+$a, "Serosang");
+			if (@$snwa->WS6DrainSerosang == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 293+$a,6);
+			}
+		
+			
+			$this->fpdf->Rect(160, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 300+$a, "Purulent");
+			if (@$snwa->WS6DrainPurulent == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 293+$a,6);
+			}
+			
+		   /////////////////////////////////////  
+	  
+		   
+			$this->fpdf->Line(8, 303+$a, 584, 303+$a);
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 312+$a, "Wound Bed Appearance");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(11, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 323+$a, "Granulation");
+			if (@$snwa->WS6WoBeApGranul == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 316+$a,6);
+			}
+	
+			$this->fpdf->Rect(85, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 323+$a, "Slough");
+			if (@$snwa->WS6WoBeApSlough == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 316+$a, 6);
+			}
+			
+			$this->fpdf->Rect(160, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(172, 323+$a, "Eschar");
+			if (@$snwa->WS6WoBeApEschar == 1) {
+				$this->fpdf->Image( $path_ticket, 161, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(230, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(242, 323+$a, "Fibrotic");
+			if (@$snwa->WS6WoBeApFibrotic == 1) {
+				$this->fpdf->Image( $path_ticket, 231, 316+$a,6);
+			}
+			 
+	 //		
+			$this->fpdf->Line(145, 326+$a, 145, 349+$a);
+	//	        
+			$this->fpdf->Line(8, 326+$a, 584, 326+$a);
+		
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 335+$a, "Surrounding Tissue");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Rect(11, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(23, 346+$a, "Erythema");
+			if (@$snwa->WS6SuTiErythema == 1) {
+				$this->fpdf->Image( $path_ticket, 12, 339+$a,6);
+			}
+			$this->fpdf->Rect(85, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(97, 346+$a, "Maceration");
+			if (@$snwa->WS6SuTiMaceration == 1) {
+				$this->fpdf->Image( $path_ticket, 86, 339+$a, 6);
+			}
+				  
+			$this->fpdf->Line(8, 349+$a, 584, 349+$a);
+			
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(148, 335+$a, "Signs/Symptoms of Infection");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(148, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(160, 346+$a, "Fever");
+			if (@$snwa->WS6SignInfectFever == 1) {
+				$this->fpdf->Image( $path_ticket, 149, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(200, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(212, 346+$a, "Redness");
+			if (@$snwa->WS6SignInfectRedness == 1) {
+				$this->fpdf->Image( $path_ticket, 201, 339+$a, 6);
+			}
+			
+			$this->fpdf->Rect(270, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(282, 346+$a, "Swelling");
+			if (@$snwa->WS6SignInfectSwelling == 1) {
+				$this->fpdf->Image( $path_ticket, 271, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(340, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(352, 346+$a, "Warmth");
+			if (@$snwa->WS6SignInfectWarmth == 1) {
+				$this->fpdf->Image( $path_ticket, 341, 339+$a,6);
+			}
+			
+			$this->fpdf->Rect(410, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(422, 346+$a, "Other");
+			if (@$snwa->WS6SignInfectOther == 1) {
+				$this->fpdf->Image( $path_ticket, 411, 339+$a,6);
+			}
+	
+			$this->fpdf->Rect(480, 338+$a, 8.4, 8.4);
+			$this->fpdf->Text(492, 346+$a, "N/A");
+			if (@$snwa->WS6SignInfectNA == 1) {
+				$this->fpdf->Image( $path_ticket, 481, 339+$a,6);
+			}
+			
+			 
+			////$this->fpdf->Line(8, 372+$a, 584, 372+$a);
+	  
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 289+$a, "Amount");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 300+$a, "Small");
+			if (@$snwa->WS6AmtSmall == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 300+$a, "Moderate");
+			if (@$snwa->WS6AmtMod == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 293+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 292+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 300+$a, "Large");
+			if (@$snwa->WS6AmtLarge == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 293+$a,6);
+			}
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(312, 312+$a, "Odor");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Rect(312, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(324, 323+$a, "None");
+			if (@$snwa->WS6OdorNone == 1) {
+				$this->fpdf->Image( $path_ticket, 313, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(385, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(397, 323+$a, "Mild");
+			if (@$snwa->WS6OdorMild == 1) {
+				$this->fpdf->Image( $path_ticket, 386, 316+$a,6);
+			}
+			
+			$this->fpdf->Rect(460, 315+$a, 8.4, 8.4);
+			$this->fpdf->Text(472, 323+$a, "Foul");
+			if (@$snwa->WS6OdorFoul == 1) {
+				$this->fpdf->Image( $path_ticket, 461, 316+$a,6);
+			}
+			$a=$a-22; 
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$this->fpdf->Text(11, 381+$a, "Treatment");
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+			
+			$this->fpdf->Text(11, 391+$a, "1) Cleanse with");
+			$this->fpdf->Text(11, 401+$a, "2) Pat Dry with");
+			$this->fpdf->Text(11, 411+$a, "3) Apply");
+			$this->fpdf->Text(11, 421+$a, "4) Cover with");
+			$this->fpdf->Text(11, 431+$a, "5) Secure with");
+			$this->fpdf->Text(11, 441+$a, "Comments");
+	
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+			$this->fpdf->Text(80, 391+$a, @$snwa->WS6TreatCleanse);
+			$this->fpdf->Text(80, 401+$a, @$snwa->WS6TreatPatDry);
+			$this->fpdf->Text(80, 411+$a, @$snwa->WS6TreatApply);
+			$this->fpdf->Text(80, 421+$a, @$snwa->WS6TreatCover);
+			$this->fpdf->Text(80, 431+$a, @$snwa->WS6TreatSecure);
+			
+			$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+	
+			$this->fpdf->Line(8, 392+$a, 584, 392+$a);
+			$this->fpdf->Line(8, 402+$a, 584, 402+$a);
+			$this->fpdf->Line(8, 412+$a, 584, 412+$a);
+			$this->fpdf->Line(8, 422+$a, 584, 422+$a);
+			$this->fpdf->Line(8, 432+$a, 584, 432+$a);
+			$this->fpdf->Line(77, 442+$a, 580, 442+$a);
+					
+			$this->fpdf->SetXY(77, 433+$a);
+			$this->fpdf->MultiCell(498, 10, substr(@$snwa->WS6TreatComments, 0, 162));
+			$this->fpdf->Line(8, 456+$a, 584, 456+$a);
+      
+      $pdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);  
+      $this->fpdf->Text(511, 820+11, "      Page: ".$current_page." of ".$total_page);      
+      $current_page++;
+			####################################		
+		}
+
+        $cero_x = 11;
+
+        $cero_y = 2;
+ 
+        ####### PAGE 4 ###########
+        if (strlen(@$snpn->additional_comments)>0)
+		{
+			$this->fpdf->AddPage();
+	
+			
+	
+			$this->fpdf->SetDrawColor(130,100);
+		
+			$this->fpdf->Text(( $cero_x + 240),( $cero_y + 22 ),"ADDENDUM"); 		
+			
+			
+			$this->fpdf->Rect(8,28, 577, 763);
+			  
+			$cero_y = 8;
+	
+			$this->fpdf->SetTextColor(0,0,0);
+	
+			$this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->Text(( $cero_x + 0),( $cero_y + 32 ),"Patient Name: ");
+	
+			
+	
+			$this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->Text(( $cero_x + 60),( $cero_y + 32 ), $patient->first_name . " " . $patient->last_name); // pacient name
+	
+			
+	
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->SetTextColor(0,0,0);
+	
+	
+	
+			$this->fpdf->SetDrawColor(130,100);
+	
+			$this->fpdf->Text(( $cero_x + 230),( $cero_y + 32 ),"Medical Rec#: ");
+	
+			
+	
+			$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+	
+			$this->fpdf->Text(( $cero_x + 290),( $cero_y + 32 ),  $patient->medical_rec_nbr); // medicare id
+	
+			
+					
+			$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+	
+					$this->fpdf->Text(( $cero_x + 395 +20),( $cero_y + 32 ), "VISIT DATE: " . standard_date(mysql_to_unix($visit_log->visited_date)));
+
+			
+	
+			#############################################33
+
+
+
+			$this->fpdf->Line(8, 75, 584, 75);
+			$this->fpdf->Line(8, 85, 584, 85);
+			$this->fpdf->Line(8, 95, 584, 95);
+			$this->fpdf->Line(8, 105, 584, 105);
+			$this->fpdf->Line(8, 115, 584, 115);
+			$this->fpdf->Line(8, 125, 584, 125);
+			$this->fpdf->Line(8, 135, 584, 135);
+			$this->fpdf->Line(8, 145, 584, 145);
+			$this->fpdf->Line(8, 155, 584, 155);
+			$this->fpdf->Line(8, 165, 584, 165);
+			$this->fpdf->Line(8, 175, 584, 175);
+			$this->fpdf->Line(8, 185, 584, 185);
+			$this->fpdf->Line(8, 195, 584, 195);
+			$this->fpdf->Line(8, 205, 584, 205);
+			
+			$this->fpdf->Text(11, 54, "Additional Notes");	
+			$this->fpdf->Line(8, 45, 584, 45);			
+			$this->fpdf->SetXY(10, 66);
+			$this->fpdf->MultiCell(570, 10, substr(@$snpn->additional_comments, 0, 4000));
+	
+      $pdf->SetFont('Arial', '', $__FONT['PDF']['FORM_SMALL']);  
+      $this->fpdf->Text(511, 820+11, "      Page: ".$current_page." of ".$total_page);        
+      $current_page++;
+		}
+    
+    //$title_text = $visit_log->visit_description." Visit Date: " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $title_text = "SNPN Visit Date: " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    
+		$this->fpdf->Output("Patient: {$patient->first_name} {$patient->last_name} {$title_text}.pdf", 'D');
+    
+		//$this->fpdf->Output('snpn.pdf','D');
+	}
+ }

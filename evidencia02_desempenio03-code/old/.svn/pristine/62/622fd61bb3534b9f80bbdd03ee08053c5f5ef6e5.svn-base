@@ -1,0 +1,106 @@
+<?php
+
+// function to get  the address
+function get_lat_long($address) {
+    $address = str_replace(' ','+',$address);
+    $url = 'https://maps.google.com/maps/api/geocode/json?key=AIzaSyAJFTQFZD3BqSbGneQaMxJBS0d13WWFJ-I&address='.$address.'&region=USA&sensor=false';
+
+    $curl=curl_init();
+    curl_setopt( $curl, CURLOPT_URL, $url );
+    curl_setopt( $curl, CURLOPT_SSL_VERIFYPEER, FALSE );
+    curl_setopt( $curl, CURLOPT_SSL_VERIFYHOST, 0 );
+    curl_setopt( $curl, CURLOPT_RETURNTRANSFER, TRUE );             
+    $response = curl_exec($curl);
+
+    $info = curl_getinfo( $curl );
+    curl_close( $curl );
+
+    $latitude = '';
+    $longitude = '';
+
+    if ($info['http_code'] == 200) {
+        $output= json_decode($response);
+        if ($output->status == 'OK') {
+            if (isset($output->results[0]->geometry->location->lat)) {
+                $latitude = $output->results[0]->geometry->location->lat;          
+            }
+
+            if (isset($output->results[0]->geometry->location->lng)) {
+                $longitude = $output->results[0]->geometry->location->lng;
+            }        
+        }
+    } else {
+        // echo var_dump($response);
+    }
+
+    $lat_lng_array = array();
+    $lat_lng_array['latitude'] = $latitude;
+    $lat_lng_array['longitude'] = $longitude;
+
+    return $lat_lng_array;
+}
+
+function calculate_q_text($visit_log = NULL) {
+	$q_str = '';
+	if($visit_log != NULL) {
+		// check if the visit log is set and visit_type_id = 104
+		if(isset($visit_log->visit_date_time) && isset($visit_log->estimated_soc_date) && isset($visit_log->visit_type_id) && $visit_log->visit_type_id == 104) {
+		
+			$visit_month = date('n', strtotime($visit_log->visit_date_time));
+			$visit_year = date('Y', strtotime($visit_log->visit_date_time));
+			$soc_month = date('n', strtotime($visit_log->estimated_soc_date)); 
+
+			// get the next coming month by adding a numric number to the date
+			$soc_plus_month1 = mktime(0, 0, 0, date("n", strtotime($visit_log->estimated_soc_date)) + 1, 1, date("Y", strtotime($visit_log->estimated_soc_date)));
+			$soc_plus_month4 = mktime(0, 0, 0, date("n", strtotime($visit_log->estimated_soc_date)) + 4, 1, date("Y", strtotime($visit_log->estimated_soc_date)));
+			$soc_plus_month7 = mktime(0, 0, 0, date("n", strtotime($visit_log->estimated_soc_date)) + 7, 1, date("Y", strtotime($visit_log->estimated_soc_date)));
+			$soc_plus_month9 = mktime(0, 0, 0, date("n", strtotime($visit_log->estimated_soc_date)) + 9, 1, date("Y", strtotime($visit_log->estimated_soc_date)));	
+			
+			/*if((date("n", $soc_plus_month1) == $visit_month) && (date("Y", $soc_plus_month1) == $visit_year)) {
+				$q_str = ' Q1';
+			} else if((date("n", $soc_plus_month4) == $visit_month) && (date("Y", $soc_plus_month4) == $visit_year)) {
+				$q_str = ' Q2';
+			} else if((date("n", $soc_plus_month7) == $visit_month) && (date("Y", $soc_plus_month7) == $visit_year)) {
+				$q_str = ' Q3';
+			} else if((date("n", $soc_plus_month9) == $visit_month) && (date("Y", $soc_plus_month9) == $visit_year)) {
+				$q_str = ' Q4';
+			} else {
+				$q_str = ' Qx';
+			}*/
+			if(date("n", $soc_plus_month1) == $visit_month) {
+				$q_str = ' Q1';
+			} else if(date("n", $soc_plus_month4) == $visit_month) {
+				$q_str = ' Q2';
+			} else if(date("n", $soc_plus_month7) == $visit_month) {
+				$q_str = ' Q3';
+			} else if(date("n", $soc_plus_month9) == $visit_month) {
+				$q_str = ' Q4';
+			} else {
+				$q_str = ' Qx';
+			}
+			//$q_str = $q_str . "-" . $visit_log->estimated_soc_date . "-" . $visit_log->visit_date_time . "-" . $soc_plus_month1 . "-" . $visit_month . "-" . date("n", $soc_plus_month1) . "-" . $visit_year . "-" . date("Y", $soc_plus_month1);
+		}
+	}
+	return $q_str;
+}
+
+// function to calculate the q months based on the soc_date
+function calculate_q_months($estimated_soc_date = '') {
+	$q_dates = array();
+	if($estimated_soc_date != NULL) {
+
+		$soc_month = date('n', strtotime($estimated_soc_date)); 
+
+		// get the next coming month by adding a numric number to the date
+		$soc_plus_month1 = mktime(0, 0, 0, date("n", strtotime($estimated_soc_date)) + 1, date("d", strtotime($estimated_soc_date)), date("Y", strtotime($estimated_soc_date)));
+		$soc_plus_month4 = mktime(0, 0, 0, date("n", strtotime($estimated_soc_date)) + 4, date("d", strtotime($estimated_soc_date)), date("Y", strtotime($estimated_soc_date)));
+		$soc_plus_month7 = mktime(0, 0, 0, date("n", strtotime($estimated_soc_date)) + 7, date("d", strtotime($estimated_soc_date)), date("Y", strtotime($estimated_soc_date)));
+		$soc_plus_month9 = mktime(0, 0, 0, date("n", strtotime($estimated_soc_date)) + 9, date("d", strtotime($estimated_soc_date)), date("Y", strtotime($estimated_soc_date)));	
+		
+		$q_dates['q1'] = date("m-d-Y", $soc_plus_month1);
+		$q_dates['q2'] = date("m-d-Y", $soc_plus_month4);
+		$q_dates['q3'] = date("m-d-Y", $soc_plus_month7);
+		$q_dates['q4'] = date("m-d-Y", $soc_plus_month9);
+	}
+	return $q_dates;
+}

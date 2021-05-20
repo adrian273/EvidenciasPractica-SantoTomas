@@ -1,0 +1,65 @@
+</form>
+<script type="text/javascript" src="{$base_url}style/maskedinput.js"></script>
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/edit_schedule/{$visit_log_id}">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+  <tr>		
+		<td height="10">Patient Name: </td>
+    <td height="10">
+			{$patient->first_name} {$patient->last_name}
+    </td>
+  </tr>	
+  {if $need_confirm_schedule_overlap}
+    <tr>    
+      <td height="10">Scheduled Date:</td>
+      <td height="10"> {$user_post_data->visit_date_time}
+        <input type="hidden" id="visit_date_time" name="visit_date_time" value="{$user_post_data->visit_date_time}" readonly="readonly"> *
+      
+      </td>
+    </tr> 
+    <tr>    
+      <td height="10">Scheduled Time: </td>
+      <td height="10"> {$user_post_data->visited_time_in_hm}
+        <input type="hidden" name="visited_time_in_hm" id="visited_time_in_hm" value="{$user_post_data->visited_time_in_hm}" size="5" maxlength="5" readonly="readonly"  />
+      </td>
+    </tr>
+  {else}
+    <tr>		
+  		<td height="10">Scheduled Date: </td>
+      <td height="10">
+  			<input type="text" id="visit_date_time" name="visit_date_time" value="{$visit_date_time}" 
+      		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+  		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_time'), document.getElementById('fecha_help'));return false;" >
+      </td>
+    </tr>	
+    <tr>		
+  		<td height="10">Scheduled Time: </td>
+      <td height="10">
+      	<input type="text" name="visited_time_in_hm" id="visited_time_in_hm" value="{$visited_time_in|truncate:5:"":true}" size="5" maxlength="5"  />
+  			{literal}			
+  				<script>
+  				jQuery(function($){
+  					$("#visited_time_in_hm").mask("99:99");
+  				});
+  				</script>
+  			{/literal}			
+      </td>
+    </tr>
+  {/if}	
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+      {if $need_confirm_schedule_overlap}
+       <input type="submit" class="btn" value="Confirm Overlap">
+    	 <input type="hidden" name="schedule_overlap_confirmed" value="1">
+      {else}
+       <input type="submit" class="btn" value="Save">
+      {/if}
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>

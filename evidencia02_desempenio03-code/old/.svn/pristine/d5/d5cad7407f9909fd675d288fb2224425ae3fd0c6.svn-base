@@ -1,0 +1,84 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Add User to Patient Team</td>
+  </tr>   
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">&nbsp;</td>
+    <td>
+		<label><input type="radio" checked="checked" value="com" id="user_type_com" name="user_type" class="user_type" /> <strong>Add Company User</strong></label>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<label><input type="radio" value="agy" id="user_type_agy" name="user_type" class="user_type" /> <strong>Add Agency User</strong></label>
+	</td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr id="com_row">
+    <td class="ftitle">Clinician/User</td>
+    <td>{html_options options=$member_list selected=$user_id name='user_id' id='company_user_id'}</td>
+  </tr>
+   
+  <tr id="agy_row" style="display: none;">
+    <td class="ftitle">Agency User</td>
+    <td>
+		{html_options options=$agency_users_list disabled='disabled' selected=$user_id name='user_id' id='angecy_user_id'}
+    	<input type="hidden" id="approver_type_id" disabled="disabled" name="approver_type_id" value="3" />
+	</td>
+  </tr>
+  <tr>
+    <td class="ftitle">Internal Email Description</td>
+    <td>
+		<textarea name="message_to_user" rows="5" cols="50" wrap="auto">{$message_to_user}</textarea>
+	</td>
+  </tr>  
+  {*<tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Comments</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+    	<textarea name="comments" rows="5" cols="50" wrap="auto">{$comments}</textarea>
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Assignment Notification</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>*}
+  
+  <tr>
+    <td colspan="2">
+    	
+    </td>
+  </tr>
+  
+</table> 
+{literal}
+<script language="javascript" type="text/javascript">
+	$(document).ready(function(){
+		//alert("asdf");
+		$(".user_type").click(function(){
+			if($(this).attr('id') == 'user_type_com') {
+				$("#com_row").show();
+				$("#agy_row").hide();
+				$("#company_user_id").attr('disabled', false);
+				$("#angecy_user_id").attr('disabled', true);
+				$("#approver_type_id").attr('disabled', true);
+			} else {
+				$("#com_row").hide();
+				$("#agy_row").show();
+				$("#company_user_id").attr('disabled', true);
+				$("#angecy_user_id").attr('disabled', false);
+				$("#approver_type_id").attr('disabled', false);
+			}
+		});
+	});
+</script>
+
+{/literal}

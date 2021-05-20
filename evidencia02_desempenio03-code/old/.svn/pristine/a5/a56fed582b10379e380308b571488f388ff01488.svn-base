@@ -1,0 +1,25 @@
+<script type="text/javascript">    
+    function send_invitation(user_id) {literal}{
+		{/literal}var url = "{$index_url}/useragency/user/send_invitation/"+user_id;{literal}
+        
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: url,
+            success: function(data){
+                if(data.status=='1'){
+                    alert('Invitation Sent');
+                } else {
+                    if (data.msg){
+                        alert(data.msg);
+                    }
+                }
+            },  
+            error: function (data, status, e)
+            {
+                alert('An error orrcured. Check internet connection or Contact Administrator.');
+            }
+        });
+    }
+    {/literal}
+</script>    

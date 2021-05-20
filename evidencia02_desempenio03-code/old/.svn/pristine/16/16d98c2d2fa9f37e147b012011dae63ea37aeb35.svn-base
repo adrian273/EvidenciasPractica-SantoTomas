@@ -1,0 +1,823 @@
+<?
+
+ class Patients extends MY_Controller {
+
+	function Patients () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "contractor/patients");
+		$this->tpl->assign('tab_page', true);
+		
+	}
+	function index ($agency_id) {
+		$this->tpl->assign("back_path", "patients");
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign('noedit', true);
+		//$agency_id = $this->uri->segment(4);
+		$data = $this->agencycontractormdl->getByContractornew($agency_id);
+		$agency_name = array();
+		foreach ($data as $agency) {
+			$agency_name = $agency->agency_name;
+		}
+		$this->tpl->assign("entity_id", $agency_id);
+		$this->tpl->assign("agency_name", $agency_name);
+		// $this->tpl->assign_include("filter_tpl", "contractor/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function grid ($agency_id) {
+		
+		$agency_types = $this->lang->line('agency_type_list');
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$userprofile = $this->getUserProfileId();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", ""));
+		$head->append($this->xml->Element("column", "width=20", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=15", "Soc Date"));
+		$head->append($this->xml->Element("column", "width=15", "Cert. Start"));
+		$head->append($this->xml->Element("column", "width=15", "Cert. End"));
+		$head->append($this->xml->Element("column", "width=15;sort=int", "Days Left"));
+		$head->append($this->xml->Element("column", "width=15", "Status"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		//$data = $this->patientcontractormdl->getByContractorId($agency_id);
+		$data = $this->patientcontractormdl->getByContractorIdAndAgencyId($agency_id, $this->getAgencyId());
+		foreach ($data as $patient) {
+			
+			$cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+			if (count($this->teammdl->get($patient->patient_id, null, null, $this->getAgencyId()))) {
+				$cell->append($this->xml->Element("cell", null, ""));
+			} else {
+				$cell->append($this->xml->Element("cell", "type=img", $this->config->config['base_url'] . 'style/images/exclamation.gif'));
+			}
+			$cell->append($this->xml->Element("cell", null, $patient->last_name . ", " . $patient->first_name));
+			$episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->estimated_soc_date)))));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->episode_start_date)))));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->episode_end_date, 'USA_DATE_TIME')))));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(@ $episode->expiration_days_left)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->tab_description)));
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function report_list() {
+		$this->tpl->assign("back_path", "patients");
+		$this->tpl->assign("resource_grid", 'report_list_grid');
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign('noedit', true);
+
+		$this->tpl->assign('additional_buttons', array('Export to Excel' => 'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');'));
+
+
+		//$agency_id = $this->uri->segment(4);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function report_list_grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$userprofile = $this->getUserProfileId();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Address"));
+		$head->append($this->xml->Element("column", "width=*", "Email"));
+		$head->append($this->xml->Element("column", "width=*", "Phone"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$data = array();
+	    
+	    if( $this->getAgencyType() == 'C' && $userprofile == 3) {
+	      $data = $this->patientcontractormdl->getByContractorId($this->getAgencyId());
+	    } else {
+	      $data = $this->getPatients();
+	    }
+
+		foreach ($data as $patient) {
+			
+			$cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+
+			$address = array($patient->address);
+			if ($patient->city) {
+				$address[] = $patient->city;
+			}
+			if ($patient->state_name_short) {
+				$address[] = $patient->state_name_short;
+			}
+			if ($patient->zip1) {
+				$address[] = $patient->zip1;
+			}
+
+			$addres_str = trim(implode($address, ", "), ',');
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->last_name. ' '. $patient->first_name)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($addres_str)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->email)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->phone_cell)));
+
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function agency_details ($agency_id) {
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("entity_id", $agency_id);
+		$this->tpl->assign("phone_type_options", array('cell' => 'Cell', 'work' => 'Work', 'other' => 'Other'));
+		$this->tpl->assign('faction', 'agency_details');
+
+		//echo "agency is " . $agency_id;
+		//echo "contractor_id is " . $this->getAgencyId();
+		if ($_POST) {
+			//echo "posted";
+			//echo "<pre>"; print_r($_POST); echo "</pre>";exit;
+			/*$rules = array (
+				'soc_sec_nbr' => 'valid_ssn',
+				'phone_cell' => 'valid_phone',
+				'phone_home' => 'valid_phone',
+				'fax' => 'valid_phone',
+				'email' => 'valid_email',
+				'referral_time' => 'valid_time'
+			);*/
+			
+			/*$rules = array (
+				'agy_contact_name' => 'required',
+				'agy_contact_phone1' => 'required',
+				'agy_contact_email' => 'required'
+			);
+			$fields = array (
+				'agy_contact_name' => 'Contact Name',
+				'agy_contact_phone1' => 'Contact Phone1',
+				'agy_contact_email' => 'Contact Email'
+			);
+	
+			$this->validation->set_rules($rules);
+			$this->validation->set_fields($fields);
+			
+			if ($this->validation->run() == true) {*/
+			
+				$this->db->where("contractor_id", $this->getAgencyId());
+				$this->db->where("agency_id", $agency_id);
+				$this->db->set('agy_contact_name', $_POST['agy_contact_name']);
+				$this->db->set('agy_contact_title', $_POST['agy_contact_title']);
+				$this->db->set('agy_contact_phone1', $_POST['agy_contact_phone1']);
+				$this->db->set('agy_contact_phone1_ext', $_POST['agy_contact_phone1_ext']);
+				$this->db->set('agy_contact_phone1_type', $_POST['agy_contact_phone1_type']);
+				$this->db->set('agy_contact_phone2', $_POST['agy_contact_phone2']);
+				$this->db->set('agy_contact_phone2_ext', $_POST['agy_contact_phone2_ext']);
+				$this->db->set('agy_contact_phone2_type', $_POST['agy_contact_phone2_type']);
+				$this->db->set('agy_contact_fax', $_POST['agy_contact_fax']);
+				$this->db->set('agy_contact_email', $_POST['agy_contact_email']);
+				$this->db->set('agy_contact_notes', $_POST['agy_contact_notes']);
+				$this->db->set('status', $_POST['status']);
+				$this->db->update("agency_contractor");
+			
+				$this->tpl->assign('success_string', $this->agencycontractormdl->agy_contact_name . $this->lang->line('grl_upd_msg'));
+	
+			//}
+		}
+		//echo $this->getAgencyId(); 
+		//echo $agency_id; exit;
+		$agency_contract_detail = $this->agencycontractormdl->getAgencyContractorById($this->getAgencyId(), $agency_id);
+		//echo "<pre>"; print_r($agency_contract_detail); echo "</pre>";
+		$this->tpl->assign("agency_contract_detail", $agency_contract_detail);
+		$agency = $this->agencymdl->getByAgencyId($agency_id);
+		$this->assignObject($agency);
+		//$this->tpl->assign_include("dynamic_tpl", "contractor/agency_details");
+		
+
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "contractor/agency_details");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function agency_settings ($agency_id) {
+		$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		$this->load->model('agencysettingmdl');
+		$success_string = $this->session->userdata('success_string');
+    	if($success_string){      
+	      $this->tpl->assign("gmessage", $success_string);
+	      $this->session->unset_userdata('success_string');      
+	    }
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("entity_id", $agency_id);
+		
+		$agency=$this->agencymdl->getByAgencyId($agency_id);
+		if($agency->agency_status != 'SA'){
+			$this->tpl->assign('no_commit_form', true);			
+		}
+		
+		$settings = array();
+		$agency_settings=$this->agencysettingmdl->getByAgencyId($agency_id);
+		foreach ($agency_settings as $value) {
+			$settings[$value->discipline_id] = $value;
+		}
+		$this->assignObject($agency);
+		$this->tpl->assign('settings',$settings);
+		$this->tpl->assign('agency',$agency);
+		if ($contractor->provides_altern_therapy == 'Y') {
+			$this->tpl->assign('therapy_type', 'S');
+		}
+		
+		$agency_contract_detail = $this->agencycontractormdl->getAgencyContractorById($this->getAgencyId(), $agency_id);
+		$this->load->model("agencyproductmdl");
+		$agency_product = $this->agencyproductmdl->getByAgency($this->getAgencyId());
+		$this->tpl->assign("agy_prod", $agency_product);
+		$this->tpl->assign('agency_contract_detail', $agency_contract_detail);
+		$this->tpl->assign_include("dynamic_tpl", "contractor/agency_settings");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+
+	function insert_settings ($agency_id){
+		$contractor = $this->agencymdl->getByAgencyId($this->getAgencyId());
+	
+		if ($contractor->provides_altern_therapy == 'Y') {
+			$ids = $this->input->post('discipline_id');
+			$a = $this->input->post('F3625_box15');
+			$b = $this->input->post('F3625_box16');
+			$c = $this->input->post('F3625_box17');
+			$d = $this->input->post('F3625_box18');
+			$e = $this->input->post('F3625_box19');
+			foreach ($ids as $key => $discipline_id) {
+				$F3625_box15 = $a[$key];
+				$F3625_box16 = $b[$key];
+				$F3625_box17 = $c[$key];
+				$F3625_box18 = $d[$key];
+				$F3625_box19 = $e[$key];
+							
+				$this->load->model('agencysettingmdl');
+				$agency_settings=$this->agencysettingmdl->getByAgencyDisciplineId($agency_id, $discipline_id);
+				if (empty($agency_settings)) {
+					$insert_settings=$this->agencysettingmdl->insert_settings($agency_id,$discipline_id,$F3625_box15,$F3625_box16,$F3625_box17,$F3625_box18,$F3625_box19);
+				}
+				else{
+					$insert_settings=$this->agencysettingmdl->update_settings($agency_id,$discipline_id,$F3625_box15,$F3625_box16,$F3625_box17,$F3625_box18,$F3625_box19);
+					
+				}
+			}
+
+			$this->agencymdl->F3625_agency_type = $this->input->post('F3625_agency_type');
+			$this->agencymdl->F3625_contract_no = $this->input->post('F3625_contract_no');
+			$this->agencymdl->F8606A_CMA_vendor_nbr = $this->input->post('F8606A_CMA_vendor_nbr');
+			$this->agencymdl->F3625_measure_unit = $this->input->post('F3625_measure_unit');
+			$this->agencymdl->F3625_req_visit = $this->input->post('F3625_req_visit');
+			$this->agencymdl->F3625_req_sig = $this->input->post('F3625_req_sig');
+			$this->agencymdl->ptpn_req_co_sign = $this->input->post('ptpn_req_co_sign');
+
+			$this->agencymdl->updateAgencySettings($agency_id);
+			
+			$this->agencymdl->updateFlex($agency_id, 'invoice_include_additonal_info', $this->input->post('invoice_include_additonal_info'));
+			$this->agencymdl->updateFlex($agency_id, 'send_invoice_to_patient', $this->input->post('send_invoice_to_patient'));
+			$this->agencymdl->updateFlex($agency_id, 'validate_medical_rec_nbr', $this->input->post('validate_medical_rec_nbr'));
+			$this->agencymdl->updateFlex($agency_id, 'superv_sign_require', $this->input->post('superv_sign_require'));
+			$this->agencymdl->updateFlex($agency_id, 'deals_with_groups', $this->input->post('deals_with_groups'));
+		}
+		
+		
+		$this->agencymdl->updateFlex($agency_id, 'invoice_due_days', $this->input->post('invoice_due_days'));
+		$this->agencymdl->updateFlex($agency_id, 'invoice_terms', $this->input->post('invoice_terms'));
+		$this->agencymdl->updateFlex($agency_id, 'print_agency_or_contractor_on_notes', $this->input->post('print_agency_or_contractor_on_notes'));
+		$this->agencymdl->updateFlex($agency_id, 'print_therapist_name_in_invoice', $this->input->post('print_therapist_name_in_invoice'));
+		$this->agencymdl->updateFlex($agency_id, 'sort_invoice_by_lastname', $this->input->post('sort_invoice_by_lastname'));
+
+		// update settings to agency_contractor table
+		$this->agencycontractormdl->updateAgencySettings($this->getAgencyId(), $agency_id);
+		
+		
+		$this->session->set_userdata('success_string', "Data Updated.");
+		redirect('contractor/patients/agency_settings/'.$agency_id);
+	}
+
+	function status_change($status, $agency_id){
+		$this->agencycontractormdl->agencyStatusUpdate($this->getAgencyId(), $agency_id, $status);
+		echo "1";
+	}
+	
+
+	/*function grid() {
+
+		$agency_types = $this->lang->line('agency_type_list');
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$userprofile = $this->getUserProfileId();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", ""));
+		$head->append($this->xml->Element("column", "width=20", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Soc Date"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Cert. Start"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Cert. End"));
+		$head->append($this->xml->Element("column", "width=15;align=center;sort=int", "Days Left"));
+		$head->append($this->xml->Element("column", "width=15", "Status"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		//if ($this->input->post('patient_type') == 'act' && $this->getUserDiscipline()) {
+			//$data = $this->patientcontractormdl->getActivatedByContractorId($this->getAgencyId(), $this->getUserDiscipline(), $this->input->post('keyword'), //$this->input->post('tab_013_status'));
+		//} else {
+			$data = $this->patientcontractormdl->getByContractorId($this->getAgencyId());
+		//}
+
+		foreach ($data as $patient) {
+
+			$cell = $this->xml->Element("row", "id=" . $patient->patient_id);
+
+			// icon for new patient
+			if (count($this->teammdl->get($patient->patient_id, null, null, $this->getAgencyId()))) {
+				$cell->append($this->xml->Element("cell", null, ""));
+			} else {
+				$cell->append($this->xml->Element("cell", "type=img", $this->config->config['base_url'] . 'style/images/exclamation.gif'));
+			}
+
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->last_name . ", " . $patient->first_name)));
+
+			$episode = $this->episodemdl->getCurrentByPatientId($patient->patient_id);
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->estimated_soc_date)))));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->episode_start_date)))));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(standard_date(mysql_to_unix(@ $episode->episode_end_date, 'USA_DATE_TIME')))));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities(@ $episode->expiration_days_left)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($patient->tab_description)));
+			$document->append($cell);
+
+		}
+
+	}*/
+
+	/*function validatepatient($date_birth) {
+
+		$patient = $this->patientmdl->validate($this->getAgencyId(), $this->input->post('last_name'), $this->input->post('first_name'), standard_date(human_to_unix($date_birth), 'MYSQL'));
+		if (count($patient)) {
+			$this->validation->set_message('validatepatient', 'There is a patient with similar information. <a href="' . $this->config->config['index_url'] . 'patient/mypatient/edit/' . $patient->patient_id . '">see patient</a>');
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+
+	}*/
+
+/*	function add() {
+
+		if (!$this->hasPermission(4) || !$this->hasPermission(5)) {
+			exit ();
+		}
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('physician_list', $this->usagymdl->getPhysiciansByAgency($this->getAgencyId()));
+		$this->tpl->assign('case_manager_list', $this->usagymdl->getCaseManagerByAgency($this->getAgencyId()));
+		$this->tpl->assign('clinician_list', $this->usagymdl->getCliniciansByAgency($this->getAgencyId()));
+		$this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($this->getAgencyId()));
+
+		$rules = array (
+			'first_name' => 'required',
+			'last_name' => 'required',
+			'date_birth' => 'required',
+			'soc_sec_nbr' => 'valid_ssn',
+			'phone_cell' => 'valid_phone',
+			'phone_home' => 'valid_phone',
+			'fax' => 'valid_phone',
+			'email' => 'valid_email',
+			'referral_date' => 'required',
+			'referral_time' => 'valid_time'
+		);
+
+		if ($this->input->post('assign_task') == 1) { // assigning task to clinician
+			$rules['case_manager_user_id'] = 'required';
+			$rules['estimated_soc_date'] = 'required';
+			$rules['clinician_user_id'] = 'required';
+		}
+
+		$rules['date_birth'] = 'callback_validatepatient';
+
+		$fields = array (
+			'first_name' => 'First Name',
+			'last_name' => 'Last Name',
+			'date_birth' => 'Birth Date',
+			'soc_sec_nbr' => 'S.S.N.',
+			'phone_cell' => 'Cell Phone',
+			'phone_home' => 'Home Phone',
+			'fax' => 'Fax',
+			'email' => 'Email',
+			'referral_date' => 'Referral Date',
+			'referral_time' => 'Referral Time',
+			'estimated_soc_date' => 'Estimated SOC Date',
+			'case_manager_user_id' => 'Case Manager'
+		);
+
+		if ($this->input->post('has_insu_medicare') == 1) {
+			$rules['insu_medicare_hic_number'] = 'required';
+			$fields['insu_medicare_hic_number'] = 'HIC Number';
+		}
+		if ($this->input->post('has_insu_medicaid') == 1) {
+			/*array('field' => 'insu_medicaid_id',
+			      'label' => 'Medicaid Id',
+			      'rules' => 'required')*/
+			/*$fields['insu_medicaid_id'] = 'Medicaid Id';
+			$rules['insu_medicaid_id'] = 'required';
+
+			$fields['insu_medicaid_auth_from_date'] = 'Medicaid Authorization From date';
+			$rules['insu_medicaid_auth_from_date'] = 'required';
+
+			$fields['insu_medicaid_auth_to_date'] = 'Medicaid Authorization To date';
+			$rules['insu_medicaid_auth_to_date'] = 'required';
+		}
+
+		if ($this->input->post('has_insu_other') == 1) {
+			$fields['insu_other_id'] = 'Other Id';
+			$rules['insu_other_id'] = 'required';
+
+			$fields['insu_other_auth_from_date'] = 'Other Authorization From Date';
+			$rules['insu_other_auth_from_date'] = 'required';
+
+			$fields['insu_other_auth_to_date'] = 'Other Authorization To Date';
+			$rules['insu_other_auth_to_date'] = 'required';
+		}
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->request->is_get()) {
+			$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			$this->tpl->assign('state_id', $agency->state_id);
+		}
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Patient");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->patientmdl->tab_013_status = 1;
+			$this->_add();
+
+			$this->tpl->assign('gmessage', $this->patientmdl->first_name . " " . $this->patientmdl->last_name . $this->lang->line('grl_add_msg'));
+
+			$this->index();
+
+		}
+
+	}*/
+
+	/*function _add($agency_id=null) {
+		// creating patient
+		$this->assignPostData($this->patientmdl);
+    if(is_null($agency_id))
+		$this->patientmdl->insert($this->getAgencyId());
+    else
+		$this->patientmdl->insert($agency_id);
+
+		// creating soc
+		$this->assignPostData($this->socmdl);
+
+		$referral_time_hour = ((int) ($this->input->post('referral_time_Hour') == 12 ? 0 : $this->input->post('referral_time_Hour')) + ($this->input->post('referral_time_Meridian') == 'am' ? 0 : 12));
+		$visit_date_time = standard_date(human_to_unix($this->input->post('referral_date')), 'MYSQL_NOTIME') . " " . $referral_time_hour . ":" . $this->input->post('referral_time_Minute');
+
+		$this->socmdl->referral_date_time = $visit_date_time;
+		$this->socmdl->current_soc = 1;
+		$this->socmdl->insert($this->patientmdl->patient_id);
+
+		// creating complementary patient information
+		$this->assignPostData($this->patientinsurancemdl);
+		$this->patientinsurancemdl->insert($this->patientmdl->patient_id);
+		$this->patientpharmacymdl->insert($this->patientmdl->patient_id);
+		$this->patientemergencymdl->insert($this->patientmdl->patient_id);
+
+		if ($this->input->post('case_manager_user_id')) { // adding case manager to team and send notification by email
+
+			// assigning clinician to team
+			$this->teammdl->user_id = $this->input->post('case_manager_user_id');
+			$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+			$this->teammdl->insert($this->patientmdl->patient_id);
+
+			// sending start of care notification to case manager
+			$case_manager = $this->usagymdl->getByUsAgyId($this->input->post('case_manager_user_id'));
+
+			$emailtext = $this->emailtextmdl->get(2);
+			$this->load->library('email');
+			$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+			$this->email->to($case_manager->user_email);
+			$this->email->subject($emailtext->email_subject);
+			$this->email->message($emailtext->email_content);
+			//				$this->email->send();
+
+		}
+
+		if ($this->input->post('prim_doctor_user_id')) {
+
+			// assigning clinician to team
+			$this->teammdl->user_id = $this->input->post('prim_doctor_user_id');
+			$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+			$this->teammdl->primary = 1;
+			$this->teammdl->insert($this->patientmdl->patient_id);
+
+		}
+
+		if ($this->input->post('second_doctor_user_id')) {
+
+			// assigning clinician to team
+			$this->teammdl->user_id = $this->input->post('second_doctor_user_id');
+			$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+			$this->teammdl->primary = NULL;
+			$this->teammdl->insert($this->patientmdl->patient_id);
+
+		}
+
+		// auto assign to contractor
+		if ($this->getAgencyType() == 'P') {
+
+			foreach ($this->agencycontractormdl->get($this->getAgencyId()) as $contractor) {
+				$this->patientcontractormdl->agency_contractor_id = $contractor->agency_contractor_id;
+				$this->patientcontractormdl->insert($this->patientmdl->patient_id);
+			}
+
+		}
+	}*/
+	
+	/*function quickadmit($agency_id=null) {
+    
+    if($this->getAgencyType() == 'C' AND is_null($agency_id)){
+      exit ();
+    }
+		elseif ($this->getAgencyType() != 'C' AND (!$this->hasPermission(4) || !$this->hasPermission(5)) ) {
+			exit ();
+		}
+		/* validation */
+		/*$rules = array (
+				'first_name'  	=> 'required',
+				'last_name'  	=> 'required',
+				'date_birth'  	=> 'required|callback_validatepatient',
+				'referral_date' => 'requires',
+				'estimated_soc_date'=>'required',
+				'prim_doctor_user_id' => 'required',
+				'case_manager_user_id'=>'required',
+				'tab_102_prim_insura_type'=>'required'
+				);
+    
+    $fields = array (
+				'first_name'  	=> 'First Name',
+				'last_name'  	=> 'Last Name',
+				'date_birth'  	=> 'Birth Date',
+				'referral_date' => 'Referral Date',
+				'estimated_soc_date'=>'SOC Date',
+				'case_manager_user_id'=>'Case Manager',
+				'tab_102_prim_insura_type'=>'Primary Insurance Type',
+				'prim_doctor_user_id' => 'Primary Physician'
+				);
+      
+    if($this->input->post('tab_102_prim_insura_type')==1){      
+      $rules['medicare_id'] = 'required';
+      $fields['medicare_id'] = 'Medicare ID';
+    }else if($this->input->post('tab_102_prim_insura_type')==2){      
+      $rules['medicaid_id'] = 'required';
+      $fields['medicaid_id'] = 'Medicaid ID';
+    } else if($this->input->post('tab_102_prim_insura_type')==3){      
+      $rules['managed_care_id'] = 'required';
+      $fields['managed_care_id'] = 'Other/HMO ID';
+    }
+    
+    if($this->input->post('has_insu_medicare')==1){      
+      $rules['insu_medicare_hic_number'] = 'required';
+      $fields['insu_medicare_hic_number'] = 'HIC Number';
+    }
+    if($this->input->post('has_insu_medicaid')==1){
+       /*array('field' => 'insu_medicaid_id',
+             'label' => 'Medicaid Id',
+             'rules' => 'required')*/
+      /*$fields['insu_medicaid_id'] = 'Medicaid Id';
+      $rules['insu_medicaid_id'] = 'required';
+      
+      $fields['insu_medicaid_auth_from_date'] = 'Medicaid Authorization From date';
+      $rules['insu_medicaid_auth_from_date'] = 'required';
+      
+      $fields['insu_medicaid_auth_to_date'] = 'Medicaid Authorization To date';
+      $rules['insu_medicaid_auth_to_date'] = 'required';
+    }
+    
+    if($this->input->post('has_insu_other')==1){
+      $fields['insu_other_id'] = 'Other Id';
+      $rules['insu_other_id'] = 'required';
+      
+      $fields['insu_other_auth_from_date'] = 'Other Authorization From Date';
+      $rules['insu_other_auth_from_date'] = 'required';
+      
+      $fields['insu_other_auth_to_date'] = 'Other Authorization To Date';
+      $rules['insu_other_auth_to_date'] = 'required';
+    }
+    
+    $this->validation->set_fields($fields);  
+		$this->validation->set_rules($rules);	
+
+		$this->tpl->assign('agency_id', $agency_id);
+		$this->tpl->assign('faction', 'quickadmit/'.$agency_id);
+    if(is_null($agency_id)){
+      $this->tpl->assign('physician_list', $this->usagymdl->getPhysiciansByAgency($this->getAgencyId()));
+      $this->tpl->assign('case_manager_list', $this->usagymdl->getCaseManagerByAgency($this->getAgencyId()));
+      $this->tpl->assign('clinician_list', $this->usagymdl->getCliniciansByAgency($this->getAgencyId()));
+      $this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($this->getAgencyId()));
+      $this->tpl->assign('contractor_list', $this->agencycontractormdl->get($this->getAgencyId(), false));
+		
+    }else{
+      $this->tpl->assign('physician_list', $this->usagymdl->getPhysiciansByAgency($agency_id));
+      $this->tpl->assign('case_manager_list', $this->usagymdl->getCaseManagerByAgency($agency_id));
+      $this->tpl->assign('clinician_list', $this->usagymdl->getCliniciansByAgency($agency_id));
+      $this->tpl->assign('referral_name_list', $this->usagymdl->getReferralNameByAgency($agency_id));
+      $this->tpl->assign('contractor_list', $this->agencycontractormdl->get($agency_id, false));
+      
+      foreach($this->agencycontractormdl->get($agency_id) as $contractor){
+        if($contractor->contractor_id == $this->getAgencyId()){          
+          $this->tpl->assign('agency_contractor_id', $contractor->agency_contractor_id);
+        }
+      }
+      
+    }
+    
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign("form_title", "Add New Patient");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/quickadmit");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+
+			$this->patientmdl->tab_013_status = 2;
+			$this->socmdl->lock_soc = 1;
+			$this->_add($agency_id);
+			
+			// doctor order
+			$this->docdoctorordermdl->order_date = date('Y-m-d');
+			$this->docdoctorordermdl->doc_doctor_order_type_id = 1;
+			$this->docdoctorordermdl->physician_id = $this->input->post('prim_doctor_user_id');
+			$this->docdoctorordermdl->insert($this->patientmdl->patient_id);
+			
+			$this->episodemdl->insert($this->socmdl->soc_id, $this->socmdl->estimated_soc_date, $this->docdoctorordermdl->doc_doctor_order_id);
+			
+
+			if ($this->input->post('agency_contractor_id')) {
+				$this->patientcontractormdl->agency_contractor_id = $this->input->post('agency_contractor_id');
+				$this->patientcontractormdl->create_user_id = $this->getUsAgyId();
+				$this->patientcontractormdl->create_date = date("Y-m-d H:i:s");
+				$this->patientcontractormdl->insert($this->patientmdl->patient_id);
+			}
+
+			if ($this->patientmdl->tab_102_prim_insura_type == 2) {
+				$this->agencymdl->updateFlex($this->patientmdl->agency_id, 'medicaid_hmo', 1);
+			}
+
+			$this->tpl->assign('gmessage', $this->patientmdl->first_name . " " . $this->patientmdl->last_name . $this->lang->line('grl_add_msg'));
+
+			$this->index();
+		}
+	}*/
+
+	/*function delete($patient_id) {
+
+		if ($this->getUserProfileId() == 1 && !count($this->episodemdl->getCurrentByPatientId($patient_id))) {
+			$this->patientmdl->delete($patient_id, $this->getAgencyId());
+		}
+
+		$this->index();
+
+	}
+
+	function edit($patient_id, $episode_id = null, $active_tab = null) {
+
+		if ($this->hasPatientAccess($patient_id)) {
+
+			header("Location: " . $this->config->config["index_url"] . "patient/patient/treatmentarea/" . $patient_id . "/" . $episode_id . "/" . $active_tab);
+
+		}
+
+	}
+
+	function selectBySocId($soc_id) {
+
+		$soc = $this->socmdl->getById($soc_id);
+		$episode = $this->episodemdl->getCurrent($soc_id);
+
+		header("Location: " . $this->config->config["index_url"] . "patient/patient/treatmentarea/" . $soc->patient_id . "/" . @ $episode->cms485_id);
+
+	}
+
+	## pdf methods ##
+	function pdflist($print = true) {
+
+		$this->load->library('table');
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH', $this->config->item('fonts_path'));
+
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		$this->fpdf->AddPage();
+
+		$this->fpdf->SetFont('Arial', 'B', 10);
+		$this->fpdf->Text(20, 20, $agency->agency_name); // agency name
+
+		// date
+		$this->fpdf->Text(20, 30, "Date:");
+
+		$this->fpdf->Text(260, 50, "PATIENT LIST");
+
+		$this->fpdf->SetFont('Arial', '', 10);
+		$this->fpdf->Text(450, 50, "Status: " . ($this->input->post('tab_013_status') ? $this->parametermdl->get(13, $this->input->post('tab_013_status'))->tab_description : 'All Status'));
+
+		$this->fpdf->Text(50, 30, date('m-d-Y'));
+
+		$this->fpdf->SetDrawColor(130, 100);
+
+		$this->fpdf->SetFont('Arial', 'B', 8);
+
+		$this->fpdf->Text(20, 77, "Patient Name");
+		$this->fpdf->Text(150, 77, "Med Rec Nbr");
+		$this->fpdf->Text(215, 77, "Home Phone");
+		$this->fpdf->Text(290, 77, "Address");
+		$this->fpdf->Text(430, 77, "Physician");
+		$this->fpdf->Text(525, 77, "SOC date");
+
+		$this->fpdf->Line(20, 80, 574, 80);
+
+		$this->fpdf->SetFont('Courier', '', 8);
+		$this->fpdf->SetLineWidth(0.3);
+
+		$eje_y = 90;
+
+		if ($this->getAgencyType() == 'A') {
+			$data = $this->getPatients($this->input->post('keyword'), $this->input->post('tab_013_status'));
+		} else {
+			$data = $this->patientcontractormdl->getByContractorId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_013_status'));
+		}
+
+		foreach ($data as $patient) {
+
+			$soc = $this->socmdl->getCurrent($patient->patient_id);
+			$physician = $this->usagymdl->getByUsAgyId($patient->prim_doctor_user_id);
+
+			$this->fpdf->Text(20, $eje_y, substr($patient->first_name . " " . $patient->last_name, 0, 25));
+			$this->fpdf->Text(150, $eje_y, $patient->medical_rec_nbr);
+			$this->fpdf->Text(215, $eje_y, $patient->phone_home);
+			$this->fpdf->Text(290, $eje_y, $patient->address);
+			$this->fpdf->Text(290, $eje_y +10, $patient->city . ($patient->city ? ", " : "") . $patient->state_name_short . ". " . $patient->zip1);
+			$this->fpdf->Text(430, $eje_y, @ $physician->first_name . " " . @ $physician->last_name);
+			$this->fpdf->Text(525, $eje_y, standard_date(mysql_to_unix($soc->estimated_soc_date)));
+
+			$this->fpdf->Line(20, $eje_y +13, 574, $eje_y +13);
+
+			$eje_y += 20;
+
+			if ($eje_y > 810) {
+				$this->fpdf->AddPage();
+				$eje_y = 30;
+				$this->fpdf->Line(20, $eje_y -7, 574, $eje_y -7);
+			}
+
+		}
+
+		$this->fpdf->Output('patient_list.pdf', 'D');
+
+	}*/
+
+	function xml_entities($text, $charset = 'UTF-8') {
+		// First we encode html characters that are also invalid in xml
+		$text = htmlentities($text, ENT_COMPAT, $charset, false);
+
+		// Note: &apos; is useless in UTF-8 or in UTF-16
+		$arr_xml_special_char = array (
+			"&quot;",
+			"&amp;",
+			"&apos;",
+			"&lt;",
+			"&gt;"
+		);
+
+		// Building the regex string to exclude all strings with xml special char
+		$arr_xml_special_char_regex = "(?";
+		foreach ($arr_xml_special_char as $key => $value) {
+			$arr_xml_special_char_regex .= "(?!$value)";
+		}
+		$arr_xml_special_char_regex .= ")";
+
+		// Scan the array for &something_not_xml; syntax
+		$pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+
+		// Replace the &something_not_xml; with &amp;something_not_xml;
+		$replacement = '&amp;${1}';
+		return preg_replace($pattern, $replacement, $text);
+	}
+
+}

@@ -1,0 +1,98 @@
+<table border=0 cellpadding="1" cellspacing=1 width="100%">
+	<tr>
+		<td class="ftitle" width="200">Address Type</td>
+		<td>{html_radios options=$adress_type_list selected=$address_type name="address_type" onchange="change_adress_type(this.value)" class='address_type'}</td>
+		
+	</tr>
+	<tr class="hide_serv">
+		<td class="ftitle" width="200">Street </td>
+		<td><input type="text" name="street" value="{$street}" maxlenght="60"> *</td>
+	</tr>
+	<tr>
+		<td class="ftitle" width="200">City </td>
+		<td class="select_city"><!--<input type="text" name="city" value="{$city}" size="25" /> -->
+			<input type="hidden" name="city_name" id="city_name" value="{$city}">
+			{html_options options=$city_list name='city' id='city' selected=$city class='js-input-field'} *
+		</td>
+		<td class="text_city" style="display:none;">
+			<input type="text" name="text_city" id="text_city" value="{$city}">
+		</td>
+	</tr>
+	<tr class="hide_serv">
+		<td class="ftitle" width="200">Zipcode </td>
+		<td><input type="text" name="zipcode" value="{$zipcode}" size="5" /> *</td>
+	</tr>
+	<tr class="hide_serv">
+		<td class="ftitle">State</td>
+		<td>
+			<input type="hidden" name="state_id" value="{$state_id}">
+			{html_options options=$state_list disabled='disabled' selected=$state_id name='state_id2' class='js-input-field'} *
+		</td>
+	</tr>
+</table>
+
+<script>
+
+
+	$(document).ready(function() {literal} { {/literal}
+		$('.address_type').each(function() {literal} {  {/literal}
+			if (this.checked) {literal} { {/literal}
+				change_adress_type(this.value) 
+			{literal} } {/literal}
+		{literal} } {/literal})
+	{literal} } {/literal} )
+	
+	function change_adress_type(value) {literal} { {/literal}
+			city_name = document.getElementById('city_name').value
+			if (value == 'serv') {literal} { {/literal}
+				url = '{$index_url}useragency/address/filterAdrress/{$entity_id}/serv'
+				$('.hide_serv').hide()
+				{literal} } {/literal}
+			else {literal} { {/literal}
+				$('.hide_serv').show()
+				url = '{$index_url}useragency/address/filterAdrress/{$entity_id}/real'
+				{literal } } {/literal}
+			var select = document.getElementById('city');
+			$.ajax({literal} { {/literal}
+				url: url,
+				type: 'POST',
+				dataType: 'json',
+				success: function(data) {literal} { {/literal}
+					console.log(Object.keys(data).length);
+					select.options.length = 0
+					for (var key in data) {literal} { {/literal}
+						var option = document.createElement("option")
+						option.text = data[key];
+						option.value = data[key];
+						select.add(option)
+					{literal} } {/literal}
+					if (value == 'serv') {literal} { {/literal}
+						$(select).attr('name', 'city')
+						$('.select_city').show()
+						$('.text_city').hide()
+						$('#text_city').attr('name', 'city_text')
+						$(select).prepend($('<option/>', {literal} { {/literal} 
+							text: city_name,
+							value: city_name
+						{literal} } {/literal}))
+						$("select option[value='"+city_name+"']").attr("selected","selected")
+					{literal} } {/literal}
+					else {literal} { {/literal}
+						if (Object.keys(data).length == 0) {literal} { {/literal}
+							$('.text_city').show()
+							$('.select_city').hide()
+							$('#text_city').attr('name','city')
+							$(select).attr('name', 'city_select')
+						{literal} } {/literal}
+						else {literal} { {/literal}
+							$("select option[value='"+city_name+"']").attr("selected","selected")
+						{literal} } {/literal}
+					{literal} } {/literal}
+				{literal} } {/literal} ,
+				error: function(data, status, e) {literal} { {literal}
+					alert(data+ status + ' '+e)
+				{literal} } {/literal}
+			{literal} } {/literal})
+		
+	{literal} } {/literal}
+</script>

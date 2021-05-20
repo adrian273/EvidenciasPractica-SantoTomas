@@ -1,0 +1,121 @@
+<?php
+
+class Sent extends My_Controller {
+
+	function Sent() {
+
+		parent::My_Controller();
+
+		$this->tpl->assign("resource_path", "mail/sent");
+
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('no_grid_buttons', true);		
+	}
+
+	function index () {
+
+		$this->session->set_userdata('task_return', "mail/sent/index");
+
+		$this->tpl->assign("back_path", "sent");
+		
+		$this->tpl->assign_include("filter_tpl", "mail/toolbar");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+	function grid () {
+
+		if (!is_null($this->input->post('msg_ids'))) {
+			$this->movetoTrash($this->input->post('msg_ids'));
+		}
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;type=ch", " "));
+		$head->append($this->xml->Element("column", "width=*", "To"));
+		$head->append($this->xml->Element("column", "width=*", "Subject"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Date"));
+		$head->append($this->xml->Element("column", "width=15;align=center;type=link", "Attachment"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->messagemdl->getSent($this->getUsAgyId()) as $msg) {
+			$msg_date = standard_date(mysql_to_unix($msg->msg_date), 'USA_DATE_TIME');
+			$msg_date = str_replace(" ", htmlentities("&nbsp;&nbsp;&nbsp;"), $msg_date);
+			$patient = $this->patientmdl->getById($msg->patient_id);
+			$sentTo = implode("; ", $this->usermessagemdl->getByMessageId($msg->msg_id));
+
+			$cell = $this->xml->Element("row", "id=" . $msg->msg_id);
+
+			$cell->append($this->xml->Element("cell", null, "0"));
+      		$cell->append($this->xml->Element("cell", null, $this->xml_entities($sentTo)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($msg->msg_subject)));			
+			$cell->append($this->xml->Element("cell", null, $msg_date));
+			if ($msg->msg_attachment != "") {              
+				$cdata = '<![CDATA[';
+				$attachments = explode("||", $msg->msg_attachment);
+				foreach ($attachments as $key=>$file) {
+					$cdata .= '<a href="'.$this->config->config['base_url']."datastore/attachment/".$file.'" target="_blank">file '.($key+1).'</a> &nbsp; ';
+				}
+
+				$cdata .= ']]>';
+
+              $cell->append($this->xml->Element("cell", null, $cdata));  
+            }else{
+              $cell->append($this->xml->Element("cell", null, null));             
+            }
+
+			$document->append($cell);
+
+		}
+
+	}
+
+	function edit ( $msg_id ) {
+
+		$config =& get_config();
+		header("Location: " . $config['index_url'] . "mail/read/msg/" . $msg_id . "/sent");
+
+	}
+	
+	function movetoTrash ( $msg_ids ) {
+
+		$msg_ids = explode(",", $msg_ids);
+
+		foreach ($msg_ids as $msg_id) {
+			$this->messagemdl->setMsgTrash($msg_id, $this->getUsAgyId());
+		}
+
+	}	
+	
+	function messageTrash ( $msg_id ) {
+		
+		$this->messagemdl->setMsgTrash($msg_id, $this->getUsAgyId());
+		$this->index();
+		
+	}
+  function xml_entities($text, $charset = 'UTF-8'){
+    // First we encode html characters that are also invalid in xml
+    $text = htmlentities($text, ENT_COMPAT, $charset, false);
+    
+    // Note: &apos; is useless in UTF-8 or in UTF-16
+    $arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+    
+    // Building the regex string to exclude all strings with xml special char
+    $arr_xml_special_char_regex = "(?";
+    foreach($arr_xml_special_char as $key => $value){
+        $arr_xml_special_char_regex .= "(?!$value)";
+    }
+    $arr_xml_special_char_regex .= ")";
+    
+    // Scan the array for &something_not_xml; syntax
+    $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+    
+    // Replace the &something_not_xml; with &amp;something_not_xml;
+    $replacement = '&amp;${1}';
+    return preg_replace($pattern, $replacement, $text);
+  }
+}

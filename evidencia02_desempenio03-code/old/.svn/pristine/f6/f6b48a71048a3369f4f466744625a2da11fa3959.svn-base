@@ -1,0 +1,312 @@
+<?
+
+ class AgencyContractorMdl extends Model {
+
+	var $agency_contractor_id;
+	var $agency_id; 	 	
+	var $contractor_id; 	
+	var $agy_contact_name; 	
+	var $agy_contact_title; 	
+	var $agy_contact_phone1; 	
+	var $agy_contact_phone1_ext; 	
+	var $agy_contact_phone1_type; 	
+	var $agy_contact_phone2; 	
+	var $agy_contact_phone2_ext; 	
+	var $agy_contact_phone2_type; 	
+	var $agy_contact_fax; 	
+	var $agy_contact_email; 	
+	var $agy_contact_notes; 	
+	var $status;
+	var $special_billing_instructions;
+	var $other_instructions;
+	var $contractor_default_duration;
+
+	function AgencyContractorMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $agency_id, $normal_result=true, $key='agency_contractor_id'  ) {
+	
+		$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id');
+		
+		$this->db->where("agency_contractor.agency_id", $agency_id);
+		if ($this->input->post('keyword') !== FALSE AND $this->input->post('keyword') != "" ) {
+			// $this->db->like("CONCAT_WS(' ', first_name, last_name)", $this->input->post('contractor'));
+			$this->db->where("(`agency_name` LIKE '%".$this->input->post('keyword')."%'
+OR `contact_name` LIKE '%".$this->input->post('keyword')."%')");
+			// $this->db->like("agency_name", $this->input->post('keyword'));
+			// $this->db->or_like("contact_name", $this->input->post('keyword'));
+		}
+
+		if ($this->input->post('address') !== FALSE AND $this->input->post('address') != "" ) {			
+			$this->db->like("address", $this->input->post('address'));
+		}
+
+		if ($this->input->post('city') !== FALSE AND $this->input->post('city') != "" ) {			
+			$this->db->like("city", $this->input->post('city'));
+		}
+
+		if ($this->input->post('phone') !== FALSE AND $this->input->post('phone') != "" ) {			
+			$this->db->like("phone_primary", $this->input->post('phone'));
+		}
+
+		if ($this->input->post('fax') !== FALSE AND $this->input->post('fax') != "" ) {			
+			$this->db->like("fax", $this->input->post('fax'));
+		}
+		$this->db->order_by("agency_name", "ASC");
+		$query = $this->db->get('agency_contractor');			
+	    if ($normal_result == true)
+			return $query->result();
+	    else
+	    return $query->result2($key, 'agency_name');			
+	}
+	
+  function getContractorId ( $agency_contractor_id) {
+      $this->db->select('agency_contractor.contractor_id');
+      
+      $this->db->where("agency_contractor.agency_contractor_id", $agency_contractor_id);
+      
+      $query = $this->db->get('agency_contractor');
+      $result = $query->result();
+      return $result[0]->contractor_id;
+  }
+  
+  function getContractorNameById ( $agency_contractor_id) {
+    
+      $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id');
+      $this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+      
+      $this->db->where("agency_contractor.agency_contractor_id", $agency_contractor_id);
+      
+      $query = $this->db->get('agency_contractor');
+      $result = $query->result();
+      return $result[0]->agency_name;
+  }
+  
+	function getByAgencyContractor ( $agency_id, $contractor_id ) {
+	
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("contractor_id", $contractor_id);
+		
+		$query = $this->db->get('agency_contractor');
+		return $query->row();
+
+	}
+  
+  function getByAgencyContractorId ( $agency_contractor_id, $for="company") {
+	
+		if ($for=="agency") {
+			$this->db->select('*, agency_contractor.agency_id AS agency_id');
+			$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id');    	    	
+		}
+		else{
+			$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');    	
+		}
+	
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+    
+		$this->db->where("agency_contractor.agency_contractor_id", $agency_contractor_id);
+		
+		$query = $this->db->get('agency_contractor');
+		return $query->row();
+	}
+	
+	function getByAgencyContractorIds ( $agency_contractor_ids, $for="company") {
+		if (!is_array($agency_contractor_ids)) {
+			return FALSE;
+		}
+
+		if (empty($agency_contractor_ids)) {
+			return FALSE;
+		}
+		
+	    if ($for=="agency") {
+	    	$this->db->select('*, agency_contractor.agency_id AS agency_id');
+	    	$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id');    	    	
+	    }
+	    else{
+	    	$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');    	
+	    }
+
+	    $this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+    
+		$this->db->where_in("agency_contractor.agency_contractor_id", $agency_contractor_ids);
+		$this->db->order_by("agency_name", "ASC");
+		$query = $this->db->get('agency_contractor');
+		return $query->result();
+	}
+
+	function getByContractor ( $contractor_id, $agency_type=null, $normal_result=true, $status = null) {
+	
+		$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+    
+		$this->db->where("agency_contractor.contractor_id", $contractor_id);
+		
+		if($this->input->post('keyword')){
+		  $this->db->like("agency_name", $this->input->post('keyword'));
+		}
+		if($this->input->post('status') != ""){
+		  $this->db->where("status", $this->input->post('status'));
+		}
+
+		if (!is_null($agency_type)) {
+			$this->db->where('agency_type', $agency_type);
+		}
+
+		if (!is_null($status)) {
+			$this->db->where('agency_contractor.status', $status);
+		}
+		
+
+		$this->db->orderby("agency_name", "ASC");
+
+		$query = $this->db->get('agency_contractor');
+		 //echo $this->db->last_query();exit;
+    
+    
+		if ($normal_result == true) {      
+			return $query->result();
+		} else {
+			
+			return $query->result2('agency_id', 'agency_name');
+		}
+
+	}
+    
+    function getContractorName ( $contractor_id, $agency_id ) {
+    
+        $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id');
+        $this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+        
+        $this->db->where("agency_contractor.agency_id", $agency_id);
+        $this->db->where("agency_contractor.contractor_id", $contractor_id);
+        
+        $query = $this->db->get('agency_contractor');
+        $result = $query->result();
+        return $result[0]->agency_name;
+    }
+
+    function getAgencyStatusByContractor ( $contractor_id, $agency_id ) {
+    
+        
+        $this->db->where("agency_contractor.agency_id", $agency_id);
+        $this->db->where("agency_contractor.contractor_id", $contractor_id);
+        
+        $query = $this->db->get('agency_contractor');
+        $result = $query->result();
+        return $result[0]->status;
+    }
+	
+    function getAgencyContractorById ( $contractor_id, $agency_id ) {
+    
+        
+        $this->db->where("agency_contractor.agency_id", $agency_id);
+        $this->db->where("agency_contractor.contractor_id", $contractor_id);
+        
+        $query = $this->db->get('agency_contractor');
+        $result = $query->result();
+		//echo $this->db->last_query();
+		//echo "<pre>"; print_r($result);exit;
+        return $result[0];
+    }	
+
+   	function agencyStatusUpdate ( $contractor_id, $agency_id, $status ) {
+		
+		$this->db->where("contractor_id", $contractor_id);
+		$this->db->where("agency_id", $agency_id);
+		$this->db->set('status', $status);
+		$this->db->update("agency_contractor");
+	}		
+	
+	function update ( $contractor_id, $agency_id ) {
+		
+		$this->db->where("contractor_id", $contractor_id);
+		$this->db->where("agency_id", $agency_id);
+		$this->db->update("agency_contractor", $this);
+		
+	}
+
+	function updateAgencySettings ( $contractor_id, $agency_id ) {
+		
+		$this->db->where("contractor_id", $contractor_id);
+		$this->db->where("agency_id", $agency_id);
+		$this->db->set('special_billing_instructions', $this->input->post('special_billing_instructions'));
+		$this->db->set('other_instructions', $this->input->post('other_instructions'));	
+		$this->db->set('contractor_default_duration', $this->input->post('contractor_default_duration'));	
+		$this->db->update("agency_contractor");
+	}	
+
+	function getAgencySettings ( $contractor_id, $agency_id ) {
+		
+		$this->db->where("contractor_id", $contractor_id);
+		$this->db->where("agency_id", $agency_id);
+		
+		$query = $this->db->get('agency_contractor');
+		return $query->row();
+	}	
+	
+	function getNot ( $agency_id, $state_id ) {
+	
+		$this->db->select('agy_agency.agency_id, agency_name');
+	
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id');
+		$this->db->join('agency_contractor', 'agency_contractor.contractor_id = agy_agency.agency_id AND agency_contractor.agency_id = ' . $agency_id, ' LEFT');
+	
+		$this->db->where("agy_agency.agency_type", 'C');
+		$this->db->where("agy_agency.state_id", $state_id);
+		$this->db->where("agency_contractor_id IS NULL");
+	
+		$query = $this->db->get('agy_agency');
+		return $query->result2('agency_id', 'agency_name');			
+	
+	}
+	
+	function insert ( $agency_id ) {
+		
+		$this->agency_id = $agency_id;
+		
+		if (is_null($this->status)) {
+			$this->status = 1;
+		}
+
+		$this->db->insert('agency_contractor', $this);
+		$this->agency_contractor_id = $this->db->insert_id();
+		
+	}	
+	
+	function delete ( $agency_contractor_id ) {
+		
+		$this->db->where('agency_contractor_id', $agency_contractor_id);
+		
+		$this->db->delete('agency_contractor'); 
+		
+	}
+	
+	function getByContractornew ($agency_id, $agency_type=null, $normal_result=true ) {
+	
+		$this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+    
+		//$this->db->where("agency_contractor.contractor_id", $contractor_id);
+		$this->db->where("agency_contractor.agency_id", $agency_id);
+		
+		if (!is_null($agency_type)) {
+			//$this->db->where('agency_type', $agency_type);
+			$this->db->orwhere('agency_id', $agency_id);
+		}
+		
+		$query = $this->db->get('agency_contractor');
+
+		if ($normal_result == true) {
+			return $query->result();
+		} else {
+			
+			return $query->result2('agency_id', 'agency_name');
+		}
+
+	}
+
+ }

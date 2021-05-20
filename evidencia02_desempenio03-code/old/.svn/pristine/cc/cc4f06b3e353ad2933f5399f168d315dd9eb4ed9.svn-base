@@ -1,0 +1,32 @@
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center">
+  <tr>
+    <td><b>Process Date:</b> {$payroll_batch_process_date|date_format:"%m-%d-%Y":""} </td>
+    <!-- <td><b>Nbr. of Users Processed:</b> </td><td>{$visit_count} </td> -->
+  </tr>
+  <tr>
+    <td><b>Period From:</b> {$payroll_batch_process_period_from|date_format:"%m-%d-%Y":""} - {$payroll_batch_process_period_end|date_format:"%m-%d-%Y":""} </td>    
+  </tr>
+</table>
+
+<script type="text/javascript">
+	var dhxWins;
+
+	function print ( payroll_batch_id ) {literal}{{/literal}
+			document.location = '{$index_url}payroll/history/printit/' + payroll_batch_id;
+	{literal}}{/literal}  
+
+	function addVisitsToPayroll (payroll_batch_process_number) {literal} { {/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 700, 500);
+		w1.setText("Add Visits to Payroll");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    // w1.denyResize(); 
+	    // w1.denyMove(); 
+	    dhxWins.window('w1').center();
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}payroll/generate/addVisitsToPayroll/" + payroll_batch_process_number);
+	{literal} } {/literal}
+</script>

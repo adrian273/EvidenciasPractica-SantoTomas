@@ -1,0 +1,50 @@
+<?
+
+ class fiveDayNoticeMdl extends Model {
+
+	var $cc_five_day_notice_id;
+	var $soc_id;
+	var $discharge_date;
+	var $reason_discharge;
+	var $notified_date;
+	var $user_id;
+	var $copy_fax_physician;
+	var $copy_fax_physician_date;
+	var $physician_id;
+	var $phone_call;
+	var $phone_call_date;
+	var $comments;
+
+	function fiveDayNoticeMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $soc_id ) {
+	
+		$this->db->where("soc_id", $soc_id);
+		
+		$query = $this->db->get('cc_five_day_notice');
+		return $query->row();
+
+	}
+	
+	function insert ( $soc_id ) {
+		
+		$this->soc_id = $soc_id;
+		
+		$this->db->insert('cc_five_day_notice', $this);
+		$this->cc_five_day_notice_id = $this->db->insert_id();
+		
+	}	
+	
+	function delete ( $cc_five_day_notice_id ) {
+		
+		$this->db->where('cc_five_day_notice_id_id', $cc_five_day_notice_id);
+		
+		$this->db->update('cc_five_day_notice'); 
+		
+	}
+
+ }

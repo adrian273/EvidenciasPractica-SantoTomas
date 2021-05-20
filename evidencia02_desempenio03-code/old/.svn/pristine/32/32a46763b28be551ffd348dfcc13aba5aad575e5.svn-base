@@ -1,0 +1,263 @@
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center">
+
+
+	<td>
+		<label for="">Date Range From</label>
+		<input type="text" id="visit_date_ini" name="visit_date_ini" value="{$current_date_default}" size="10"
+			   onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true);"
+				onchange="loadGrid()">
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+
+		<label for="">To</label>
+		<input type="text" id="visit_date_fin" name="visit_date_fin" value="{$final_date_default}" size="10"
+			   onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"
+		onchange="loadGrid()">
+
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+
+
+    	&nbsp;&nbsp;Clinician {html_options first_option='All' options=$clinician_list name='clinician' id='select_clinician'}
+
+    	{if $agency_list}
+			&nbsp;&nbsp;Agency {html_options first_option='All Agency' options=$agency_list name='agency_id' selected=$default_pat_filter_agency}
+		{/if}
+
+		<input type="button" value="Search" onclick="loadGrid()">
+    </td>
+  </tr>
+	<tr><td>
+	<div id="toolbarObj" style="float: left"></div>
+	</td></tr>
+</table> 
+
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		//webBar.addSeparator('sp1', 3);
+		//webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		/*case 'print':
+		  printSelected()
+		  break;	*/
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>
+
+
+<script language="JavaScript" type="text/javascript">
+
+{literal}	
+
+       function validation_number() {
+       		document.getElementById('number_day_old').style.borderColor = 'white';
+       		var number_day_old = document.getElementById('number_day_old').value
+       		return (!/^([0-9])*$/.test(number_day_old));
+       }
+
+{/literal}
+
+    var dhxWins;
+
+   function send_email() {literal}{{/literal}
+   		var clinician;
+   		if ($('#select_clinician').val() == "") {literal}{{/literal}
+   			alert('Select a clinician!');
+   			return;
+   		{literal}}{/literal}
+       	if (grid.getCheckedRows(0)) {literal}{{/literal}
+       		clinician = $('#select_clinician').val();
+       		var record_ids = grid.getCheckedRows(0);
+	       	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 500, 400);
+			w2.setText("Confirm Email Late Visits");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+		    //w2.denyResize(); // deny resizing
+		    //w2.denyMove(); 
+		    dhxWins.window('w2').center();
+		    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/task/late_task_visit/email_visits/"+clinician+"/"+record_ids);
+		{literal}}{/literal} else {literal}{{/literal}
+			alert("At least one Task/Visit must be selected");
+   	    {literal}}{/literal}
+   {literal}}{/literal}
+       
+
+    
+    function afterload () {literal}{{/literal}
+    
+    	setValue('load_pending_status', 0);
+    
+    {literal}}{/literal}
+    	
+    function confirmMissedVisit ( visit_log_id ) {literal}{
+ 
+     	if (confirm('Are you sure you want to make this a Missed Visit?')) {
+     		document.location = index_url + 'task/task/missed/' + visit_log_id;
+     	}
+    	
+    }{/literal}
+    
+    function missedRow ( visit_log_id ) {literal}{{/literal}
+ 
+     	grid.cells(visit_log_id, 4).setValue('Missed Visit');
+		grid.cells(visit_log_id, 6).setValue('');
+		//grid.setRowStyle(visit_log_id, 'bgred');
+		grid.setCellTextStyle(visit_log_id, 4, 'color: red');
+    	
+    {literal}}{/literal}
+    
+	function editRegister ( id ) {literal}{{/literal}
+
+		// future visit
+		if (id > 0 && grid.getUserData(id, 'date_diff') > 0) {literal}{{/literal}
+			alert('This Visit is not yet Due.');
+			return;
+		{literal}}{/literal}
+		
+		// not complying with 13/19 rules
+		if (id > 0 && grid.getUserData(id, 'visit_validated') == 'false') {literal}{{/literal}
+			alert('Warning: Therapy Schedule not complying with 13th and 19th visit rules. Please review and correct.');
+			return;
+		{literal}}{/literal}
+		{if $open_new_window eq 1}
+			window.open("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id+"/nw", "_blank"); 
+		{else}
+			// allow edition
+			document.location = "{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id;
+		{/if}
+	  
+	{literal}}{/literal}
+	
+	{literal}
+	function beforeLoadGrid() {
+		if(!validation_number()){
+			document.getElementById('number_day_old').style.borderColor = 'white';
+			loadGrid()
+		} else {
+			alert('enter only numbers')
+			document.getElementById('number_day_old').style.borderColor = 'red';
+		}
+	}
+	{/literal}
+	
+	function open_visit_log (patient_id, cms485_id) {literal}{{/literal}
+			parent.location.href = "{$index_url}/patient/patient/treatmentarea/"+patient_id+"/"+cms485_id+"/b7";
+			/*
+			    	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 1000, 500);
+			w2.setText("Visit Log");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/patient/task/popup/"+patient_id+"/"+cms485_id);
+			*/
+    	
+  {literal}}{/literal}
+
+	function edit_schedule(visit_log_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 350, 250);
+			w2.setText("Edit Visit Schedule Time");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/task/task/edit_schedule/"+visit_log_id);
+			
+    	
+  {literal}}{/literal}
+
+	function edit_timein(visit_log_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 350, 200);
+			w2.setText("Edit Time In Time Out");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/task/task/edit_timein/"+visit_log_id);
+			
+    	
+  {literal}}{/literal}
+
+	  
+	
+	function capture_signature(visit_log_id) {literal}{{/literal}
+		//alert(visit_log_id);
+		//alert(grid.getCheckedRows(0));
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+		w2.setText("Capture Patient Digital Signature");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		//w2.denyResize(); // deny resizing
+		//w2.denyMove(); 
+		w2.button("close")._doOnClick = function() {literal}{{/literal}
+			loadGrid();
+			w2.close();
+		{literal}}{/literal}	
+		
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}/task/task/capture_signature/" + visit_log_id);
+    {literal}}{/literal}	
+		
+		
+</script>

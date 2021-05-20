@@ -1,0 +1,86 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr id="lala"> 
+    <td nowrap>
+		Period From Date:
+		<input type="text" id="visit_date_ini" name="visit_date_ini" value="{$from_date}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+		End:
+    	<input type="text" id="visit_date_fin" name="visit_date_fin" value="{$to_date}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+		
+		<input type="button" value="Update" onclick="beforeLoadGrid();">
+    </td>
+    <td align="right" style="padding-left: 20px" nowrap>
+		Balance: <b id="total_bill_balance">{$total_balance}</b>
+    </td>    
+  </tr>
+</table> 
+<script>
+
+	function deleteRate (rate_id) {literal}{{/literal}
+	
+		if (confirm('Are you sure you want to delete the rate?'))
+		{literal}{{/literal}
+     		ajax("{$index_url}contractor/billing/rates_delete/"+rate_id, ajaxParseAction);
+   {literal}}{/literal}
+		
+	  
+	{literal}}{/literal}
+	
+	
+	
+  function createInvoice (agency_contractor_id) {literal}{{/literal}			
+			var str1 = document.getElementById('visit_date_ini').value;
+			var str2 = document.getElementById('visit_date_fin').value;
+			/*if(document.getElementById('visit_date_ini').value == '' && document.getElementById('visit_date_fin').value == ''){literal}{{/literal}
+				alert("Enter Period from date and end date");
+				return false;
+			{literal}}{/literal}*/
+			
+			//alert("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}" +"/"+str1+"/"+str2);
+			document.location = "{$index_url}{$resource_path}/{$resource_edit|default:"edit"}" +"/"+agency_contractor_id+"/"+str1+"/"+str2;		
+			
+    {literal}}{/literal}
+    
+	{literal}
+	function beforeLoadGrid() {
+			/*if(document.getElementById('visit_date_ini').value != '' && document.getElementById('visit_date_fin').value != '')
+			{*/
+					var str1 = document.getElementById('visit_date_ini').value;
+					var str2 = document.getElementById('visit_date_fin').value;
+					if(str1 && str2 ){
+						var strarr1 = str1.split("-");
+						var x1=new Date();
+						x1.setFullYear(parseInt(strarr1[2],10),parseInt(strarr1[0],10)-1,parseInt(strarr1[1],10));
+						
+	
+						var strarr2 = str2.split("-");
+						var x2=new Date();
+						x2.setFullYear(parseInt(strarr2[2],10),parseInt(strarr2[0],10)-1,parseInt(strarr2[1],10));
+						
+						var today = new Date();		
+						if (x2.getTime() > x1.getTime())
+						{
+								
+								loadGrid();
+						}
+						else
+						{
+							alert("Invalid till date");
+							return false;
+						}
+					}else{
+						loadGrid();
+					}
+			/*}else{
+				alert("Enter Period from date and end date");
+				return false;
+			}	*/
+	}
+	function updateTotalBalance(balance){
+		document.getElementById('total_bill_balance').innerHTML = balance;
+	}
+	{/literal}
+</script>

@@ -1,0 +1,167 @@
+<table border="0" width="100%" cellpadding="2" cellspacing="0">
+    <input type="hidden" name="user_id" value="{$user_id}">
+    <input type="hidden" name="user_email" value="{$user_email}">
+    <input type="hidden" name="tab105_delivery_pref" value="{$tab105_delivery_pref}">
+    <input type="hidden" name="password" value="{$password}">
+    <tr>
+        <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User Email and Status</td>
+    </tr>
+    <tr>
+        <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">User Email Account</td>
+        <td id="user_email_td"><span id="user_email_text" style="font-style: italic">{$user_email}</span>
+            <input type="button" onclick="switchDisplay('user_email_td');switchDisplay('user_email_input');setFocus('__user_email');setFocus('__user_email')" class="btn" value="Change"></td>
+        <td style="display: none" id="user_email_input"><input type="text" id="__user_email"  name="__user_email" value="{$user_email}" onKeyDown="if (catchKey(13, event)) {literal}{{/literal}ajax('{$index_url}{$resource_path}/useremailchange', ajaxParseAction, 'gform'); return false{literal}}{/literal}"></td>
+        <!--
+	<td style="display: none" id="user_email_input"><input type="text" id="__user_email" onblur="userEmailInputHide()" name="__user_email1" value="{$user_email}" onKeyDown="if (catchKey(13, event)) {literal}{{/literal}ajax('{$index_url}{$resource_path}/useremailchange', ajaxParseAction, 'gform'); return false{literal}}{/literal}"></td>-->
+    </tr>
+    <tr>
+        <td class="ftitle">Nick Name Login</td>
+        <td><input type="text" name="user_nick" value="{$user_nick}"></td>
+    </tr>
+    <tr>
+        <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+        <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Personal Information</td>
+    </tr>
+    <tr>
+        <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">User First Name</td>
+        <td><input type="text" name="first_name" value="{$first_name}">*</td>
+    </tr>
+    <tr>
+        <td class="ftitle">User Last Name</td>
+        <td><input type="text" name="last_name" value="{$last_name}">*</td>
+    </tr>
+    <tr>
+        <td class="ftitle">Address</td>
+        <td><input type="text" name="address" value="{$address}"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">City</td>
+        <td><input type="text" name="city" value="{$city}"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">State</td>
+        <td>{html_options options=$state_list selected=$state_id name='state_id'}</td>
+    </tr>
+    <tr>
+        <td class="ftitle">Zip Code</td>
+        <td><input type="text" name="zip_code" value="{$zip_code}"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">Cell Phone</td>
+        <td>
+			<input type="text" name="phone_home" value="{$phone_home}" placeholder="999-999-9999" />&nbsp;
+			{* {html_options options=$phone_qualifiers selected=$phone1_qualifier name='phone1_qualifier'} *}
+		</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="ftitle">Other Phone</td>
+        <td>
+			<input type="text" name="phone_cell" value="{$phone_cell}" placeholder="999-999-9999" />&nbsp;
+			{* {html_options options=$phone_qualifiers selected=$phone2_qualifier name='phone2_qualifier'} *}
+		</td>
+    </tr>	
+    <tr>
+        <td class="ftitle">SSN</td>
+        <td><input type="text" name="soc_sec_nbr" value="{$soc_sec_nbr}"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">Other Language</td>
+        <td>{html_options options=$other_lang_list selected=$tab_010_other_lang_1 name='tab_010_other_lang_1'}</td>
+    </tr>	
+    <tr>
+        <td class="ftitle">Sex</td>
+        <td>{html_options options=$sex_list selected=$tab_002_sex name='tab_002_sex'}</td>
+    </tr>	
+    <tr>
+        <td class="ftitle">Date of Birth</td>
+		<td>
+			<input type="text" id="date_birth" name="date_birth" value="{$date_birth|date_format}" 
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_birth'), document.getElementById('fecha_help'));return false;" >
+		</td>
+    </tr>	
+    <tr>
+        <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+        <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Preferences</td>
+    </tr>
+    <tr>
+        <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">Start On Page</td>
+        <td colspan="3"> {html_options options=$home_app_list selected=$home_app_id name='home_app_id' has_firts_option=false} <span class="stip" style="padding-left: 20px">This will be your home page when logged</span> </td>
+    </tr>
+    <tr>
+        <td class="ftitle">Default Internal Email Inbox filter</td>
+        <td colspan="3"> {html_options options=$default_internal_email_inbox_filter_options selected=$default_internal_email_inbox_filter name='default_internal_email_inbox_filter' has_firts_option=false} <span class="stip" style="padding-left: 20px">This will be your default option in Internal Email Inbox filters</span> </td>
+    </tr>
+    <tr>
+        <td class="ftitle">Open Notes in new window? </td>
+        <td > {html_radios name='open_new_window' options=$logic_list selected=$open_new_window}
+        <td colspan="2" height="10"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">Send Internal Email to personal email? </td>
+        <td>             
+            <label><input type="radio" name="internal_email_to_mailbox" value="0" {if $internal_email_to_mailbox eq '0'}checked="checked"{/if}>No</label>
+            <label><input type="radio" name="internal_email_to_mailbox" value="1" {if $internal_email_to_mailbox eq '1'}checked="checked"{/if}>Yes</label>
+            <label><input type="radio" name="internal_email_to_mailbox" value="2" {if $internal_email_to_mailbox eq '2'}checked="checked"{/if}> Only User Internal Emails</label>
+        </td>    
+        <td colspan="2" height="10"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">Open Patient Signature in new Window ?</td>
+        <td>
+                <label>
+                    <input type="radio" name="open_patient_signature" value="0" {if $open_patient_signature eq 0} checked="checked" {/if}>
+                    No
+                </label>
+                <label>
+                    <input type="radio" name="open_patient_signature" value="1" {if $open_patient_signature eq 1} checked="checked" {/if}>
+                    Yes
+                </label>
+        </td>
+    </tr>
+    <tr>
+        <td class="ftitle">
+            Order Pre-payroll by Legal Name
+        </td>
+        <td>
+                <label>
+                    <input type="radio" name="order_pre_payroll" value="0" {if $order_pre_payroll eq 0} checked="checked" {/if}>
+                    No
+                </label>
+                <label>
+                    <input type="radio" name="order_pre_payroll" value="1" {if $order_pre_payroll eq 1} checked="checked" {/if}>
+                    Yes
+                </label>
+        </td>
+    </tr>
+    {* <tr>
+        <td class="ftitle">Delivery Preference? </td>
+        <td > {html_radios name='tab105_delivery_pref' options=$delivery_types_list selected=$tab105_delivery_pref}
+        <td colspan="2" height="10"></td>
+    </tr> *}
+</table>
+<script language="JavaScript" type="text/javascript">
+
+	function userEmailInputHide () {literal}{{/literal}
+
+		switchDisplay2('user_email_td', '');
+		switchDisplay2('user_email_input', 'none');
+		setValue('__user_email', getInner('user_email_text'));
+	  
+	{literal}}{/literal}
+	
+</script>

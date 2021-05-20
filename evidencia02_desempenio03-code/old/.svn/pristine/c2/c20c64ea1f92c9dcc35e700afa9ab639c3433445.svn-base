@@ -1,0 +1,22 @@
+<?
+
+ class TeamFront extends MY_Controller {
+
+	function TeamFront () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/teamfront");
+		
+	}
+
+	function index ( $patient_id, $episode_id=null ) {
+
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("cms485_id", $episode_id);
+		$this->tpl->assign("patient_id", $patient_id);
+		$this->tpl->assign_include("dynamic_tpl", "patient/team/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+ }

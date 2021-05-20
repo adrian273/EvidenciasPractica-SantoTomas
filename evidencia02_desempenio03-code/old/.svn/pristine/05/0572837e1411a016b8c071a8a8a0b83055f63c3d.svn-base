@@ -1,0 +1,126 @@
+<?
+
+ class TaskAction extends MY_Controller {
+
+	function TaskAction () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/taskaction");
+		
+	}
+
+	function previous ( $visit_log_id ) {
+		
+		$task = $this->visitlogmdl->getById($visit_log_id);
+		$visit_type = $this->visittypemdl->getById($task->visit_type_id);
+		$this->load->model($visit_type->visit_program . 'mdl', 'visitformmdl');
+		
+		$this->tpl->assign("entity_id", $visit_log_id);
+		$this->tpl->assign("faction", 'previous');
+		
+		if ($this->validation->run() == FALSE) {
+			
+			$array_options = array();
+			
+			foreach ($this->visitformmdl->getPrevious($this->getUsAgyId(), $task->visit_date_time, $task->cms485_id) as $visit) {
+				$array_options[$visit->visit_log_id] = standard_date(mysql_to_unix($visit->visit_date_time));
+			}
+
+			if (count($array_options)) $this->tpl->assign("copy_options", $array_options);
+
+			$this->tpl->assign_include("dynamic_tpl", "task/copy_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			if (!count($this->visitformmdl->get($visit_log_id))) {
+				$this->visitformmdl->visit_log_id = $visit_log_id;
+				$this->visitformmdl->insert();
+			}
+			
+			$this->visitformmdl->copy($visit_log_id, $this->input->post('copy_id'));
+			
+			echo "<SCRIPT>parent.document.location.reload(true)</SCRIPT>";
+			
+		}
+		
+	}
+	
+	function createtemplate ( $visit_log_id ) {
+		
+		$task = $this->visitlogmdl->getById($visit_log_id);
+		$visit_type = $this->visittypemdl->getById($task->visit_type_id);
+		$this->load->model($visit_type->visit_program . 'mdl', 'visitformmdl');
+		$this->load->model('tpl' . $visit_type->visit_program . 'mdl', 'visitformtplmdl');
+		
+		$this->tpl->assign("entity_id", $visit_log_id);
+		$this->tpl->assign("faction", 'createtemplate');
+		
+		$this->validation->set_rules(array('template_name' => 'required'));
+		$this->validation->set_fields(array('template_name' => 'Template Name'));
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "task/add_template_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			$visit_log = $this->visitformmdl->get($visit_log_id);
+      foreach($this->visitformtplmdl as $key=>$val){
+        if ( isset($visit_log->$key) ) {
+          $this->visitformtplmdl->$key = $visit_log->$key;
+        }
+      }
+			//$this->assignPostData($this->visitformtplmdl, $this->visitformmdl->get($visit_log_id));
+			$this->visitformtplmdl->insert($this->getUserId(), $this->input->post('template_name'));
+			
+			echo "<SCRIPT>alert('Template " .  $this->lang->line('grl_crt_msg') .  "'); parent.cancelModal();</SCRIPT>";
+			
+		}
+		
+	}
+	
+	function template ( $visit_log_id ) {
+		
+		$task = $this->visitlogmdl->getById($visit_log_id);
+		$visit_type = $this->visittypemdl->getById($task->visit_type_id);
+		$this->load->model($visit_type->visit_program . 'mdl', 'visitformmdl');
+		$this->load->model('tpl' . $visit_type->visit_program . 'mdl', 'visitformtplmdl');
+		
+		$this->tpl->assign("entity_id", $visit_log_id);
+		$this->tpl->assign("faction", 'template');
+		
+		if ($this->validation->run() == FALSE) {
+
+			$array_options = $this->visitformtplmdl->getByUserId($this->getUserId());
+			if (count($array_options)) $this->tpl->assign("copy_options", $array_options);
+
+			$this->tpl->assign_include("dynamic_tpl", "task/copy_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			//$this->assignPostData($this->visitformmdl, $this->visitformtplmdl->get($this->input->post('copy_id')));
+			
+      $visit_log = $this->visitformtplmdl->get($this->input->post('copy_id'));
+      foreach($this->visitformmdl as $key=>$val){
+        if ( isset($visit_log->$key) ) {
+          $this->visitformmdl->$key = $visit_log->$key;
+        }
+      }
+      
+			if (!count($this->visitformmdl->get($visit_log_id))) {
+				$this->visitformmdl->visit_log_id = $visit_log_id;
+				$this->visitformmdl->insert();
+			} else {
+				$this->visitformmdl->visit_log_id = $visit_log_id;
+				$this->visitformmdl->update($visit_log_id);
+			}
+			
+			echo "<SCRIPT>parent.document.location.reload(true)</SCRIPT>";
+			
+		}
+		
+	}
+	
+ }

@@ -1,0 +1,208 @@
+<?php
+
+class insurance extends MY_Controller {
+	public $edit_id = 0;
+	function insurance () {
+
+		parent::MY_Controller();
+		$ins_type_list = $this->parametermdl->getByType(107);
+		//echo "<pre>"; print_r($ins_type_list); exit;
+		$prim_type_list = $this->parametermdl->getByType(108);
+		$this->tpl->assign('ins_type_list', $ins_type_list);
+		$this->tpl->assign('prim_type_list', $prim_type_list);
+
+		$this->tpl->assign('no_commit_form', !$this->hasPermission(5));
+		
+		$this->tpl->assign("resource_path", "patient/insurance");
+		$this->tpl->assign('tab_page', true);
+		
+		
+//		$this->output->enable_profiler();
+	}
+
+	function index ( $patient_id ) {
+
+		/*if (!$this->hasPermission(4) && !$this->hasPatientAccess($patient_id)) {
+			$this->tpl->assign_include("no_grid_buttons", false);
+		}*/
+		//$this->tpl->assign('additional_buttons', array('Approve Insurance' => "checkEpass()"));
+		
+		$patient = $this->patientmdl->getById($patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3) ) {
+			// Can edit/add
+		} else {
+			$this->tpl->assign_include("no_grid_buttons", true);
+			$this->tpl->assign_include("noedit", true);
+		}
+
+			
+		/*if (!$this->hasPermission(5)) {
+			$this->tpl->assign_include("no_grid_buttons", true);
+		}*/
+		
+		$this->tpl->assign('no_commit_form', true);
+
+		$this->tpl->assign("checkHandler", "1");
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign("add_sufix", "Insurance");
+		
+		$this->tpl->assign_include("filter_tpl", "patient/insurance/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "patient/insurance/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	
+
+	function grid ( $patient_id ) {
+		$insurance_status 	= $this->parametermdl->getByType(39);
+		$soc 				= $this->socmdl->getCurrent($patient_id);
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		
+		$head->append($this->xml->Element("column", "width=15", "Insurance Type"));
+		$head->append($this->xml->Element("column", "width=15", "Insurance Id"));
+		$head->append($this->xml->Element("column", "width=*", "Description"));
+		$head->append($this->xml->Element("column", "width=15", "Primary/Secondary"));
+		$head->append($this->xml->Element("column", "width=10", "Effective Date"));		
+		$head->append($this->xml->Element("column", "width=10", "Thru Date"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->patientinsurancemdl->get($patient_id, $this->input->post('keyword')) as $med) {
+
+			$cell = $this->xml->Element("row", "id=" . $med->id);
+			$cell->append($this->xml->Element("cell", null, $med->ins_type_desc));
+			$cell->append($this->xml->Element("cell", null, $med->ins_id));
+			$cell->append($this->xml->Element("cell", null, $med->ins_description));
+			$cell->append($this->xml->Element("cell", null, $med->ins_prim_desc));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($med->ins_effective_date))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($med->ins_thru_date))));
+
+			$document->append($cell);
+		}
+
+	}
+	
+	function checkHandler ( $patient_id, $mediation_id, $idc, $primary ) {
+		
+		$this->patientinsurancemdl->updateApprove($mediation_id, $this->getUsAgyId());
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=loadGrid()"));
+		
+	}
+		
+	function combpk($pk1, $pk2) {	
+
+		$this->db->where('tab_108_prim_sec', $pk1);
+		$this->db->where('patient_id', $pk2);
+		$result = $this->db->get('pat_patient_insurance1');
+		if($result->num_rows() > 0) {
+			$this->validation->set_message('combpk', 'Only 1 primary insurance is allowed'); // set your message
+			return false;
+		} else { return true;}
+	}	
+	function add ( $patient_id ) {
+		unset($this->edit_id);
+		$rules = array ('ins_id' => 'required', 'tab_107_ins_type' => 'required', 'tab_108_prim_sec' => 'required|callback_combpk[' . $patient_id . ']');
+		$this->validation->set_rules($rules);
+
+		
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign('faction', 'add');
+		
+		$patient = $this->patientmdl->getById($patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		
+		if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3) ) {
+			// Can edit/add
+		} else {
+			$this->tpl->assign_include("no_commit_form", true);
+		}
+						
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/insurance/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->patientinsurancemdl);
+			$this->patientinsurancemdl->modify_user = $this->getUserId();
+			
+			
+			$this->patientinsurancemdl->insert($patient_id, $this->getUsAgyId());			
+			$this->tpl->assign('gmessage', "Insurance" . $this->lang->line('grl_add_msg'));			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	function edit_combpk($pk1, $pk2) {	
+		//echo "ksa"; echo $this->edit_id; exit;
+		$this->db->where('tab_108_prim_sec', $pk1);
+		$this->db->where('patient_id', $pk2);
+		$this->db->where('id != ', $this->edit_id);
+		$result = $this->db->get('pat_patient_insurance1');
+		if($result->num_rows() > 0) {
+			$this->validation->set_message('edit_combpk', 'Only 1 primary insurance is allowed'); // set your message
+			return false;
+		} else { return true;}
+	}	
+	function edit ( $patient_id, $id ) {
+		$this->edit_id = $id;
+		$rules = array ('ins_id' => 'required', 'tab_108_prim_sec' => 'callback_edit_combpk[' . $patient_id . ']');		
+		$this->validation->set_rules($rules);
+
+		$this->tpl->assign("entity_id", $patient_id);
+		$this->tpl->assign("record_id", $id);
+		$this->tpl->assign('faction', 'edit');
+
+		$patient = $this->patientmdl->getById($patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		if ( $this->getUserProfileId()==1 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==3) ) {
+			// Can edit/add
+		} else {
+			$this->tpl->assign_include("no_commit_form", true);
+		}
+						
+		$this->assignObject($insurance = $this->patientinsurancemdl->getById($id));
+						
+		if ($this->validation->run() == FALSE) {
+
+			/*$soc = $this->socmdl->getCurrent($patient_id);
+			
+			if ($soc->case_manager_user_id != $this->getUsAgyId() && $insurance->creation_user != $this->getUsAgyId()) {
+				$this->tpl->assign('no_commit_form', true);
+			}*/
+			
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/insurance/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->patientinsurancemdl);
+			$this->patientinsurancemdl->modify_user=$this->getUserId();
+			$this->patientinsurancemdl->update($patient_id, $id);
+			
+			$this->tpl->assign('gmessage', "Insurance" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	
+	function delete ( $patient_id, $id ) {		
+		$this->patientinsurancemdl->delete($id);		
+		$this->tpl->assign('gmessage', "Insurance" . $this->lang->line('grl_del_msg'));
+		$this->index($patient_id);		
+	}
+}

@@ -1,0 +1,124 @@
+<?php
+ include('visitform.php');
+
+  class Aidepoc extends VisitForm {
+
+	function Aidepoc () {
+		
+		parent::VisitForm();
+
+		$this->load->model('aidepocmdl');
+//		$this->load->model('vthhaaidepnmdl');
+
+		$this->tpl->assign("resource_path", "task/aidepoc");
+		$this->tpl->assign(array("tab_page" => true));
+		
+	}
+	
+	function hha_poc_thru_date_validation ( $hha_poc_thru_date ) {
+		
+		$visitlog = $this->visitlogmdl->getById($this->input->post('visit_log_id'));
+		
+		$hha_poc_thru_date_ts 	= human_to_unix($hha_poc_thru_date);
+		$hha_poc_effec_date_ts 	= human_to_unix($this->input->post('hha_poc_effec_date'));
+		$episode_end_date_ts 	= mysql_to_unix($visitlog->episode_end_date);
+
+		if ($hha_poc_thru_date_ts < $hha_poc_effec_date_ts || $hha_poc_thru_date_ts > $episode_end_date_ts) {
+
+			if ($hha_poc_thru_date_ts < $hha_poc_effec_date_ts) {
+				$this->validation->set_message('hha_poc_thru_date_validation', 'Plan of Care thru date must be greater than Plan of Care effective date');
+			}
+			
+			if ($hha_poc_thru_date_ts > $episode_end_date_ts) {
+				$this->validation->set_message('hha_poc_thru_date_validation', 'Plan of Care thru date cannot be greater than Episode End date');
+			}
+				
+			return FALSE;
+			
+			
+		} else {
+			
+			return TRUE;
+			
+		}
+		
+
+	}
+
+	function index ( $visit_log_id, $action='task' ) {
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		
+		$this->assignObject($visitlog);
+		$this->assignObject($this->aidepocmdl->get($visit_log_id));
+		
+		if (!count($this->aidepocmdl->get($visit_log_id))) {
+	
+			$this->tpl->assign("hha_poc_effec_date", $visitlog->visit_date_time);
+			if (is_null($this->input->post('hha_poc_thru_date'))) $this->tpl->assign("hha_poc_thru_date", $visitlog->episode_end_date);
+
+		}
+						
+		$this->validation->set_rules(array ('hha_poc_effec_date'  => 'required',
+											'hha_poc_thru_date'	  => 'required|callback_hha_poc_thru_date_validation',
+											'freq_duration'		  => 'required',
+											'cm_nurse_user_id'    => 'required|integer'));
+											
+		if ($this->validation->run() == TRUE) {
+
+			$this->updateFormEdition($visit_log_id);
+			
+			$this->assignPostData($this->aidepocmdl);
+			
+			if (count($this->aidepocmdl->get($visit_log_id))) {
+				$this->aidepocmdl->update($visit_log_id);
+			} else {
+				$this->aidepocmdl->insert($visit_log_id);
+			}
+			
+			$this->formRedirection($visit_log_id);
+			
+		}
+		
+		$user = $this->usermdl->getById($this->session->userdata('user_id'));
+		$us_agy = $this->usagymdl->getByUserId($this->session->userdata('user_id'));
+		
+		$this->tpl->assign('nurse_list', 	$this->teammdl->getAll($visitlog->patient_id, array(1)));
+		
+		$this->getPatientInfo($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/aidepoc");
+		$this->setfbase($visit_log_id, $action);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+	
+	function pdf($cms485_id,$hha_progress_note_id){
+
+		//echo "salut";
+
+		$__FONT['PDF']['SIZE'] = 8;
+		$__FONT['PDF']['FORM_LARGE'] = 9;	
+		$__FONT['PDF']['FORM_MEDIUM'] = 8;		
+		$__FONT['PDF']['FORM_SMALL'] = 6;
+
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+		$pdf = $this->fpdf;
+
+		$pdf->AddPage();
+
+		$cero_x = 11;
+		$cero_y = 28;		
+
+		$pdf->SetDrawColor(130,100);				
+		$pdf->SetFont('Arial', 'B', 6.5);		
+		$pdf->Text(11, 28, "Department of Health and Human Services");
+		$pdf->Text(11, 34, "Centers for Medicare & Medicaid Services");
+
+		$this->fpdf->Output('test.pdf','D');
+
+	}
+
+ }

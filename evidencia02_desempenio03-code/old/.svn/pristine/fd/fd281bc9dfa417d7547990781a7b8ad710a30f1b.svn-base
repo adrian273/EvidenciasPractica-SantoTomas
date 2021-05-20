@@ -1,0 +1,74 @@
+<style>
+	table tr {border: 1px solid #000000;}
+	.text-cell { font:10px/18px Arial, Helvetica, sans-serif; font-style: normal; font-weight: normal; color:#111111; text-align:left; }
+</style>
+
+<table width="100%" border="0" cellpadding="5" cellspacing="0">
+	<tr>
+		<td colspan="2"><strong>Invoice #</strong> <?=$invoice->invoice_no?></td>
+	</tr>
+	<?php
+	foreach($patients as $k => $patient) { 
+	?>
+		<tr><td colspan="2" height="10"></td></tr>
+		<tr>
+		    <td colspan="2" style="height: 10px; border-top: 1px dotted #000000;">
+				<strong>Patient Name: </strong> <?php echo $patient->last_name . " " . $patient->first_name; ?> 
+				
+				<table width="100%" border="0" cellspacing="0" cellpadding="5">
+					<tr>
+						<td style="border-bottom: 1px solid #aaaaaa;">Visit Date</td>
+						<td style="border-bottom: 1px solid #aaaaaa;">Visit Type</td>
+						<td style="border-bottom: 1px solid #aaaaaa;">Clinician</td>
+						<td style="border-bottom: 1px solid #aaaaaa;">Time In</td>
+						<td style="border-bottom: 1px solid #aaaaaa;">Time Out </td>
+						<td style="border-bottom: 1px solid #aaaaaa;">Patient Digital Signature </td>
+					</tr>
+					<?php 
+						if(!empty($patient->visits)) {
+							foreach($patient->visits as $k => $visit) { 
+								if ($visit->visit_log_number) {
+									$visit_task_name = "(" . $visit->visit_log_number . ") " . $visit->visit_description;
+								} else {
+									$visit_task_name = $visit->visit_description;
+								}
+								if(!in_array($visit->visit_type_id, array(80, 350, 400))) {
+								?>
+									<tr >
+										<td class="text-cell" ><?php echo date("m/d/Y", strtotime($visit->visit_date_time)); ?></td>
+										<td class="text-cell" ><?php echo $visit_task_name; ?></td>
+										<td class="text-cell" ><?php echo $visit->first_name . " " . $visit->last_name; ?></td>
+										<td class="text-cell" ><?php echo ($visit->visited_time_in == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_in), 'USA_TIME_C'); ?></td>
+										<td class="text-cell" ><?php echo ($visit->visited_time_out == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_out), 'USA_TIME_C'); ?></td>
+										<td >
+											<?php if($visit->signature != "") { 
+												$path = FCPATH.'upload/signatures/'.$visit->signature;
+												$path = str_replace("\\", "/", $path);
+												$type = pathinfo($path, PATHINFO_EXTENSION);
+												$data = file_get_contents($path);
+												$base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+
+												?>
+												<img src="<?php echo $base64; ?>" width="100" />
+											<?php } ?>
+										</td>
+									</tr>
+								<?php 
+								}
+							} 
+						} else { 
+						?>
+							<tr>
+								<td colspan="6">&nbsp;</td>
+							</tr>	
+						<?php 
+						} 
+						?>
+
+				</table>
+			</td>
+	    </tr>
+    <?php
+	}
+    ?>
+</table>

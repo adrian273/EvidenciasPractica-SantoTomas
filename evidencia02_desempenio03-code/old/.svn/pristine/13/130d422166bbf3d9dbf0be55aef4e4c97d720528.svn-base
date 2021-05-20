@@ -1,0 +1,284 @@
+<?php 
+
+include ('admin_controller.php');
+
+class Reports extends Admin_Controller {
+  function Reports()
+    {        
+        parent::Admin_Controller();
+
+        $this->tpl->assign("resource_path", "administrator/reports");
+        
+        $this->load->model('menu_model');
+        //$this->tpl->assign('tab_page', true);
+    		//$this->tpl->assign('noedit', true);
+    		//$this->tpl->assign('no_grid_buttons', true);
+    }
+
+	public function index()
+	{
+    $this->tpl->assign(array("list_title" => "Reports dynamic menu"));
+		$this->tpl->assign_include("dynamic_tpl", "administrator/reports/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    		
+	}
+		
+	function manage_group(){
+    //$this->tpl->assign(array("list_title" => "Manage Groups"));
+    $this->tpl->assign("resource_grid", "grid_groups");
+    $this->tpl->assign("add_sufix", "Groups");
+    $this->tpl->assign("resource_add", "edit_group");
+    $this->tpl->assign("resource_edit", "edit_group");
+    $this->tpl->assign("resource_delete", "delete_group");
+    
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    
+	}
+  
+  function grid_groups () {
+		
+    $groups = $this->menu_model->get_all_groups();
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=15", "column"));
+		$head->append($this->xml->Element("column", "width=15", "Position"));
+		$head->append($this->xml->Element("column", "width=*", "Group Name"));				
+    $head->append($this->xml->Element("column", "width=15;align=center;type=linkc", "Delete"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($groups as $group) {
+			
+			$cell = $this->xml->Element("row", "id=" . $group->id);
+			$cell->append($this->xml->Element("cell", null, $group->column_id));
+			$cell->append($this->xml->Element("cell", null, $group->position));
+			$cell->append($this->xml->Element("cell", null, $group->name));
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "administrator/reports/delete_group/" . $group->id . "^Are you sure to delete this group?"));
+      
+			$document->append($cell);
+			
+		}
+		
+	}
+  
+  function edit_group($id=null){
+    
+    //$this->tpl->assign("entity_id", $id);    
+		$this->tpl->assign('resource_index', "manage_group");		
+		$this->tpl->assign('resource_delete', "delete_group");		
+		$this->tpl->assign('record_id', $id);
+		$this->tpl->assign('faction', 'edit_group');
+    
+    $position = "";
+    if($id){
+      $rules = array ('column'	=> 'trim|required',
+                    'name'			=> 'trim|required',
+                    'position'			=> 'trim|required'
+                    );
+            
+      $this->validation->set_rules($rules);
+    
+      $this->tpl->assign('title', "Edit group");  
+      $group_data = $this->menu_model->get_group_data($id);;
+      $this->assignObject($group_data);
+      $columns = $this->menu_model->get_columns_with_selected($group_data['column_id']);    
+      $this->tpl->assign('columns', $columns);                      
+      $position = $this->menu_model->get_positions_with_selected($group_data);     
+      $this->tpl->assign('position', $position);                      
+    }else{
+      $rules = array ('column'	=> 'trim|required',
+                    'name'			=> 'trim|required'           
+                    );
+            
+      $this->validation->set_rules($rules);    
+      
+      $this->tpl->assign('title', "Add group");  
+      $this->tpl->assign('no_delete_form', true);  
+      $columns = $this->menu_model->get_columns();
+      $this->tpl->assign('columns', $columns);                            
+    }
+    
+    if ($this->validation->run() == FALSE) {          
+      $this->tpl->assign('position', $position);                      
+      $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/reports/edit_group");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+    }else{
+      $group_data = array (
+      'name'=>$this->input->post('name'),
+      'position'=>$this->input->post('position'),
+      'id'=>$this->input->post('id'),
+      'column_id'=>$this->input->post('column')
+      );
+      if(!$this->input->post('id') > 0){
+        if($this->menu_model->add_group($group_data)){
+          $this->tpl->assign('gmessage', "The Group has been Updated successfuly.");                      
+          $this->manage_group();
+        }else
+          $this->tpl->assign('error_string', "There was an error processing your request.");                      
+      }else{
+        if($this->menu_model->edit_group($group_data,$this->input->post('id'))){
+          //$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_upd_msg'));              
+          $this->tpl->assign('gmessage', "The Group has been Updated successfuly.");                      
+          $this->manage_group();
+        }else{
+          $this->tpl->assign('error_string', "There was an error processing your request.");                      
+        }
+      }
+    }  
+    
+	}
+  
+	function delete_group($id){		
+		$group = $this->menu_model->get_group_data($id);
+    
+    if($this->menu_model->check_available_report_in_group($id)){
+			//'This Group cannot be deleted since it has reports.';
+		}else{
+      if($this->menu_model->delete_group($group,$id)){
+          if(!$this->menu_model->check_available_report_in_group($id)){
+            $this->tpl->assign('gmessage', "Group" . $this->lang->line('grl_del_msg'));		
+            $this->manage_group();			
+          }		
+      }
+    }    
+	}
+  
+  
+	function manage_report(){
+    $this->tpl->assign("resource_grid", "grid_reports");
+    $this->tpl->assign("add_sufix", "Reports");
+    $this->tpl->assign("resource_add", "edit_report");
+    $this->tpl->assign("resource_edit", "edit_report");
+    $this->tpl->assign("resource_delete", "delete_report");
+    
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    
+	}
+  
+  function grid_reports () {
+		
+    $reports = $this->menu_model->get_all_reports();
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=15", "Group Name"));
+		$head->append($this->xml->Element("column", "width=15", "Position"));
+		$head->append($this->xml->Element("column", "width=15", "Report Name"));				
+		$head->append($this->xml->Element("column", "width=*", "Report Link"));				
+    $head->append($this->xml->Element("column", "width=15;align=center;type=linkc", "Delete"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($reports as $report) {      
+			$cell = $this->xml->Element("row", "id=" . $report->id);
+			$cell->append($this->xml->Element("cell", null, $report->group));
+			$cell->append($this->xml->Element("cell", null, $report->position));
+			$cell->append($this->xml->Element("cell", null, $report->name));
+			$cell->append($this->xml->Element("cell", null, $report->link));
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "administrator/reports/delete_report/" . $report->id . "^Are you sure to delete this report?"));
+      
+			$document->append($cell);
+			
+		}
+		
+	}
+  
+  function edit_report($id=null){
+    
+    //$this->tpl->assign("entity_id", $id);    
+		$this->tpl->assign('resource_index', "manage_report");		
+		$this->tpl->assign('resource_delete', "delete_report");		
+		$this->tpl->assign('record_id', $id);
+		$this->tpl->assign('faction', 'edit_report');
+    
+    
+    $columns = '';
+  	$position = '';  		      
+      
+    if($id){
+      $rules = array ('group'	=> 'trim|required',
+                    'name'			=> 'trim|required',
+                    'link'			=> 'trim|required',
+                    'position'			=> 'trim|required'
+                    );
+            
+      $this->validation->set_rules($rules);
+          
+      $this->tpl->assign('title', "Edit report");  
+      
+      $report = $this->menu_model->get_report_data($id);      
+  		$groups = $this->menu_model->get_groups_with_selected($report['group_id']);
+  		$position = $this->menu_model->get_report_positions_with_selected($report);  		      
+              
+      $this->assignObject($report);      
+      $this->tpl->assign('groups', $groups);                            
+      $this->tpl->assign('position', $position);                      
+    }else{
+      $rules = array ('group'	=> 'trim|required',
+                    'name'			=> 'trim|required',
+                    'link'			=> 'trim|required'                    
+                    );
+      $this->validation->set_rules($rules);    
+      
+      $this->tpl->assign('title', "Add report");  
+      $this->tpl->assign('no_delete_form', true);  
+      $groups = $this->menu_model->get_groups();
+      $this->tpl->assign('groups', $groups);                            
+    }
+    
+    if ($this->validation->run() == FALSE) {          
+      $this->tpl->assign('columns', $columns);                            
+      $this->tpl->assign('position', $position);                      
+      $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/reports/edit_report");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+    }else{
+      
+      if(!$this->input->post('id')){
+        $report_data = array( 'group_id'=> $this->input->post('group'), 'name'=>$this->input->post('name'), 'link'=>$this->input->post('link'));
+        if($this->menu_model->add_report($report_data)){
+          $this->tpl->assign('gmessage', "Report" . $this->lang->line('grl_add_msg'));
+          
+          $this->manage_report();
+        }else
+          $this->tpl->assign('error_string', "There was an error processing your request.");                      
+      }else{
+        $report_data = array (
+  			'name'=>$this->input->post('name'),
+  			'group_id'=>$this->input->post('group'),
+  			'position'=>$this->input->post('position'),
+  			'link'=>$this->input->post('link')
+  			);
+        
+        if($this->menu_model->edit_report($report_data,$this->input->post('id'))){
+          $this->tpl->assign('gmessage', "Report" . $this->lang->line('grl_add_msg'));                   
+          $this->manage_report();
+        }else{
+          $this->tpl->assign('error_string', "There was an error processing your request.");                      
+        }
+      }
+    }  
+    
+	}
+  
+		
+	function delete_report($id)
+	{
+    $group = $this->menu_model->get_group_data($id);
+    if($this->menu_model->delete_report($id)){
+        $this->tpl->assign('gmessage', "Report" . $this->lang->line('grl_del_msg'));		
+        $this->manage_report();			    
+    }
+    
+	}	
+			
+}
+

@@ -1,0 +1,890 @@
+<?php  if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+// Art Therapy Visit PDF functions
+
+function artvi_y_waiver_pdf ($visit_log_id, $output ='F') {
+    global $GL_VISIT;
+
+    $CI =& get_instance();
+    
+    $CI->load->model('artvimdl');
+
+    $visit_log = $CI->visitlogmdl->getById($visit_log_id);
+    $visitlog = $visit_log;
+    $agy_user_id = $visit_log->user_id;
+    $us1_user = $CI->usermdl->getById($agy_user_id);
+    $artvi = $CI->artvimdl->get($visit_log_id);
+    $GL_VISIT = $artvi;
+
+    $patient = $CI->patientmdl->getById($visit_log->patient_id);
+    
+    $visit_user = $CI->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+    if ($visitlog->visit_discipline_id) {
+        $user_discipline = $CI->disciplinemdl->getById($visitlog->visit_discipline_id);
+        $visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+    }
+
+    // $superv_user = $CI->usagymdl->getByUsAgyId($visitlog->superv_user_id);
+    $supervisor_signed_by = array();
+    if ($artvi->wsuperv_signed_by) {
+        $supervisor_signed_by = $CI->usagymdl->getByUsAgyId($artvi->wsuperv_signed_by);
+    }
+    $agency = $CI->agencymdl->getByAgencyId($patient->agency_id);
+    // print_r($agency);exit();
+    $medicaidInsurance = $CI->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+    $label_font = "Arial";
+    $data_font = "Courier";
+
+    $__FONT['PDF']['SIZE'] = 9;
+    $__FONT['PDF']['FORM_MEDIUM'] = 10;
+    $__FONT['PDF']['FORM_SMALL'] = 9;
+    $__FONT['PDF']['FORM_SMALL2'] = 8;
+    $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+    $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+    $__FONT['PDF']['FORM_arial8'] = 9.5;
+
+
+    $CI->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+      define('FPDF_FONTPATH',$CI->config->item('fonts_path'));
+    $total_page = 1;
+    $CI->fpdf->Open();
+    $pdf = $CI->fpdf;
+    $pdf->AddPage();
+    $con = 2.8346456692913384;
+    $cero_x = 11;
+    $cero_y = 2;
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+    
+    $agency_company_name = "";
+    if ($agency->print_agency_or_contractor_on_notes == "contractor") {
+        $agency_company_name = $visit_log->visit_contractor_name;
+        $pdf->SetFont('Arial', 'B', 11);
+        $CI->fpdf->Text(($x + 150), ($y + 5), $agency_company_name);
+        $pdf->SetFont('Arial', 'B', 10);
+        $CI->fpdf->Text(($x + 115), ($y + 20), "Art Therapy Progress Notes - [YES-Waiver]");
+    } else {
+        $pdf->SetFont('Arial', 'B', 13);
+        $CI->fpdf->Text(($x + 115), ($y + 30), "Art Therapy Progress Notes - [YES-Waiver]");
+    }
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 60), "County:");
+    $CI->fpdf->Line(($cero_x +90), ($cero_y +88), ($cero_x +155), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 72), ($y + 60), $patient->city);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    // $CI->fpdf->Text(($x + 360), ($y + 60), "Program Name:");
+    $CI->fpdf->Text(($x + 200), ($y + 60), "Program Name:");
+    $CI->fpdf->Line(($cero_x +447-160), ($cero_y +88), ($cero_x +487-160), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 430-160), ($y + 60), $artvi->gov_program);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 360), ($y + 60), "Medicaid #:");
+    $CI->fpdf->Line(($cero_x +447), ($cero_y +88), ($cero_x +487), ($cero_y +88));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 430), ($y + 60), @$medicaidInsurance->ins_id);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 72), "Pt. Name:");
+    $CI->fpdf->Line(($cero_x +90), ($cero_y +100), ($cero_x +150), ($cero_y +100));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 72), ($y + 72), $patient->first_name.' '.$patient->last_name);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 84), "Visit Date:");
+    $CI->fpdf->Line(($cero_x +90), ($cero_y +112), ($cero_x +139), ($cero_y +112));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 72), ($y + 84), standard_date(mysql_to_unix($visit_log->visited_date)) );
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 360), ($y + 72), "Case #:");
+    $CI->fpdf->Line(($cero_x +447), ($cero_y +100), ($cero_x +487), ($cero_y +100));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 430), ($y + 72), @$patient->medical_rec_nbr);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 360), ($y + 84), "Client DOB:");
+    $CI->fpdf->Line(($cero_x +447), ($cero_y +112), ($cero_x +498), ($cero_y +112));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 430), ($y + 84), standard_date(mysql_to_unix($patient->date_birth)));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 97), "Time in:");
+    $CI->fpdf->Line(($cero_x +90), ($cero_y +125), ($cero_x +130), ($cero_y +125));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 72), ($y + 97), date("h:i A",mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in)));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 150), ($y + 97), "Time Out:");
+    $CI->fpdf->Line(($cero_x +206), ($cero_y +125), ($cero_x +246), ($cero_y +125));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 189), ($y + 97), date("h:i A",mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out)));
+
+    $date2 = strtotime(date("Y-m-d ").$visit_log->visited_time_out);
+    $date1 = strtotime(date("Y-m-d ").$visit_log->visited_time_in);
+    
+    if(is_null($visit_log->visited_time_in)){      
+      $date1 = strtotime(date("Y-m-d ").$visit_log->visit_date_time);
+      $date2 = strtotime(date("Y-m-d ").$visit_log->visit_date_time)+(45*60);
+    }
+    
+    $visit_duration = floor(($date2 - $date1)/60);
+    
+    if($visit_duration < 0){
+        $date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visit_log->visited_time_out);
+        $visit_duration = floor(($date2 - $date1)/60);
+      //$visit_duration = 45;
+      // $date2 = $date1+(45*60);
+    }elseif($visit_duration==0){
+      $visit_duration = '00';
+    }
+    
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 260), ($y + 97), "Total time:");
+    $CI->fpdf->Line(($cero_x +319), ($cero_y +125), ($cero_x +332), ($cero_y +125));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 302), ($y + 97), (string)$visit_duration);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 360), ($y + 97), "Unit Amount:");
+    $CI->fpdf->Line(($cero_x +447), ($cero_y +125), ($cero_x +460), ($cero_y +125));
+    $pdf->SetFont('Courier', '', 8);
+    if ($agency->F3625_measure_unit) {
+        $CI->fpdf->Text(($x + 430), ($y + 97), ($visit_duration/(60/$agency->F3625_measure_unit)));
+    } else {
+        $CI->load->model('spvisitunitmdl');
+        $units = $CI->spvisitunitmdl->get('Y-Waiver', $visit_duration);
+        $CI->fpdf->Text(($x + 430), ($y + 97), (string)number_format($units, 0));
+
+    }
+
+    $CI->fpdf->Line(($cero_x +30), ($cero_y +135), ($cero_x +520), ($cero_y +135));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 123), "Location of therapy:");
+    $CI->fpdf->Line(($cero_x +116), ($cero_y +151), ($cero_x +230), ($cero_y +151));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 22 + 79), ($y + 123), substr($artvi->wlocation_therapy, 0, 30));
+    
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 250), ($y + 123), "Persons present:");
+    $CI->fpdf->Line(($cero_x +334), ($cero_y +151), ($cero_x +510), ($cero_y +151));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 250 + 68), ($y + 123), substr($artvi->wpersons_present, 0, 35));
+
+    //470 words
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 138), "Activity/Description of Contact:");
+    $CI->fpdf->SetDrawColor(200);
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +179), ($cero_x +510), ($cero_y +179));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +190), ($cero_x +510), ($cero_y +190));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +201), ($cero_x +510), ($cero_y +201));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +212), ($cero_x +510), ($cero_y +212));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +223), ($cero_x +510), ($cero_y +223));
+    
+    $pdf->SetFont('Courier', '', 8);
+    $activity  = str_replace("\n", " ", $artvi->wactivity_descrip);
+    $CI->fpdf->SetXY( ($x + 20) , ($y + 142));
+    $CI->fpdf->MultiCell(476, 11, ''.substr($activity,0, 470));
+
+    //380 words
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 210), "Specific Skills received and method used to train client in skills:");
+    $CI->fpdf->SetDrawColor(200);
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +251), ($cero_x +510), ($cero_y +251));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +262), ($cero_x +510), ($cero_y +262));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +273), ($cero_x +510), ($cero_y +273));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +284), ($cero_x +510), ($cero_y +284));
+
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY( ($x + 22) , ($y + 214));
+    $wspecific_skills  = str_replace("\n", " ", $artvi->wspecific_skills);
+    $CI->fpdf->MultiCell(476, 11, substr($wspecific_skills,0, 380));
+    
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 271), "Client's response to service being provided(observations):");    
+     $CI->fpdf->SetDrawColor(200);  
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +312), ($cero_x +510), ($cero_y +312));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +323), ($cero_x +510), ($cero_y +323));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +334), ($cero_x +510), ($cero_y +334));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +345), ($cero_x +510), ($cero_y +345));
+    
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY( ($x + 22) , ($y + 275));
+    $wclient_response  = str_replace("\n", " ", $artvi->wclient_response);
+    $CI->fpdf->MultiCell(476, 11, substr($wclient_response,0, 380));
+
+    
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 332), "Summary of activities and behaviors during the Services/Description of the contact:");
+    $CI->fpdf->SetDrawColor(200);    
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +373), ($cero_x +510), ($cero_y +373));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +384), ($cero_x +510), ($cero_y +384));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +395), ($cero_x +510), ($cero_y +395));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +406), ($cero_x +510), ($cero_y +406));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY( ($x + 22) , ($y + 336));
+    $wsummary_activities  = str_replace("\n", " ", $artvi->wsummary_activities);
+    $CI->fpdf->MultiCell(476, 11, substr($wsummary_activities,0, 380));
+
+
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 393), "Specific interventions used:"); 
+    $CI->fpdf->SetDrawColor(200);    
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +434), ($cero_x +510), ($cero_y +434));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +445), ($cero_x +510), ($cero_y +445));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +456), ($cero_x +510), ($cero_y +456));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +467), ($cero_x +510), ($cero_y +467));    
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY( ($x + 22) , ($y + 397));
+    $wspecific_interven  = str_replace("\n", " ", $artvi->wspecific_interven);
+    $CI->fpdf->MultiCell(476, 11, substr($wspecific_interven,0, 380));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 454), "Goals/objectives addressed:");     
+    $CI->fpdf->SetDrawColor(200);    
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +495), ($cero_x +510), ($cero_y +495));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +506), ($cero_x +510), ($cero_y +506));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +517), ($cero_x +510), ($cero_y +517));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +528), ($cero_x +510), ($cero_y +528));    
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY( ($x + 22) , ($y + 458));
+    $wgoals_objectives  = str_replace("\n", " ", $artvi->wgoals_objectives);
+    $CI->fpdf->MultiCell(476, 11, substr($wgoals_objectives,0, 380));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 515), "Progress or Lack of progress/outcomes of the contact:"); 
+    $CI->fpdf->SetDrawColor(200);    
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +556), ($cero_x +510), ($cero_y +556));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +567), ($cero_x +510), ($cero_y +567));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +578), ($cero_x +510), ($cero_y +578));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +589), ($cero_x +510), ($cero_y +589));    
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY( ($x + 22) , ($y + 519));
+    $wprogress_lack_progress  = str_replace("\n", " ", $artvi->wprogress_lack_progress);
+    $CI->fpdf->MultiCell(476, 11, substr($wprogress_lack_progress,0, 380));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 576), "Goal focus/plan for next session:");
+    $CI->fpdf->SetDrawColor(200); 
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +617), ($cero_x +510), ($cero_y +617));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +628), ($cero_x +510), ($cero_y +628));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +639), ($cero_x +510), ($cero_y +639));
+    $CI->fpdf->Line(($cero_x +40), ($cero_y +650), ($cero_x +510), ($cero_y +650));    
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY( ($x + 22) , ($y + 580));
+    $wgoal_focus  = str_replace("\n", " ", $artvi->wgoal_focus);
+    $CI->fpdf->MultiCell(476, 11, substr($wgoal_focus,0, 380));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 682), "Therapist Signature:");
+    $CI->fpdf->Line(($cero_x +130), ($cero_y +708), ($cero_x +250), ($cero_y +708));
+
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 115), ($y + 690), $us1_user->first_name.' '.$us1_user->last_name);
+    if (isset($artvi->clinician_signature) AND $artvi->clinician_signature != "") {        
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$artvi->clinician_signature;
+        $CI->fpdf->Image( $img_path, ($x + 130), ($y + 630), 0, 50);        
+    }
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 311), ($y + 690), "Credential");
+    $CI->fpdf->Line(($cero_x +307), ($cero_y +708), ($cero_x +395), ($cero_y +708));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 290), ($y + 680), $visit_user->description);
+
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 447), ($y + 690), "Date");
+    $CI->fpdf->Line(($cero_x +435), ($cero_y +708), ($cero_x +510), ($cero_y +708));
+    $pdf->SetFont('Courier', '', 8);
+    if (isset($artvi->clinician_signature) AND $artvi->clinician_signature != "") { 
+        // $CI->fpdf->Text(($x + 432), ($y + 680), standard_date(mysql_to_unix($artvi->clinician_signed_date)));
+        $CI->fpdf->Text(($x + 432), ($y + 680), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+    }
+
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 22), ($y + 742), "Supervisor Signature:");
+    $CI->fpdf->Line(($cero_x +130), ($cero_y +768), ($cero_x +250), ($cero_y +768));
+    
+    $pdf->SetFont('Arial', 'B', 8);
+    if (!empty($supervisor_signed_by)) {
+        $CI->fpdf->Text(($x + 115), ($y + 750), @$supervisor_signed_by->first_name.' '.@$supervisor_signed_by->last_name);
+    }
+    $CI->fpdf->Text(($x + 115), ($y + 750), '');
+    
+    if (isset($artvi->wsuperv_signature) AND $artvi->wsuperv_signature != "") {        
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$artvi->wsuperv_signature;
+        $CI->fpdf->Image( $img_path, ($x + 130), ($y + 690), 0, 50);        
+    }
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 311), ($y + 750), "Credential");
+    $CI->fpdf->Line(($cero_x +310), ($cero_y +768), ($cero_x +390), ($cero_y +768));
+    $pdf->SetFont('Courier', '', 8);
+    if (!empty($supervisor_signed_by)) {
+        $CI->fpdf->Text(($x + 290), ($y + 740), @$supervisor_signed_by->description);
+    }
+    
+    $CI->fpdf->Text(($x + 290), ($y + 740), '');
+
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 447), ($y + 750), "Date");
+    $CI->fpdf->Line(($cero_x +435), ($cero_y +768), ($cero_x +510), ($cero_y +768));
+    $pdf->SetFont('Courier', '', 8);
+    if (isset($artvi->wsuperv_signature) AND $artvi->wsuperv_signature != "") { 
+        // $CI->fpdf->Text(($x + 432), ($y + 740), standard_date(mysql_to_unix($artvi->wsuperv_signed_date)));
+        $CI->fpdf->Text(($x + 432), ($y + 740), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+    }
+
+    $title_text = "Art Therapy Visit Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+
+    switch($output){
+        case 'D':
+            $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+            $filename = $filename_only.'.pdf';    
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+        case 'F':
+            //$filename = $filename.'tmp/'.time().'_'.$visit_log_id.'_pq_ptpn.pdf';
+            $c = 1;
+            while(file_exists($filename.'tmp/'.$filename_only.'.pdf'))
+            {
+                $filename_only =  "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text." _".$c;
+                $c++;
+            }
+            $filename = $filename.'tmp/'.$filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+    }
+
+    return $filename;
+
+}
+
+function artvi_class_pdf ($visit_log_id, $output ='F') {
+    global $GL_VISIT;
+    $CI =& get_instance();
+    
+
+    $CI->load->model('artvimdl');
+
+    $visit_log = $CI->visitlogmdl->getById($visit_log_id);
+    $visitlog = $visit_log;
+    $agy_user_id = $visit_log->user_id;
+    $us1_user = $CI->usermdl->getById($agy_user_id);
+    $artvi = $CI->artvimdl->get($visit_log_id);
+    $GL_VISIT = $artvi;
+
+    $patient = $CI->patientmdl->getById($visit_log->patient_id);
+    $medicaidInsurance = $CI->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+    // $visit_user = $CI->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+    // $superv_user = $CI->usagymdl->getByUsAgyId($visitlog->superv_user_id);
+    $agency = $CI->agencymdl->getByAgencyId($patient->agency_id);
+    $enable_visit = false;
+    if (isset($agency->F3625_req_visit) AND $agency->F3625_req_visit == 1) {
+        $enable_visit = true;
+    }
+
+    $print_3625 = true;
+    // skip 3625 when print notes = 1
+    if (array_key_exists("print_notes", $GLOBALS)) {
+        global $pt_3625_visits, $last_3625_visit_log_id, $print_notes;
+        if ($print_notes == 1) {
+            $print_3625 = false;
+            
+            if ( (isset($artvi->upload_document_name) AND $artvi->upload_document_name != "") 
+                OR  (isset($artvi->upload_document_name2) AND $artvi->upload_document_name2 != "") ) {
+                // when uploaded found document no need to print electronic version
+            }else{
+                $last_3625_visit_log_id = $visit_log_id;
+                $pt_3625_visits[] = $visit_log_id;
+            }
+
+        }
+    }
+
+    if (!$print_3625 AND !$enable_visit) {
+        return false;
+    }
+    
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+    $label_font = "Arial";
+    $data_font = "Courier";
+
+    $__FONT['PDF']['SIZE'] = 9;
+    $__FONT['PDF']['FORM_MEDIUM'] = 10;
+    $__FONT['PDF']['FORM_SMALL'] = 9;
+    $__FONT['PDF']['FORM_SMALL2'] = 8;
+    $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+    $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+    $__FONT['PDF']['FORM_arial8'] = 9.5;
+
+
+    $CI->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+      define('FPDF_FONTPATH',$CI->config->item('fonts_path'));
+
+    
+    $total_page = 1;
+    $CI->fpdf->Open();
+    $pdf = $CI->fpdf;
+
+    $pdf->AddPage();
+    $con = 2.8346456692913384;
+    $cero_x = 11;
+    $cero_y = 2;
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+    
+    $pdf->SetFont('Arial', 'B', 13);
+    $CI->fpdf->Text(($x + 160), ($y + 30), "Art Therapy Visit Progress Note - CLASS");
+    
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 10), ($y + 72), "Patient Name:");
+    $CI->fpdf->Line(($cero_x +81), ($cero_y +100), ($cero_x +220), ($cero_y +100));
+    
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 65), ($y + 72), $patient->first_name.' '.$patient->last_name);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 10), ($y + 84), "Visit Date:");
+    $CI->fpdf->Line(($cero_x +68), ($cero_y +112), ($cero_x +118), ($cero_y +112));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 50), ($y + 84), standard_date(mysql_to_unix($visitlog->visit_date_time)) );
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 268), ($y + 72), "Medicaid #:");
+    $CI->fpdf->Line(($cero_x +330), ($cero_y +100), ($cero_x +384), ($cero_y +100));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 314), ($y + 72), $medicaidInsurance->ins_id);
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 10), ($y + 100), "Time In:");
+    $CI->fpdf->Line(($cero_x +60), ($cero_y +128), ($cero_x +100), ($cero_y +128));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 43), ($y + 100), date("h:i A",mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in)));
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 129), ($y + 100), "Time Out:");
+    $CI->fpdf->Line(($cero_x +187), ($cero_y +128), ($cero_x +225), ($cero_y +128));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 168), ($y + 100), date("h:i A",mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out)));
+
+    $date2 = strtotime(date("Y-m-d ").$visit_log->visited_time_out);
+    $date1 = strtotime(date("Y-m-d ").$visit_log->visited_time_in);
+    
+    if(is_null($visit_log->visited_time_in)){      
+      $date1 = strtotime(date("Y-m-d ").$visit_log->visit_date_time);
+      $date2 = strtotime(date("Y-m-d ").$visit_log->visit_date_time)+(45*60);
+    }
+    
+    $visit_duration = floor(($date2 - $date1)/60);
+    
+    if($visit_duration < 0){
+        $date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visit_log->visited_time_out);
+        $visit_duration = floor(($date2 - $date1)/60);
+      //$visit_duration = 45;
+      // $date2 = $date1+(45*60);
+    }elseif($visit_duration==0){
+      $visit_duration = '00';
+    }
+    
+
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 268), ($y + 100), "Duration:");
+    $CI->fpdf->Line(($cero_x +324), ($cero_y +128), ($cero_x +360), ($cero_y +128));
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->Text(($x + 307), ($y + 100), (string)$visit_duration);
+    $CI->fpdf->Text(($x + 323), ($y + 100), "min");
+
+    if ($enable_visit) {
+        
+        $CI->fpdf->Line(($cero_x +25), ($cero_y +160), ($cero_x +550), ($cero_y +160));
+        // $CI->fpdf->Line(($cero_x - 10), ($cero_y +170), ($cero_x +585), ($cero_y +170));
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x + 10), ($y + 151), "Activity:");
+        $CI->fpdf->SetDrawColor(200);
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +198), ($cero_x +547), ($cero_y +198));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +212), ($cero_x +547), ($cero_y +212));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +226), ($cero_x +547), ($cero_y +226));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +240), ($cero_x +547), ($cero_y +240));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +256), ($cero_x +547), ($cero_y +256));
+        $pdf->SetFont('Courier', '', 8);
+        if (isset($artvi->activity) AND $artvi->activity != "") {
+            $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $activity  = str_replace("\n", " ", $artvi->activity);
+            $CI->fpdf->SetXY( ($x + 8) , ($y + 156));
+            $CI->fpdf->MultiCell(525, 14, substr($activity,0, 525));
+        }
+
+        
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x + 10), ($y + 251), "Affect:");    
+        
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +297), ($cero_x +547), ($cero_y +297));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +311), ($cero_x +547), ($cero_y +311));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +325), ($cero_x +547), ($cero_y +325));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +339), ($cero_x +547), ($cero_y +339));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +355), ($cero_x +547), ($cero_y +355));
+        
+        $pdf->SetFont('Courier', '', 8);
+        if (isset($artvi->affect) AND $artvi->affect != "") {
+            $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $affect  = str_replace("\n", " ", $artvi->affect);
+            $CI->fpdf->SetXY( ($x + 8) , ($y + 256));
+            $CI->fpdf->MultiCell(525, 14, substr($affect,0, 525));
+        }
+
+        
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x + 10), ($y + 351), "Goals Addressed (Revisions of Goals and Objectives):");     
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +396), ($cero_x +547), ($cero_y +396));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +410), ($cero_x +547), ($cero_y +410));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +424), ($cero_x +547), ($cero_y +424));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +438), ($cero_x +547), ($cero_y +438));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +454), ($cero_x +547), ($cero_y +454));    
+        $pdf->SetFont('Courier', '', 8);
+        if (isset($artvi->goals) AND $artvi->goals != "") {
+            $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $goals  = str_replace("\n", " ", $artvi->goals);
+            $CI->fpdf->SetXY( ($x + 8) , ($y + 356));
+            $CI->fpdf->MultiCell(525, 14, substr($goals,0, 525));
+        }
+
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x + 10), ($y + 451), "Treatment Provided:"); 
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +495), ($cero_x +547), ($cero_y +495));    
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +509), ($cero_x +547), ($cero_y +509));    
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +523), ($cero_x +547), ($cero_y +523));    
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +537), ($cero_x +547), ($cero_y +537));    
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +553), ($cero_x +547), ($cero_y +553));
+
+        $pdf->SetFont('Courier', '', 8);
+        if (isset($artvi->treat_provided) AND $artvi->treat_provided != "") {
+            $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $treat_provided  = str_replace("\n", " ", $artvi->treat_provided);
+            $CI->fpdf->SetXY( ($x + 8) , ($y + 456));
+            $CI->fpdf->MultiCell(525, 14, substr($treat_provided,0, 525));
+        }    
+        
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x + 10), ($y + 551), "Client Response to Therapy:"); 
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +594), ($cero_x +547), ($cero_y +594));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +608), ($cero_x +547), ($cero_y +608));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +622), ($cero_x +547), ($cero_y +622));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +636), ($cero_x +547), ($cero_y +636));
+        $CI->fpdf->Line(($cero_x +28), ($cero_y +652), ($cero_x +547), ($cero_y +652));
+
+        $pdf->SetFont('Courier', '', 8);
+        if (isset($artvi->client_response) AND $artvi->client_response != "") {
+            $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+            $client_response  = str_replace("\n", " ", $artvi->client_response);
+            $CI->fpdf->SetXY( ($x + 8) , ($y + 556));
+            $CI->fpdf->MultiCell(525, 14, substr($client_response,0, 525));
+        }
+
+
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x + 22), ($y + 670), "Participant/Family Signature:");
+        if (isset($visit_log->signature) AND $visit_log->signature != "") {        
+            $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$visit_log->signature;
+            $CI->fpdf->Image( $img_path, ($x + 150), ($y + 640), 60);        
+        }
+        $CI->fpdf->Line(($cero_x +153), ($cero_y +698), ($cero_x +350), ($cero_y +698));
+        $CI->fpdf->Text(($x + 355), ($y + 670), "Date:");
+        if (isset($visit_log->signature) AND $visit_log->signature != "") { 
+            $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']); 
+            // $CI->fpdf->Text(($x + 355 + 30), ($y + 670), standard_date(mysql_to_unix($artvi->pt_signed_date)));
+            $CI->fpdf->Text(($x + 355 + 30), ($y + 670), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+            $pdf->SetFont('Arial', 'B', 8);
+        }
+        $CI->fpdf->Line(($cero_x +397), ($cero_y +698), ($cero_x +490), ($cero_y +698));
+
+        $pdf->SetFont('Arial', 'B', 8);
+        $CI->fpdf->Text(($x + 22), ($y + 720),  "Therapist Signature:");    
+        if (isset($artvi->clinician_signature) AND $artvi->clinician_signature != "") {        
+            $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$artvi->clinician_signature;
+            $CI->fpdf->Image( $img_path, ($x + 115), ($y + 690), 60);        
+            $pdf->SetFont('Arial', '', 8);
+            $CI->fpdf->Text(($x + 122), ($y + 732),  $us1_user->first_name.' '.$us1_user->last_name);    
+            $pdf->SetFont('Arial', 'B', 8);
+        }
+        $CI->fpdf->Line(($cero_x +120), ($cero_y +748), ($cero_x +350), ($cero_y +748));
+        $CI->fpdf->Text(($x + 355), ($y + 720), "Date:");
+        if (isset($artvi->clinician_signature) AND $artvi->clinician_signature != "") { 
+            $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']); 
+            // $CI->fpdf->Text(($x + 355 + 30), ($y + 720), standard_date(mysql_to_unix($artvi->clinician_signed_date)));
+            $CI->fpdf->Text(($x + 355 + 30), ($y + 720), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+            $pdf->SetFont('Arial', 'B', 8);
+        }
+        $CI->fpdf->Line(($cero_x +397), ($cero_y +748), ($cero_x +490), ($cero_y +748));
+    }
+
+    if ($print_3625) {
+        form3625_pdf($visit_log_id, "M");
+    }
+    
+    $title_text = "Art Therapy Visit and Form 3625 Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+
+    switch($output){
+        case 'D':
+            $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+            $filename = $filename_only.'.pdf';    
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+        case 'F':
+            //$filename = $filename.'tmp/'.time().'_'.$visit_log_id.'_pq_ptpn.pdf';
+            $c = 1;
+            while(file_exists($filename.'tmp/'.$filename_only.'.pdf'))
+            {
+                $filename_only =  "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text." _".$c;
+                $c++;
+            }
+            $filename = $filename.'tmp/'.$filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+    }
+
+    return $filename;
+
+}
+
+function artvi_pdf ($visit_log_id, $output ='F') {
+    global $GL_VISIT;
+
+    $CI =& get_instance();
+    
+    $CI->load->model('artvimdl');
+
+    $visit_log = $CI->visitlogmdl->getById($visit_log_id);
+    $visitlog = $visit_log;
+    $artvi = $CI->artvimdl->get($visit_log_id);
+
+    if (isset($artvi->gov_program) AND $artvi->gov_program) {
+    } else {
+      $patient = $CI->patientmdl->getById($visit_log->patient_id); 
+      @$artvi->gov_program = $patient->gov_program;
+    }
+
+    if (isset($artvi->gov_program) AND $artvi->gov_program == 'Y-Waiver') {
+      $filename = artvi_y_waiver_pdf($visit_log_id, $output);
+      return $filename;
+    } 
+    elseif (isset($artvi->gov_program) AND $artvi->gov_program == 'CLASS') {
+      $filename = artvi_class_pdf($visit_log_id, $output);
+      return $filename;
+    }
+
+    $GL_VISIT = $artvi;
+
+    $agy_user_id = $visit_log->user_id;
+    $us1_user = $CI->usermdl->getById($agy_user_id);
+    
+    $patient = $CI->patientmdl->getById($visit_log->patient_id);
+
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+    $label_font = "Arial";
+    $data_font = "Courier";
+
+    $__FONT['PDF']['SIZE'] = 9;
+    $__FONT['PDF']['FORM_MEDIUM'] = 10;
+    $__FONT['PDF']['FORM_SMALL'] = 9;
+    $__FONT['PDF']['FORM_SMALL2'] = 8;
+    $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+    $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+    $__FONT['PDF']['FORM_arial8'] = 9.5;
+
+
+    $CI->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+      define('FPDF_FONTPATH',$CI->config->item('fonts_path'));
+    $total_page = 2;
+    $CI->fpdf->Open();
+    $pdf = $CI->fpdf;
+    $pdf->AddPage();
+    $con = 2.8346456692913384;
+    $cero_x = 11;
+    $cero_y = 2;
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+    
+    $pdf->SetFont('Arial', 'B', 30);
+    $CI->fpdf->Text(($x + 150), ($y + 72), "Progress Notes");
+    $CI->fpdf->Text(($x + 144), ($y + 76), "______________");
+
+    $pdf->SetFont('Arial', 'B', 20);
+    $CI->fpdf->Text(($x + 208), ($y + 120), "Private");
+
+    // $pdf->SetFont('Arial', 'B', 10);
+    // $CI->fpdf->Text(($x + 210), ($y + 150), "(please circle one above)");
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 175), "Participant name:");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +205), ($cero_x +390), ($cero_y +205));
+    $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+    $CI->fpdf->Text(($x + 75), ($y + 175), $patient->first_name." ".$patient->last_name);
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 205), "Date:");
+    $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+    $CI->fpdf->Text(($x + 27), ($y + 205), standard_date(mysql_to_unix($visit_log->visited_date)));
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Line(($cero_x +35), ($cero_y +233), ($cero_x +490), ($cero_y +233));
+    $CI->fpdf->Text(($x - 7), ($y + 235), "Time of start:");
+    $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+    $CI->fpdf->Text(($x + 57), ($y + 235), date("h:i A",mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in)));
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Line(($cero_x +70), ($cero_y +263), ($cero_x +490), ($cero_y +263));
+    $CI->fpdf->Text(($x - 7), ($y + 265), "Time of finish:");
+    $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+    $CI->fpdf->Text(($x + 57), ($y + 265), date("h:i A",mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out)));
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Line(($cero_x +74), ($cero_y +293), ($cero_x +490), ($cero_y +293));
+
+    $dateStart = new DateTime($visit_log->visited_date . " " . $visit_log->visited_time_in);
+    $dateEnd   = new DateTime($visit_log->visited_date . " " . $visit_log->visited_time_out); 
+    $dateDiff  = $dateStart->diff($dateEnd); 
+
+    $CI->fpdf->Text(($x - 7), ($y + 295), "Total time:");
+    $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+    $CI->fpdf->Text(($x + 57), ($y + 295), $dateDiff->format("%H:%I:%S"));
+    $pdf->SetFont('Arial', 'B', 9);
+
+    $CI->fpdf->Line(($cero_x +60), ($cero_y +323), ($cero_x +490), ($cero_y +323));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +353), ($cero_x +490), ($cero_y +353));
+    
+    $CI->fpdf->Text(($x - 7), ($y + 350), "Activity:");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +379), ($cero_x +46), ($cero_y +379));
+
+    $pdf->SetFont('Arial', 'B', 11);
+    // $CI->fpdf->Text(($x + 60), ($y + 371), "Myofascial release for left forearm. Swedish massage");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +403), ($cero_x +490), ($cero_y +403));
+
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +433), ($cero_x +490), ($cero_y +433));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +463), ($cero_x +490), ($cero_y +463));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +493), ($cero_x +490), ($cero_y +493));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +523), ($cero_x +490), ($cero_y +523));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +553), ($cero_x +490), ($cero_y +553));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +583), ($cero_x +490), ($cero_y +583));
+
+    if (isset($artvi->activity) AND $artvi->activity != "") {
+        $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+        $activity  = str_replace("\n", " ", $artvi->activity);
+        $CI->fpdf->SetXY( ($x + 3) , ($y + 355));
+        $CI->fpdf->MultiCell(480, 30, substr($activity,0, 550));
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 585), "Affect:");
+    $CI->fpdf->Line(($cero_x +43), ($cero_y +612), ($cero_x +490), ($cero_y +612));
+    $pdf->SetFont('Arial', 'B', 11);
+    if (isset($artvi->affect) AND $artvi->affect != "") {
+        $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+        $affect  = str_replace("\n", " ", $artvi->affect);
+        $CI->fpdf->SetXY( ($x + 22) , ($y + 575));
+        $CI->fpdf->MultiCell(480, 12, substr($affect,0, 170));
+    }
+    // $CI->fpdf->Text(($x + 26), ($y + 582), "Client relaxed very well. Left wrist deviation to the leftimproved from 30 degrees deviation to only");
+    // $CI->fpdf->Text(($x + 26), ($y + 595), "5 degrees deviation from center. Left wrist extension improved from 98 degrees to 180 degrees.");
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 615), "Goals Addressed:");
+    $pdf->SetFont('Arial', 'B', 11);
+    // $CI->fpdf->Text(($x + 85), ($y + 611), "Shoulders were of even height.");
+    $CI->fpdf->Line(($cero_x +90), ($cero_y +643), ($cero_x +490), ($cero_y +643));
+    $pdf->SetFont('Arial', 'B', 11);
+    // $CI->fpdf->Text(($x + 25), ($y + 643), "ROM of wrist, relaxation");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +673), ($cero_x +490), ($cero_y +673));
+    if (isset($artvi->goals) AND $artvi->goals != "") {
+        $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+        $goals  = str_replace("\n", " ", $artvi->goals);
+        $CI->fpdf->SetXY( ($x + 3) , ($y + 595));
+        $CI->fpdf->MultiCell(480, 30, '             '.substr($goals,0, 150));
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 695), "Participant/Gurdian Signature:");
+    if (isset($visit_log->signature) AND $visit_log->signature != "") {        
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$visit_log->signature;
+        $CI->fpdf->Image( $img_path, ($x + 127), ($y + 652), 130);        
+    }
+    $CI->fpdf->Line(($cero_x +145), ($cero_y +723), ($cero_x +370), ($cero_y +723));
+    $CI->fpdf->Text(($x + 355), ($y + 695), "Date:");
+    if (isset($visit_log->signature) AND $visit_log->signature != "") { 
+        $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']); 
+        // $CI->fpdf->Text(($x + 355 + 30), ($y + 695), standard_date(mysql_to_unix($artvi->pt_signed_date)));
+        $CI->fpdf->Text(($x + 355 + 30), ($y + 695), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+        $pdf->SetFont('Arial', 'B', 9);
+    }
+    $CI->fpdf->Line(($cero_x +397), ($cero_y +723), ($cero_x +490), ($cero_y +723));
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 745),  "Therapist Signature:");    
+    if (isset($artvi->clinician_signature) AND $artvi->clinician_signature != "") {        
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$artvi->clinician_signature;
+        $CI->fpdf->Image( $img_path, ($x + 127), ($y + 702), 130);        
+    }
+    $CI->fpdf->Line(($cero_x +102), ($cero_y +773), ($cero_x +370), ($cero_y +773));
+    $CI->fpdf->Text(($x + 355), ($y + 745), "Date:");
+    if (isset($artvi->clinician_signature) AND $artvi->clinician_signature != "") { 
+        $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']); 
+        // $CI->fpdf->Text(($x + 355 + 30), ($y + 745), standard_date(mysql_to_unix($artvi->clinician_signed_date)));
+        $CI->fpdf->Text(($x + 355 + 30), ($y + 745), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+        $pdf->SetFont('Arial', 'B', 9);
+    }
+    $CI->fpdf->Line(($cero_x +397), ($cero_y +773), ($cero_x +490), ($cero_y +773));
+  
+
+    $title_text = "Art Therapy Visit Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+
+    switch($output){
+        case 'D':
+            $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+            $filename = $filename_only.'.pdf';    
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+        case 'F':
+            //$filename = $filename.'tmp/'.time().'_'.$visit_log_id.'_pq_ptpn.pdf';
+            $c = 1;
+            while(file_exists($filename.'tmp/'.$filename_only.'.pdf'))
+            {
+                $filename_only =  "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text." _".$c;
+                $c++;
+            }
+            $filename = $filename.'tmp/'.$filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+    }
+
+    return $filename;
+
+}

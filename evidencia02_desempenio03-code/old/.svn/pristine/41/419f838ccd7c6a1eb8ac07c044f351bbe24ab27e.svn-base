@@ -1,0 +1,632 @@
+<?php  
+
+class agencydoctoroffice extends MY_Controller {
+
+    function agencydoctoroffice () {
+
+        parent::MY_Controller();
+        $this->tpl->assign("resource_path", "agencydoctoroffice");
+        
+
+    }
+
+    function index (){
+		$this->tpl->assign_include("dynamic_tpl", "doctoroffice/doctors_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function doctoroffices () {
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+        $this->tpl->assign("noedit", true);     
+         // $this->tpl->assign("resource_edit", 'contractor');  
+        $this->tpl->assign("items_per_page", 300);  
+        $this->tpl->assign(array("list_title" => "", "add_sufix" => " Doctor Office"));
+        
+        $names = array();
+        foreach($this->agencydoctorofficemdl->get($this->getAgencyId()) as $doctorOffice){          
+            $names[] = '"'.addslashes($doctorOffice->agency_name).'"';
+        }
+        $name_source_obj = "[".implode(",",$names)."]";
+        $this->tpl->assign("name_source_obj", $name_source_obj);
+
+        $this->tpl->assign_include("filter_tpl", "doctoroffice/gfilterdoctor_add");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    function grid () {
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*", "Doctor Office"));
+        $head->append($this->xml->Element("column", "width=15", "NPI"));
+        $head->append($this->xml->Element("column", "width=15", "Address"));
+        $head->append($this->xml->Element("column", "width=15", "City"));
+        $head->append($this->xml->Element("column", "width=15", "Phone"));
+        $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Action"));
+        $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach ($this->agencydoctorofficemdl->get($this->getAgencyId(), $this->input->post('keyword')) as $doctorOffice) {
+
+            $cell = $this->xml->Element("row", "id=" . $doctorOffice->agency_doctor_office_id);
+            $cell->append($this->xml->Element("cell", null, $doctorOffice->agency_name));
+            $cell->append($this->xml->Element("cell", null, $doctorOffice->doctor_office_npi));
+            $cell->append($this->xml->Element("cell", null, $doctorOffice->address));
+            $cell->append($this->xml->Element("cell", null, $doctorOffice->city));
+            $cell->append($this->xml->Element("cell", null, $doctorOffice->phone_primary));
+            
+            $cell->append($this->xml->Element("cell", null, "Patients^" . $this->config->config['index_url'] . "agencydoctoroffice/patients/" . $doctorOffice->agency_id));
+            // if ($doctorOffice->agency_status == 'Inact' && $doctorOffice->agency_parent_id == $this->getAgencyId()) {
+            	$cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "agencydoctoroffice/edit/" . $doctorOffice->agency_id));
+            // } else {
+            	// $cell->append($this->xml->Element("cell", null, ""));
+            // }
+            $document->append($cell);
+             
+        }
+
+    }
+    
+    function patients ($doctor_office_id) {
+
+        $agency = $this->agencymdl->getByAgencyId($doctor_office_id);
+
+        $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        // $this->tpl->assign("agency_name", $agency->agency_name);
+        
+        // $this->tpl->assign("resource_edit", 'contractor');    
+        $this->tpl->assign("resource_grid", 'patients_grid/'.$doctor_office_id);    
+        $this->tpl->assign(array("list_title" => $agency->agency_name." >> Patients"));
+        $this->tpl->assign_include("filter_tpl", "doctoroffice/patients_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    function patients_grid($doctor_office_id){
+        $agencyIds = $this->agencydoctorofficemdl->getAgencyIds($doctor_office_id);
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");                
+        $head->append($this->xml->Element("column", "width=*;type=link", "Patient Name"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        $data = $this->patientmdl->getByDoctorOfficeId($doctor_office_id, $this->input->post('keyword'));
+
+        foreach ($data as $patient) { 
+            /*if ($patient->patient_id == 3761) {
+                $patient->agency_id;
+                $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+                echo $patient->agency_id.":".$agency->agency_name."<br>";
+                print_r($agencyIds);
+                exit();
+            }*/
+            if (in_array($patient->agency_id, $agencyIds) AND $patient->agency_id==$this->getAgencyId() ) {                
+                $cell = $this->xml->Element("row", "id=" . $patient->patient_id);           
+                $cell->append($this->xml->Element("cell", null, $patient->complete_name."^" . $this->config->config['index_url'] . "patient/mypatient/edit/" . $patient->patient_id ));
+                $document->append($cell);
+            }          
+        }
+    }
+    
+    function verfiy_npi ( $doctor_office_npi ) {
+    	
+    	$doctorOffice = $this->agencymdl->getByNpi($doctor_office_npi);
+    	
+    	if ($doctorOffice) {
+			$this->validation->set_message('verfiy_npi', "Doctor Office already registered.");
+			return FALSE;
+		} else {
+			return TRUE;
+    	}
+    	
+    }
+    
+    function add () {
+
+        $this->tpl->assign('faction', 'add');
+        $this->tpl->assign('resource_index', 'doctoroffices');
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        $this->tpl->assign('contractor_list', $this->agencycontractormdl->getNot($agency->agency_id, $agency->state_id));
+
+		$rules = array (
+			'first_name' => 'required',
+			'last_name' => 'required',
+			// 'user_email' => 'required',
+			'doctor_office_npi' => 'callback_verfiy_npi'
+		);
+
+		$this->validation->set_rules($rules);
+
+        if ($this->validation->run() == FALSE) {
+
+            $this->tpl->assign("form_title", "Add Doctor Office");
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "doctoroffice/add_form");            
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        } else {
+        	$_POST['last_name'] = $this->input->post('last_name'). ", " . $this->input->post('suffix');
+
+			$this->assignPostData($this->agencymdl);
+			$this->agencymdl->agency_name = $this->input->post('first_name') . " " . $this->input->post('last_name');
+			$this->agencymdl->agency_type = 'D';
+			$this->agencymdl->agency_status = 'Inact';
+			$this->agencymdl->agency_parent_id = $this->getAgencyId();  
+			$this->agencymdl->insert();
+			
+			$user = $this->usermdl->getByEmail($this->input->post('user_email'));
+			if (!count($user) || $this->input->post('user_email') == '') { // user not exist: create new
+
+				$this->assignPostData($this->usermdl);
+				$this->usermdl->insert();
+
+				$pass = passgen();
+				$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+
+				// sending user acces information
+
+				if (!is_null($this->usermdl->user_email)) {
+
+					$emailtext = $this->emailtextmdl->get(3);
+
+					$body = str_replace('{user_id}', $this->usermdl->user_email, $emailtext->email_content);
+					$body = str_replace('{user_password}', $pass, $body);
+					$body = str_replace('{app_url}', $this->config->site_url(), $body);
+
+					$this->load->library('email');
+					$this->email->from('support@homehealthsoft.com', 'HHS Support');
+					$this->email->to($this->usermdl->user_email);
+					$this->email->subject($emailtext->email_subject);
+					$this->email->message($body);
+					$this->email->send();
+
+				}
+
+			} else { // user exist: get user_id
+
+				$this->usermdl->user_id = $user->user_id;
+
+			}
+			
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->agency_id = $this->agencymdl->agency_id;
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->profile_id = 7;
+			$this->usagymdl->insert();
+			
+			$this->agencydoctorofficemdl->doctor_office_id = $this->agencymdl->agency_id;
+			$this->agencydoctorofficemdl->insert($this->getAgencyId());
+
+            $this->tpl->assign('gmessage', "New Doctor" . $this->lang->line('grl_add_msg'));
+
+            $this->doctoroffices();
+
+        }
+
+    }
+    
+    function finddoctor($modal="no", $doctor_office_field="", $agency_id=null){
+        if (is_null($agency_id)) {
+           $agency_id = $this->getAgencyId();
+        }
+    	$this->tpl->assign("noedit", true);
+    	$this->tpl->assign("resource_grid", "add_grid");    	
+		$this->tpl->assign("no_grid_buttons", true);
+        $this->tpl->assign("modal", $modal);
+    	$this->tpl->assign("doctor_office_field", $doctor_office_field);
+
+        // $this->tpl->assign(array("add_sufix" => " New Doctor"));
+        $data = $this->agencycontractormdl->getByContractornew($agency_id);
+        $agency_name = array();
+        $agency_state_id = null;
+        foreach ($data as $agency) {
+            $agency_state_id =  $agency->state_id;
+            $agency_name = $agency->agency_name;
+        }
+
+        $this->tpl->assign("entity_id", $agency_id);
+        //$data = $this->agencydoctorofficemdl->get($agency_id, null, true, $agency_state_id);      
+        $data = $this->agencymdl->get(null, null, 'D',$agency_state_id);        
+
+        $names = array();
+        foreach($data as $doctor){          
+            $names[] = '"'.addslashes($doctor->agency_name).'"';
+        }
+        $name_source_obj = "[".implode(",",$names)."]";
+        $this->tpl->assign("name_source_obj", $name_source_obj);
+        $this->tpl->assign("agency_name", $agency_name);
+        $this->tpl->assign("paginate", 0);
+
+    	$this->tpl->assign_include("filter_tpl", "doctoroffice/gfilterdoctor_add");
+    	$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    	$this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function add_grid($agency_id=null) {
+        if (is_null($agency_id)) {
+           $agency_id = $this->getAgencyId();
+        }
+		//$agency_types = $this->lang->line('agency_type_list');
+
+    	$data = $this->agencydoctorofficemdl->get($agency_id);		
+    	$doctors_in = array();
+
+    	foreach($data as $doctor){
+    		$doctors_in[] = $doctor->agency_id;
+    	}
+
+    	$this->xml->root_name = "rows";
+    	$document = $this->xml->Document();
+
+		//$userprofile = $this->getUserProfileId();
+
+    	$head = $this->xml->Element("head");
+    	$head->append($this->xml->Element("column", "width=25", "Doctor Office"));
+    	$head->append($this->xml->Element("column", "width=15", "NPI"));
+    	$head->append($this->xml->Element("column", "width=15", "Address"));
+    	$head->append($this->xml->Element("column", "width=15", "City"));
+    	$head->append($this->xml->Element("column", "width=15;sort=int", "Phone"));
+    	$head->append($this->xml->Element("column", "width=15;type=link", "Actions"));
+    	$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+    	$document->append($head);
+
+    	$data = $this->agencycontractormdl->getByContractornew($agency_id);
+    	$agency_name = null;
+    	$agency_state_id = null;
+    	foreach ($data as $agency) {
+    		$agency_state_id =  $agency->state_id;
+    		$agency_name = $agency->agency_name;
+    	}
+
+    	foreach ($this->agencymdl->get($this->input->post('keyword'), 'agency_name', 'D',$agency_state_id) as $doctor) {
+    		$cell = $this->xml->Element("row", "id=" . $doctor->agency_id);
+    		$cell->append($this->xml->Element("cell", null, $doctor->agency_name));
+    		$cell->append($this->xml->Element("cell", null, $doctor->doctor_office_npi));
+    		$cell->append($this->xml->Element("cell", null, $doctor->address));
+    		$cell->append($this->xml->Element("cell", null, $doctor->city));
+    		$cell->append($this->xml->Element("cell", null, $doctor->phone_primary));
+
+        	//if ($doctorOffice->agency_status == 'Inact' && $doctorOffice->agency_parent_id == $data) {
+    		if (!in_array($doctor->agency_id, $doctors_in)) {
+    			$cell->append($this->xml->Element("cell", null, "Add to Agency^javascript:assignTo(" . $doctor->agency_id.")"));
+    		} else {
+    			$cell->append($this->xml->Element("cell", null, "Already assigned"));
+    		}
+    		$document->append($cell);
+    	}
+
+    }
+
+    function assign_to($doctor_id, $modal="no", $doctor_office_field="", $agency_id=null){
+        if (is_null($agency_id)) {
+           $agency_id = $this->getAgencyId();
+        }
+    	// $this->load->model('agencycontractorratemdl');    
+    	$document = $this->xml->Document();
+
+    	$data = $this->agencycontractormdl->getByContractornew($agency_id);
+    	$agency_name = array();
+    	$agency_state_id = null;
+    	foreach ($data as $agency) {
+    		$agency_state_id =  $agency->state_id;
+    		$agency_name = $agency->agency_name;
+    	}
+
+    	$doctor = $this->agencymdl->getByAgencyId($doctor_id);
+    	if($doctor->agency_type == 'D' AND $doctor->state_id == $agency_state_id){
+    		$data = $this->agencydoctorofficemdl->get($agency_id);		
+    		$doctors_in = array();
+    		foreach($data as $d){
+    			$doctors_in[] = $d->agency_id;
+    		}
+
+    		if (!in_array($doctor->agency_id, $doctors_in)) {
+        		// assign it 
+    			$this->agencydoctorofficemdl->doctor_office_id = $doctor->agency_id;
+    			$this->agencydoctorofficemdl->insert($agency_id);
+                if ($modal == "yes" AND $doctor_office_field != "") {
+                    $document->append($this->xml->Element('js', 'script=parent.refreshPhysician(\''.$doctor_office_field.'\', '.$doctor->agency_id.')', null));
+                } else {
+        			$document->append($this->xml->Element('js', 'script=successfullyAssigned()', null));
+                }                    
+    		}else{
+        		// already assigned to the agency
+    			$document->append($this->xml->Element('alert', null, "Already assigned!"));
+    			return;
+    		}
+
+    	}else{
+    		$document->append($this->xml->Element('alert', null, "This doctor can not be assign.!"));
+    		return;
+    	}
+
+    }
+
+  function quickadd ($doctor_office, $agency_id=null) {
+    $agency_id = is_null($agency_id) || $agency_id == '' ? $this->getAgencyId() : $agency_id;
+
+    $this->tpl->assign('faction', 'quickadd/'.$doctor_office);
+    $this->tpl->assign('no_delete_form', true);
+    $this->tpl->assign("entity_id", $agency_id);        
+    $this->tpl->assign("resource_index", 'add2');        
+    $this->tpl->assign('agency_id', $agency_id);
+    $this->tpl->assign('doctor_office', $doctor_office);
+
+    $agency = $this->agencymdl->getByAgencyId($agency_id);
+    $this->tpl->assign('state_id', $agency->state_id);
+    
+    $this->tpl->assign('contractor_list', $this->agencycontractormdl->getNot($agency->agency_id, $agency->state_id));
+
+		$rules = array (
+			'first_name' => 'required',
+			'last_name' => 'required',
+			//'user_email' => 'required',
+			'state_id' => 'required',
+			//'doctor_office_npi' => 'callback_verfiy_npi'
+		);
+
+		$this->validation->set_rules($rules);
+
+    if ($this->validation->run() == FALSE) {
+
+        $this->tpl->assign("form_title", "Add New Doctor");
+        $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+        $this->tpl->assign_include("dynamic_form", "doctoroffice/quick_add_form");
+        //$this->tpl->assign_include("dynamic_form", "contractor/add_doctor_form");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    } else {
+      $_POST['last_name'] = $this->input->post('last_name'). ", " . $this->input->post('suffix');
+      
+			$this->assignPostData($this->agencymdl);
+			$this->agencymdl->agency_name = $this->input->post('first_name') . " " . $this->input->post('last_name');
+			$this->agencymdl->agency_type = 'D';
+			$this->agencymdl->agency_status = 'Inact';
+			$this->agencymdl->agency_email = $this->input->post('user_email');
+			$this->agencymdl->agency_parent_id = $agency_id;  
+			$this->agencymdl->insert();
+			
+			$user = $this->usermdl->getByEmail($this->input->post('user_email'));
+			if (!count($user) || $this->input->post('user_email') == '') { // user not exist: create new
+
+				$this->assignPostData($this->usermdl);
+				$this->usermdl->insert();
+
+				$pass = passgen();
+				$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+
+				// sending user acces information
+
+				if (!is_null($this->usermdl->user_email)) {
+
+					$emailtext = $this->emailtextmdl->get(3);
+
+					$body = str_replace('{user_id}', $this->usermdl->user_email, $emailtext->email_content);
+					$body = str_replace('{user_password}', $pass, $body);
+					$body = str_replace('{app_url}', $this->config->site_url(), $body);
+
+					$this->load->library('email');
+					$this->email->from('support@homehealthsoft.com', 'HHS Support');
+					$this->email->to($this->usermdl->user_email);
+					$this->email->subject($emailtext->email_subject);
+					$this->email->message($body);
+					$this->email->send();
+
+				}
+
+			} else { // user exist: get user_id
+
+				$this->usermdl->user_id = $user->user_id;
+
+			}
+			
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->agency_id = $this->agencymdl->agency_id;
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->profile_id = 7;
+			$this->usagymdl->insert();
+			
+			$this->agencydoctorofficemdl->doctor_office_id = $this->agencymdl->agency_id;
+			$this->agencydoctorofficemdl->insert($agency_id);
+
+      //$this->tpl->assign('gmessage', "New Doctor" . $this->lang->line('grl_add_msg'));
+
+      echo "<SCRIPT>parent.refreshPhysician('" . $doctor_office . "', " . $this->agencymdl->agency_id . ")</SCRIPT>";
+
+    }
+
+  }
+  
+  
+  /*  function quickadd_old ( $doctor_office, $agency_id=null ) {
+
+        $this->tpl->assign('faction', 'quickadd');
+        $this->tpl->assign('doctor_office', $doctor_office);
+        $this->tpl->assign('agency_id', $agency_id);
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        $this->tpl->assign('contractor_list', $this->agencycontractormdl->getNot($agency->agency_id, $agency->state_id));
+
+		$rules = array (
+			'first_name' => 'required',
+			'last_name' => 'required',
+			'user_email' => 'required',
+			'doctor_office_npi' => 'callback_verfiy_npi'
+		);
+
+		$this->validation->set_rules($rules);
+
+        if ($this->validation->run() == FALSE) {
+
+            $this->tpl->assign_include("dynamic_tpl", "doctoroffice/quick_add_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        } else {
+
+			$this->assignPostData($this->agencymdl);
+			$this->agencymdl->agency_name = $this->input->post('first_name') . " " . $this->input->post('last_name');
+			$this->agencymdl->agency_type = 'D';
+			$this->agencymdl->agency_status = 'Inact';
+			$this->agencymdl->agency_parent_id = (is_null($agency_id) || $agency_id == '' ? $this->getAgencyId() : $agency_id);  
+			$this->agencymdl->insert();
+			
+			$user = $this->usermdl->getByEmail($this->input->post('user_email'));
+			if (!count($user) || $this->input->post('user_email') == '') { // user not exist: create new
+
+				$this->assignPostData($this->usermdl);
+				$this->usermdl->insert();
+
+				$pass = passgen();
+				$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+
+				// sending user acces information
+
+				if (!is_null($this->usermdl->user_email)) {
+
+					$emailtext = $this->emailtextmdl->get(3);
+
+					$body = str_replace('{user_id}', $this->usermdl->user_email, $emailtext->email_content);
+					$body = str_replace('{user_password}', $pass, $body);
+					$body = str_replace('{app_url}', $this->config->site_url(), $body);
+
+					$this->load->library('email');
+					$this->email->from('support@homehealthsoft.com', 'HHS Support');
+					$this->email->to($this->usermdl->user_email);
+					$this->email->subject($emailtext->email_subject);
+					$this->email->message($body);
+					$this->email->send();
+
+				}
+
+			} else { // user exist: get user_id
+
+				$this->usermdl->user_id = $user->user_id;
+
+			}
+			
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->agency_id = $this->agencymdl->agency_id;
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->profile_id = 7;
+			$this->usagymdl->insert();
+			
+			$this->agencydoctorofficemdl->doctor_office_id = $this->agencymdl->agency_id;
+			$this->agencydoctorofficemdl->insert((is_null($agency_id) || $agency_id == '' ? $this->getAgencyId() : $agency_id));
+
+           echo "<SCRIPT>parent.refreshPhysician('" . $doctor_office . "', " . $this->agencymdl->agency_id . ")</SCRIPT>";
+
+        }
+
+    }
+*/    
+	function edit ( $agency_id ) {
+		
+		$doctorOffice = $this->agencymdl->getByAgencyId($agency_id);
+		
+		// if ($doctorOffice->agency_status != 'Inact' || $doctorOffice->agency_parent_id != $this->getAgencyId()) {
+		// 	$this->index();
+		// }
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $agency_id);
+        $this->tpl->assign("resource_index", "doctoroffices");
+		// $this->tpl->assign('no_delete_form', true);
+		
+		$this->assignObject($doctorOffice);
+		
+		$rules = array ('agency_email'		  	=> 'valid_email',
+						'contact_phone'		  	=> 'valid_phone',
+						'phone_primary'		  	=> 'valid_phone',
+						'phone_secondary'	  	=> 'valid_phone',
+						'fax'				  	=> 'valid_phone');
+		
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Edit Doctor Office");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "doctoroffice/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->agencymdl);
+			$this->agencymdl->agency_parent_id = $this->getAgencyId();
+			$this->agencymdl->update($agency_id);
+			
+			$this->tpl->assign('gmessage', $this->agencymdl->agency_name . $this->lang->line('grl_upd_msg'));
+			
+			$this->doctoroffices();
+			
+		}
+		
+	}
+
+    function delete ( $agency_id ) {
+
+        // $usagys = $this->usagymdl->getByAgencyId($agency_id);
+        // $usagy = $usagys[0];
+        $doctoroffice = $this->agencydoctorofficemdl->getByDoctorOfficeId($agency_id);
+        $this->agencydoctorofficemdl->delete($doctoroffice->agency_doctor_office_id);
+        // $this->agencymdl->delete($agency_id);
+        // $this->usagymdl->delete($usagy->us_agy_id);
+        // $this->usermdl->delete($usagy->user_id);
+
+        $this->tpl->assign('gmessage', "Doctor Office" . $this->lang->line('grl_del_msg'));
+        $this->doctoroffices();
+
+    }      
+    
+    function searchNPI ( $doctor_office_npi ) {
+    	
+    	$doctorOffice = $this->agencymdl->getByNpi($doctor_office_npi);
+    	
+    	if ($doctorOffice) {
+    		echo 'true';
+    	} else {
+    		echo 'false';
+    	}
+    		
+    }
+    
+    function associate ( $doctor_office_npi, $agency_id ) {
+    	
+    	$doctorOffice = $this->agencymdl->getByNpi($doctor_office_npi);
+    	
+    	$this->agencydoctorofficemdl->doctor_office_id = $doctorOffice->agency_id;
+    	$this->agencydoctorofficemdl->insert((is_null($agency_id) || $agency_id == '' ? $this->getAgencyId() : $agency_id));
+    	
+    	echo $doctorOffice->agency_id;
+    	
+    }
+    
+	function agencyDoctorOfficeList ( $agency_id=null ) {
+		
+		$document = $this->xml->Document();
+		
+		$document->append($this->xml->Option("", "Select Option"));
+		
+		$list = $this->agencydoctorofficemdl->get((is_null($agency_id) || $agency_id == '' ? $this->getAgencyId() : $agency_id));
+		
+		foreach ($list as $doctor) {
+			
+			$document->append($this->xml->Option($doctor->doctor_office_id, $doctor->agency_name));
+			
+		}
+		
+	}
+    
+}

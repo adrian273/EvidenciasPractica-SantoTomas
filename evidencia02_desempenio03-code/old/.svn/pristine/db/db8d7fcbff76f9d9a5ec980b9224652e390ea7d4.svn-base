@@ -1,0 +1,368 @@
+<?php	
+
+class Comnotes extends MY_Controller {
+	function Comnotes () {
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/comnotes");
+		$this->tpl->assign("resource_edit", "read");
+	}
+	function index ($patient_id, $cms485_id) {
+    $this->tpl->assign_include("filter_tpl", "patient/comnotes/gfilter");
+		$b_url = base_url();
+		$this->tpl->assign("base_url", $b_url);
+		$this->tpl->assign("entity_id", "{$patient_id}/{$cms485_id}");
+		$this->tpl->assign("add_sufix", "Communication Note");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+	}
+	function grid ($entity_id, $cms485_id) {
+    $this->tpl->assign("entity_id", $entity_id);
+ 		$AgencyType = $this->getAgencyType();
+    
+    $this->xml->root_name = "rows";
+    $document = $this->xml->Document();
+    $head = $this->xml->Element("head");
+    $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+    $head->append($this->xml->Element("column", "width=20;align=left", "Patient Name"));
+    if($AgencyType=='C'){
+      //$head->append($this->xml->Element("column", "width=20;align=left", "Agency Name"));
+    }
+    $head->append($this->xml->Element("column", "width=10", "Date"));
+    $head->append($this->xml->Element("column", "width=*", "Communication"));
+    $head->append($this->xml->Element("column", "width=20", "Created by User"));        
+    $head->append($this->xml->Element("column", "width=*", "Actions"));
+    // $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+    $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+    $document->append($head);
+    $user_id = $this->getUserId();
+    $agency_id = $this->getAgencyId();
+    $flag =$this->input->post('userID');
+       
+    $pa= 5; 
+    $patient_ids = array($entity_id); 
+
+    // $data = $this->messagemdl->getComNotes($agency_id, $keyword = "", $user_id = "", $patient_ids, $cms485_id); 
+    $data = $this->messagemdl->getComNotes($agency_id, $keyword = "", $user_id = "", $patient_ids); 
+      
+            
+    foreach($data as $comm_note) {
+      $cell = $this->xml->Element("row", "id=" . $comm_note->msg_id);
+      $cell->append($this->xml->Element("cell", null, "0"));  
+			$cell->append($this->xml->Element("cell", null, $comm_note->patient_name));           
+      if($AgencyType=='C'){              
+        //$cell->append($this->xml->Element("cell", null, @$comm_note->agency_name));
+      }
+      
+      $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($comm_note->msg_date))));			
+      $cell->append($this->xml->Element("cell", null, $this->xml_entities($comm_note->msg_subject)));
+      $cell->append($this->xml->Element("cell", null, $comm_note->user_name)); 
+      // $cell->append($this->xml->Element("cell", null, '<![CDATA[<a href="'.$this->config->config['index_url']."mail/comnotes/pdf/".$comm_note->msg_id.'">Print</a>]]>'));  
+      
+      $cdata = '<![CDATA[';
+      if ($comm_note->msg_attachment != "") {
+        $attachments = explode("||", $comm_note->msg_attachment);
+        foreach ($attachments as $key=>$file) {
+          $cdata .= '<a href="'.$this->config->config['base_url']."datastore/attachment/".$file.'" target="_blank">file '.($key+1).'</a> &nbsp; ';
+        }
+      }
+
+      $cdata .= ']]>';
+
+      $cell->append($this->xml->Element("cell", null, $cdata));
+
+      /*if ($this->getUsAgyId() == $comm_note->user_from || $this->getUserProfileId() == 1) {
+        // $cell->append($this->xml->Element("cell", null, "Delete^javascript:delete_note(" . $comm_note->patient_id. ", ".$comm_note->msg_id .")"));
+        // $cell->append($this->xml->Element("cell", null, "Edit Date^javascript:edit_com_note(" . $comm_note->patient_id. ", ".$comm_note->msg_id .")"));
+      }*/
+      $document->append($cell);
+    }             
+	}
+  /*function edit_com_note( $patient_id, $note_id ) {
+		$this->load->model('patientnotemdl');
+		$note = $this->patientnotemdl->getById($note_id);
+    if (is_null($note) OR empty($note) ){
+      echo "Note not found";exit;
+    } 
+		$this->tpl->assign("patient_id", $patient_id);
+		$this->tpl->assign("note_id", $note_id);
+		$rules = array (
+              'communication_date' 	=> 'required'
+            );
+		$this->validation->set_rules($rules);
+		if ($this->validation->run() == FALSE) {
+      if(!is_null($note->communication_date))
+        $this->tpl->assign('communication_date', $note->communication_date );      
+      else
+        $this->tpl->assign('communication_date', $note->creation_date_time );
+      $this->tpl->assign_include("dynamic_tpl", "mail/comnotes/edit_com_note_form");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+      $communication_date = standard_date(human_to_unix($this->input->post('communication_date')), 'MYSQL_NOTIME');
+  		$this->db->where('note_id', $note_id);
+  		$this->db->set('communication_date', $communication_date);
+  		$this->db->update('pat_note');      
+      echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";
+		}
+  }*/
+  /*function delete ( $patient_id, $note_id ) {
+		$this->load->model('patientnotemdl');
+		$note = $this->patientnotemdl->getById($note_id);
+		$document = $this->xml->Document();
+		if ($this->getUsAgyId() == $note->creation_user || $this->getUserProfileId() == 1) {
+			$this->patientnotemdl->delete($note_id);
+			$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+		}else{
+      $document->append($this->xml->Element('alert', null, "You are not authorize to delete this!"));
+    }					
+	}*/
+	function add ($patient_id, $cms485_id) {
+		$this->tpl->assign("us_agy_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false));
+    // $this->tpl->assign("patient_list", $this->getPatients(null, null, null, false));
+    $this->tpl->assign("patient", $this->patientmdl->getById($patient_id));
+    $this->tpl->assign("form_title", 'Add Communication Note');
+    $this->tpl->assign("back_path", 'comnotes');
+		$this->tpl->assign("cancel_url", $this->config->config['index_url']."patient/comnotes/index/".$patient_id."/".$cms485_id);
+		$this->tpl->assign_include("dynamic_tpl", "mail/comnotes/compose_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	
+  function read ( $patient_id, $cms485_id, $message_id ) {
+    $this->session->set_userdata('task_return', "patient/comnotes/index/".$patient_id."/".$cms485_id);
+    redirect("mail/read/msg/{$message_id}/mycomnotes");
+	}
+
+  function pdfSelected(){
+    if (!is_null($this->input->post('record_ids'))) {
+      $record_ids = $this->input->post('record_ids');
+      $recods = explode(",", $record_ids);
+      $filenames = array();
+      foreach ($recods as $note_id) {
+        if(!isset($filenames[$note_id])){
+          $filenames[$note_id] = $this->pdf($note_id, "F");
+        }
+        //break;
+        //$this->config->config['index_url']."task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id;
+      }
+      
+      /** 
+      * New Code support >= PHP 5.3.0
+      */
+      require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+      require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+      require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+      // and we can do stuff
+      $pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+      foreach($filenames as $name){
+        $pdf->addPDF($name, 'all');
+      }      
+      //print_r($filenames);
+      $pdf->merge('download', 'all.pdf');
+      // End of code for PHP >= 5.3.0
+      
+      foreach($filenames as $name){
+        @unlink($name);
+      } 
+		}
+  }
+  
+  function pdfPage ( $__FONT, $data) {
+    $this->fpdf = new fpdf;
+    
+    $cero_x = 11;
+    $cero_y = 2;
+    $this->fpdf->Open();
+    $this->fpdf->AddPage();
+    
+    $this->fpdf->SetDrawColor(130, 100);
+    //$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+    $this->fpdf->SetFont('Arial','B',13);
+    $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $data['agency_name']); // agency name
+    
+    $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+    $this->fpdf->Text(( $cero_x + 0),( $cero_y + 20 ),"Licensed and Certified Home Health Agency");
+    
+    $this->fpdf->Rect(8,25, 577, 760);
+    
+    //$this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->SetFont('Arial', 'B', 13);
+    $this->fpdf->Text(220, 38, "COMMUNICATION NOTE");
+    //$this->fpdf->Text(460, 38, "Order Date   " . standard_date(mysql_to_unix($doctor_order->order_date)));
+    
+    $this->fpdf->Line(8 , 42.5, 585, 42.5);
+    
+    $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']-1);
+    $address = $data['agency_address'].", ".$data['city'].", ".$data['state_name_short'].", ".$data['zip'];
+    $this->fpdf->Text(11, 800, $address);
+    $this->fpdf->Text(350, 800, "Phone: " . $data['agency_phone_cell']);
+    $this->fpdf->Text(470, 800, "Fax: " . $data['agency_fax']);
+    $this->fpdf->Text(230, 820, "HomeHealthSoft Inc.   2006 – ".date("Y")." ©");
+  }
+    
+  function pdf ( $msg_id = 0, $output="D" ) {
+    // getting data
+    $data = $this->messagemdl->getComNoteByID($msg_id);
+    // $data = $this->messagemdl->getPatnoteByID($note_id);
+    //print_r($data);exit;
+    
+    $this->load->model('usermessagemdl');
+    $data['msg_users'] = implode("; ", $this->usermessagemdl->getByMessageId($msg_id));
+    
+    
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+    
+    $__FONT['PDF']['SIZE'] = 12;
+    $__FONT['PDF']['FORM_MEDIUM'] = 11;
+    //$__FONT['PDF']['FORM_SMALL'] = 9;
+    $__FONT['PDF']['FORM_SMALL'] = 12;
+    $__FONT['PDF']['FORM_SMALL2'] = 10;
+    $__FONT['PDF']['FORM_SMALL3'] = 7.5;
+    $__FONT['PDF']['FORM_SMALL4'] = 10.5;
+    $__FONT['PDF']['FORM_arial8'] = 10.5;
+    
+    $this->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+    define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+    
+    
+    
+    $this->pdfPage($__FONT, $data);
+    
+    // Creation Date
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 55+5, "Date: ");
+    
+    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+    //$this->fpdf->Text(150, 55+5, standard_date(mysql_to_unix($data['creation_date_time'])));
+    $this->fpdf->Text(150, 55+5, standard_date(mysql_to_unix($data['msg_date'])));
+    
+    // Patient Name
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 55+30, "Patient Name: ");
+    
+    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(150, 55+30, $data["patient_name"]);
+    
+    
+    // from
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 70+30+10, "From: ");
+    
+    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(150, 70+30+10, $data['user_name']);
+    
+    // To
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 85+30+20, "To: ");
+    
+    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+    $cero_y = 85+30+20;
+    if(strlen($data["msg_users"]) > 69){
+    
+      $newtextArr = explode("||", wordwrap($data["msg_users"], 69, "||"));
+      foreach($newtextArr as $userText){
+        $this->fpdf->Text(150, $cero_y, $userText);
+        
+        $cero_y += 15;
+      }
+      $cero_y -= 15;
+    }else{      
+      $this->fpdf->Text(150, $cero_y, $data["msg_users"]);
+    }
+    
+    $cero_y += 25; 
+    //$plus_y = $cero_y-(85+30+20); 
+    
+    // order by
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, $cero_y, "ESSENCE OF THIS COMMUNICATION: ");
+    
+    $eje_y = $cero_y+20;
+    $this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+    
+    $lines = explode("\n", wordwrap($data["msg_text"], 75, "\n"));
+        foreach ($lines as $substring) {
+    
+      //$this->fpdf->Text(150, $eje_y, $substring);
+      $this->fpdf->Text(30, $eje_y, $substring);      
+      $this->fpdf->SetLineWidth( 0.5 );
+      $this->fpdf->Line(30, $eje_y+4, 554, $eje_y+4);
+      
+      $eje_y += 15;
+      
+      if ($eje_y > 660) {
+        $this->pdfPage($__FONT, $data);
+        
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(30, 55, "Order Description: ");
+        
+        $this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+        $eje_y = 55+30;
+      }   
+    }
+    
+    if ($eje_y >= 675) {
+      $this->pdfPage($__FONT, $data);
+    }
+    
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 700-20,  "Clinician Signature:");
+    $this->fpdf->Text(125, 700-20, "____________________________________________            Date: _____________");
+    
+    $this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+    $this->fpdf->Text(130+15, 700-20, $data["user_name"]);
+    $this->fpdf->Text(130+15, 700-10, "ELECTRONICALLY SIGNED BY ");
+    $this->fpdf->Text(500, 700-20, standard_date(mysql_to_unix($data['msg_date'])));        
+    
+    if($output=="F") {
+      $filename = FCPATH;
+      $filename = str_replace("\\","/", $filename);
+      $filename = $filename.'tmp/'.time().'_'.$msg_id.'_comm_note.pdf';
+    
+    
+      $this->fpdf->Output($filename,'F');
+      return $filename;       
+    }else{
+      $this->fpdf->Output('Comm note '.$msg_id.'.pdf','D');
+    }
+  }
+
+	function pdf2($note_id = 0){
+    $data = $this->messagemdl->getPatnoteByID($note_id);
+    $this->load->model('usermessagemdl');
+    $data['msg_users'] = implode("; ", $this->usermessagemdl->getByMessageId($data['msg_id']));
+    $content = $this->load->view('mail/comnotes/print_note',$data,true);
+    // convert in PDF
+    require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+    try
+    {
+        $html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5));
+        $html2pdf->setDefaultFont('Arial');
+        $html2pdf->writeHTML($content);
+        $html2pdf->Output('note '.$note_id.'.pdf', 'D');        
+    }
+    catch(HTML2PDF_exception $e) {
+        echo $e;
+        exit;
+    }  
+  }
+  function xml_entities($text, $charset = 'UTF-8'){
+    // First we encode html characters that are also invalid in xml
+    $text = htmlentities($text, ENT_COMPAT, $charset, false);
+    // Note: &apos; is useless in UTF-8 or in UTF-16
+    $arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+    // Building the regex string to exclude all strings with xml special char
+    $arr_xml_special_char_regex = "(?";
+    foreach($arr_xml_special_char as $key => $value){
+        $arr_xml_special_char_regex .= "(?!$value)";
+    }
+    $arr_xml_special_char_regex .= ")";
+    // Scan the array for &something_not_xml; syntax
+    $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+    // Replace the &something_not_xml; with &amp;something_not_xml;
+    $replacement = '&amp;${1}';
+    return preg_replace($pattern, $replacement, $text);
+  }
+
+}

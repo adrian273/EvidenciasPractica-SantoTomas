@@ -1,0 +1,86 @@
+<?php
+
+ class PayrollCyclesMdl extends Model {
+
+	var $id;
+  	var $agency_id;
+  	var $from_date;
+	var $to_date;
+	var $payment_date;
+	var $display_cycle;
+
+	function PayrollCyclesMdl () {
+		parent::Model();
+	}
+	
+	function get($options = array(), $normal_result = true){
+		$this->db->select('id, agency_id, from_date, to_date, display_cycle, (date_format(from_date, "%m-%d-%Y")) as from_date2, (date_format(to_date, "%m-%d-%Y")) as to_date2, CONCAT(date_format(from_date, "%m-%d-%Y"), " - ", date_format(to_date, "%m-%d-%Y"))  as date_range, payment_date', false);
+		$this->db->order_by("from_date", "desc");
+		$filters = isset($options['filters'])?$options['filters']:array();
+		if(isset($filters['agency_id']) && $filters['agency_id'] > 0) {
+			$this->db->where("agency_id", $filters['agency_id']);
+		}
+		if(isset($filters['id']) && $filters['id'] > 0) {
+			$this->db->where("id", $filters['id']);
+		}		
+
+		if(isset($filters['year']) && $filters['year'] != '') {
+			// $this->db->like("from_date", $filters['year'].'-');
+			$this->db->where("(from_date LIKE '" . $filters['year']."-%')");
+		}		
+
+		if(isset($filters['display_cycle'])) {
+			$this->db->where("display_cycle", $filters['display_cycle']);
+		}		
+
+		$query = $this->db->get('payroll_cycles');
+		if ($normal_result == true) {      
+			return $query->result();
+		} else {
+			return $query->result2('id', "date_range");
+		}		
+		
+	}
+	
+	function getByDate($date, $agency_id){
+		//echo "agency_id is " . $agency_id;
+		$this->db->select('id, agency_id, from_date, to_date, payment_date', false);
+		$this->db->order_by("payment_date", "asc");
+		$this->db->where("agency_id", $agency_id);
+
+		//$this->db->where("DATE_FORMAT(from_date,'%Y-%m-%d') <= ", $date);	
+		//$this->db->where("DATE_FORMAT(to_date,'%Y-%m-%d') >= ", $date);	
+		$this->db->where("DATE_FORMAT(payment_date,'%Y-%m-%d') >=", $date);
+		
+		$this->db->limit(1, 0);
+		$query = $this->db->get('payroll_cycles');
+		
+		return $query->row();
+	}
+	
+	function getById ( $id ) {
+		$this->db->where('id', $id);
+		$query = $this->db->get('payroll_cycles');
+		return $query->row();
+	}
+	
+	function insert (  $agency_id ) {
+		$this->agency_id = $agency_id;
+		$this->db->insert('payroll_cycles', $this);		
+	}
+	
+	function update ( $id ) {
+		$this->id = $id;
+		$this->db->where('id', $id);
+		$this->db->update('payroll_cycles', $this);	
+		
+	}
+	
+	function delete ( $id ) {
+		$this->db->where('id', $id);
+		$this->db->delete('payroll_cycles');
+	}
+		
+		
+	
+ }

@@ -1,0 +1,52 @@
+<?
+
+ class OtEvInitialMdl extends Model {
+
+	var $initial_otev_id;
+	var $visit_log_id;
+	// var $prev_vt_ot_evaluation_initial;
+	var $prev_p1_fun_sts_tab047_dres_upp_ext;		
+	var $prev_p1_fun_sts_tab047_dres_low_ext;		
+	var $prev_p1_fun_sts_tab047_feed;				
+	var $prev_p1_fun_sts_tab047_adap_dev_uten;		
+	var $prev_p1_fun_sts_tab047_groo_hair;			
+	var $prev_p1_fun_sts_tab047_groo_nail;			
+	var $prev_p1_fun_sts_tab047_groo_Shav;			
+	var $prev_p1_fun_sts_tab047_urin_toil;			
+	var $prev_p1_fun_sts_tab047_bath_bed;		
+	var $prev_p1_fun_sts_tab047_hom_mak_kit_laud;
+	var $prev_p1_fun_sts_tab047_hom_mak_meal_prep;	
+
+	
+  	function OtEvInitialMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt_ot_evaluation_initial');
+		return $query->row();
+	
+	}
+
+	function insert () {
+	
+		$this->db->insert('vt_ot_evaluation_initial', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->initial_otev_id);
+
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$this->db->update('vt_ot_evaluation_initial', $this);
+	
+	}
+	
+ }

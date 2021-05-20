@@ -1,0 +1,36 @@
+<!-- FORM USED BY APPROVAL AND RETURN ACTIONS
+	 TAKE CARE ABOUT CHANGE THIS FORM BEFORE REVIEW ITS EFFECTS -->
+	 
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/{$faction}/{$entity_id}">
+  <tr>
+    <td class="ftitle">Select Date</td>
+  </tr>
+
+  {if $copy_options}
+  <tr>
+    <td height="100%" valign="top">
+		{html_options options=$copy_options name='copy_id' onchange="if (this.value > 0) setDisabled('subbtn', false); else setDisabled('subbtn', true);"}
+    </td>
+  </tr>
+  {else}
+  <tr>
+    <td height="100%" valign="top">
+		{if $faction == 'previous'}
+			You don't have any previous taks<br>of this type
+		{else}
+			You don't have any template created<br>of this type
+		{/if}
+    </td>
+  </tr>
+  {/if}
+  <tr> 
+    <td valign="bottom">
+    	{if $copy_options}
+  			<input type="submit" name="submit" class="btn" id="subbtn" value="Copy" disabled>
+  		{/if}
+  		<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.cancelModal()">
+    </td>
+  </tr>
+ </form>
+</table> 

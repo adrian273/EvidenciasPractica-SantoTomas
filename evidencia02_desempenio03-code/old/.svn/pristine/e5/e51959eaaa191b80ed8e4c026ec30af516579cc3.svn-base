@@ -1,0 +1,56 @@
+<?php
+
+class AgencyProductMdl extends Model {
+
+    var $prod_id;
+    var $agency_id;
+    var $tab111_product_id;
+    var $modify_at;
+
+    function AgencyProductMdl () {
+        parent::Model();
+    }
+
+
+    function getByAgency ( $agency_id ) {
+        $query = "SELECT * FROM agy_agency_product, tab_parameters
+                  WHERE tab_value = tab111_product_id AND tab_type = 111
+                  AND agency_id = $agency_id;";
+        return $this->db->query($query)->result();
+    }
+
+
+    function getFilterProductByAgency ( $agency_id ) {
+        $this->db->where('tab_value NOT IN (SELECT tab111_product_id FROM agy_agency_product WHERE agency_id = ' . $agency_id . ') and tab_type = 111');
+        $this->db->order_by('tab_value');
+        $query = $this->db->get('tab_parameters');
+        $rows = array();
+        foreach ($query->result() as $key => $pro) {
+            $rows[$pro->tab_value] = $pro->tab_description;
+        }
+        return $rows;
+    }
+	
+    function getProductByAgency ( $agency_id ) {
+		$this->db->select("tab_parameters.*");
+		$this->db->join('tab_parameters', 'agy_agency_product.tab111_product_id = tab_parameters.tab_value AND tab_parameters.tab_type = 111');
+
+		$this->db->where('agy_agency_product.agency_id', $agency_id);	
+		$query = $this->db->get('agy_agency_product');
+		return $query->result2('tab_value', 'tab_description');	
+    }	
+
+    function insert ( $agency_id, $product_id ) {
+        $this->prod_id = null;
+        $this->agency_id = $agency_id;
+        $this->tab111_product_id = $product_id;
+        $this->db->insert('agy_agency_product', $this);
+    }
+
+    function delete ( $prod_id, $agency_id ) {
+        $this->db->where('agency_id', $agency_id);
+        $this->db->where('prod_id', $prod_id);
+        $this->db->delete('agy_agency_product');
+    }
+
+}

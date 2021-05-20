@@ -1,0 +1,211 @@
+</form>
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlxgrid_export.js?{$smarty.now}"></script>
+<script language="JavaScript" type="text/javascript">
+
+    function afterload () {literal}{{/literal}
+        {if isset( $afterload_func ) }{$afterload_func}{/if}
+        {literal}}{/literal}
+
+</script>
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/email_invoice_confirm/{$invoice_id}{if $popup eq 1}/1{else}/0{/if}/{$back}" onsubmit="return validateFormSubmit(this);">
+	<input type="hidden" name="contact_ids" id="contact_ids" value="">
+    <table border="0" width="99%" height="97%" cellpadding="0" cellspacing="4">
+
+        {if $form_title}
+        <tr>
+            <td colspan="2" valign="top" nowrap class="title"> {$form_title} </td>
+        </tr>
+        {/if}
+        {if $cancel_url}
+        <tr>
+            <td colspan="2" valign="bottom"><input type="submit" class="btn" value="Send Email">
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="window.location.href='{$cancel_url}'">
+            </td>
+        </tr>
+        {/if}
+        
+        {if $error_string}
+        <tr>
+            <td colspan="2" class="error tbl_msg">{$error_string}</td>
+        </tr>
+        {/if}
+        
+        {if $success_string}
+        <tr>
+            <td colspan="2" class="error tbl_msg">{$success_string}</td>
+        </tr>
+        {/if}
+		
+        {if $msgs}
+        <tr>
+            <td colspan="2" class="error tbl_msg">{$msgs}</td>
+        </tr>
+        {/if}
+		
+        <tr>
+            <td colspan="3" valign="top" height="25%"><div id="grid_area" style="width: 100%; height: 100%;"></div></td>
+        </tr>
+        <tr style="display: none;">
+            <td nowrap width="30%" style="padding-top: 5px" valign="bottom">
+				<div id="recinfoArea" style="float: left; line-height: 25px; margin-right: 10px; "></div>
+                <div style="clear: both;"></div></td>
+            <td nowrap width="50%" align="right" valign="bottom"><div id="grid_paginal"></div></td>
+        </tr>
+		
+        {if $agency_contract_detail->special_billing_instructions|trim != ''}
+        <tr>
+            <td><b style="color: #dd1111;">Billing Instructions:</b> </td>
+            <td valign="top">{$agency_contract_detail->special_billing_instructions}</td>
+        </tr>
+        {/if}
+        
+        
+        {if $can_send_to_agency_email}
+        <tr>
+            <td height="10" valign="top"><b>Addtl Agency Emails:</b> <span class="msg_addtl_agy_e"></span> </td>
+            <td height="10"><textarea name="email" rows="3" cols="60">{$user_email}</textarea>
+            </td>
+        </tr>
+        {/if}
+        {if $send_invoice_to_patient eq 1 && $have_private_patients}
+        <tr>
+            <td height="10"><b>Email To:</b> </td>
+            <td height="10"><input type="checkbox" checked="checked" disabled="disabled" />
+               {$private_patients_emails} - PRIVATE PATIENT </td>
+        </tr>
+        {/if}
+        <tr>
+            <td height="10"><b>Email a copy to Company:</b> </td>
+            <td height="10"><input type="checkbox" name="email_copy_company" value="1" checked="checked" />
+                {$company_email} </td>
+        </tr>
+        <tr>
+            <td height="10" valign="top"><b>Send Notes, Invoice:</b> </td>
+            <td height="10">
+				<label style="width: 150px; display: inline-block;">
+					<input type="checkbox" name="send_invoice" value="1" {if $agency_config->send_invoice eq 1} checked="checked" {/if}/>
+					Send Invoice 
+				</label> 
+				<label>
+					<input type="checkbox" name="send_tracking_sheet" value="1" {if $agency_config->send_tracking_sheet eq 1} checked="checked" {/if} />
+					Patient Signature Sheet 
+				</label>
+                <br>
+                <label style="width: 150px; display: inline-block;">
+					<input type="checkbox" name="send_notes" value="1" {if $agency_config->send_visit_note eq 1} checked="checked" {/if} />
+					Send Visit Notes 
+				</label>
+				<label>
+					<input type="checkbox" name="send_invoice_notes" value="1" {if $invoice_note|trim != '' or $agency_config->send_invoice_note eq 1} checked="checked" {/if} />
+					Send Invoice Notes 
+				</label>
+                <br>
+                <label>
+                <input type="checkbox" name="send_uploaded_docs" value="1" {if $agency_config->send_upload_doc eq 1} checked="checked" {/if} />
+                Send Uploaded Docs </label>
+            </td>
+        </tr> 
+        <tr>
+            <td height="10"><b>Notes Sending As:</b> </td>
+            <td height="10"><label>
+                <input type="checkbox" name="send_in_bulks" value="1" {if $agency_config->send_in_bulk eq 1} checked="checked" {/if}  />
+                Send in Bulk </label>
+            </td>
+        </tr>
+        <tr>
+            <td height="10"><b>Invoice #:</b> </td>
+            <td height="10"><input type="text" name="invoice_no" value="{$invoice_no}" readonly />
+            </td>
+        </tr>
+        <tr>
+            <td height="10" valign="top"><b>Special Notes:</b> </td>
+            <td height="10"><textarea name="special_notes" rows="3" cols="60"></textarea>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" height="100%" valign="bottom"> {if !$msgs}
+                <input type="submit" class="btn" value="Send Email">
+                {/if}
+                {if $cancel_url}
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="window.location.href='{$cancel_url}'">
+                {else}
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+                {/if} </td>
+        </tr>
+    </table>
+</form>
+<script language="javascript" type="text/javascript">
+	//document.body.style.overflow = 'hidden';
+	var grid;
+	
+	function loadGrid () {literal}{{/literal}
+		
+		if (document.getElementById("grid_paginal").innerHTML != "") {literal}{{/literal}
+			//alert("asdf");
+			grid.clearAll();
+			grid.updateFromXMl("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform');
+	
+		{literal}}{/literal} else {literal}{{/literal}
+			//alert("asdf2");
+			document.getElementById("grid_paginal").innerHTML = "";
+			document.getElementById("grid_area").innerHTML = "";
+	
+			grid = new dhtmlXGridObject("grid_area");
+			grid.setImagePath("{$base_url}style/grid/imgs/")
+			grid.iconImagePath = "{$base_url}style/grid/imgs/";
+			grid.setSkin("light");
+			grid.enablePaging({ if ! isset( $paginate ) }true{else}{$paginate}{/if},{ if ! isset( $items_per_page ) }30{else}{$items_per_page}{/if}, 5, "grid_paginal",true,"recinfoArea");
+			{if !$noedit}grid.setOnRowSelectHandler(editRegister);{/if}
+			{if $checkHandler}
+			grid.setOnCheckHandler(checkRegister);
+			{/if}
+	
+			grid.enableSmartXMLParsing(true);
+	
+			grid.kidsXmlFile = "{$index_url}{$resource_path}/child";
+			grid.loadXMLPost("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform', afterload);
+			grid.setSizes(100, 200);
+		{literal}}{/literal}
+		grid.dhx_attachEvent("onRowSelect",function(rowID,celInd){literal}{{/literal} 
+			if(this.cells(rowID, 0).getValue() == 1) {literal}{{/literal} 
+				this.cells(rowID, 0).setValue(0);	
+			{literal}}{/literal} else {literal}{{/literal} 
+				this.cells(rowID, 0).setValue(1);		
+			{literal}}{/literal}			
+		{literal}}{/literal} );
+	{literal}}{/literal}
+	
+    function deleteRegister () {literal}{{/literal}
+        if (grid.getSelectedId(0)) document.location = "{$index_url}{$resource_path}/delete{if $entity_id}/{$entity_id}{/if}/" + grid.getSelectedId();
+
+    {literal}}{/literal}
+
+    function checkRegister ( idr, idc, value ) {literal}{{/literal}
+
+        ajax("{$index_url}{$resource_path}/checkHandler{if $entity_id}/{$entity_id}{/if}/" + idr + "/" + idc + "/" + value, ajaxParseAction);
+
+    {literal}}{/literal}
+	
+	
+	loadGrid();
+	
+    function validateFormSubmit(frm) {literal}{{/literal}
+        var email = $("textarea[name=email]");
+        if (grid.getCheckedRows(0)) {literal}{{/literal}
+                email.css("border", "1px ridge black");
+                $(".msg_addtl_agy_e").html("");
+            var record_ids = grid.getCheckedRows(0);
+            $('#contact_ids').val(record_ids);
+            return true;
+        {literal}}{/literal}
+        else {literal} { {/literal}
+            if (email.val().trim() === "" && !($("input[name=email_copy_company]").is(":checked"))) {literal} { {/literal}
+                email.css("border", "1px solid red");
+                $(".msg_addtl_agy_e").html("Required").css("color", "red");
+                return false
+            {literal} } {/literal}
+            return true;
+        {literal} } {/literal}
+       
+    {literal}}{/literal}
+</script>

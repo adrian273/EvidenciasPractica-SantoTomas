@@ -1,0 +1,21 @@
+<?
+
+ class Syssettingsmdl extends Model {
+	var $sys_value;
+
+	function Syssettingsmdl () {
+
+		parent::Model();
+		
+	}
+	function getSysSetting($sys_prop_value){
+		return $this->db->get_where("system_preferences",array("sys_prop"=>$sys_prop_value))->row();
+	}
+	function update ($sys_prop_name) {
+		$this->db->where("sys_prop", $sys_prop_name);
+		$this->db->set("sys_value", $this->sys_value);
+		$this->db->update("system_preferences");
+		
+	}
+	
+ }

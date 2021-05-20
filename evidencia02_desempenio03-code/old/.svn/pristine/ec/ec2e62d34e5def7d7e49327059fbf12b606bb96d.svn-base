@@ -1,0 +1,67 @@
+<?php
+
+ class Task extends MY_Controller {
+ 	
+ 	function Task () {
+ 		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "agencyprofile/task");
+		
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+ 		
+ 	}
+ 	
+ 	function index ( $agency_id=null ) {
+ 		
+ 		$this->tpl->assign_include("filter_tpl", "agencyprofile/task_gfilter");
+ 		$this->tpl->assign('tab_013_status', 1);
+ 		if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+ 		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+ 		
+ 	}
+ 	
+ 	function grid ( $agency_id=null ) {
+ 		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=12", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=*",  "Visit Type"));
+		$head->append($this->xml->Element("column", "width=10", "Visit Status"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Status"));
+		$head->append($this->xml->Element("column", "width=15", "Clinician"));
+		$head->append($this->xml->Element("column", "width=10", "Discipline"));
+		$head->append($this->xml->Element("column", "width=10", "Case Manager"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->visitlogmdl->report1((is_null($agency_id) ? $this->getAgencyId()  : $agency_id)) as $task) {
+
+			$cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE'))));
+			$cell->append($this->xml->Element("cell", null, $task->visit_description));
+			$cell->append($this->xml->Element("cell", null, $task->tab_description));
+			$cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+			$cell->append($this->xml->Element("cell", null, @$this->parametermdl->get(13, $task->tab_013_status)->tab_description));
+			
+			$clinician = $this->usagymdl->getByUsAgyId($task->clinician_user_id);
+			$cell->append($this->xml->Element("cell", null, @$clinician->first_name . " " . @$clinician->last_name));
+
+			$cell->append($this->xml->Element("cell", null, "discipline"));
+			
+			$case_manager = $this->usagymdl->getByUsAgyId($task->case_manager_user_id);
+			$cell->append($this->xml->Element("cell", null, @$case_manager->first_name . " " . @$case_manager->last_name));
+
+			$document->append($cell);
+			
+		}
+ 		
+ 	}
+ 	
+ }

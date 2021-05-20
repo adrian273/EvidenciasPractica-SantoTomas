@@ -1,0 +1,144 @@
+<?
+
+class supply extends MY_Controller {
+
+	var $rules = array ('supp_description'	=> 'required',
+						'tab_085_type'		=> 'required');
+
+	function supply () {
+
+		parent::MY_Controller();
+
+		$this->tpl->assign('type_list', $this->parametermdl->getByType(85));
+		
+		$this->tpl->assign('no_commit_form', !$this->hasPermission(5));
+
+		$this->tpl->assign("resource_path", "patient/supply");
+		$this->tpl->assign('tab_page', true);
+		
+	}
+
+	function index ( $cms485_id ) {
+		$episode = $this->episodemdl->getById($cms485_id);
+		$soc = $this->socmdl->getById($episode->soc_id);
+		
+		$patient = $this->patientmdl->getById($soc->patient_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		if ( $this->getUserProfileId()==3 || ($agency->agency_status == 'SA' AND $this->getUserProfileId()==1) ) {
+			// Can edit/add
+		} else {
+			$this->tpl->assign_include("no_grid_buttons", true);
+			$this->tpl->assign_include("noedit", true);
+		}
+		$this->tpl->assign('no_commit_form', true);
+
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("add_sufix", "Supply");
+		
+		$this->tpl->assign('total_cost', $this->episodesupplymdl->getTotalCost($cms485_id));
+		
+		$this->tpl->assign_include("filter_tpl", "patient/supply/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+
+	function grid ( $cms485_id ) {
+
+		$logic_list = $this->lang->line('logic_list');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Description"));
+		$head->append($this->xml->Element("column", "width=15", "Type"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Billable"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Date"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Quantity"));
+		$head->append($this->xml->Element("column", "width=15;align=right",  "Cost"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+
+		foreach($this->episodesupplymdl->get($cms485_id, $this->input->post('keyword')) as $supply) {
+
+			$cell = $this->xml->Element("row", "id=" . $supply->cms_485_supply_id);
+			$cell->append($this->xml->Element("cell", null, $supply->supp_description));
+			$cell->append($this->xml->Element("cell", null, $supply->tab_description));
+			$cell->append($this->xml->Element("cell", null, $logic_list[$supply->supp_billable]));
+			$cell->append($this->xml->Element("cell", null, (!is_null($supply->supp_date)) ? standard_date(mysql_to_unix($supply->supp_date)) : null));
+			$cell->append($this->xml->Element("cell", null, $supply->supp_quantity));
+			$cell->append($this->xml->Element("cell", null, $supply->supp_cost));
+			$document->append($cell);
+		}
+
+	}
+	
+	function add ( $cms485_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);			
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/supply/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->episodesupplymdl);
+			$this->episodesupplymdl->insert();
+			
+			$this->tpl->assign('gmessage', "Supply" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($cms485_id);
+			
+		}
+		
+	}
+	
+	function edit ( $cms485_id, $cms_485_supply_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("record_id", $cms_485_supply_id);
+		$this->tpl->assign('faction', 'edit');
+						
+		$this->assignObject($this->episodesupplymdl->getById($cms_485_supply_id));
+		
+		$this->validation->set_rules($this->rules);	
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/supply/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->episodesupplymdl);
+			$this->episodesupplymdl->update($cms_485_supply_id);
+			
+			$this->tpl->assign('gmessage', "Supply" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($cms485_id);
+			
+		}
+		
+	}
+	
+	function delete ( $cms485_id, $cms_485_supply_id ) {
+		
+		$this->episodesupplymdl->delete($cms_485_supply_id);
+		
+		$this->tpl->assign('gmessage', "Supply" . $this->lang->line('grl_del_msg'));
+
+		$this->index($cms485_id);
+		
+	}
+	
+}

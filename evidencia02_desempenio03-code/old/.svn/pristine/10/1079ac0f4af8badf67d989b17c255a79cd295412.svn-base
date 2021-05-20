@@ -1,0 +1,111 @@
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center"> 
+ {if !$no_commit_form}<form id="gform" {if isset($target) && $target != ""} target="{$target}" {/if} enctype="multipart/form-data" method="POST" action="{$index_url}{$resource_path}/{$faction}{if $entity_id}/{$entity_id}{/if}{if $record_id}/{$record_id}{/if}">{/if}
+ <input type="hidden" id="fecha_help">
+  {if $form_title}
+  <tr>
+    <td valign="top" nowrap class="title" colspan="2">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$form_title}
+    </td>
+  </tr>
+  {/if}
+  <tr> 
+    <td height="10" colspan="2"></td>
+  </tr>
+  <tr> 
+    <td valign="bottom">
+  		{if !$no_commit_form}<input type="submit" class="btn" value="{$grl_save}">{/if}
+  		{if !$no_cancel_form}  	
+  			{if isset($target) && $target == "_parent"}	
+              {if $back_url}
+  		      	 <input type="button" class="btn" value="{$grl_cancel}" onclick="window.parent.location.href = '{$index_url}{$back_url}'">
+              {else}
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="window.parent.location.href = '{$index_url}{$resource_path}/{$resource_index|default:"index"}{if $entity_id}/{$entity_id}{/if}'">
+              {/if}
+  			{else}
+              {if $back_url}
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="window.location = '{$index_url}{$back_url}'">
+              {else}
+  				      <input type="button" class="btn" value="{$grl_cancel}" onclick="window.location = '{$index_url}{$resource_path}/{$resource_index|default:"index"}{if $entity_id}/{$entity_id}{/if}'">
+              {/if}
+  			{/if}
+    	{/if}
+    </td>
+    <td valign="bottom" align="right">
+    	{if $faction != 'add' && $faction != 'quickadmit' && !$no_commit_form && !$no_delete_form}
+  		<input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister('{$record_id}')">
+  		{/if}
+    </td>  
+  </tr>
+  <tr> 
+    <td height="10" colspan="2"></td>
+  </tr>  
+  <tr> 
+    <td valign="top" colspan="2" id="form_td">
+      <div id="form_div" style="overflow: auto; height: 100%">
+        {if $error_string}
+        <div class="error tbl_msg">{$error_string}</div>
+        {/if}
+        {include file=$dynamic_form}
+      </div>
+    </td>
+  </tr>  
+  <tr>
+    <td colspan="2"></td>
+  </tr>
+  <tr> 
+    <td valign="bottom">
+  		{if !$no_commit_form}<input type="submit" class="btn" value="{$grl_save}">{/if}
+  		{if !$no_cancel_form}   
+        {if isset($target) && $target == "_parent"} 
+              {if $back_url}
+               <input type="button" class="btn" value="{$grl_cancel}" onclick="window.parent.location.href = '{$index_url}{$back_url}'">
+              {else}
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="window.parent.location.href = '{$index_url}{$resource_path}/{$resource_index|default:"index"}{if $entity_id}/{$entity_id}{/if}'">
+              {/if}
+        {else}
+              {if $back_url}
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="window.location = '{$index_url}{$back_url}'">
+              {else}
+                <input type="button" class="btn" value="{$grl_cancel}" onclick="window.location = '{$index_url}{$resource_path}/{$resource_index|default:"index"}{if $entity_id}/{$entity_id}{/if}'">
+              {/if}
+        {/if}
+      {/if}
+      	* Mandatory fields
+    </td>
+    <td valign="bottom" align="right">
+    	{if $faction != 'add' && $faction != 'quickadmit' && !$no_commit_form && !$no_delete_form}
+  		<input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister('{$record_id}')">
+  		{/if}
+    </td>  
+  </tr>
+  {if !$no_commit_form}</form>{/if}
+</table> 
+<script type="text/javascript">
+  document.getElementById('form_div').style.height = getWindowHeight() - 100 + "px";
+  document.body.style.overflow = 'hidden';
+    
+</script>
+{if isset($target) && $target == "_parent"}	{* for parent page *}
+<script language="JavaScript" type="text/javascript">
+
+	function deleteRegister ( record_id ) {literal}{{/literal}
+
+		if (confirm('Are you sure to delete this record?')) {literal}{{/literal}
+			window.parent.location.href = "{$index_url}{$resource_path}/{$resource_delete|default:"delete"}{if $entity_id}/{$entity_id}{/if}/" + record_id;
+		{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+</script>
+{else} {* for same page *}
+<script language="JavaScript" type="text/javascript">
+
+	function deleteRegister ( record_id ) {literal}{{/literal}
+		if (confirm('Are you sure to delete this record?')) {literal}{{/literal}
+			document.location = "{$index_url}{$resource_path}/{$resource_delete|default:"delete"}{if $entity_id}/{$entity_id}{/if}/" + record_id;
+		{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+</script>
+{/if}

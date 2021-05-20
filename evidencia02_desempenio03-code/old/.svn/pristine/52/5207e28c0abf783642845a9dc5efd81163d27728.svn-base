@@ -1,0 +1,84 @@
+<?php
+/**
+* This Controller is a report for US Agy Credential 
+* Can convert US Agy Credentials to User level credential
+**/
+ 
+ class therapyReport extends MY_Controller {
+
+	function therapyReport () {
+		parent::MY_Controller();
+	}
+	
+	function index(){
+		echo "<h3>Contractor not added to the follwoing patients when created therapy referrals:</h3><br><br>";
+		$query = $this->db->query("SELECT soc_start_of_care.patient_id, soc_contractor_referral.agency_contractor_id 
+			FROM soc_contractor_referral 
+			JOIN soc_start_of_care ON soc_start_of_care.soc_id = soc_contractor_referral.soc_id"
+		);
+		$result = $query->result();
+		foreach ($result as $key => $row) {		
+			$query = $this->db->query("SELECT count(pat_contractor_id) as found FROM pat_contractor 
+			WHERE patient_id = {$row->patient_id}");
+			$found = $query->row()->found;
+			if ($found == 0) {
+				$query = $this->db->query("SELECT first_name, last_name FROM pat_patient 
+					WHERE patient_id = {$row->patient_id}"
+				);
+				$patient = $query->row();
+
+				$query = $this->db->query("SELECT agy_agency.agency_name, agy_agency.agency_id FROM agency_contractor 
+					JOIN agy_agency ON agy_agency.agency_id = agency_contractor.contractor_id
+					WHERE agency_contractor.agency_contractor_id = {$row->agency_contractor_id}"
+				);
+				$agcency = $query->row();
+				
+				echo "<b>Patient Id:</b> {$row->patient_id}, <b>Patient Name:</b> {$patient->first_name} {$patient->first_name}, <b>Agency Id:</b> {$agcency->agency_id}, <b>Agency Name:</b> {$agcency->agency_name}<br>";
+				
+				echo "<br>";
+			}	
+		}
+		// exit();		
+	}
+	function fix(){
+		/*$users = array();
+		$query = $this->db->query("SELECT distinct user_id, us_agy.us_agy_id, agency_id, first_name, last_name 
+		FROM us_agy 
+		JOIN us_agy_credential ON us_agy_credential.us_agy_id = us_agy.us_agy_id
+		");
+		$result = $query->result();
+		foreach ($result as $key => $row) {
+			if (isset($users[$row->user_id])) {
+				continue;
+			}
+			$users[$row->user_id] = $row;
+			$user_id = $row->user_id;
+			$query = $this->db->query("SELECT count(distinct us_agy_id) as nocredential FROM us_agy_credential 
+			WHERE us_agy_id IN (SELECT us_agy_id FROM us_agy WHERE user_id='{$user_id}')");
+			$nocredential = $query->row()->nocredential;
+			echo '<b>User ID:</b>'. $user_id.', <b>Name:</b> '.$row->first_name.' '.$row->first_name.', <b>Credential found for total agencies:</b>'.$nocredential;		
+			if ($nocredential > 1) {
+				$query = $this->db->query("SELECT distinct us_agy_id FROM us_agy_credential 
+				WHERE us_agy_id IN (SELECT us_agy_id FROM us_agy WHERE user_id='{$user_id}') 
+				ORDER BY us_agy_id");
+		
+				$us_agy_id = $query->row()->us_agy_id;
+
+				$query = $this->db->query("SELECT attachment_id FROM us_agy_credential WHERE us_agy_id='{$us_agy_id}'");
+				$attachment_id = $query->row()->attachment_id;
+
+				$this->db->query("INSERT INTO us1_user_credentials (user_id, tab_086_credential_type, credential_id, expiration_date, alert_days, notes, create_date_time) SELECT {$user_id} AS user_id, tab_086_credential_type, credential_id, expiration_date, alert_days, cred_note, NOW() as create_date_time FROM us_agy_credential WHERE us_agy_id='{$us_agy_id}'");
+				$user_credential_id = $this->db->insert_id();
+
+				$this->db->query("INSERT INTO us1_user_credential_attachments (us1_user_credential_id, attachment) SELECT {$user_credential_id} AS us1_user_credential_id, attachment FROM us_agy_credential_attachments WHERE attachment_id='{$attachment_id}'");
+				$new_attachment_id = $this->db->insert_id();
+
+				$this->db->set('attachment_id', $new_attachment_id)->where('user_credential_id', $user_credential_id)->update('us1_user_credentials');
+
+				echo "<br>credential converted for user id: {$user_id}<br>";					
+			}	
+			echo "<br><br>";
+		}
+		exit();		*/
+	}
+}

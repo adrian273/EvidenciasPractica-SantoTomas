@@ -1,0 +1,517 @@
+	<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>*}
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>*}
+	<script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+	{*<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/blitzer/jquery-ui.css" type="text/css" />*}
+	<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+
+
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="pt_clinical_visit_id" value="{$pt_clinical_visit_id}">
+  <input type="hidden" name="clinician_signed_date" value="{$clinician_signed_date|date_format:"%m-%d-%Y":"":true}">
+  <input type="hidden" name="pt_signed_date" value="{$pt_signed_date|date_format:"%m-%d-%Y":"":true}">
+  <input type="hidden" name="wsuperv_signed_date" value="{$wsuperv_signed_date|date_format:"%m-%d-%Y":"":true}">
+  <input type="hidden" name="clinician_signature" value="{$clinician_signature}">
+  <input type="hidden" name="wsuperv_signature" value="{$wsuperv_signature}">
+  <input type="hidden" name="wsuperv_signed_by" value="{$wsuperv_signed_by}">
+  <input type="hidden" name="signature" value="{$signature}">
+  <input type="hidden" name="upload_document_name" id="upload_document_name" value="{$upload_document_name}">
+  <input type="hidden" name="upload_document_name2" id="upload_document_name" value="{$upload_document_name2}">
+  <input type="hidden" name="upload_covid_document" id="upload_document_name" value="{$upload_covid_document}">
+
+  {include file="task/documents/top_base.tpl"}
+  {if $upload_document_name != '' || $upload_document_name2 != ''}
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+   <tr>
+    <td colspan="4" >
+      <h4>Visit have scanned document uploaded. <br>
+      	{if $upload_document_name != '' }
+      	<a href="{$base_url}datastore/muvi/{$upload_document_name}" target="_blank">Click to Open Docuemnt </a><br>
+      	{/if}
+      </h4>
+      
+    </td>
+  </tr> 
+  {/if}
+  {if $upload_covid_document != ''}
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+   <tr>
+    <td colspan="4" >
+      <h4>Visit have covid screening document uploaded. <br>
+      	<a href="{$base_url}datastore/muvi/{$upload_covid_document}" target="_blank">Click to Open Docuemnt </a><br>
+      
+      </h4>
+      
+    </td>
+  </tr> 
+  {/if}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Client Program</td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+      <div>
+        {*
+        	{html_options options=$gov_program_list selected=$gov_program name="gov_program" disabled=disabled}
+        *}
+
+        {$gov_program_list[$gov_program]} {if $gov_program_waiver_show}[{$gov_program_waiver}]{/if}
+        <input type="hidden" name="gov_program" value="{$gov_program}">
+      </div>
+    </td>
+  </tr>
+  {if $gov_program eq 'PRIVATE' OR $gov_program eq 'PRIVATE Agency' OR $gov_program eq 'CLASS'}
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Activity</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<!-- <textarea name="activity" cols="90" rows="5" wrap="auto">{$activity}</textarea><br /> -->
+			<textarea id="activity" name="activity" cols="90" rows="5" onkeyup="chars_limit_notice('activity', 450)" maxlength="450">{$activity}</textarea>
+	        {assign var="activity_length" value=$activity|count_characters:true}
+	        {assign var="activity_left" value="`$activity_length-450`"}
+	        <div style="font-size:9px;{if $activity_left gt 0}display:none;{/if}" id="activity_note">
+	          <label id="activity_chars_left">{$activity_left|abs}</label>characters left.
+	        </div>
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Affect</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<!-- <textarea name="affect" cols="90" rows="5" wrap="auto">{$affect}</textarea><br /> -->
+			<textarea id="affect" name="affect" cols="90" rows="5" onkeyup="chars_limit_notice('affect', 450)" maxlength="450">{$affect}</textarea>
+	        {assign var="affect_length" value=$affect|count_characters:true}
+	        {assign var="affect_left" value="`$affect_length-450`"}
+	        <div style="font-size:9px;{if $affect_left gt 0}display:none;{/if}" id="affect_note">
+	          <label id="affect_chars_left">{$affect_left|abs}</label>characters left.
+	        </div>
+	  	</td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Goals</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<!-- <textarea name="goals" cols="90" rows="5" wrap="auto">{$goals}</textarea><br /> -->
+			<textarea id="goals" name="goals" cols="90" rows="5" onkeyup="chars_limit_notice('goals', 450)" maxlength="450">{$goals}</textarea>
+	        {assign var="goals_length" value=$goals|count_characters:true}
+	        {assign var="goals_left" value="`$goals_length-450`"}
+	        <div style="font-size:9px;{if $goals_left gt 0}display:none;{/if}" id="goals_note">
+	          <label id="goals_chars_left">{$goals_left|abs}</label>characters left.
+	        </div>
+	  	</td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Treatment Provided</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<!-- <textarea name="treat_provided" cols="90" rows="5" wrap="auto">{$treat_provided}</textarea><br /> -->
+			<textarea id="treat_provided" name="treat_provided" cols="90" rows="5" onkeyup="chars_limit_notice('treat_provided', 450)" maxlength="450">{$treat_provided}</textarea>
+	        {assign var="treat_provided_length" value=$treat_provided|count_characters:true}
+	        {assign var="treat_provided_left" value="`$treat_provided_length-450`"}
+	        <div style="font-size:9px;{if $treat_provided_left gt 0}display:none;{/if}" id="treat_provided_note">
+	          <label id="treat_provided_chars_left">{$treat_provided_left|abs}</label>characters left.
+	        </div>
+	  	</td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Client Response</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<!-- <textarea name="client_response" cols="90" rows="5" wrap="auto">{$client_response}</textarea><br /> -->
+			<textarea id="client_response" name="client_response" cols="90" rows="5" onkeyup="chars_limit_notice('client_response', 450)" maxlength="450">{$client_response}</textarea>
+	        {assign var="client_response_length" value=$client_response|count_characters:true}
+	        {assign var="client_response_left" value="`$client_response_length-450`"}
+	        <div style="font-size:9px;{if $client_response_left gt 0}display:none;{/if}" id="client_response_note">
+	          <label id="client_response_chars_left">{$client_response_left|abs}</label>characters left.
+	        </div>
+	  	</td>
+	  </tr>
+  {elseif $gov_program eq 'Y-Waiver'}
+  	  <tr>
+	    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Location Therapy</td>
+	    <td colspan="2" class="subtitle">
+	    	{if show_session_type_list}
+	    		<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Session Type
+	    	{/if}
+	    </td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="2">
+			<input type="text" name="wlocation_therapy" value="{$wlocation_therapy}" maxlength="30" size="30"><br />
+	  	</td>
+	  	<td colspan="2">
+	  		{if show_session_type_list}
+				{html_radios options=$session_type_list selected=$session_type name="session_type" disabled="disabled"}
+	  		{/if}
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Persons Present</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+	  		<input type="text" name="wpersons_present" value="{$wpersons_present}" maxlength="35" size="35"><br />			
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Activity/Description of Contact</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wactivity_descrip" cols="60" rows="5" wrap="auto" maxlength="220">{$wactivity_descrip}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Specific Skills received and method used to train client in skills</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wspecific_skills" cols="60" rows="5" wrap="auto" maxlength="320">{$wspecific_skills}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Client's response to service being provided: (observations)</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wclient_response" cols="60" rows="5" wrap="auto" maxlength="320">{$wclient_response}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Summary of activities and behaviors during the services/Description of the contact</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wsummary_activities" cols="60" rows="5" wrap="auto" maxlength="300">{$wsummary_activities}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Specific interventions used</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wspecific_interven" cols="60" rows="5" wrap="auto" maxlength="330">{$wspecific_interven}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Goals/objectives addressed</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wgoals_objectives" cols="60" rows="5" wrap="auto" maxlength="330">{$wgoals_objectives}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Progress or Lack of progress/outcomes of the contact</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wprogress_lack_progress" cols="60" rows="5" wrap="auto" maxlength="320">{$wprogress_lack_progress}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Goal focus/plan for next session</td>
+	  </tr> 
+	  <tr>
+	  	<td colspan="4">
+			<textarea name="wgoal_focus" cols="60" rows="5" wrap="auto">{$wgoal_focus}</textarea><br />
+	  	</td>
+	  </tr>	  
+	  <tr>
+	    <td colspan="4" height="10"></td>
+	  </tr>
+	  <tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Supervisor Signature</td>
+	  </tr> 
+	  <tr>
+	  	<td>
+	  		{if $can_sign_supervisor}
+	  		<input class="btn" value="Supervisor Signature" onclick="capture_supervisor_signature({$visit_log_id})" type="button">
+	  		{/if}
+	  	</td>
+	  	<td>
+	  		{if $wsuperv_signature != ""}		
+				<img src="{$base_url}upload/signatures/{$wsuperv_signature}?{$smarty.now}" style="height: 70px;"  />
+				<br>
+				{$wsuperv_signed_by_name}
+			{/if}
+	  	</td>
+	  	<td colspan="2">
+	  		{if $wsuperv_signature != ""}
+				<b>Date:</b> {$visit_date_time}
+			{/if}
+	  	</td>
+	  </tr>
+  {/if}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Signature</td>    
+  </tr> 
+  <tr>
+  	<td>
+  		<input class="btn" value="Participant/Family Signature" onclick="capture_signature({$visit_log_id})" type="button">
+  	</td>
+  	<td align="center">
+  		{if $signature != ""}
+		<img src="{$base_url}upload/signatures/{$signature}?{$smarty.now}" style="height: 70px;"  />
+		{/if}
+  	</td>
+  	<td colspan="2" align="left">
+  		{if $signature != ""}
+		<b>Date: </b> {$visit_date_time}
+		{/if}
+  	</td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Clinician Signature</td>
+  </tr> 
+  <tr>
+  	<td>
+  		<input class="btn" value="Therapist Signature" onclick="capture_clinician_signature({$visit_log_id})" type="button">
+  	</td>
+  	<td>
+  		{if $clinician_signature != ""}
+			<img src="{$base_url}upload/signatures/{$clinician_signature}?{$smarty.now}" style="height: 70px;"  />
+			<br>
+			{$visit_user_id_name}
+		{/if}
+  	</td>
+  	<td colspan="2">
+  		{if $clinician_signature != ""}
+			<b>Date:</b> {$visit_date_time}		
+		{/if}
+  	</td>
+  </tr>
+  
+</tbody>
+</table>
+
+<script>
+{literal} 
+function chars_limit_notice(field, limit){
+		if(!field || !limit)
+		return;
+		
+		if(document.getElementById(field).value.length >= limit){
+			document.getElementById(field+'_note').style.display='none';
+		}else{
+			document.getElementById(field+'_chars_left').innerHTML = limit - document.getElementById(field).value.length;
+			document.getElementById(field+'_note').style.display='';
+		} 
+}
+{/literal}
+function capture_signature(visit_log_id) {literal}{{/literal}
+	{if !$no_commit_form}
+		{if $visit_status_id eq 1}
+		setValue('visit_status_id', 2);
+		{/if}
+		autoSave();
+	{/if}
+	//alert(visit_log_id);
+	//alert(grid.getCheckedRows(0));
+	dhxWins = new dhtmlXWindows();
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+	w2.setText("Capture Patient Digital Signature");
+	w2.button("park").hide();
+	w2.button("minmax1").hide();
+	//w2.denyResize(); // deny resizing
+	//w2.denyMove(); 
+	w2.button("close")._doOnClick = function() {literal}{{/literal}		
+		w2.close();
+	{literal}}{/literal}	
+	
+	dhxWins.window('w2').center();
+	dhxWins.window('w2').setModal(true);
+	w2.attachURL("{$index_url}/task/muvi/capture_pt_signature/" + visit_log_id);
+{literal}}{/literal}
+
+function capture_clinician_signature(visit_log_id) {literal}{{/literal}
+	{if !$no_commit_form}
+		{if $visit_status_id eq 1}
+		setValue('visit_status_id', 2);
+		{/if}
+		autoSave();
+	{/if}
+	//alert(visit_log_id);
+	//alert(grid.getCheckedRows(0));
+	dhxWins = new dhtmlXWindows();
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+	w2.setText("Capture Clinician Digital Signature");
+	w2.button("park").hide();
+	w2.button("minmax1").hide();
+	//w2.denyResize(); // deny resizing
+	//w2.denyMove(); 
+	w2.button("close")._doOnClick = function() {literal}{{/literal}		
+		w2.close();
+	{literal}}{/literal}	
+	
+	dhxWins.window('w2').center();
+	dhxWins.window('w2').setModal(true);
+	w2.attachURL("{$index_url}/task/muvi/capture_clinician_signature/" + visit_log_id);
+{literal}}{/literal}	
+
+function capture_supervisor_signature(visit_log_id) {literal}{{/literal}
+	{if !$no_commit_form}
+		{if $visit_status_id eq 1}
+		setValue('visit_status_id', 2);
+		{/if}
+		if (typeof autoSave === "function")
+		autoSave();
+	{/if}
+	//alert(visit_log_id);
+	//alert(grid.getCheckedRows(0));
+	dhxWins = new dhtmlXWindows();
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+	w2.setText("Capture Supervisor Digital Signature");
+	w2.button("park").hide();
+	w2.button("minmax1").hide();
+	//w2.denyResize(); // deny resizing
+	//w2.denyMove(); 
+	w2.button("close")._doOnClick = function() {literal}{{/literal}		
+		w2.close();
+	{literal}}{/literal}	
+	
+	dhxWins.window('w2').center();
+	dhxWins.window('w2').setModal(true);
+	w2.attachURL("{$index_url}/task/muvi/capture_supervisor_signature/" + visit_log_id);
+{literal}}{/literal}	
+
+	function uploadScannedDocument ( visit_log_id ) {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+        var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+        w1.setText('Upload Scanned Music Therapy Visit document');
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').center();
+        dhxWins.window('w1').setModal(true);
+        w1.attachURL("{$index_url}task/muvi/upload_document/" + visit_log_id);
+
+        pos = dhxWins.window('w1').getPosition();
+        dhxWins.window('w1').setPosition(pos[0], 60);
+
+    {literal}}{/literal}
+
+    function removeScannedDocument ( visit_log_id ) {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+        var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+        w1.setText('Remove Scanned Music Therapy Visit document');
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').center();
+        dhxWins.window('w1').setModal(true);
+        w1.attachURL("{$index_url}task/muvi/pre_remove_document/" + visit_log_id);
+
+        pos = dhxWins.window('w1').getPosition();
+        dhxWins.window('w1').setPosition(pos[0], 60);
+
+    {literal}}{/literal}   
+
+
+    function uploadCovidDocument ( visit_log_id ) {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+        var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+        w1.setText('Upload Covid Screening document');
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').center();
+        dhxWins.window('w1').setModal(true);
+        w1.attachURL("{$index_url}task/muvi/upload_covid_document/" + visit_log_id);
+
+        pos = dhxWins.window('w1').getPosition();
+        dhxWins.window('w1').setPosition(pos[0], 60);
+
+    {literal}}{/literal}
+
+    function removeCovidDocument ( visit_log_id ) {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.enableAutoViewport(false);
+        dhxWins.attachViewportTo("vp_container");
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+        var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+        w1.setText('Remove Covid Screening Scanned document');
+        w1.button("park").hide();
+        w1.button("minmax1").hide();
+        w1.denyResize(); // deny resizing
+        w1.denyMove(); 
+        dhxWins.window('w1').center();
+        dhxWins.window('w1').setModal(true);
+        w1.attachURL("{$index_url}task/muvi/pre_remove_document/" + visit_log_id);
+
+        pos = dhxWins.window('w1').getPosition();
+        dhxWins.window('w1').setPosition(pos[0], 60);
+
+    {literal}}{/literal}    
+</script>

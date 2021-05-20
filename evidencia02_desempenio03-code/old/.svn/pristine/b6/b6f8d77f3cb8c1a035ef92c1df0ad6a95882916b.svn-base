@@ -1,0 +1,3856 @@
+<style type="text/css">
+  .tbl {
+    table-layout: fixed;
+    width: 100%;
+    border: 1px solid #000;
+  }
+  .word-wrap{
+    white-space: pre-wrap;       
+    white-space: -moz-pre-wrap;  
+    white-space: -pre-wrap;      
+    white-space: -o-pre-wrap;    
+    word-wrap: break-word;       
+  }
+  
+  tr.boder-bottom td{
+    border-bottom: 0.5px dotted #bbbbbb;
+    padding-bottom: 5px;
+  }  
+  .ftitle {
+    width: 12%;
+  }
+  .ftitle.title {
+    width: 40%;
+  }
+  .fdata {
+    padding-left: 10px;
+  }
+</style>
+ <page style="font-size:13px;"> 
+      <page_header> 
+      </page_header> 
+      <page_footer> 
+      </page_footer> 
+      <table class="tbl" border="0" align="left">
+      <tr>
+        <td class="word-wrap" style="text-align: center; font-weight: bold;">
+          <h1 style="font-size: 20px; margin: 0; margin-bottom: 10px;">
+          <?php 
+          if($agency->print_agency_or_contractor_on_notes == 'agency' || $agency->print_agency_or_contractor_on_notes == 'both') {    
+            echo ($agency->agency_name); // agency name
+          } else if($agency->print_agency_or_contractor_on_notes == 'contractor') {
+            echo ($visit_contractor_name); // contractor name
+          }
+          ?>
+          </h1>
+          <h3 style="font-size: 18px; margin: 0; margin-bottom: 20px;">Annual Assessment</h3>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="word-wrap" style="width: 50%; padding-right: 5px;">
+                <b>Client:</b>  <?php echo $patient->first_name . " " . $patient->last_name;?> <br>
+                <b>DOB:</b>  <?php echo ($patient->date_birth AND $patient->date_birth != '0000-00-00') ? date('m/d/Y', strtotime($patient->date_birth)) : ''; ?> <br>
+                <b>Goals Valid Through:</b> <?php echo date('m/d/Y', strtotime($goals_valid_through_date)); ?> <br>
+                <b>Session day(s) and time(s): </b> <?php echo date('l ; h:ia', strtotime($visit_date_time)); ?>
+              </td>
+              <td style="width: 50%;">
+                <table style="width:100%;" border="0" align="left">
+                  <tr><td width="30%"><b>Date of Assessment:</b></td><td><?php echo date('m/d/Y', strtotime($visit_date_time)); ?></td></tr>
+                  <tr><td><b>Service Coordinator:</b></td><td><?php echo $service_co_ordinator; ?></td></tr>
+                  <tr>
+                    <td><b>Therapist:</b></td>
+                    <td class="word-wrap">
+                      <?php 
+                      $agency_company_name = "";
+                      if ($agency->print_agency_or_contractor_on_notes == "contractor") {
+                          $agency_company_name = " <br>- ".$visit_contractor_name;
+                      }
+                      echo $first_name . " " . $last_name . $agency_company_name;
+                      ?>
+                    </td>
+                  </tr>
+                  <tr><td><b>PASA:</b></td><td><?php echo $pasa; ?></td></tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Diagnosis:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($diagnoses); ?>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Client Profile:</b></td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 10px;">
+          <?php echo nl2br($client_profile); ?>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="ftitle title"><b>Communication:</b></td>
+              <td class="ftitle"><b>Always</b></td>
+              <td class="ftitle"><b>Frequent</b></td>
+              <td class="ftitle"><b>Occasionally</b></td>
+              <td class="ftitle"><b>None</b></td>
+              <td class="ftitle"><b>N/A</b></td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Initiates conversations</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_init_conv == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_init_conv == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_init_conv == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_init_conv == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_init_conv == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of single words</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_single_words == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_single_words == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_single_words == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_single_words == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_single_words == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of short phrases</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_short_phrases == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_short_phrases == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_short_phrases == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_short_phrases == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_short_phrases == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of full sentences</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_full_sentences == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_full_sentences == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_full_sentences == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_full_sentences == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_full_sentences == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of AAC</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_aac == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_aac == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_aac == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_aac == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_aac == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of ASL</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_asl == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_asl == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_asl == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_asl == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_asl == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Appropriate intonation</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_into == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_into == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_into == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_into == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_into == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Appropriate vocal volume</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_vocal_vol == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_vocal_vol == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_vocal_vol == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_vocal_vol == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_vocal_vol == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Intelligible speech</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_intell_speech == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_intell_speech == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_intell_speech == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_intell_speech == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_intell_speech == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Appropriate rate of speech</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_rate_speech == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_rate_speech == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_rate_speech == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_rate_speech == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_rate_speech == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Oral motor coordination difficulty</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_oral_motor_coord_diff == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_oral_motor_coord_diff == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_oral_motor_coord_diff == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_oral_motor_coord_diff == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_oral_motor_coord_diff == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Articulation of speech difficulty</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_articu_speech_diff == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_articu_speech_diff == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_articu_speech_diff == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_articu_speech_diff == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_articu_speech_diff == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of expressive language</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_expr_lang == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_expr_lang == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_expr_lang == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_expr_lang == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_use_expr_lang == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Appropriate response / accuracy of <br>receptive language skills</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_res_or_accur_recept_lang == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_res_or_accur_recept_lang == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_res_or_accur_recept_lang == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_res_or_accur_recept_lang == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_appr_res_or_accur_recept_lang == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Exaggerated language</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_exagg_lang == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_exagg_lang == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_exagg_lang == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_exagg_lang == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_exagg_lang == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Repetitive or echolalic speech</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_repet_echo_speech == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_repet_echo_speech == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_repet_echo_speech == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_repet_echo_speech == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_repet_echo_speech == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Purposeful body language/gestures</td>
+              <td class="fdata">
+                <?php if($tab_113_comm_purpos_body_lang == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_purpos_body_lang == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_purpos_body_lang == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_purpos_body_lang == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_113_comm_purpos_body_lang == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Comments:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($comm_comments); ?>
+        </td>
+      </tr>
+      <!--  ************************************
+          Hasta aqui llegue el 20/01/2020
+          ************************************** -->
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="ftitle title"><b>Cognition:</b></td>
+              <td class="ftitle"><b>High</b></td>
+              <td class="ftitle"><b>Moderate</b></td>
+              <td class="ftitle"><b>Low</b></td>
+              <td class="ftitle"><b>None</b></td>
+              <td class="ftitle"><b>N/A</b></td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Awareness of surroundings</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_awar_surr == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_awar_surr == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_awar_surr == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_awar_surr == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_awar_surr == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Sustained / focused attention</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_sust_foc_att == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_sust_foc_att == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_sust_foc_att == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_sust_foc_att == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_sust_foc_att == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Selective attention</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_selec_att == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_selec_att == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_selec_att == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_selec_att == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_selec_att == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Divided attention</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_div_att == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_div_att == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_div_att == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_div_att == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_div_att == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Alternating attention</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_alt_att == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_alt_att == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_alt_att == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_alt_att == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_alt_att == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Decision making</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_decision_making == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_decision_making == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_decision_making == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_decision_making == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_decision_making == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Reasoning/problem solving</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_reas_prob_solv == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_reas_prob_solv == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_reas_prob_solv == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_reas_prob_solv == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_reas_prob_solv == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Memory/recall</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_memory_recall == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_memory_recall == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_memory_recall == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_memory_recall == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_memory_recall == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Proprioception</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_proprioception == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_proprioception == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_proprioception == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_proprioception == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_proprioception == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Visual tracking</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_visual_tracking == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_visual_tracking == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_visual_tracking == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_visual_tracking == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_visual_tracking == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <!-- De esta seccion se empiesa de nuevo -->
+            <tr class="boder-bottom">
+              <td>Auditory discrimination</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_auditory_discri == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_auditory_discri == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_auditory_discri == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_auditory_discri == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_auditory_discri == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ability to sequence (items, actions, etc.)</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_seq == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_seq == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_seq == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_seq == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_seq == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ability to follow simple directives</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_simp_dir == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_simp_dir == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_simp_dir == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_simp_dir == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_simp_dir == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ability to follow complex directives</td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_compl_dir == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_compl_dir == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_compl_dir == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_compl_dir == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_114_cogn_ability_foll_compl_dir == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Comments:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($cogn_comments); ?>
+        </td>
+      </tr>
+
+
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="ftitle title"><b>Motor:</b></td>
+              <td class="ftitle"><b>Typical</b></td>
+              <td class="ftitle"><b>Functional</b></td>
+              <td class="ftitle"><b>Limited</b></td>
+              <td class="ftitle"><b>Requires Assistance/Low</b></td>
+              <td class="ftitle"><b>None</b></td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Independent ambulation</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_inde_ambu == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_inde_ambu == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_inde_ambu == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_inde_ambu == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_inde_ambu == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Gross motor coordination</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_cordin == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_cordin == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_cordin == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_cordin == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_cordin == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Gross motor strength</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_strength == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_strength == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_strength == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_strength == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_strength == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Gross motor balance</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_balance == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_balance == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_balance == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_balance == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_gross_balance == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Obstacle/advanced navigation</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_obst_nav == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_obst_nav == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_obst_nav == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_obst_nav == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_obst_nav == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Fine motor strength (grasp)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_coord == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_coord == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_coord == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_coord == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_coord == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Fine motor strength (digits)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_grasp == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_grasp == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_grasp == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_grasp == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_grasp == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Core strength</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_digits == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_digits == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_digits == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_digits == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_fine_strength_digits == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Muscle tone (specify in comments)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_muscle_tone == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_muscle_tone == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_muscle_tone == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_muscle_tone == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_muscle_tone == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Bilateral coordination</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_bilateral_coord == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_bilateral_coord == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_bilateral_coord == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_bilateral_coord == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_bilateral_coord == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Eye-hand coordination</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_eye_hand_coord == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_eye_hand_coord == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_eye_hand_coord == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_eye_hand_coord == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_eye_hand_coord == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of left extremity (upper)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_upp == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_upp == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_upp == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_upp == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_upp == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of right extremity (upper)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_upp == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_upp == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_upp == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_upp == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_upp == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of left extremity (lower)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_low == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_low == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_low == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_low == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_left_extr_low == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of right extremity (lower)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_low == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_low == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_low == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_low == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_use_right_extr_low == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Crosses midline (lower extremities)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_low == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_low == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_low == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_low == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_low == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Crosses midline (upper extremities)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_upp == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_upp == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_upp == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_upp == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_cross_midl_upp == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Range of motion (lower extremity)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_low == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_low == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_low == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_low == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_low == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Range of motion (upper extremity)</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_upp == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_upp == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_upp == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_upp == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_range_motion_upp == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Overall physical activity level</td>
+              <td class="fdata">
+                <?php if($tab_115_motor_overall_phys_act_level == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_overall_phys_act_level == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_overall_phys_act_level == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_overall_phys_act_level == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_115_motor_overall_phys_act_level == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Comments:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($motor_comments); ?>
+        </td>
+      </tr>
+
+
+
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="ftitle title"><b>Sensory Integration/ Processing: PART I</b></td>
+              <td class="ftitle"><b>Hypersensitive</b></td>
+              <td class="ftitle"><b>Sensitive</b></td>
+              <td class="ftitle"><b>Typical</b></td>
+              <td class="ftitle"><b>Hyposensitive</b></td>
+              <td class="ftitle"><b>N/A or Not Observable</b></td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Vision</td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vision == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vision == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vision == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vision == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vision == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Auditory</td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_auditory == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_auditory == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_auditory == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_auditory == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_auditory == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Tactile</td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_tectile == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_tectile == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_tectile == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_tectile == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_tectile == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Vestibular</td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vestibular == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vestibular == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vestibular == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vestibular == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_vestibular == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Olfactory</td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_olfactory == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_olfactory == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_olfactory == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_olfactory == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_116_senso_1_olfactory == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td height="10"></td>
+      </tr>
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="ftitle title"><b> PART II:</b></td>
+              <td class="ftitle"><b>Always</b></td>
+              <td class="ftitle"><b>Frequent</b></td>
+              <td class="ftitle"><b>Occasionally</b></td>
+              <td class="ftitle"><b>Rarely</b></td>
+              <td class="ftitle"><b>N/A or Not Observable</b></td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Self-stimulation behaviors</td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_self_stim_behav == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_self_stim_behav == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_self_stim_behav == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_self_stim_behav == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_self_stim_behav == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of adaptive equipment <br><small>(headphones, oral stim, glasses, etc)</small></td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_use_adapt_equip == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_use_adapt_equip == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_use_adapt_equip == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_use_adapt_equip == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_use_adapt_equip == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Independently requests sensory input</td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_input == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_input == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_input == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_input == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_input == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Independently requests regulation of <br>external sensory factors</td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_reg_ext_fac == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_reg_ext_fac == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_reg_ext_fac == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_reg_ext_fac == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_ind_req_reg_ext_fac == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Responds to passive sensory input/ regulation</td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_resp_pas_inp == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_resp_pas_inp == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_resp_pas_inp == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_resp_pas_inp == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_117_senso_2_resp_pas_inp == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Comments:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($senso_comments); ?>
+        </td>
+      </tr>
+
+
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="ftitle title"><b>Social/Emotional/Behavioral PART I:</b></td>
+              <td class="ftitle"><b>High</b></td>
+              <td class="ftitle"><b>Moderate</b></td>
+              <td class="ftitle"><b>Low</b></td>
+              <td class="ftitle"><b>None</b></td>
+              <td class="ftitle"><b>N/A</b></td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Self-expression</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_expr == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_expr == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_expr == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_expr == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_expr == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Self-regulation</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_regul == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_regul == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_regul == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_regul == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_regul == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of coping skills</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_cop_skill == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_cop_skill == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_cop_skill == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_cop_skill == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_cop_skill == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Self-esteem/confidence</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_esteem == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_esteem == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_esteem == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_esteem == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_self_esteem == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ability to identify emotions (self)</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_self == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_self == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_self == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_self == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_self == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ability to identify emotions (others)</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_oth == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_oth == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_oth == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_oth == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_iden_emot_oth == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Appropriate range of affect</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_rang_eff == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_rang_eff == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_rang_eff == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_rang_eff == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_rang_eff == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Appropriate emotional responses</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_emot_resp == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_emot_resp == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_emot_resp == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_emot_resp == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_appr_emot_resp == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Eye contact when speaking</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_eye_cont_speak == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_eye_cont_speak == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_eye_cont_speak == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_eye_cont_speak == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_eye_cont_speak == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Engagement/participation</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_engage_partic == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_engage_partic == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_engage_partic == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_engage_partic == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_engage_partic == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ability to share items/tasks</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_share_item == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_share_item == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_share_item == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_share_item == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_share_item == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Share appropriate information with others</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_share_appr_inf_oth == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_share_appr_inf_oth == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_share_appr_inf_oth == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_share_appr_inf_oth == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_share_appr_inf_oth == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Joint play/attention</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_joint_play_atten == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_joint_play_atten == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_joint_play_atten == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_joint_play_atten == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_joint_play_atten == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Turn taking</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_turn_taking == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_turn_taking == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_turn_taking == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_turn_taking == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_turn_taking == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Compliance for preferred tasks</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_pref_tasks == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_pref_tasks == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_pref_tasks == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_pref_tasks == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_pref_tasks == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Compliance for non-preferred tasks</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_non_pref_tasks == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_non_pref_tasks == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_non_pref_tasks == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_non_pref_tasks == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_compli_non_pref_tasks == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Use of social greetings</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_social_greet == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_social_greet == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_social_greet == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_social_greet == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_use_social_greet == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Respond to questions</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_respo_to_quest == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_respo_to_quest == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_respo_to_quest == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_respo_to_quest == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_respo_to_quest == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ask questions</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_ask_quest == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_ask_quest == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_ask_quest == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_ask_quest == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_ask_quest == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Ability to anticipate or identify social cues</td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_antic == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_antic == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_antic == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_antic == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_118_social_behav_1_abil_antic == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td height="10"></td>
+      </tr>
+      <tr>
+        <td>
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td class="ftitle title"><b>PART II- Observable Affect/Behaviors:</b></td>
+              <td class="ftitle"><b>Frequent</b></td>
+              <td class="ftitle"><b>Occasionally</b></td>
+              <td class="ftitle"><b>Rarely</b></td>
+              <td class="ftitle"><b>None Observed</b></td>
+              <td class="ftitle"><b>N/A</b></td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Health/safe engagement</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_health_safe_engag == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_health_safe_engag == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_health_safe_engag == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_health_safe_engag == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_health_safe_engag == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Satisfaction/content</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_satis_cont == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_satis_cont == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_satis_cont == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_satis_cont == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_satis_cont == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Neutral/ambivalence</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_neutr_amb == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_neutr_amb == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_neutr_amb == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_neutr_amb == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_neutr_amb == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Anxiety/fear</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anxiety_fear == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anxiety_fear == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anxiety_fear == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anxiety_fear == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anxiety_fear == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Depression</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_depression == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_depression == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_depression == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_depression == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_depression == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Sadness</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_sadness == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_sadness == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_sadness == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_sadness == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_sadness == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Frustration</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_frustration == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_frustration == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_frustration == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_frustration == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_frustration == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Anger</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anger == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anger == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anger == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anger == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_anger == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Aggression</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_aggression == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_aggression == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_aggression == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_aggression == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_aggression == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Identifiable escalation</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_ident_esc == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_ident_esc == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_ident_esc == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_ident_esc == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_ident_esc == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+            <tr class="boder-bottom">
+              <td>Dysregulation/lability</td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_dysr_lability == 1) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_dysr_lability == 2) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_dysr_lability == 3) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_dysr_lability == 4) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+              <td class="fdata">
+                <?php if($tab_119_obser_behav_2_dysr_lability == 5) {
+                ?>
+                  <img src="<?php echo $base_url; ?>/style/images/icon_enable_negro.gif" height="12" />
+                <?php
+                }?> 
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Comments:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($social_obs_behav_comments); ?>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Treatment Recommendations:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($treatment_recomm); ?>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Goals and Objectives:</b></td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 10px;">
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td style="width: 20%;">Goal 1:</td>
+              <td class="word-wrap" style="width: 80%;">
+                <?php echo nl2br($goal1); ?>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 20%;">Objecttive:</td>
+              <td class="word-wrap" style="width: 80%; padding-bottom: 10px;">
+                <?php echo nl2br($objective1); ?>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 20%;">Goal 2:</td>
+              <td class="word-wrap" style="width: 80%;">
+                <?php echo nl2br($goal2); ?>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 20%;">Objecttive:</td>
+              <td class="word-wrap" style="width: 80%; padding-bottom: 10px;">
+                <?php echo nl2br($objective2); ?>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 20%;">Goal 3:</td>
+              <td class="word-wrap" style="width: 80%;">
+                <?php echo nl2br($goal3); ?>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 20%;">Objecttive:</td>
+              <td class="word-wrap" style="width: 80%; padding-bottom: 10px;">
+                <?php echo nl2br($objective2); ?>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Treatment Plan:</b></td>
+      </tr>
+      <tr>
+        <td class="word-wrap" style="padding-bottom: 10px;">
+          <?php echo nl2br($treatment_plan); ?>
+        </td>
+      </tr>
+      <tr>
+        <td height="50">&nbsp;</td>
+      </tr>      
+      <tr>
+        <td style="padding-bottom: 10px;">
+          <table class="tbl" border="0" align="left">
+            <tr>
+              <td style="width: 70%;">
+                <table style="width: 100%" border="0" align="left">
+                <tr>
+                  <td><b>Therapist: </b>&nbsp; </td>
+                  <td>
+                    <?php
+                    if (isset($clinician_signature) AND $clinician_signature != "") {
+                      $path =  FCPATH."upload/signatures/".$clinician_signature;
+                      $type = pathinfo($path, PATHINFO_EXTENSION);
+                      $data = file_get_contents($path);
+                      $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+                      // echo $type;
+                      echo '<img src="'.$base64.'" alt="" align="left" width="150" style="padding: 5px 20px; border-bottom: 1px solid #000;">';
+                    } else {
+
+                      echo '____________________________________________';
+                    }
+                    ?>
+                  </td>
+                </tr>
+                </table>
+              </td>
+              <td style="width: 30%;">
+                <b>Date:</b> &nbsp; 
+                <?php
+                if (isset($clinician_signature) AND $clinician_signature != "") {
+                  echo '<span style="padding: 5px 20px; border-bottom: 1px solid #000;">'.standard_date(mysql_to_unix($visit_date_time)) . '</span>';
+                } else {
+
+                  echo '_______________';
+                }
+                ?>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      </table>
+      
+ </page>

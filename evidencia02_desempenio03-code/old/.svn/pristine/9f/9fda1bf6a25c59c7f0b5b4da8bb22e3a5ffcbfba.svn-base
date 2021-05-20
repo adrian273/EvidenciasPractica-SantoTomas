@@ -1,0 +1,1157 @@
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Primary Diagnosis / Therapy Diagnosis</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td height="10">
+    	Primary Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Therapy Diagnosis
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>
+  <tr>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="primary_diag" rows="3" cols="50" wrap="auto">{$primary_diag}</textarea>*}
+    	<input name="primary_diag" type="text" value="{$primary_diag}" size="27" maxlength="30">
+    </td>
+    <td height="10" class="ftitle" colspan="2">
+			{*<textarea name="secondary_diag" rows="3" cols="50" wrap="auto">{$secondary_diag}</textarea>*}
+    	<input name="secondary_diag" type="text" value="{$secondary_diag}" size="27" maxlength="30">
+    </td>
+  </tr>
+  <tr>
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+
+    <td height="10">
+    	Date
+    </td>
+    <td height="10">
+    	
+    </td>
+		
+  </tr>	
+  <tr>
+    <td align="left" valign="top" colspan="2">
+    	<input type="text" id="primary_diag_date" name="primary_diag_date" value="{$primary_diag_date|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> &nbsp;
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('primary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+		<td align="left" valign="top" colspan="2">
+    	<input type="text" id="secondary_diag_date" name="secondary_diag_date" value="{$secondary_diag_date|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> &nbsp;
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('secondary_diag_date'), document.getElementById('fecha_help'));return false;" >
+    </td>		
+  </tr>
+
+	<tr>
+
+		<td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Assessment Type</td>				
+		<td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Therapy Type</td>
+	</tr>
+	<tr>
+		<td colspan="4" height="10"></td>
+	</tr> 				
+	<tr>
+		<td colspan="2" height="10">
+			{html_options options=$tab_32_list selected=$tab_32_assess_type id='tab_32_assess_type' name='tab_32_assess_type'}
+		</td>
+		<td colspan="2" height="10">
+			<label><input type="radio" name="therapytype" value="R" {if $therapytype eq 'R'}checked="checked"{elseif $therapytype eq 'R'}{else}checked="checked"{/if}/> Restorative</label>
+			<label><input type="radio" name="therapytype" value="M" {if $therapytype eq 'M'}checked="checked"{/if}/> Maintenance</label>
+		</td>
+	</tr>
+	<tr>
+		<td class="subtitle" colspan="4">ST Plan of Care/ Frequency discussed with:
+			<input type="hidden" name="st_plan_care" id="st_plan_care" value="0">
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			<div style="display: inline">
+				<label><input name="st_poc_discussed_dr" class="st_poc" type="checkbox" value="1" {if $st_poc_discussed_dr}checked{/if}>Dr</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+				<label><input name="st_poc_discussed_pat" class="st_poc" type="checkbox" value="1" {if $st_poc_discussed_pat}checked{/if}>Patient/S.O.</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+				<label><input name="st_poc_discussed_agen" class="st_poc" type="checkbox" value="1" {if $st_poc_discussed_agen}checked{/if}>Agency Staff</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+				<label><input name="st_poc_discussed_cg" class="st_poc" type="checkbox" value="1" {if $st_poc_discussed_cg}checked{/if}>CG</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+				<label><input name="st_poc_discussed_other" class="st_poc" type="checkbox" value="1" {if $st_poc_discussed_other}checked{/if}>Other:</label>
+				<input name="st_poc_discussed_other_desc" type="text" value="{$st_poc_discussed_other_desc}" size="30" maxlength="30">
+			</div>	</td>
+	</tr>
+	<tr>
+		<td colspan="2">Prior ST Services Received:<br/>
+			<textarea name="prior_service" id="prior_service" cols="40" rows="5" maxlength="400" onkeyup="chars_limit_notice('prior_service', 95)">{$prior_service}</textarea>    
+		{assign var="prior_service_length" value=$prior_service|count_characters:true}
+		{assign var="prior_service_left" value="`$prior_service_length-95`"}
+			<div style="font-size:9px;{if $prior_service_left gt 0}display:none;{/if}" id="prior_service_note">
+				After <label id="prior_service_chars_left">{$prior_service_left|abs}</label>characters text will go to addendum section.
+			</div>
+
+</td>
+		<td colspan="2">Physical Limitations:<br/>
+		<textarea name="physical_limit" id="physical_limit" cols="40" rows="5" maxlength="400" onkeyup="chars_limit_notice('physical_limit', 95)">{$physical_limit}</textarea>    
+		{assign var="physical_limit_length" value=$physical_limit|count_characters:true}
+		{assign var="physical_limit_left" value="`$physical_limit_length-95`"}
+			<div style="font-size:9px;{if $physical_limit_left gt 0}display:none;{/if}" id="physical_limit_note">
+				After <label id="physical_limit_chars_left">{$physical_limit_left|abs}</label>characters text will go to addendum section.
+			</div>
+
+		</td>
+	</tr>
+	
+	<tr>
+		<td class="subtitle" width="25%" nowrap>Rehab Potential</td>
+		<td class="subtitle" width="25%" nowrap>Mental Status</td>
+		<td class="subtitle" width="25%" nowrap>System Assessment</td>
+		<td class="subtitle" width="25%" nowrap>Pain Assessment</td>
+	</tr>
+    		<tr>
+    			<td valign="top">
+    				{html_radios options=$tab_43_list checked=$tab_43_rehab_poten id='tab_43_rehab_poten' name='tab_43_rehab_poten'}
+				</td>
+			    <td valign="top">
+					<input type="hidden" name="mental_status" id="mental_status" value="0">
+					<span style="width: 50%; float:left;">
+				  		<label><input name="mental_alert" class="mental_st" type="checkbox" value="1" {if $mental_alert}checked{/if}>Alert</label>
+					</span>
+			    	<span style="float:left;">
+						<label><input name="mental_oriented" class="mental_st" type="checkbox" value="1" {if $mental_oriented}checked{/if}>Oriented</label>
+					</span><br/>
+			    	<span style="width: 50%;float:left;">
+						<label><input name="mental_comatose" class="mental_st" type="checkbox" value="1" {if $mental_comatose}checked{/if}>Comatose</label>
+					</span>
+			    	<span style="float:left;">
+						<label><input name="mental_disoriented" class="mental_st" type="checkbox" value="1" {if $mental_disoriented}checked{/if}>Disoriented</label>
+					</span><br/>
+			    	<span style="width: 50%;float:left;">
+						<label><input name="mental_forgetful" class="mental_st" type="checkbox" value="1" {if $mental_forgetful}checked{/if}>Forgetful</label>
+				    </span>
+	  				<span style="float:left;">
+						<label><input name="mental_depressed" class="mental_st" type="checkbox" value="1" {if $mental_depressed}checked{/if}>Depressed</label>
+			    	</span><br/>
+			    	<span style="width: 50%;float:left;">
+						<label><input name="mental_lethargic" class="mental_st" type="checkbox" value="1" {if $mental_lethargic}checked{/if}>Lethargic</label>
+				    </span>
+			    	<span style="float:left;">
+				  		<label><input name="mental_agitated" class="mental_st" type="checkbox" value="1" {if $mental_agitated}checked{/if}>Agitated</label>
+					</span>
+		</td>
+		<td valign="top">
+			<div style="display: inline">
+				BP: <input name="p1_sa_bp" type="text" value="{$p1_sa_bp}" size="5" maxlength="7">
+				<input type="radio" name="system_bp_right_left" value="L" {if $system_bp_right_left == 'L'}checked{/if}>L 
+				<input type="radio" name="system_bp_right_left" value="R" {if $system_bp_right_left == 'R'}checked{/if}>R 
+
+			</div>
+			<div>
+				<label><input type="radio" name="system_sitt_lyi_stand" value="1" {if $system_sitt_lyi_stand == 1}checked{/if}>Sitting </label>
+				<label><input type="radio" name="system_sitt_lyi_stand" value="2" {if $system_sitt_lyi_stand == 2}checked{/if}>Lying </label>
+				<label><input type="radio" name="system_sitt_lyi_stand" value="3" {if $system_sitt_lyi_stand == 3}checked{/if}>Standing</label>
+			</div>
+
+			<div style="display: inline">
+				HR: <input name="system_HR" type="text" value="{$system_HR}" size="2" maxlength="3">
+			</div>
+			<div style="margin-left: 20px; display: inline">
+				o2 Sat: <input name="system_o2_sat" type="text" value="{$system_o2_sat}" size="3" maxlength="5">
+			</div>
+			<div>
+				Skin: 
+				<input name="system_skin" type="text" value="{$system_skin}" size="18" maxlength="75">
+			</div>
+		</td>
+		<td valign="top">
+   			{html_radios options=$tab_87_list checked=$tab_75_pain_assessment id='tab_75_pain_assessment' name='tab_75_pain_assessment'}<br/><br/>
+			Location:<input name="pain_location" type="text" value="{$pain_location}" size="15" maxlength="45"><br/>
+			Current Pain Control:<input name="pain_control" type="text" value="{$pain_control}" size="15" maxlength="40"><br/>
+		</td>
+	</tr>
+	<tr>
+		<td class="subtitle" width="50%" colspan="2" nowrap>Functional Limitations</td>
+		<td class="subtitle" width="50%" colspan="2" nowrap>Pertinent History of Current Illness:</td>
+	</tr>
+	<tr><td colspan="2" valign="top">
+		<input type="hidden" name="functional_limitations" id="functional_limitations" value="0">
+		<span style="width: 25%; float:left;">
+	  		<label><input name="func_limit_ampu" class="func_limit" type="checkbox" value="1" {if $func_limit_ampu}checked{/if}>Amputation</label>
+		</span>
+		<span style="width: 25%;float:left;">
+			<label><input name="func_limit_paralysis" class="func_limit" type="checkbox" value="1" {if $func_limit_paralysis}checked{/if}>Paralysis</label>
+		</span>
+		<span style="width: 25%;float:left;">
+			<label><input name="func_limit_bowel" class="func_limit" type="checkbox" value="1" {if $func_limit_bowel}checked{/if}>Bowel</label>
+		</span>
+		<span style="float:left;">
+			<label><input name="func_limit_bladder" class="func_limit" type="checkbox" value="1" {if $func_limit_bladder}checked{/if}>Bladder</label>
+		</span><br/>
+		<span style="width: 25%; float:left;">
+	  		<label><input name="func_limit_endur" class="func_limit" type="checkbox" value="1" {if $func_limit_endur}checked{/if}>Endurance</label>
+		</span>
+		<span style="width: 25%;float:left;">
+			<label><input name="func_limit_contract" class="func_limit" type="checkbox" value="1" {if $func_limit_contract}checked{/if}>Contracture</label>
+		</span>
+		<span style="width: 25%;float:left;">
+			<label><input name="func_limit_ambu" class="func_limit" type="checkbox" value="1" {if $func_limit_ambu}checked{/if}>Ambulation</label>
+		</span>
+		<span style="float:left;">
+			<label><input name="func_limit_hear" class="func_limit" type="checkbox" value="1" {if $func_limit_hear}checked{/if}>Hearing</label>
+		</span><br/>
+		<span style="width: 25%; float:left;">
+	  		<label><input name="func_limit_speech" class="func_limit" type="checkbox" value="1" {if $func_limit_speech}checked{/if}>Speech</label>
+		</span>
+		<span style="width: 25%;float:left;">
+			<label><input name="func_limit_legally_blind" class="func_limit" type="checkbox" value="1" {if $func_limit_legally_blind}checked{/if}>Legally Blind</label>
+		</span>
+		<span style="float:left;">
+			<label><input name="func_limit_dysp_on_exer" class="func_limit" type="checkbox" value="1" {if $func_limit_dysp_on_exer}checked{/if}>Dyspnea on exertion</label>
+		</span><br/>
+		<span style="float:left;">
+		<label><input name="func_limit_other" class="func_limit" type="checkbox" value="1" {if $func_limit_other}checked{/if}>Other:</label>
+		<input name="func_limit_other_desc" type="text" value="{$func_limit_other_desc}" size="30" maxlength="30"></span>
+	</td>
+	<td colspan="2" valign="top">
+
+		<textarea name="pertinent_history" id="pertinent_history" cols="40" rows="5" maxlength="500" onkeyup="chars_limit_notice('pertinent_history', 200)">{$pertinent_history}</textarea>    
+		{assign var="pertinent_history_length" value=$pertinent_history|count_characters:true}
+		{assign var="pertinent_history_left" value="`$pertinent_history_length-200`"}
+			<div style="font-size:9px;{if $pertinent_history_left gt 0}display:none;{/if}" id="pertinent_history_note">
+				After <label id="pertinent_history_chars_left">{$pertinent_history_left|abs}</label>characters text will go to addendum section.
+			</div>
+			
+	</td>
+	<tr>
+		<td colspan="4" height="10"></td>
+	</tr> 
+	<tr>
+		<td class="subtitle" colspan="2">Home Evaluation</td>
+		<td class="subtitle" colspan="2">Safety Measure</td>
+	</tr>
+	<tr><td colspan="2" valign="top">
+			<input type="hidden" name="home_evaluation" id="home_evaluation" value="0">
+			<div style="display: inline">
+		<label><input name="home_ev_alone" class="home_ev" type="checkbox" value="1" {if $home_ev_alone}checked{/if}>Alone</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+
+		<label><input name="home_ev_wit_spouse" class="home_ev" type="checkbox" value="1" {if $home_ev_wit_spouse}checked{/if}>Lives w/Spouse: </label><input name="home_ev_with_spouse_desc" type="text" value="{$home_ev_with_spouse_desc}" size="15" maxlength="18">
+			</div><br/>
+			<div style="display: inline">
+		<label><input name="home_ev_lives_with_other" class="home_ev" type="checkbox" value="1" {if $home_ev_lives_with_other}checked{/if}>Other:</label>
+		<input name="home_ev_other_desc" type="text" value="{$home_ev_other_desc}" maxlength="30" size="15">
+			</div>
+		<br/>
+		
+			{*<div style="display: inline">
+				{html_radios options=$tab_98_list checked=$home_ev_tab_98_home_type id='home_ev_tab_98_home_type' name='home_ev_tab_98_home_type'}
+			</div><br/>*}
+			<div style="display: inline">
+				<label><input type="radio" name="home_ev_level"  value="S" {if $home_ev_level == 'S'}checked{/if}>Single Level </label>
+				<label><input type="radio" name="home_ev_level" value="M" {if $home_ev_level == 'M'}checked{/if}>Multi Level </label>
+			</div><br/>
+			<div style="display: inline">
+<label><input name="home_ev_stairs" type="checkbox" class="home_ev" value="1" {if $home_ev_stairs}checked{/if}>Stairs</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+<label><input name="home_ev_elevator" type="checkbox" class="home_ev" value="1" {if $home_ev_elevator}checked{/if}>Elevator</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+<label><input name="home_ev_spacious" type="checkbox" class="home_ev" value="1" {if $home_ev_spacious}checked{/if}>Spacious</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+<label><input name="home_ev_clean" type="checkbox" class="home_ev" value="1" {if $home_ev_clean}checked{/if}>Clean</label>
+			</div><br>
+			<div style="display: inline">
+<label><input name="home_ev_crowded" type="checkbox" class="home_ev" value="1" {if $home_ev_crowded}checked{/if}>Crowded</label>
+			</div>
+			<div style="margin-left: 20px;display: inline">
+<label><input name="home_ev_clutter" type="checkbox" class="home_ev" value="1" {if $home_ev_clutter}checked{/if}>Cluttered</label>
+			</div><br>
+			<div style="display: inline">
+<label><input name="home_ev_dirty" type="checkbox" class="home_ev" value="1" {if $home_ev_dirty}checked{/if}>Dirty</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">Comment:
+<input name="home_ev_comments" type="text" value="{$home_ev_comments}" size="20" maxlength="50">
+			</div>
+	</td>
+	
+	<td colspan="2" valign="top">
+		<input type="hidden" name="safety_measure" id="safety_measure" value="0">
+		<div style="display: inline">
+			<label><input name="safety_emerg_manag" class="safety" type="checkbox" value="1" {if $safety_emerg_manag}checked{/if}>Emergency Management</label>
+		</div>
+		<div style="margin-left: 20px; display: inline">
+			<label><input name="safety_isola_precau" class="safety" type="checkbox" value="1" {if $safety_isola_precau}checked{/if}>Isolation Precautions</label>
+		</div><br/>
+		<div style="display: inline">
+			<label><input name="safety_24_hr_superv" class="safety" type="checkbox" value="1" {if $safety_24_hr_superv}checked{/if}>24 Hr Supervision</label>
+		</div><br/>
+		<div style="display: inline">
+			<label><input name="safety_ortho" class="safety" type="checkbox" value="1" {if $safety_ortho}checked{/if}>Ortho Precaution / Restriction Architectural Barriers interfering</label>
+		</div><br/>
+		<div style="margin-left: 20px; display: inline">
+			W/ Mobility:
+		</div>
+		<div style="margin-left: 20px; display: inline">
+			<label><input name="safety_steps" class="safety" type="checkbox" value="1" {if $safety_steps}checked{/if}>Steps / Stairs</label>
+		</div>
+		<div style="margin-left: 20px; display: inline">
+			<label><input name="safety_doorways" class="safety" type="checkbox" value="1" {if $safety_doorways}checked{/if}>Doorways</label>
+		</div><br/>
+		<div style="display: inline">
+			<label><input name="safety_other" class="safety" type="checkbox" value="1" {if $safety_other}checked{/if}>Other:</label> <input name="safety_other_desc" type="text" value="{$safety_other_desc}" size="15" maxlength="50">
+		</div>
+	</td>
+	<tr>
+		<td class="subtitle" colspan="2">Treatment</td>
+		<td class="subtitle" colspan="2">General</td>
+	</tr>
+	<tr>
+		<td colspan="2" valign="top">
+			<input type="hidden" name="treatment" id="treatment" value="0">
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_evaluation" class="treat" type="checkbox" value="1" {if $treat_evaluation}checked{/if}>Evaluation</label>
+			</span>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_voice_disor_treat" class="treat" type="checkbox" value="1" {if $treat_voice_disor_treat}checked{/if}>Voice Disorders Treatment</label>
+			</span><br/>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_speech_artic" class="treat" type="checkbox" value="1" {if $treat_speech_artic}checked{/if}>Speech Articulation</label>
+			</span>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_establish_HEP" class="treat" type="checkbox" value="1" {if $treat_establish_HEP}checked{/if}>Establish HEP</label>
+			</span>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_upgrade_HEP" class="treat" type="checkbox" value="1" {if $treat_upgrade_HEP}checked{/if}>Upgrade HEP</label>
+			</span><br/>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_dyspha_treat" class="treat" type="checkbox" value="1" {if $treat_dyspha_treat}checked{/if}>Dysphagia Treatment</label>
+			</span>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_language" class="treat" type="checkbox" value="1" {if $treat_language}checked{/if}>Language Disorders</label>
+			</span><br/>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_aural_rehab" class="treat" type="checkbox" value="1" {if $treat_aural_rehab}checked{/if}>Aural Rehab</label>
+			</span>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_non_oral_comm" class="treat" type="checkbox" value="1" {if $treat_non_oral_comm}checked{/if}>Non-oral Comm</label>
+			</span><br/>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_mgmt_eval" class="treat" type="checkbox" value="1" {if $treat_mgmt_eval}checked{/if}>Mgmt/Eval of Care Plan</label>
+			</span>
+			<span style="width: 50%; float:left;">
+				<label><input name="treat_other" class="treat" type="checkbox" value="1" {if $treat_other}checked{/if}>Other:</label> <input name="treat_other_desc" type="text" value="{$treat_other_desc}" size="10" maxlength="17">
+			</span>
+		</td>
+		<td colspan="2" valign="top">
+			<input type="hidden" name="general_i" id="general_i" value="0">
+			<div style="display: inline">
+				<label><input name="general_adequate" class="general_c" type="checkbox" value="1" {if $general_adequate}checked{/if}>Adequate Eye-Hand Coordination</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+				<label><input name="general_glasses" class="general_c" type="checkbox" value="1" {if $general_glasses}checked{/if}>Glasses</label>
+			</div><br>
+			<div style="display: inline">
+				<label><input name="general_dentures" class="general_c" type="checkbox" value="1" {if $general_dentures}checked{/if}>Dentures</label>
+			</div>
+			<div style="margin-left: 20px; display: inline">
+				<label><input name="general_norm_hearing" class="general_c" type="checkbox" value="1" {if $general_norm_hearing}checked{/if}>Normal Hearing</label> 
+			</div><br>
+			<div style="display: inline">
+				<label><input name="general_abnormal_hear" class="general_c" type="checkbox" value="1" {if $general_abnormal_hear}checked{/if}>Abnormal Hearing</label>
+			</div><hr/>
+			Assesment:<br/>
+			<textarea name="assesment" id="assesment" cols="40" rows="5" onkeyup="chars_limit_notice('assesment', 175)">{$assesment}</textarea>    
+		{assign var="assesment_length" value=$assesment|count_characters:true}
+		{assign var="assesment_left" value="`$assesment_length-175`"}
+			<div style="font-size:9px;{if $assesment_left gt 0}display:none;{/if}" id="assesment_note">
+				After <label id="assesment_chars_left">{$assesment_left|abs}</label>characters text will go to addendum section.
+			</div>
+			
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			Treatment Plan:<br/>
+			<textarea name="treat_plan" id="treat_plan" cols="40" rows="5" onkeyup="chars_limit_notice('treat_plan', 90)">{$treat_plan}</textarea>    
+		{assign var="treat_plan_length" value=$treat_plan|count_characters:true}
+		{assign var="treat_plan_left" value="`$treat_plan_length-90`"}
+			<div style="font-size:9px;{if $treat_plan_left gt 0}display:none;{/if}" id="treat_plan_note">
+				After <label id="treat_plan_chars_left">{$treat_plan_left|abs}</label>characters text will go to addendum section.
+			</div>
+			
+		</td>
+	</tr>
+	<tr>
+		<td class="subtitle" colspan="4" align="center"><strong>Speech Therapy Care Plan / Planned Instruction</strong>
+			<table width="100%">
+				<tr>
+					<td>Problem #</td>
+					<td>Problem</td>
+					<td>Short Term Goal</td>
+					<td>Planned Instruction</td>
+					<td>Date Met</td>
+				</tr>
+				<tr>
+					<td><input name="problem_num1" type="text" value="{$problem_num1}" size="2" maxlength="2"></td>
+					<td><input name="problem_desc1" type="text" value="{$problem_desc1}" size="18" maxlength="19"></td>
+					<td><input name="problem_short_term1" type="text" value="{$problem_short_term1}" size="18" maxlength="22"></td>
+					<td><input name="problem_planned1" type="text" value="{$problem_planned1}" size="18" maxlength="30"></td>
+					<td><input name="problem_date1" size="10" id="problem_date1" type="text" value="{$problem_date1|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('problem_date1'), document.getElementById('fecha_help'));return false;" ></td>
+				</tr>
+				<tr>
+					<td><input name="problem_num2" type="text" value="{$problem_num2}" size="2" maxlength="2"></td>
+					<td><input name="problem_desc2" type="text" value="{$problem_desc2}" size="18" maxlength="19"></td>
+					<td><input name="problem_short_term2" type="text" value="{$problem_short_term2}" size="18" maxlength="22"></td>
+					<td><input name="problem_planned2" type="text" value="{$problem_planned2}" size="18" maxlength="30"></td>
+					<td><input name="problem_date2" size="10" id="problem_date2" type="text" value="{$problem_date2|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('problem_date2'), document.getElementById('fecha_help'));return false;" ></td>
+				</tr>
+				<tr>
+					<td><input name="problem_num3" type="text" value="{$problem_num3}" size="2" maxlength="2"></td>
+					<td><input name="problem_desc3" type="text" value="{$problem_desc3}" size="18" maxlength="19"></td>
+					<td><input name="problem_short_term3" type="text" value="{$problem_short_term3}" size="18" maxlength="22"></td>
+					<td><input name="problem_planned3" type="text" value="{$problem_planned3}" size="18" maxlength="30"></td>
+					<td><input name="problem_date3" size="10" id="problem_date3" type="text" value="{$problem_date3|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('problem_date3'), document.getElementById('fecha_help'));return false;" ></td>
+				</tr>
+				<tr>
+					<td><input name="problem_num4" type="text" value="{$problem_num4}" size="2" maxlength="2"></td>
+					<td><input name="problem_desc4" type="text" value="{$problem_desc4}" size="18" maxlength="19"></td>
+					<td><input name="problem_short_term4" type="text" value="{$problem_short_term4}" size="18" maxlength="22"></td>
+					<td><input name="problem_planned4" type="text" value="{$problem_planned4}" size="18" maxlength="30"></td>
+					<td><input name="problem_date4" size="10" id="problem_date4" type="text" value="{$problem_date4|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('problem_date4'), document.getElementById('fecha_help'));return false;" ></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			<label><input name="hp_discharge" id="hp_discharge" type="radio" value="hp" {if $hp_discharge eq 'hp'}checked{/if}>H & P Update</label>
+			<label><input name="hp_discharge" id="hp_discharge" type="radio" value="discharge" {if $hp_discharge eq 'discharge'}checked{/if}>Discharge Summary:</label>
+			
+			{* <input name="hp_update" type="checkbox" value="1" {if $hp_update}checked{/if}>H & P Update
+			<input name="discharge_summary" type="checkbox" value="1" {if $discharge_summary}checked{/if}>Discharge Summary: *}
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			<textarea name="discharge_summary_desc" id="discharge_summary_desc" cols="80" rows="6" maxlength="450" onkeyup="chars_limit_notice('discharge_summary_desc', 180)">{$discharge_summary_desc}</textarea>    
+		{assign var="discharge_summary_desc_length" value=$discharge_summary_desc|count_characters:true}
+		{assign var="discharge_summary_desc_left" value="`$discharge_summary_desc_length-180`"}
+			<div style="font-size:9px;{if $discharge_summary_desc_left gt 0}display:none;{/if}" id="discharge_summary_desc_note">
+				After <label id="discharge_summary_desc_chars_left">{$discharge_summary_desc_left|abs}</label>characters text will go to addendum section.
+			</div>
+			
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			Limitations- Receptive / Expressive / Physiological Behavioral:<br/>
+			
+			<textarea name="limitations" id="limitations" cols="80" rows="6" maxlength="450" onkeyup="chars_limit_notice('limitations', 170)">{$limitations}</textarea>    
+		{assign var="limitations_length" value=$limitations|count_characters:true}
+		{assign var="limitations_left" value="`$limitations_length-170`"}
+			<div style="font-size:9px;{if $limitations_left gt 0}display:none;{/if}" id="limitations_note">
+				After <label id="limitations_chars_left">{$limitations_left|abs}</label>characters text will go to addendum section.
+			</div>
+			
+		</td>
+	</tr>	
+	<tr>
+		<td colspan="4">Goals:<br/>
+			<textarea name="goals" id="goals" cols="80" rows="6" maxlength="450" onkeyup="chars_limit_notice('goals', 240)">{$goals}</textarea>    
+		{assign var="goals_length" value=$goals|count_characters:true}
+		{assign var="goals_left" value="`$goals_length-240`"}
+			<div style="font-size:9px;{if $goals_left gt 0}display:none;{/if}" id="goals_note">
+				After <label id="goals_chars_left">{$goals_left|abs}</label>characters text will go to addendum section.
+			</div>
+			
+		</td>
+	</tr>	
+
+	<tr>
+		<td colspan="4" class="subtitle">Home Bound Status
+			<label><input type="radio" name="home_YN" class="home_YN" value="1" {if $home_YN == 1}checked{/if}>Yes</label>
+			<label><input type="radio" name="home_YN" class="home_YN" value="2" {if $home_YN == 2}checked{/if}>No</label>
+			<input type="hidden" name="home_bound_status" id="home_bound_status" value="0">
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2"><label><input name="home_consider" class="home_bound" type="checkbox" value="1" {if $home_consider}checked{/if}>
+		Considerable & taxing effort to leave home</label>
+	</td>
+	<td colspan="2"><label><input name="home_req_assis" class="home_bound" type="checkbox" value="1" {if $home_req_assis}checked{/if}>
+		Requires assistance to ambulate</label>
+	</td>
+	</tr>
+	<tr>
+		<td colspan="2"><label><input name="home_resid" class="home_bound" type="checkbox" value="1" {if $home_resid}checked{/if}>
+		Residual weakness</label>
+		</td>
+		<td colspan="2"><label><input name="home_depen" class="home_bound" type="checkbox" value="1" {if $home_depen}checked{/if}>
+		Dependent upon adaptive / assistive device</label>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2"><label><input name="home_confu" class="home_bound" type="checkbox" value="1" {if $home_confu}checked{/if}>
+		Confusion, unable to go out alone</label>
+		</td>
+		<td colspan="2"><label><input name="home_other" class="home_bound" type="checkbox" value="1" {if $home_other}checked{/if}>
+		Other:</label> <input name="home_other_desc" type="text" value="{$home_other_desc}" maxlength="30" size="20">
+		</td>
+	</tr>	
+	<tr>
+		<td colspan="4">Frequency / Duration: <input name="frequency_duration" type="text" value="{$frequency_duration}" size="70">
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4"><strong>Severety Rating scale:</strong>  0:Nonfunctional  1:Severe  2: Moderate  3:Mild  4: Normal Function  NA: Not Applicable  NT: Not Tested
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			<table width="100%">
+				<tr>
+					<td>&nbsp;</td>
+					<td>Clinical Severity Rating</td>
+					<td>Comments</td>
+				</tr>
+				<tr>
+					<td><strong>Aphasia</strong></td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				<tr>
+					<td>Auditory Comprehension</td>
+					<td>{html_options options=$tab_93_list id='tab_93_apha_audi_compre' name='tab_93_apha_audi_compre' selected=$tab_93_apha_audi_compre onchange='cambiar1()'}</td>
+					<td><input size="35" name="apha_audit_compre_comments" type="text" value="{$apha_audit_compre_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Single Words</td>
+					<td>{html_options options=$tab_93_list id='tab_93_apha_sing_words' name='tab_93_apha_sing_words' selected=$tab_93_apha_sing_words}</td>
+					<td><input size="35" name="apha_sing_words_comments" type="text" value="{$apha_sing_words_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Sentences / Directions</td>
+					<td>{html_options options=$tab_93_list id='tab_93_apha_sente_direct' name='tab_93_apha_sente_direct' selected=$tab_93_apha_sente_direct}</td>
+					<td><input size="35" name="apha_sente_direct_comments" type="text" value="{$apha_sente_direct_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Paragraphs</td>
+					<td>{html_options options=$tab_93_list id='tab_93_apha_parag' name='tab_93_apha_parag' selected=$tab_93_apha_parag}</td>
+					<td><input size="35" name="apha_parag_comments" type="text" value="{$apha_parag_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td><strong>Verbal Expressions</strong></td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				<tr>
+					<td>Word recall</td>
+					<td>{html_options options=$tab_93_list id='tab_93_verb_expre_word_recall' name='tab_93_verb_expre_word_recall' selected=$tab_93_verb_expre_word_recall onchange='cambiar2()'}</td>
+					<td><input size="35" name="verb_expre_word_recall_comments" type="text" value="{$verb_expre_word_recall_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Sentence formulation</td>
+					<td>{html_options options=$tab_93_list id='tab_93_verb_expre_sent_form' name='tab_93_verb_expre_sent_form' selected=$tab_93_verb_expre_sent_form}</td>
+					<td><input size="35" name="verb_expre_sent_form_comments" type="text" value="{$verb_expre_sent_form_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Visual confrontation naming</td>
+					<td>{html_options options=$tab_93_list id='tab_93_verb_expre_visual_conf_nam' name='tab_93_verb_expre_visual_conf_nam' selected=$tab_93_verb_expre_visual_conf_nam}</td>
+					<td><input size="35" name="verb_expre_visual_conf_nam_comments" type="text" value="{$verb_expre_visual_conf_nam_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Repetition</td>
+					<td>{html_options options=$tab_93_list id='tab_93_verb_expre_repe' name='tab_93_verb_expre_repe' selected=$tab_93_verb_expre_repe}</td>
+					<td><input size="35" name="verb_expre_repe_comments" type="text" value="{$verb_expre_repe_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Automatic speech</td>
+					<td>{html_options options=$tab_93_list id='tab_93_verb_expre_auto_speech' name='tab_93_verb_expre_auto_speech' selected=$tab_93_verb_expre_auto_speech}</td>
+					<td><input size="35" name="verb_expre_auto_speech_comments" type="text" value="{$verb_expre_auto_speech_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Yes / no response</td>
+					<td>{html_options options=$tab_93_list id='tab_93_verb_expre_yes_no_reponse' name='tab_93_verb_expre_yes_no_reponse' selected=$tab_93_verb_expre_yes_no_reponse}</td>
+					<td><input size="35" name="verb_expre_yes_no_reponse_comments" type="text" value="{$verb_expre_yes_no_reponse_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Apraxia</td>
+					<td>{html_options options=$tab_93_list id='tab_93_verb_expre_aprax' name='tab_93_verb_expre_aprax' selected=$tab_93_verb_expre_aprax}</td>
+					<td><input size="35" name="verb_expre_aprax_comments" type="text" value="{$verb_expre_aprax_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td><strong>Reading Comprehension</strong></td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				<tr>
+					<td>Matching level</td>
+					<td>{html_options options=$tab_93_list id='tab_93_read_compre_match_level' name='tab_93_read_compre_match_level' selected=$tab_93_read_compre_match_level onchange='cambiar3()'}</td>
+					<td><input size="35" name="read_compre_match_level_comments" type="text" value="{$read_compre_match_level_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Single words</td>
+					<td>{html_options options=$tab_93_list id='tab_93_read_compre_sing_words' name='tab_93_read_compre_sing_words' selected=$tab_93_read_compre_sing_words}</td>
+					<td><input size="35" name="read_compre_sing_words_comments" type="text" value="{$read_compre_sing_words_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Sentences</td>
+					<td>{html_options options=$tab_93_list id='tab_93_read_compre_senten' name='tab_93_read_compre_senten' selected=$tab_93_read_compre_senten}</td>
+					<td><input size="35" name="read_compre_senten_comments" type="text" value="{$read_compre_senten_comments}" maxlength="49"></td>
+				</tr>
+					<td>Paragraphs</td>
+					<td>{html_options options=$tab_93_list id='tab_93_read_compre_paragr' name='tab_93_read_compre_paragr' selected=$tab_93_read_compre_paragr}</td>
+					<td><input size="35" name="read_compre_paragr_comments" type="text" value="{$read_compre_paragr_comments}" maxlength="49"></td>
+				</tr>
+				{*<tr>
+					<td>Sentences</td>
+					<td>{html_options options=$tab_93_list id='tab_93_read_compre_paragr' name='tab_93_read_compre_paragr' selected=$tab_93_read_compre_paragr}</td>
+					<td><input size="35" name="read_compre_paragr_comments" type="text" value="{$read_compre_paragr_comments}" maxlength="49"></td>
+				</tr>*}
+				<tr>
+					<td><strong>Written Expressions</strong></td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				<tr>
+					<td>Fine motor</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_fine_motor' name='tab_93_writt_expre_fine_motor' selected=$tab_93_writt_expre_fine_motor onchange='cambiar4()'}</td>
+					<td><input size="35" name="writt_expre_fine_motor_comments" type="text" value="{$writt_expre_fine_motor_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Signature</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_sig' name='tab_93_writt_expre_sig' selected=$tab_93_writt_expre_sig}</td>
+					<td><input size="35" name="writt_expre_sig_comments" type="text" value="{$writt_expre_sig_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Coping</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_coping' name='tab_93_writt_expre_coping' selected=$tab_93_writt_expre_coping}</td>
+					<td><input size="35" name="writt_expre_coping_comments" type="text" value="{$writt_expre_coping_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Independent (Letters, words, etc)</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_indep_letter_words' name='tab_93_writt_expre_indep_letter_words' selected=$tab_93_writt_expre_indep_letter_words}</td>
+					<td><input size="35" name="writt_expre_indep_letter_words_comments" type="text" value="{$writt_expre_indep_letter_words_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Dysarthria</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_dysarthia' name='tab_93_writt_expre_dysarthia' selected=$tab_93_writt_expre_dysarthia}</td>
+					<td><input size="35" name="writt_expre_dysarthria_comments" type="text" value="{$writt_expre_dysarthria_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Repiration</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_respir' name='tab_93_writt_expre_respir' selected=$tab_93_writt_expre_respir}</td>
+					<td><input size="35" name="writt_expre_respir_comments" type="text" value="{$writt_expre_respir_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Phonation</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_phona' name='tab_93_writt_expre_phona' selected=$tab_93_writt_expre_phona}</td>
+					<td><input size="35" name="writt_expre_phona_comments" type="text" value="{$writt_expre_phona_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Resonance</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_resonan' name='tab_93_writt_expre_resonan' selected=$tab_93_writt_expre_resonan}</td>
+					<td><input size="35" name="writt_expre_resonan_comments" type="text" value="{$writt_expre_resonan_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Articulation</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_articul' name='tab_93_writt_expre_articul' selected=$tab_93_writt_expre_articul}</td>
+					<td><input size="35" name="writt_expre_articul_comments" type="text" value="{$writt_expre_articul_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Prosody (rate, Rhythm, stress)</td>
+					<td>{html_options options=$tab_93_list id='tab_93_writt_expre_prosody' name='tab_93_writt_expre_prosody' selected=$tab_93_writt_expre_prosody}</td>
+					<td><input size="35" name="writt_expre_prosody_comments" type="text" value="{$writt_expre_prosody_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td><strong>Non-oral feeding</strong></td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				<tr>
+					<td>Food consistency</td>
+					<td>{html_options options=$tab_93_list id='tab_93_non_oral_feed_food_consist' name='tab_93_non_oral_feed_food_consist' selected=$tab_93_non_oral_feed_food_consist onchange='cambiar5()'}</td>
+					<td><input size="35" name="non_oral_feed_food_consist_comments" type="text" value="{$non_oral_feed_food_consist_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Postural assists</td>
+					<td>{html_options options=$tab_93_list id='tab_93_non_oral_feed_post_assists' name='tab_93_non_oral_feed_post_assists' selected=$tab_93_non_oral_feed_post_assists}</td>
+					<td><input size="35" name="non_oral_feed_post_assists_comments" type="text" value="{$non_oral_feed_post_assists_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Oral phase</td>
+					<td>{html_options options=$tab_93_list id='tab_93_non_oral_feed_oral_phase' name='tab_93_non_oral_feed_oral_phase' selected=$tab_93_non_oral_feed_oral_phase}</td>
+					<td><input size="35" name="non_oral_feed_oral_phase_comments" type="text" value="{$non_oral_feed_oral_phase_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Pharyngeal phase</td>
+					<td>{html_options options=$tab_93_list id='tab_93_non_oral_feed_pharyn_phase' name='tab_93_non_oral_feed_pharyn_phase' selected=$tab_93_non_oral_feed_pharyn_phase}</td>
+					<td><input size="35" name="non_oral_feed_pharyn_phase_comments" type="text" value="{$non_oral_feed_pharyn_phase_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Esophageal phase</td>
+					<td>{html_options options=$tab_93_list id='tab_93_non_oral_feed_esopha_phase' name='tab_93_non_oral_feed_esopha_phase' selected=$tab_93_non_oral_feed_esopha_phase}</td>
+					<td><input size="35" name="non_oral_feed_esopha_phase_comments" type="text" value="{$non_oral_feed_esopha_phase_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td><strong>Right CVA Deficit</strong></td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				<tr>
+					<td>Attention, memory, retention</td>
+					<td>{html_options options=$tab_93_list id='tab_93_right_cva_def_atten_mem_reten' name='tab_93_right_cva_def_atten_mem_reten' selected=$tab_93_right_cva_def_atten_mem_reten onchange='cambiar6()'}</td>
+					<td><input size="35" name="right_cva_def_atten_mem_reten_comments" type="text" value="{$right_cva_def_atten_mem_reten_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Self-monitoring, judment</td>
+					<td>{html_options options=$tab_93_list id='tab_93_right_cva_def_self_monitor_judment' name='tab_93_right_cva_def_self_monitor_judment' selected=$tab_93_right_cva_def_self_monitor_judment}</td>
+					<td><input size="35" name="self_monitor_judment_comments" type="text" value="{$self_monitor_judment_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Laryngeal Pathology</td>
+					<td>{html_options options=$tab_93_list id='tab_93_right_cva_def_laryn_patho' name='tab_93_right_cva_def_laryn_patho' selected=$tab_93_right_cva_def_laryn_patho}</td>
+					<td><input size="35" name="right_cva_def_laryn_patho_comments" type="text" value="{$right_cva_def_laryn_patho_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Need for Augmentative Communication</td>
+					<td>{html_options options=$tab_93_list id='tab_93_right_cva_def_need_for_augment_comm' name='tab_93_right_cva_def_need_for_augment_comm' selected=$tab_93_right_cva_def_need_for_augment_comm}</td>
+					<td><input size="35" name="need_augment_comm_comments" type="text" value="{$need_augment_comm_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Gesture/sign</td>
+					<td>{html_options options=$tab_93_list id='tab_93_right_cva_def_gesture_sign' name='tab_93_right_cva_def_gesture_sign' selected=$tab_93_right_cva_def_gesture_sign}</td>
+					<td><input size="35" name="right_cva_def_gesture_sign_comments" type="text" value="{$right_cva_def_gesture_sign_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Communication board</td>
+					<td>{html_options options=$tab_93_list id='tab_93_right_cva_def_comm_board' name='tab_93_right_cva_def_comm_board' selected=$tab_93_right_cva_def_comm_board}</td>
+					<td><input size="35" name="right_cva_def_comm_board_comments" type="text" value="{$right_cva_def_comm_board_comments}" maxlength="49"></td>
+				</tr>
+				<tr>
+					<td>Electrolarynx</td>
+					<td>{html_options options=$tab_93_list id='tab_93_right_cva_def_electrolarynx' name='tab_93_right_cva_def_electrolarynx' selected=$tab_93_right_cva_def_electrolarynx}</td>
+					<td><input size="35" name="right_cva_def_electrolarynx_comments" type="text" value="{$right_cva_def_electrolarynx_comments}" maxlength="49"></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	
+	<tr>
+	<td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+		Therapy Supervisory Communication Report    </td>
+	</tr> 
+	<tr>
+		<td colspan="4" height="10"></td>
+	</tr> 
+	<tr>
+		<td colspan="4" height="10">
+			<label>{html_checkbox name='ther_na' values='1' id='ther_na' checked=$ther_na onclick="Funtherapy()"} N/A </label>   </td>
+	</tr> 
+	
+		<tr>
+			<td colspan="4" height="10">
+				Name of Therapist being Evaluated:
+				{html_options options=$ther_name_list selected=$ther_name name='ther_name' id='ther_name' onchange="ther_na_check(this,'selecbox')"}	    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+		</tr> 
+		<tr>
+			<td colspan="4" height="20"></td>
+		</tr>
+	
+	<tr>
+	<td colspan="4" height="10">
+		<table width="100%" border="0">
+		 <tr>
+				<td width="50%" valign="top">
+				<table width="100%" border="0">
+					<tr>
+						<td colspan="4" height="10">
+							Assess the Following Areas of Care:	    </td>
+					</tr> 
+					<tr>
+						<td colspan="4" height="10">
+							<div style="width: 350px; float: left">Implemented Plan of Care?</div>
+							<div style="float: left">
+							{html_radios options=$logic_list checked=$ther_implem_plan name='ther_implem_plan' id='ther_implem_plan' onchange="ther_na_check(this,'radio')"}</div>
+							{if $ther_implem_plan eq null}
+								<script>document.tform.ther_implem_plan[0].checked = false;</script>
+							{/if}
+					    </td>
+					</tr> 
+					<tr>
+						<td colspan="4" height="10">
+							<div style="width: 350px; float: left">Followed Plan of Care?</div>
+							<div style="float: left">{html_radios options=$logic_list checked=$ther_follow_plan name='ther_follow_plan' id='ther_follow_plan' onchange="ther_na_check(this,'radio')"}</div>	    
+							{if $ther_follow_plan eq null}
+								<script>document.tform.ther_follow_plan[0].checked = false;</script>
+							{/if}
+						</td>
+					</tr> 
+					<tr>
+						<td colspan="4" height="10">
+							<div style="width: 350px; float: left">Demonstrated good rapport with patient/family?</div>
+							<div style="float: left">{html_radios options=$logic_list checked=$ther_raport_pat_fam name='ther_raport_pat_fam' id='ther_raport_pat_fam' onchange="ther_na_check(this,'radio')"}</div>	    
+							{if $ther_raport_pat_fam eq null}
+								<script>document.tform.ther_raport_pat_fam[0].checked = false;</script>
+							{/if}
+						</td>
+					</tr>
+				</table></td>
+				<td width="50%" valign="top">
+					<table width="100%" border="0">
+						<tr>
+						<td colspan="4" height="10">
+							Evaluation of Plan of Care	    </td>
+						</tr> 
+						<tr>
+							<td colspan="4">
+								<textarea name="ther_eval_plan" id="ther_eval_plan" cols="40" rows="3" maxlength="270" onkeyup="ther_na_check(this,'textarea'); chars_limit_notice('ther_eval_plan', 270)">{$ther_eval_plan}</textarea>    
+								{assign var="ther_eval_plan_length" value=$ther_eval_plan|count_characters:true}
+								{assign var="ther_eval_plan_left" value="`$ther_eval_plan_length-270`"}
+									<div style="font-size:9px;{if $ther_eval_plan_left gt 0}display:none;{/if}" id="ther_eval_plan_note">
+										<label id="ther_eval_plan_chars_left">{$ther_eval_plan_left|abs}</label>characters left.
+									</div>
+
+							</td>
+						</tr> 
+					</table>
+				</td>
+		 </tr>          
+		 	<tr>				
+					<td colspan="2">
+						<table width="100%" border="0">
+							<tr>
+							<td colspan="4" height="10">
+								Supervisor Notes	    </td>
+							</tr> 
+							<tr>
+								<td colspan="4">
+									<textarea name="ther_notes" id="ther_notes" cols="60" rows="3" maxlength="300" onkeyup="chars_limit_notice('ther_notes', 300)">{$ther_notes}</textarea>    
+								{assign var="ther_notes_length" value=$ther_notes|count_characters:true}
+								{assign var="ther_notes_left" value="`$ther_notes_length-300`"}
+									<div style="font-size:9px;{if $ther_notes_left gt 0}display:none;{/if}" id="ther_notes_note">
+										<label id="ther_notes_chars_left">{$ther_notes_left|abs}</label>characters left.
+									</div>
+									
+								</td>
+							</tr> 
+						</table>
+					</td>
+			</tr> 
+		 </table></td>
+		</tr>
+{*	
+	<tr>
+      <td colspan="4" class="subtitle" id="anchor_pt_signature"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Signature</td>    
+    </tr> 
+    <tr>
+      <td>
+        <input class="btn" value="Patient Signature" onclick="capture_pt_signature({$visit_log_id})" type="button">
+      </td>
+      <td align="center">
+        {if $signature != ""}
+          <img src="{$base_url}upload/signatures/{$signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+      </td>
+    </tr>
+  <tr>
+*}
+
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Addendum</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+  	<td colspan="4">
+
+		<textarea name="addendum" id="addendum" cols="60" rows="5" maxlength="400" wrap="auto" onkeyup="chars_limit_notice('addendum', 400)">{$addendum}</textarea>    
+		{assign var="addendum_length" value=$addendum|count_characters:true}
+		{assign var="addendum_left" value="`$addendum_length-400`"}
+			<div style="font-size:9px;{if $addendum_left gt 0}display:none;{/if}" id="addendum_note">
+				<label id="addendum_chars_left">{$addendum_left|abs}</label>characters left.
+			</div>
+			
+		<br />  	</td>
+  </tr>	
+
+</table> 
+
+<script>
+
+var dhxWins;
+function uploadScannedDocument ( visit_log_id ) {literal}{{/literal}
+ 
+  dhxWins = new dhtmlXWindows();
+  dhxWins.enableAutoViewport(false);
+  dhxWins.attachViewportTo("vp_container");
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+  
+  var w1 = dhxWins.createWindow("w1", 10, 10, 450, 150);
+  w1.setText('Upload Scanned ST Eval document');
+  w1.button("park").hide();
+  w1.button("minmax1").hide();
+    w1.denyResize(); // deny resizing
+    w1.denyMove(); 
+    dhxWins.window('w1').center();
+    dhxWins.window('w1').setModal(true);
+  w1.attachURL("{$index_url}task/stev/upload_document/" + visit_log_id);
+  
+  pos = dhxWins.window('w1').getPosition();
+  dhxWins.window('w1').setPosition(pos[0], 60);
+
+{literal}}{/literal}
+
+function removeScannedDocument(visit_log_id) {literal}{{/literal}
+  dhxWins = new dhtmlXWindows();
+  dhxWins.enableAutoViewport(false);
+  dhxWins.attachViewportTo("vp_container");
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+  var w1 = dhxWins.createWindow("w1", 10, 10, 450, 250);
+  w1.setText('Remove Scanned ST Eval visit document');
+  w1.button("park").hide();
+  w1.button("minmax1").hide();
+  w1.denyResize(); // deny resizing
+  w1.denyMove(); 
+  dhxWins.window('w1').center();
+  dhxWins.window('w1').setModal(true);
+  w1.attachURL("{$index_url}task/stev/pre_remove_document/" + visit_log_id);
+
+  pos = dhxWins.window('w1').getPosition();
+  dhxWins.window('w1').setPosition(pos[0], 60);
+{literal}}{/literal}
+
+function capture_pt_signature(visit_log_id) {literal}{{/literal}
+  //alert(visit_log_id);
+  //alert(grid.getCheckedRows(0));
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+  
+  var w2 = dhxWins.createWindow("w2", 10, 10, 750, 500);
+  w2.setText("Capture Patient Digital Signature");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove(); 
+  w2.button("close")._doOnClick = function() {literal}{{/literal}   
+    w2.close();
+  {literal}}{/literal}  
+  
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}/task/stev/capture_pt_signature/" + visit_log_id);
+{literal}}{/literal}
+</script>
+<script>
+{literal}
+    function cambiar1()
+	{
+		document.getElementById('tab_93_apha_sing_words').value=document.getElementById('tab_93_apha_audi_compre').value;
+		document.getElementById('tab_93_apha_sente_direct').value=document.getElementById('tab_93_apha_audi_compre').value;
+		document.getElementById('tab_93_apha_parag').value=document.getElementById('tab_93_apha_audi_compre').value;
+	}
+    function cambiar2()
+	{
+		document.getElementById('tab_93_verb_expre_sent_form').value=document.getElementById('tab_93_verb_expre_word_recall').value;
+		document.getElementById('tab_93_verb_expre_visual_conf_nam').value=document.getElementById('tab_93_verb_expre_word_recall').value;
+		document.getElementById('tab_93_verb_expre_repe').value=document.getElementById('tab_93_verb_expre_word_recall').value;
+		document.getElementById('tab_93_verb_expre_auto_speech').value=document.getElementById('tab_93_verb_expre_word_recall').value;
+		document.getElementById('tab_93_verb_expre_yes_no_reponse').value=document.getElementById('tab_93_verb_expre_word_recall').value;
+		document.getElementById('tab_93_verb_expre_aprax').value=document.getElementById('tab_93_verb_expre_word_recall').value;
+	}
+    function cambiar3()
+	{
+		document.getElementById('tab_93_read_compre_sing_words').value=document.getElementById('tab_93_read_compre_match_level').value;
+		document.getElementById('tab_93_read_compre_senten').value=document.getElementById('tab_93_read_compre_match_level').value;
+		document.getElementById('tab_93_read_compre_paragr').value=document.getElementById('tab_93_read_compre_match_level').value;
+	}
+    function cambiar4()
+	{
+		document.getElementById('tab_93_writt_expre_sig').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_coping').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_indep_letter_words').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_dysarthia').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_respir').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_phona').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_resonan').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_articul').value=document.getElementById('tab_93_writt_expre_fine_motor').value;
+		document.getElementById('tab_93_writt_expre_prosody').value=document.getElementById('tab_93_writt_expre_fine_motor').value;	
+	}	
+    function cambiar5()
+	{
+		document.getElementById('tab_93_non_oral_feed_post_assists').value=document.getElementById('tab_93_non_oral_feed_food_consist').value;
+		document.getElementById('tab_93_non_oral_feed_oral_phase').value=document.getElementById('tab_93_non_oral_feed_food_consist').value;
+		document.getElementById('tab_93_non_oral_feed_pharyn_phase').value=document.getElementById('tab_93_non_oral_feed_food_consist').value;
+		document.getElementById('tab_93_non_oral_feed_esopha_phase').value=document.getElementById('tab_93_non_oral_feed_food_consist').value;
+	}	
+    function cambiar6()
+	{
+		document.getElementById('tab_93_right_cva_def_self_monitor_judment').value=document.getElementById('tab_93_right_cva_def_atten_mem_reten').value;
+		document.getElementById('tab_93_right_cva_def_laryn_patho').value=document.getElementById('tab_93_right_cva_def_atten_mem_reten').value;
+		document.getElementById('tab_93_right_cva_def_need_for_augment_comm').value=document.getElementById('tab_93_right_cva_def_atten_mem_reten').value;
+		document.getElementById('tab_93_right_cva_def_gesture_sign').value=document.getElementById('tab_93_right_cva_def_atten_mem_reten').value;		
+		document.getElementById('tab_93_right_cva_def_comm_board').value=document.getElementById('tab_93_right_cva_def_atten_mem_reten').value;
+		document.getElementById('tab_93_right_cva_def_electrolarynx').value=document.getElementById('tab_93_right_cva_def_atten_mem_reten').value;
+	}	
+	
+function Funtherapy() {
+    //switchDisplay('therapy');
+    setValue('ther_eval_plan', '');
+	///selectOption('ther_supervisor', '');
+    selectOption('ther_name', '');
+    setCheck('ther_implem_plan', false);
+    setCheck('ther_follow_plan', false);
+    setCheck('ther_raport_pat_fam', false);
+}
+function ther_na_check(obj, type){
+	switch(type){
+		case 'selectbox': 
+			if(obj.options[obj.selectedIndex].value != "")
+				document.getElementById('ther_na').checked = false;
+			break;
+		case 'radio':	
+			var radioLength = obj.length;
+			if(radioLength == undefined)
+				if(obj.checked){
+					document.getElementById('ther_na').checked = false;
+					break;
+				}	
+				else{
+					break;
+				}
+					
+				for(var i = 0; i < radioLength; i++) {
+					if(obj[i].checked) {
+						document.getElementById('ther_na').checked = false;
+						break;
+					}
+				}
+				break;
+		default:
+			if(obj.value != "")
+				document.getElementById('ther_na').checked = false;
+			break;
+	}
+}
+
+function chars_limit_notice(field, limit){
+		if(!field || !limit)
+		return;
+		
+		if(document.getElementById(field).value.length >= limit){
+			document.getElementById(field+'_note').style.display='none';
+		}else{
+			document.getElementById(field+'_chars_left').innerHTML = limit - document.getElementById(field).value.length;
+			document.getElementById(field+'_note').style.display='';
+		} 
+}
+
+{/literal}	
+
+{literal} 
+	$(document).ready(function() {
+		validate_checkbox('st_plan_care', 'st_poc');
+		validate_checkbox('mental_status', 'mental_st');
+		validate_checkbox('functional_limitations', 'func_limit');
+		validate_checkbox('home_evaluation', 'home_ev');
+		validate_checkbox('safety_measure', 'safety');
+		validate_checkbox('treatment', 'treat');
+		validate_checkbox('general_i', 'general_c');
+		validate_checkbox('home_bound_status', 'home_bound');
+		validate_home_YN();
+	});
+
+	$(".st_poc").change(function() {
+		validate_checkbox('st_plan_care', 'st_poc');
+	});
+
+	$(".mental_st").change(function() {
+		validate_checkbox('mental_status', 'mental_st');
+	});
+
+	$(".func_limit").change(function() {
+		validate_checkbox('functional_limitations', 'func_limit');
+	});
+
+	$(".home_ev").change(function() {
+		validate_checkbox('home_evaluation', 'home_ev');
+	});
+
+	$(".safety").change(function() {
+		validate_checkbox('safety_measure', 'safety');
+	});
+
+	$(".treat").change(function() {
+		validate_checkbox('treatment', 'treat');
+	});
+
+	$(".general_c").change(function() {
+		validate_checkbox('general_i', 'general_c');
+	});
+
+	$(".home_bound").change(function() {
+		validate_checkbox('home_bound_status', 'home_bound');
+	});
+
+	$(".home_YN").change(function(){
+		validate_home_YN();
+	});
+
+
+
+	function validate_home_YN() {
+		$(".home_YN").each(function() {
+				if (this.checked) {
+					if (this.value == '2') {
+						$('.home_bound').each(function() {
+							$(this).attr({'disabled': true, 'checked': false});
+						});
+					} else {
+							$('.home_bound').each(function() {
+							$(this).attr({'disabled': false});
+						});
+					}
+				}
+		}) 
+	}
+
+	function validate_checkbox(name_id,name_class) {
+		$("#"+name_id).val(0);
+		$("."+name_class).each(function() {
+			if(this.checked) {
+				$("#"+name_id).val(1);
+			} else {
+					$("#"+name_id).val();
+			}
+		});
+	}
+{/literal}
+</script>

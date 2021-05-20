@@ -1,0 +1,28 @@
+<?
+
+class Faq extends MY_Controller {
+		
+	function Faq () {
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "faq");
+		$this->load->model('faqgroupmdl');
+		$this->load->model('faqmdl');
+	}
+	
+	function index () {
+		$groups = array();
+		foreach ($this->faqgroupmdl->get() as $group) {			
+			$group->questions = $this->faqmdl->get($group->faq_group_id);
+			$groups[] = $group;
+		}
+		/*print_r($groups);
+		exit();*/
+		$this->tpl->assign('groups',$groups);
+		
+		$this->tpl->assign(array("list_title" => "Faq"));
+		$this->tpl->assign_include("dynamic_tpl", "faq");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	
+	
+ }

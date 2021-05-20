@@ -1,0 +1,69 @@
+<?
+
+ class Cms485Mdl extends Model {
+
+	var $cms485_id;
+	var $soc_id;
+  	var $episode_start_date;
+  	var $episode_end_date;
+  	var $phys_user_id;
+
+	function Cms485Mdl () {
+
+		parent::Model();
+		
+	}
+	
+  function getAll () {
+		
+		$query = $this->db->get('cms_485');
+		return $query->result();
+		
+	}
+
+  function getById ( $cms485_id ) {
+		
+		$this->db->where('cms485_id', $cms485_id);
+		
+		$query = $this->db->get('cms_485');
+		return $query->row();
+		
+	}
+
+	function insert() {
+		
+		$this->db->insert("cms_485", $this);
+		$this->cms485_id = $this->db->insert_id();
+		
+	}
+
+  function getByPhysId ( $user_id, $where=array(), $num_rows_only=false ) {
+		
+		$this->db->where("phys_user_id", $user_id);
+		if(is_array($where) AND !empty($where)){
+      $this->db->where($where);
+    }
+    
+		$query = $this->db->get('cms_485');
+    
+    if($num_rows_only){
+      return $query->num_rows();
+    }
+    
+		return $query->result();
+		
+	}
+
+  function getByDoctorOrderId ( $doc_doctor_order_id ) {
+		
+		$this->db->where('doc_doctor_order_id', $doc_doctor_order_id);
+		
+		$query = $this->db->get('cms_485');
+		return $query->row();
+		
+	}
+	function delete($cms485_id) {
+		$this->db->where('cms485_id', $cms485_id);
+		$this->db->delete('cms_485');
+	}
+}

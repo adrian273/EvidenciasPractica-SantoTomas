@@ -1,0 +1,60 @@
+{*<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td>Invoice Number:  {$invoice_no} </td><td>Invoice Amount: {$amount}</td><td>Balance: {if $balance_in_red}<font color="#FF0000">{$balance}</font>{else}{$balance}{/if}</td>
+	</tr>
+	<tr>
+		<td>Invoice Date: {$invoice_date|date_format} </td><td>Agency: {$agency_name}</td>
+  </tr>
+</table> *}
+
+<script>
+	function editRegister ( id ) {literal}{{/literal}
+			
+		if (id > 0){literal}{{/literal}
+			editPayment(id);
+		{literal}}{/literal}
+	  
+	{literal}}{/literal}
+
+	function deletePayment (payment_id) {literal}{{/literal}	
+		if (confirm('Are you sure you want to delete the payment?'))
+		{literal}{{/literal}
+     		ajax("{$index_url}contractor/invoices/payments_delete/"+payment_id+"/{$entity_id}", ajaxParseAction);
+   		{literal}}{/literal}	  
+	{literal}}{/literal}
+	
+	
+	function editPayment (payment_id) {literal}{{/literal}    
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, 550, 250);
+		w2.setText("Edit Invoice Payment");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		//w2.denyResize(); // deny resizing
+		//w2.denyMove(); 
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}contractor/invoices/payments_edit/{$entity_id}/"+payment_id);
+			
+    {literal}}{/literal}
+		
+    function addPayment () {literal}{{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, 550, 250);
+		w2.setText("Add Invoice Payment");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		//w2.denyResize(); // deny resizing
+		//w2.denyMove(); 
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}contractor/invoices/payments_add/{$entity_id}");
+			
+    {literal}}{/literal}
+    
+
+</script>

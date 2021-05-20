@@ -1,0 +1,49 @@
+	$('#grid_area').parent().prepend('<div id="grid-loading"></div>');
+	var dhxWins = null ;
+	var w1	;
+
+	function grid_loaded()
+	{literal}{{/literal}
+		$('#grid-loading').hide();
+	{literal}}{/literal}
+	
+	function checkEpass()
+	{literal}{{/literal}
+		if( dhxWins == null )
+		{literal}{{/literal}
+			//alert('create');
+			dhxWins = new dhtmlXWindows();
+			dhxWins.enableAutoViewport(false);
+			dhxWins.attachViewportTo("vp_container");
+			dhxWins.setImagePath("{$index_url}style/window/imgs/");
+		{literal}}{/literal}
+		
+		w1 = dhxWins.createWindow("w1", 10, 10, 350, 400);
+		w1.setText("Advanced filters");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+		w1.denyResize(); // deny resizing
+		w1.denyMove(); 
+		dhxWins.window('w1').setModal(true);
+		dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}agencyprofile/task/modal_filter/");
+
+		dhxWins.window('w1').attachEvent(
+			"onClose", 
+			function(win) 
+			{literal}{{/literal}
+				w1.hide();
+				w1.setModal(false);
+	        
+			{literal}}{/literal}
+		);
+    {literal}}{/literal}
+
+
+	function load_grid_from_modal( form )
+	{literal}{{/literal}
+		//console.log( w1 );
+		//console.log( form );
+		// grid.clearAll();
+		// grid.updateFromXMl("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", form, grid_loaded );
+	{literal}}{/literal}

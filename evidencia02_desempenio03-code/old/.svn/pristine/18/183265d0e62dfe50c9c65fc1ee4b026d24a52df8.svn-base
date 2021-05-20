@@ -1,0 +1,115 @@
+
+<table width="100%" cellpadding="4" cellspacing="0" border="0">
+    <tr>
+        <td colspan="2"><div id="toolbarObj" style="float: left"></div></td>
+    </tr>
+    <tr>
+        <td colspan="2" id="table_details" style="sdisplay:none" width="100%"><table width="100%">
+                <tr>
+                    <td width="200" colspan="2" nowrap></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="ftitle" valign="top">Patient Namess</td>
+                    <td>{$patient_name}</td>
+                </tr>
+                <tr>
+                    <td class="ftitle" valign="top">Send Com Note To </td>
+                    <td>
+						{foreach from=$users_to_array key=k item=v}
+							{if $k > 0}, {/if}{$v->user_name} 
+						{/foreach}
+					</td>
+                </tr>
+                <tr>
+                    <td class="ftitle" valign="top">Created by User</td>
+                    <td>{$user_name}</td>
+                </tr>
+                <tr>
+                    <td class="ftitle" >Date</td>
+                    <td>{$creation_date_time|date_format:"%m-%d-%Y %r"}</td>
+                </tr>
+                <tr>
+                    <td class="ftitle">Subject</td>
+                    <td>{$msg_subject}</td>
+                </tr>
+                {if $msg_attachment neq ''}
+                <tr>
+                    <td class="ftitle">Attachment</td>
+                    <td><a href="{$base_url}datastore/attachment/{$msg_attachment}" target="_blank">Open Document</a></td>
+                </tr>
+                {/if}
+                <tr>
+                    <td class="subtitle" colspan="2"><img src="{$image_url}blank.gif"></td>
+                </tr>
+				<tr><td>&nbsp;</td></tr>
+                <tr>
+                    <td class="ftitle" valign="top">Communication </td>
+                </tr>
+				<tr><td>&nbsp;</td></tr>
+                <tr>
+                    <td colspan="2">{$notes_descrip}</td>
+                </tr>
+            </table></td>
+    </tr>
+    <tr>
+        <td colspan="2" height="10">{$msg_text|nl2br}</td>
+    </tr>
+</table>
+<script>
+
+	parent.parent.document.getElementById('message_count_image').src = '{$image_url}mail_generic_{$message_count}.png';
+
+	function reply_msg(param) {literal}{{/literal}
+		parent.document.location.href="{$index_url}mail/compose/reply/{$msg_id}/"+param;
+	{literal}}{/literal}
+
+	function setMsgTrash() {literal}{{/literal}
+		document.location.href="{$index_url}mail/{$back_path}/messageTrash/{$msg_id}";
+	{literal}}{/literal}
+
+	function goToInbox() {literal}{{/literal}
+		document.location.href="{$index_url}mail/{$back_path}";
+	{literal}}{/literal}
+
+	function viewFile(file) {literal}{{/literal}
+		window.open('{$image_url}attachment/'+file,'','toolbar=no,location=no,scrollbars=no,resizable=yes');
+
+	{literal}}{/literal}
+
+</script>
+<script language="JavaScript" type="text/javascript">
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addButton("back", 1, "Back", "undo.png");
+	webBar.addButton("print", 4, "Print", "icon_printer.png");
+    
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'back':
+		  goToInbox()
+		  break;
+		case 'delete':
+		  setMsgTrash()
+		  break;
+		case 'print':
+		  document.location.href = "{$index_url}{$resource_path}/pdf/{$note_id}";
+		  break; 
+		case 'return':
+		  document.location.href="{$index_url}mail/trash/returnToFolder/{$msg_id}";
+		  break;
+		{literal}}{/literal}
+    {literal}}{/literal});
+    
+    
+    var webBar2 = new dhtmlXToolbarObject("toolbarObj2", "standard");
+    webBar2.setIconsPath("{$base_url}style/images/");
+    webBar2.addButton("new", 1, " Compose", "mail_generic.png");
+    
+    webBar2.attachEvent("onClick", function(eid){literal}{{/literal}
+		parent.document.location.href='{$index_url}mail/compose';
+    {literal}}{/literal});
+	
+</script>

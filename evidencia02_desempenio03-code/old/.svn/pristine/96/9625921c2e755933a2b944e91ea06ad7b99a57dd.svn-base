@@ -1,0 +1,300 @@
+<style>
+*{literal}{{/literal}
+	font-size:18px;
+{literal}}{/literal}
+h1{literal}{{/literal}
+	font-size:24px;
+{literal}}{/literal}
+.ftitle{literal}{{/literal}
+vertical-align:top;
+font-weight:bold;
+font-size:16px;
+text-align:left;
+{literal}}{/literal}
+
+.tab4{literal}{{/literal}
+text-align:left;
+{literal}}{/literal}
+
+.title{literal}{{/literal}
+border-bottom:1px solid #000000;
+padding:8px 4px 4px 0px;
+font-weight:bold;
+font-size: 22px;
+text-align:left;
+{literal}}{/literal}
+
+.footer{literal}{{/literal}
+
+{literal}}{/literal}
+.footer table td{literal}{{/literal}
+width:500px;
+font-size:12px;
+{literal}}{/literal}
+{literal}
+	@media print {
+        .btn-wrap {
+        	display: none;
+        }
+  	}
+{/literal}
+</style>
+<script type="text/javascript" language="javascript">
+function print_order(order_type){literal}{{/literal}
+	// document.getElementById('btnPrint').style.display='none';
+	// document.getElementById('btnClose').style.display='none';
+	window.print();
+	// window.close();
+{literal}}{/literal}
+</script>
+
+	{literal}
+	<style type="text/css" media="print">
+	@page {
+	  size: A4 landscape;
+	  margin: 42pt 12pt;
+	}
+	</style>
+	{/literal}
+<table border="0" cellpadding="0" cellspacing="0" width="100%" height="100%">
+  <form name="gform" method="post">
+    <tr>
+      <td valign="top" nowrap class="title">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> My Calendar From {$print_date} to {$date_to}
+      </td>
+    </tr>
+
+	<tr>
+		<td>
+			<div class="btn-wrap" style="text-align:center; padding-top:10px; max-width:1000px;">
+				<input type="button" value="Print" name="btnPrint" id="btnPrint" onclick="print_order();" />&nbsp;&nbsp;&nbsp;<input type="button" value="Back" name="btnClose" id="btnClose" onclick="history.go(-1)" />
+			</div>
+			<br>
+		</td>
+	</tr>
+
+	<tr>
+	  <td height="10" style="border-bottom: 1px solid white">
+	
+		<table border="0" cellpadding="1" cellspacing="0" height="22" width="100%" bgcolor="#d9e4f1">
+			<tr>
+				<td nowrap valign="bottom">
+					<!-- <a href="{$index_url}{$resource_path}/index/{$cal_prev_link}"><img border="0" src="{$image_url}prev_month.gif" hspace="3"></a>
+					<a href="{$index_url}{$resource_path}/index/{$cal_next_link}"><img border="0" src="{$image_url}next_month.gif" hspace="3"></a> -->
+				</td>
+				<td style="width: 100%"><center>{$cal_header_month} {$cal_header_year}</center></td>
+			</tr>
+		</table>
+	
+	  </td>
+	</tr>
+	
+	<tr>
+	  <td height="10">
+	
+		<table border="0" cellpadding="1" cellspacing="1" width="100%" bgcolor="#d9e4f1">
+			<tr>
+				<td height="10" class="day_cell2" style="height: 10px; background-color: #d9e4f1"><center>Sunday</center></td>
+				<td height="10" class="day_cell2" style="height: 10px; background-color: #d9e4f1"><center>Monday</center></td>
+				<td height="10" class="day_cell2" style="height: 10px; background-color: #d9e4f1"><center>Tuesday</center></td>
+				<td height="10" class="day_cell2" style="height: 10px; background-color: #d9e4f1"><center>Wednesday</center></td>
+				<td height="10" class="day_cell2" style="height: 10px; background-color: #d9e4f1"><center>Thursday</center></td>
+				<td height="10" class="day_cell2" style="height: 10px; background-color: #d9e4f1"><center>Friday</center></td>
+				<td height="10" class="day_cell2" style="height: 10px; background-color: #d9e4f1"><center>Saturday</center></td>
+			</tr>
+		</table>
+	
+	  </td>
+	</tr>
+	
+	<tr>
+	  <td>
+	
+			<div  id="cal_div" >
+			{$calendar_table}
+			</div>
+	
+	  </td>
+	</tr>
+	<tr>
+		<td>
+			<div class="btn-wrap" style="text-align:center; padding-top:10px; max-width:1000px;">
+				<input type="button" value="Print" name="btnPrint" id="btnPrint" onclick="print_order();" />&nbsp;&nbsp;&nbsp;<input type="button" value="Back" name="btnClose" id="btnClose" onclick="history.go(-1);" />
+			</div>
+		</td>
+	</tr>
+  </form>
+</table>
+
+<div id="add_one_event" style="display: none">
+
+</div>
+
+
+
+<script language="JavaScript" type="text/javascript">
+
+	// document.getElementById('cal_div').style.height = getWindowHeight() - 97 + "px";
+	
+</script>
+
+<script language="JavaScript" type="text/javascript">
+
+	function addMultiple () {literal}{{/literal}
+	
+	   var aux = new Array();
+	   pointer = 0;
+	   for (i=0; i< document.gform.elements.length; i++) 
+	      if (document.gform.elements[i].type == "checkbox" && document.gform.elements[i].name == 'cal_day' && document.gform.elements[i].checked) 
+	         aux[pointer++] = document.gform.elements[i].value;
+	
+		if (aux.length > 0) 
+	    	document.location = "{$index_url}{$resource_path}/multipleadd/{$patient_id}/{$cms_485}/" + aux.join(',');
+	    else
+	    	alert('You must check al least one day');
+	  
+	{literal}}{/literal}
+	
+	function dayFree () {literal}{{/literal}
+	
+	   var aux = new Array();
+	   pointer = 0;
+	   for (i=0; i< document.gform.elements.length; i++) 
+	      if (document.gform.elements[i].type == "checkbox" && document.gform.elements[i].name == 'cal_day' && document.gform.elements[i].checked) 
+	         aux[pointer++] = document.gform.elements[i].value;
+	
+		if (aux.length > 0) 
+	    	if(confirm('Are you sure to delete events?')) document.location = "{$index_url}{$resource_path}/dayfree/" + aux.join(',') + "/{$cal_year}/{$cal_month}/{$visit_type_id}";
+	  
+	{literal}}{/literal}
+
+	function editEvent ( visit_log_id, objeto ) {literal}{{/literal}
+	
+		tt_Trigger = objeto;
+	    Tip("loading", BALLOON, true, ABOVE, true, STICKY, 1, BALLOONTITLE, 'Event Detail', WIDTH, 310, BALLOONHEIGHT, 265);
+	    ajax("{$index_url}{$resource_path}/editEventForm/" + visit_log_id, ajaxParseXML);
+	  
+	{literal}}{/literal}
+	
+	function addEvent ( id, objeto ) {literal}{{/literal}
+	
+		/*
+		tt_Trigger = objeto;
+	    Tip("loading", BALLOON, true, ABOVE, true, STICKY, 1, BALLOONTITLE, 'Add Event', WIDTH, 290, BALLOONHEIGHT, 190);
+	    ajax("{$index_url}{$resource_path}/addEventForm/{$cal_year}-{$cal_month}-" + id, ajaxParseXML);
+	   	*/
+	  
+	{literal}}{/literal}
+	
+	function addEventToCalendar ( visit_type_name, day_id, visit_log_id, visit_abrev, visit_status_id ) {literal}{{/literal}
+	
+		setInner('ctt_' + day_id, getInner('ctt_' + day_id) + "<div oonmouseover='Tip(\""+visit_abrev+"\", OFFSETX, 10)' class='udiv_event udiv_event_" + visit_status_id + "' onmousedown='editEvent("+visit_log_id+", this)'>" +  visit_type_name + "</div>");
+	  
+	  	if (document.getElementById('ctt_' + day_id).offsetHeight > document.getElementById('cttt_' + day_id).offsetHeight) {literal}{{/literal}
+	  	
+	  		document.getElementById('ctt_' + day_id).className = 'div_ctt1_calp';
+	  	
+	  		switchDisplay2('up_' + day_id, '');
+	  		switchDisplay2('dw_' + day_id, '');
+	  		
+	  	{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+	function resizeCell ( day_id ) {literal}{{/literal}
+  	
+  		switchDisplay2('up_' + day_id, 'none');
+  		switchDisplay2('dw_' + day_id, 'none');
+  		document.getElementById('ctt_' + day_id).className = 'div_ctt2';
+	  	
+	{literal}}{/literal}
+	
+	{foreach from=$cms_events item=cms_event}
+		addEventToCalendar('{$cms_event->visit_date_time|date_format:"%I:%M %p"} {$cms_event->first_name} {$cms_event->middle_initial}, {$cms_event->visit_abbrev}', '{$cms_event->visit_date_time|date_format:"%d"}', {$cms_event->visit_log_id}, '{$cms_event->visit_abbrev}', '{$cms_event->visit_status_id}');
+	{/foreach}
+	
+	
+	function reloadCalendar ( visit_type_id, agency_id ) {literal}{{/literal}
+	
+		document.location = "{$index_url}{$resource_path}/index/{$cal_year}/{$cal_month}/" + visit_type_id + "/" + agency_id;
+	
+	  
+	{literal}}{/literal}
+	
+	
+	
+	
+	// toolbar setting
+	
+    var webBar = new dhtmlXToolbarObject("toolbarObj");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addButton("today", 0, "Today", "icon_maint.png");
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+
+	switch (eid)
+	{literal}{{/literal}
+	case 'today':
+	  document.location = "{$index_url}{$resource_path}";
+	  break;
+	case 'new':
+	  addMultiple()
+	  break;
+	case 'free':
+	  dayFree()
+	  break;
+	{literal}}{/literal}
+
+    {literal}}{/literal});
+    //webBar.addButton("free", 2, "Day(s) Free", "icon_checkbox_on.png");
+    // webBar.addButton("free", 2, "Day(s) Free", "");
+	
+</script>
+<script type="text/javascript">
+at_attach("sample_attach_menu_parent", "sample_attach_menu_child", "hover", "y", "pointer");
+function printAgenda(){literal}{{/literal}
+	dhxWins = new dhtmlXWindows();
+	dhxWins.enableAutoViewport(false);
+	dhxWins.attachViewportTo("vp_container");
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w1 = dhxWins.createWindow("w1", 10, 10, 750, 400);
+	w1.setText("Print Agenda for Date");
+	w1.button("park").hide();
+	w1.button("minmax1").hide();
+    w1.denyResize(); // deny resizing
+    w1.denyMove(); 
+    dhxWins.window('w1').setModal(true);
+    dhxWins.window('w1').center();
+	w1.attachURL("{$index_url}/calendar/print_agenda/0/{$year}/{$month}/{$day}/{$visit_type_id}");
+	
+    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+        
+        w1.hide();
+		w1.setModal(false);
+        
+    {literal}}{/literal});
+
+
+{literal}}{/literal}
+    function cancelModal() {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+
+    function do_printAgenda(date){literal}{{/literal}
+    	if(!date)
+    	{literal}{{/literal}
+    		alert('Please select a date!');
+    	{literal}}{/literal}
+    	else
+    	{literal}{{/literal}
+			 d=date.split("-");    	
+			 month=d[0];
+			 day=d[1];
+			 year=d[2];
+			 document.getElementById('inner_frame').location.href="{$index_url}/calendar/do_print/"+year+"/"+month+"/"+day+"/"+"/{$visit_type_id}";
+    	{literal}}{/literal}
+    {literal}}{/literal}
+
+</script>

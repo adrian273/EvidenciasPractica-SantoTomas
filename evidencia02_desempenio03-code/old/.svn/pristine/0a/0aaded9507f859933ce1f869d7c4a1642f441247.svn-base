@@ -1,0 +1,78 @@
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+	<tr height="35">	
+	    <td>
+			
+			<input type="text" name="keyword" style="width: 120px">
+			<input type="button" value="Search" onclick="loadGrid()">
+			<input type="hidden" name="load_pending_status" id="load_pending_status" value="{$load_pending_status}">
+			
+	    </td>
+	    
+	    <td align="right">
+			{html_options first_option='All Status' options=$visit_status_list selected=$visit_status_id name='visit_status_id' onchange='loadGrid()'}
+	    </td>
+  	</tr>  
+	<tr><td>
+	<div id="toolbarObj" style="float: left"></div>
+	</td></tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		//webBar.addSeparator('sp1', 3);
+		//webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		/*case 'print':
+		  printSelected()
+		  break;	*/
+		{literal}}{/literal}
+    {literal}}{/literal});
+
+	function printSelected() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}task/task/pdf';
+			gform.target='_blank';
+			gform.submit();
+		{literal}}{/literal}   
+	{literal}}{/literal}   	  
+		
+</script>

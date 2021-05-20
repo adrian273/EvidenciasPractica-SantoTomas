@@ -1,0 +1,460 @@
+<?
+
+ class Physician extends MY_Controller {
+
+	function Physician () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/physician");
+		
+		$this->tpl->assign('type_employee_list', $this->parametermdl->getByType(6));
+		$this->tpl->assign("profile_list", $this->profilemdl->getByType(($this->getAgencyType() == 'C' ? 'profile_contractor' : 'profile_agency'), false));
+		$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+		$this->tpl->assign("user_status_list", $this->parametermdl->getByType(21));
+		
+	}
+
+	function index () {
+
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+    $users = $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, 4);
+    $names = array();
+    
+    foreach($users as $user){
+      $names[] = '"'.addslashes($user->last_name." ".$user->first_name).'"';
+    }
+    $name_source_obj = "[".implode(",",$names)."]";  
+    $this->tpl->assign("name_source_obj", $name_source_obj);
+    
+		$this->tpl->assign(array("list_title" => "Physician List", "add_sufix" => "Physician"));
+		$this->tpl->assign_include("filter_tpl", "useragency/p_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+  
+  function list2 () {
+
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+    $users = $this->usagymdl->getPhysiciansByAgency($this->getAgencyId(), true);
+    $names = array();
+    
+    foreach($users as $user){
+      $names[] = '"'.addslashes($user->last_name." ".$user->first_name).'"';
+    }
+    $name_source_obj = "[".implode(",",$names)."]";  
+    $this->tpl->assign("name_source_obj", $name_source_obj);
+    
+		$this->tpl->assign(array("list_title" => "Physician List", "no_grid_buttons" => TRUE, 'resource_grid'=>'grid2','noedit'=>true,'paginate'=>0));
+    
+		$this->tpl->assign_include("filter_tpl", "useragency/p_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid () {
+		
+		$agency_id = $this->session->userdata('agency_id'); 
+		$agency_types = $this->lang->line('agency_type_list');
+		$status		  = $this->lang->line('agency_status_list');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+//		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=16", "Name"));	
+		//$head->append($this->xml->Element("column", "width=*", "Type Employee"));		
+		//vanlt add
+		$head->append($this->xml->Element("column", "width=*", "Phone"));
+		$head->append($this->xml->Element("column", "width=*", "Fax"));
+		$head->append($this->xml->Element("column", "width=*", "Email"));
+    $head->append($this->xml->Element("column", "width=*", "NPI"));
+		$head->append($this->xml->Element("column", "width=*", "UPIN"));
+		//end
+		$head->append($this->xml->Element("column", "width=10;type=linkc;align=center", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), 4) as $user) {			
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+//			$cell->append($this->xml->Element("cell", null, $user->us_agy_id));
+			$cell->append($this->xml->Element("cell", null, @$user->last_name.' '.@$user->first_name));			
+//			$cell->append($this->xml->Element("cell", null, $user->tab_description));
+			//vanlt add
+			$cell->append($this->xml->Element("cell", null, @$user->phone_work));
+			$cell->append($this->xml->Element("cell", null, @$user->fax));
+			$cell->append($this->xml->Element("cell", null, @$user->email));
+			$cell->append($this->xml->Element("cell", null, @$user->npi));
+			$cell->append($this->xml->Element("cell", null, @$user->upin));
+			//end
+			
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "useragency/physician/delete/" . $user->us_agy_id . "^Are you sure to delete this user?"));
+			$document->append($cell);
+			
+		}
+		
+	}
+  
+  function grid2 () {
+		
+		$agency_id = $this->session->userdata('agency_id'); 
+		$agency_types = $this->lang->line('agency_type_list');
+		$status		  = $this->lang->line('agency_status_list');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=16", "Physician Name"));	
+		$head->append($this->xml->Element("column", "width=*", "30 days"));
+		$head->append($this->xml->Element("column", "width=*", "60 days"));
+		$head->append($this->xml->Element("column", "width=*", "90 days"));
+    $head->append($this->xml->Element("column", "width=*", "Total"));
+		
+		//end
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->usagymdl->getPhysiciansByAgency($this->getAgencyId(), true) as $user) {			
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null, @$user->last_name.' '.@$user->first_name));			
+      
+      $total = 0;
+      
+      $date_30 = date("Y-m-d",mktime(0,0,0,date('m'),date('d')-30,date('Y')));
+      $where = array();
+      $where['episode_start_date >= '] = "'{$date_30}'";
+      $count_30_day = $this->cms485mdl->getByPhysId($user->us_agy_id,$where,true);
+            
+      $total += $count_30_day;
+      
+      $date_60 = date("Y-m-d",mktime(0,0,0,date('m'),date('d')-60,date('Y')));
+      $where = array();
+      $where['episode_start_date >= '] = "'{$date_60}'";
+      $where['episode_start_date < '] = "'{$date_30}'";
+      $count_60_day = $this->cms485mdl->getByPhysId($user->us_agy_id,$where,true);
+      
+      $total += $count_60_day;
+      
+      $date_90 = date("Y-m-d",mktime(0,0,0,date('m'),date('d')-60,date('Y')));
+      $where = array();
+      $where['episode_start_date >= '] = "'{$date_90}'";
+      $where['episode_start_date < '] = "'{$date_60}'";
+      $count_90_day = $this->cms485mdl->getByPhysId($user->us_agy_id,$where,true);
+      
+      $total += $count_90_day;
+      
+			$cell->append($this->xml->Element("cell", null, $count_30_day));
+			$cell->append($this->xml->Element("cell", null, $count_60_day));
+			$cell->append($this->xml->Element("cell", null, $count_60_day));
+			$cell->append($this->xml->Element("cell", null, $total));
+			$document->append($cell);
+		}
+		
+	}
+	
+	function verif_email ( $user_email ) {
+	
+		$user = $this->usagymdl->getByEmailAgencyId($this->getAgencyId(), $user_email);
+		if (count($user)) {
+			$this->validation->set_message('verif_email', "The user already exist in this agency.");
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+	
+	}
+	
+	function add () {
+		
+		$this->tpl->assign('faction', 'add');
+		
+		$rules = array ('first_name'  	=> 'required',
+						'last_name'  	=> 'required',
+						'profile_id'  	=> 'required',
+						'discipline_id' => 'required');
+						
+		if ($this->input->post('discipline_id') != 9) {
+			$rules['user_email'] 	= 'required|valid_email|callback_verif_email';
+			$rules['email_confirm'] = 'required|matches[user_email]';
+		}
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+      ##
+      #	when the profile of the logged user = Office Clerk..on the detail only display the demographic tab. AND only allow to add/edit users with profile PHYSICIAN.      
+      /*$user_us_agy_id = $this->getUsAgyId();
+      $user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);    
+      $this->tpl->assign('user_profile_id', $user_us_agy->profile_id);*/
+      ##end
+			$this->tpl->assign("electronic_sign_setup", 1);
+			$this->tpl->assign("form_title", "Add Physician");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "useragency/p_add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+
+			$user = $this->usermdl->getByEmail($this->input->post('user_email'));
+			if (!count($user) || $this->input->post('user_email') == '') { // user not exist: create new
+				
+				$this->assignPostData($this->usermdl);
+				$this->usermdl->insert();
+				
+				$pass = passgen();
+				$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+				
+				// sending user acces information
+
+				if (!is_null($this->usermdl->user_email)) {
+					
+					$emailtext = $this->emailtextmdl->get(3);
+					
+					$body = str_replace('{user_id}', $this->usermdl->user_email, $emailtext->email_content);
+					$body = str_replace('{user_password}', $pass, $body);
+					$body = str_replace('{app_url}', $this->config->site_url(), $body);
+					
+					$this->load->library('email');
+					$this->email->from('support@homehealthsoft.com', 'HHS Support');
+					$this->email->to($this->usermdl->user_email); 
+					$this->email->subject($emailtext->email_subject);
+					$this->email->message($body);	
+					$this->email->send();
+					
+				}
+
+			} else { // user exist: get user_id
+
+				$this->usermdl->user_id = $user->user_id;
+
+			}
+			
+			// assiging user to agency
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->agency_id = $this->getAgencyId();
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->insert();
+			
+			// sending user->agency message
+			if (!is_null($this->usagymdl->user_email)) {
+			
+				$emailtext = $this->emailtextmdl->get(4);
+				$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+				
+				$body = str_replace('{user_first_name}', $this->usagymdl->first_name, $emailtext->email_content);
+				$body = str_replace('{agency_name}', $agency->agency_name, $body);
+				
+				$this->load->library('email');
+				$this->email->from('support@homehealthsoft.com', 'HHS Support');
+				$this->email->to($this->usagymdl->user_email); 
+				$this->email->subject($emailtext->email_subject);
+				$this->email->message($body);	
+				$this->email->send();
+			
+			}
+
+			
+			$this->tpl->assign('gmessage', $this->usagymdl->first_name . " " . $this->usagymdl->last_name . $this->lang->line('grl_add_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function edit ( $us_agy_id ) {
+		
+		$this->tpl->assign('us_agy_id', $us_agy_id);
+
+		$us_agy = $this->usagymdl->getByUsAgyId($us_agy_id);
+		
+    ##
+    #	when the profile of the logged user = Office Clerk..on the detail only display the demographic tab. AND only allow to add/edit users with profile PHYSICIAN.      
+    /*$user_us_agy_id = $this->getUsAgyId();
+    $user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);    
+    $this->tpl->assign('user_profile_id', $user_us_agy->profile_id);*/
+    ##End
+    
+		$this->tpl->assign("form_title", $us_agy->last_name . " " . $us_agy->first_name);
+		$this->tpl->assign_include("dynamic_tpl", "useragency/p_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function demographics ( $us_agy_id ) {
+		
+		$this->tpl->assign('faction', 'demographics');
+		$this->tpl->assign('record_id', $us_agy_id);
+		
+		$this->tpl->assign('other_lang_list', $this->parametermdl->getByType(10));
+		$usagy = $this->usagymdl->getByUsAgyId($us_agy_id);
+		$this->assignObject($usagy);
+		
+		$rules = array ('first_name'  	=> 'required',
+						'last_name'  	=> 'required',
+						'profile_id'  	=> 'required',
+						'discipline_id' => 'required',
+						'phone_cell' 	=> 'valid_phone',
+						'fax'	  		=> 'valid_phone',
+						'phone_work'	=> 'valid_phone');
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == TRUE) {
+		
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->update($us_agy_id);
+			
+			$this->tpl->assign('success_string', $this->usagymdl->first_name . " " . $this->usagymdl->last_name . $this->lang->line('grl_upd_msg'));
+			
+		}
+
+    ##
+    #	when the profile of the logged user = Office Clerk..on the detail only display the demographic tab. AND only allow to add/edit users with profile PHYSICIAN.      
+    $user_us_agy_id = $this->getUsAgyId();
+    $user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);    
+    $this->tpl->assign('user_profile_id', $user_us_agy->profile_id);
+    if($user_us_agy->profile_id==6){
+      if($usagy->discipline_id==9){
+        $this->tpl->assign('no_commit_form', false);
+      }else{
+        $this->tpl->assign('no_commit_form', true);
+      }
+    }else if($user_us_agy->profile_id==4){
+      $this->tpl->assign('no_commit_form', false);
+    }
+    ##End
+		
+    $this->tpl->assign('additional_buttons', array('Cancel'=>"parent.document.location = '" . $this->config->config['index_url'] . "useragency/physician'"));
+    
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "useragency/p_edit_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function delete ( $us_agy_id ) {
+    $this->load->model('cms485mdl');
+    
+		$plans = $this->cms485mdl->getByPhysId($us_agy_id);
+    if(sizeof($plans) ==0 ){
+  		$us_agy = $this->usagymdl->getByUsAgyId($us_agy_id);  		
+  		$this->usagymdl->delete($us_agy_id);  		
+  		$this->tpl->assign('gmessage', $us_agy->first_name . " " . $us_agy->last_name . $this->lang->line('grl_del_msg'));
+    }else{
+      $this->tpl->assign('gmessage', "Can not delete becasue physician have plan of care for patients");
+    }
+		$this->index();
+		
+	}
+	
+	function permissions ( $us_agy_id ) {
+
+		if ($this->validation->run() == TRUE) {
+
+			$this->usagypermissionmdl->deleteByUsAgyId($us_agy_id);
+			
+			if ($this->input->post('permission_id')) {
+				
+				foreach ($this->input->post('permission_id') as $permission_id) {
+					
+					$this->usagypermissionmdl->insert($us_agy_id, $permission_id);
+					
+				}
+				
+			}
+			
+			$us_agy = $this->usagymdl->getByUsAgyId($us_agy_id);
+			$this->tpl->assign('success_string', $us_agy->first_name . " " . $us_agy->last_name . "'s permissions" . $this->lang->line('grl_upd_msg'));
+			
+		}
+		
+		$permisison_headers = $this->permissionheadermdl->getAll();
+		$this->tpl->assign("permission_headers", $permisison_headers);
+		
+		foreach ($permisison_headers as $permisison_header) {
+			$permissions[] = $this->permissionmdl->getByHeaderId($permisison_header->permission_header_id, ($this->getAgencyType() == 'C' ? 'permission_contractor' : 'permission_agency'), false);
+		}
+		$this->tpl->assign("permissions", $permissions);
+		
+		$this->tpl->assign("us_agy_permission", $this->usagypermissionmdl->getByUsAgyId($us_agy_id, null, false));
+	
+		$this->tpl->assign('faction', 'permissions');
+		$this->tpl->assign('record_id', $us_agy_id);
+		
+		$this->tpl->assign(array("tab_page" => true));
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "useragency/permissions_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+	function modalAddPhysician ( $physician ) {
+		
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('physician', $physician);
+						
+		$rules = array ('user_email' 	=> 'valid_email|callback_verif_email',
+						'email_confirm' => 'matches[user_email]',
+						'first_name'  	=> 'required',
+						'last_name'  	=> 'required');
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "useragency/modal_physician_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$user = $this->usermdl->getByEmail($this->input->post('user_email'));
+			if (!count($user) || $this->input->post('user_email') == '') { // user not exist: create new
+	
+				$this->assignPostData($this->usermdl);
+				$this->usermdl->insert();
+				
+				$pass = passgen();
+				$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+
+			} else { // user exist: get user_id
+
+				$this->usermdl->user_id = $user->user_id;
+
+			}
+			
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->agency_id = $this->getAgencyId();
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->profile_id = 4;
+			$this->usagymdl->discipline_id = 9;
+			$this->usagymdl->insert();
+			
+			echo "<SCRIPT>parent.refreshPhysician('" . $physician . "', " . $this->usagymdl->us_agy_id . ")</SCRIPT>";
+			
+		}
+		
+	}
+	
+	function physicianList () {
+		
+		$document = $this->xml->Document();
+		
+			$document->append($this->xml->Option("", "Select Option"));
+		
+		foreach ($this->usagymdl->getPhysiciansByAgency($this->getAgencyId()) as $us_agy_id => $physician) {
+			
+			
+			$document->append($this->xml->Option($us_agy_id, $physician));
+			
+		}
+		
+	}
+	
+ }

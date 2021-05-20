@@ -1,0 +1,631 @@
+<?php  if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+// Art Therapy Visit PDF functions
+
+
+function form3625_pdf ($visit_log_id, $output ='F') {
+    global $GL_VISIT;
+    $CI =& get_instance();
+    $CI->load->model('form3625mdl');
+
+    $visit_log = $visitlog = $CI->visitlogmdl->getById($visit_log_id);
+    $agy_user_id = $visit_log->user_id;
+    $us1_user = $CI->usermdl->getById($agy_user_id);
+
+    $visit_type = $CI->visittypemdl->getById($visitlog->visit_type_id);
+    $visit_type_discipline = $CI->disciplinemdl->getById($visit_type->discipline_id);
+    // print_r($visitlog->visit_type_id);
+    $visit_user = $CI->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+    if ($visitlog->visit_discipline_id) {
+        $user_discipline = $CI->disciplinemdl->getById($visitlog->visit_discipline_id);
+        $visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+    }
+
+    $form3625 = $CI->form3625mdl->get($visit_log_id);
+    if (empty($form3625)) {
+        $form3625 = $CI->form3625mdl->getEmpty();
+    }
+    $GL_VISIT = $form3625;
+
+
+    $patient  = $CI->patientmdl->getById($visit_log->patient_id);
+    $agency = $CI->agencymdl->getByAgencyId($patient->agency_id);
+    $medicaidInsurance = $CI->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+
+    // Case Manager
+    $cm_approver = $CI->teammdl->get($visitlog->patient_id, null, null, $CI->getAgencyId(), null, 3);
+    if (count($cm_approver)) {
+        $cm_approver = $CI->usagymdl->getByUsAgyId($cm_approver[0]->us_agy_id);
+    }
+
+    $created_by_user = $CI->usagymdl->getByUsAgyId($visitlog->visit_asigned_by);
+    $created_by_agency = $CI->agencymdl->getByAgencyId($created_by_user->agency_id);
+
+    $profile_id = $CI->getUserProfileId();
+
+
+    // Section F
+    $section_f = TRUE;
+    $section_f_visits = array();
+    $section_f_total_amount = 0.00;
+    $section_f_total_units = 0;
+    $section_f_first_visit = null;
+
+    $type_ids = array();
+    foreach ($CI->visittypemdl->getByDisciplineId($visit_user->discipline_id) as $type_id => $type_name) {
+        $type_ids[] = $type_id;
+    }
+
+    if ($CI->getAgencyType() == 'C') {
+        $pat_contractor_id = $CI->patientcontractormdl->getPatContractorId($visitlog->patient_id, $CI->getAgencyId());
+        $patContractor = $CI->patientcontractormdl->getById($pat_contractor_id);
+        $agency_contractor_id = $patContractor->agency_contractor_id;
+
+        $visits = array();
+        $rate_errors = array();
+        $visit_timestamp = strtotime($visitlog->visit_date_time);
+        $start_date = date("Y",$visit_timestamp).'-'.date("m",$visit_timestamp).'-01';
+        $total_units = 0;
+        $total_amount = 0;
+        foreach($CI->visitlogmdl->getVisitsForSectionF($visitlog, $visitlog->cms485_id, $type_ids, $start_date, date("Y-m-d",strtotime($visitlog->visit_date_time)) ) as $visit){
+            if(is_null($visit->visited_time_in) OR $visit->billable_YN != 1){
+                  continue;
+                }
+
+            $units = 0;
+            $visit_duration = 0;
+            $visit_mount = $CI->visitlogmdl->getSingleVisitBillAmount($visit, $units, $visit_duration);
+
+            $billing_visit_rate = 0;
+            if ($units > 0 AND $visit->billable_YN == 1) {
+                $billing_visit_rate = $visit->co_final_rate;
+            }
+
+
+            $tmp = array(
+                'day' => date("j",strtotime($visit->visit_date_time)),
+                'date' => date("Y-m-d",strtotime($visit->visit_date_time)),
+                'timein' => date("h:ia",strtotime($visit->visited_time_in)),
+                'timeout' => date("h:ia",strtotime($visit->visited_time_out)),
+                'duration' => $visit_duration,
+                'units' => $units,
+                'rate' => $billing_visit_rate,
+                'amount' => $visit_mount,
+                'id' => $visit->visit_log_id,
+                'type_id' => $visit->visit_type_id,
+                'visit_log_id' => $visit->visit_log_id,
+            );
+
+            if (is_null($section_f_first_visit)) {
+                $section_f_first_visit = $visit;
+            }
+
+            $visits[$tmp['day']] = (object) $tmp;
+            $total_amount += $tmp['amount'];
+            $total_units += $tmp['units'];
+        }
+        $total_amount = round($total_amount, 2);
+        // echo "<pre>"; print_r($visits); echo "</pre>";
+        // exit();
+        $section_f = TRUE;
+        $section_f_visits = $visits;
+        unset($visits);
+        $section_f_total_amount = $total_amount;
+        unset($total_amount);
+        $section_f_total_units = $total_units;
+        unset($total_units);
+        // End of Section F
+    }
+
+    if ($section_f_first_visit) {
+        $visit_type = $CI->visittypemdl->getById($section_f_first_visit->visit_type_id);
+        $visit_type_discipline = $CI->disciplinemdl->getById($visit_type->discipline_id);
+    }
+
+    if ($visitlog->visit_status_id == 1) {
+            // Load deafult values from agency settings for particual discipline
+        $CI->load->model('agencysettingmdl');
+        $agency_settings=$CI->agencysettingmdl->getByAgencyDisciplineId($patient->agency_id, $visit_type->discipline_id);
+        if (!empty($agency_settings)) {
+            $form3625->serv_code_box15 = $agency_settings->F3625_box15;
+            $form3625->bill_code_box16 = $agency_settings->F3625_box16;
+            $form3625->requis_feee_box17 = $agency_settings->F3625_box17;
+            $form3625->requis_fee_serv_code_box18 = $agency_settings->F3625_box18;
+            $form3625->requis_fee_bill_code_box19 = $agency_settings->F3625_box19;
+        }
+    }
+
+
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+    $path_logo = realpath("upload/logos/THHS.jpg");
+    $label_font = "Arial";
+    $data_font = "Courier";
+
+    $__FONT['PDF']['SIZE'] = 9;
+    $__FONT['PDF']['FORM_MEDIUM'] = 10;
+    $__FONT['PDF']['FORM_SMALL'] = 9;
+    $__FONT['PDF']['FORM_SMALL2'] = 8;
+    $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+    $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+    $__FONT['PDF']['FORM_arial8'] = 9.5;
+
+
+    $CI->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+      define('FPDF_FONTPATH',$CI->config->item('fonts_path'));
+    $total_page = 2;
+    $CI->fpdf->Open();
+    $pdf = $CI->fpdf;
+    $pdf->AddPage();
+    $con = 2.8346456692913384;
+    $cero_x = 11;
+    $cero_y = 2;
+
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+
+    $CI->fpdf->Image( $path_logo, ( $cero_x + 16 ),($cero_y + 25),85);
+
+    $CI->fpdf->SetFont('Arial', 'B', 6.7);
+    $CI->fpdf->Text(($x +493), ($y + 7), "Form 3625");
+    $CI->fpdf->SetFont('Arial', '', 6.7);
+    $CI->fpdf->Text(($x +483.5), ($y + 16.5), "August 2015-E");
+
+    $pdf->SetFont('Arial', '', 8.3);
+    $CI->fpdf->Text(($x +95), ($y + 48), "Community Living Assistance and Support Services (CLASS)/Community First Choice(CFC)");
+    $pdf->SetFont('Arial', 'B', 11.1);
+    $CI->fpdf->Text(($x +176), ($y + 60), "Documentation of Services Delivered");
+    $CI->fpdf->Line(($cero_x +434), ($cero_y +95), ($cero_x +551), ($cero_y +95));
+    $CI->fpdf->Line(($cero_x +434), ($cero_y +95), ($cero_x +434), ($cero_y +120));
+    $CI->fpdf->Line(($cero_x +551), ($cero_y +95), ($cero_x +551), ($cero_y +147));
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 90), "Section A - Applicant/Individual Information");
+
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +120), ($cero_x +551), ($cero_y +120));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +147), ($cero_x +551), ($cero_y +147));
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x - 1), ($y + 103), "2. Applicant/Individual Name");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 1), ($y + 114), $patient->first_name.' '.$patient->last_name);
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 250), ($y + 103), "3. Medicaid No.");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 260), ($y + 114), $medicaidInsurance->ins_id);
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 378), ($y + 103), "4. Social Security No. (for ");
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 470), ($y + 103), "applicants");
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 510), ($y + 103), "only)");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 388), ($y + 114), $patient->soc_sec_nbr);
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 423), ($y + 78), "1. Service Month and Year");
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 427), ($y + 88),  strtoupper(date("M",strtotime($visitlog->visit_date_time))).'/'. date("Y",strtotime($visitlog->visit_date_time)) );
+    // $CI->fpdf->Text(($x + 427), ($y + 88), date("F",strtotime($visitlog->visit_date_time)).' '.date("d",strtotime($visitlog->visit_date_time)) );
+
+
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +120), ($cero_x +12), ($cero_y +147));
+    $CI->fpdf->Line(($cero_x +263), ($cero_y +120), ($cero_x +263), ($cero_y +147));
+    $CI->fpdf->Line(($cero_x +392), ($cero_y +120), ($cero_x +392), ($cero_y +147));
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 135), "Section B - Provider Agency Information: Case Management Agency (CMA)/Direct Services Agency (DSA)");
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x - 1), ($y + 150), "5. Agency Type");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 10), ($y + 162.5), "CMA");
+    $CI->fpdf->Text(($x + 87), ($y + 162.5), "DSA");
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 158), ($y + 150), "6. Agency Name");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 168), ($y + 161.5), $agency->agency_name);
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 423), ($y + 150), "7. Contract No.");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 430), ($y + 161.5), $agency->F3625_contract_no);
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +167), ($cero_x +551), ($cero_y +167));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +194), ($cero_x +551), ($cero_y +194));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +167), ($cero_x +12), ($cero_y +194));
+    $CI->fpdf->Line(($cero_x +170), ($cero_y +167), ($cero_x +170), ($cero_y +194));
+    $CI->fpdf->Line(($cero_x +434), ($cero_y +167), ($cero_x +434), ($cero_y +194));
+    $CI->fpdf->Line(($cero_x +434), ($cero_y +167), ($cero_x +434), ($cero_y +194));
+    $CI->fpdf->Line(($cero_x +551), ($cero_y +167), ($cero_x +551), ($cero_y +194));
+    $CI->fpdf->Rect(( $cero_x + 15),($cero_y +182), 8.4, 8.4);
+    $CI->fpdf->Rect(( $cero_x + 90),($cero_y +182), 8.4, 8.4);
+    if ($form3625->agency_type == 'CMA') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 17 ),($cero_y + 182.5),6);
+    }
+    if (!$form3625->agency_type OR $form3625->agency_type == 'DSA') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 92 ),($cero_y + 182.5),6);
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 180), "Section C - Pre-Enrollment Assessment Fees: CMA/DSA");
+
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +212), ($cero_x +551), ($cero_y +212));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +239), ($cero_x +551), ($cero_y +239));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +212), ($cero_x +12), ($cero_y +239));
+    $CI->fpdf->Line(($cero_x +280), ($cero_y +212), ($cero_x +280), ($cero_y +239));
+    $CI->fpdf->Line(($cero_x +551), ($cero_y +212), ($cero_x +551), ($cero_y +239));
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x - 1), ($y + 195), "8. Case Management Services");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 10), ($y + 207.5), "Full Assessment");
+    $CI->fpdf->Text(($x + 150), ($y + 207.5), "Partial Assessment");
+    $CI->fpdf->Rect(( $cero_x + 15),($cero_y +227), 8.4, 8.4);
+    $CI->fpdf->Rect(( $cero_x + 155),($cero_y +227), 8.4, 8.4);
+    if ($form3625->case_manag_serv == 'FULL') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 17 ),($cero_y + 227.5),6);
+    }
+    if ($form3625->case_manag_serv == 'PARTIAL') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 157 ),($cero_y + 227.5),6);
+    }
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 268), ($y + 195), "9. DSA Services");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 280), ($y + 207.5), "Full Assessment");
+    $CI->fpdf->Rect(( $cero_x + 285),($cero_y +227), 8.4, 8.4);
+    if ($form3625->dsa_services_full == 'Y') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 287 ),($cero_y + 227.5),6);
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 225), "Section D - Case Management Services");
+
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +257), ($cero_x +551), ($cero_y +257));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +284), ($cero_x +551), ($cero_y +284));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +257), ($cero_x +12), ($cero_y +284));
+    $CI->fpdf->Line(($cero_x +280), ($cero_y +257), ($cero_x +280), ($cero_y +284));
+    $CI->fpdf->Line(($cero_x +551), ($cero_y +257), ($cero_x +551), ($cero_y +284));
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x - 1), ($y + 240), "10. Case Manager Name");
+    if (isset($cm_approver->complete_name)) {
+        $pdf->SetFont('Arial', 'B', 8.2);
+        $CI->fpdf->Text(($x + 15), ($y + 252.5), $cm_approver->complete_name);
+    }
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 268), ($y + 240), "11. Case Management Services");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 280), ($y + 252.5), "Ongoing");
+    $CI->fpdf->Rect(( $cero_x + 285),($cero_y +272), 8.4, 8.4);
+    if ($form3625->case_manag_serv_ongo == 'Y') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 287 ),($cero_y + 272.5),6);
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 270), "Section E - Direct Services");
+
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +302), ($cero_x +551), ($cero_y +302));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +385), ($cero_x +551), ($cero_y +385));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +302), ($cero_x +12), ($cero_y +385));
+    $CI->fpdf->Line(($cero_x +551), ($cero_y +302), ($cero_x +551), ($cero_y +385));
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x - 1), ($y + 285), "12. Method of Delivery (check only one)");
+
+    $CI->fpdf->Rect(( $cero_x + 15),($cero_y +319), 8.4, 8.4);
+    if ($form3625->method_of_delivery == 1) {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 17 ),($cero_y + 319.5),6);
+    }
+    $pdf->SetFont('Arial', '', 8.2);
+    $CI->fpdf->Text(($x + 10), ($y + 300), "Employee");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 50), ($y + 300), "- Name of Employee:");
+    if ($form3625->method_of_delivery == 1) {
+        $CI->fpdf->Text(($x + 150), ($y + 300), $form3625->method_of_delivery_1_txt);
+    }
+    $CI->fpdf->Line(($cero_x +155), ($cero_y +330), ($cero_x +535), ($cero_y +330));
+
+
+    $CI->fpdf->Rect(( $cero_x + 15),($cero_y +337), 8.4, 8.4);
+    if ($form3625->method_of_delivery == 2) {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 17 ),($cero_y + 337.5),6);
+    }
+    $pdf->SetFont('Arial', '', 8.2);
+    $CI->fpdf->Text(($x + 10), ($y + 318), "Personal Service Agreement");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 117), ($y + 318), "- Name of Individual:");
+    if ($form3625->method_of_delivery == 2) {
+        $CI->fpdf->Text(($x + 210), ($y + 318), $form3625->method_of_delivery_2_txt);
+    }
+    $CI->fpdf->Line(($cero_x +220), ($cero_y +350), ($cero_x +535), ($cero_y +350));
+
+    $CI->fpdf->Rect(( $cero_x + 15),($cero_y +355), 8.4, 8.4);
+    if ($form3625->method_of_delivery == 3) {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 16 ),($cero_y + 356),6);
+    }
+    $pdf->SetFont('Arial', '', 8.2);
+    $CI->fpdf->Text(($x + 10), ($y + 336), "Contract with Another Agency");
+    $pdf->SetFont('Arial', 'B', 8.2);
+    $CI->fpdf->Text(($x + 120), ($y + 336), "- Name of Individual and Company:");
+    $CI->fpdf->Line(($cero_x +282), ($cero_y +368), ($cero_x +535), ($cero_y +368));
+    $pdf->SetFont('Arial', 'B', 8.2);
+    if ($form3625->method_of_delivery == 3) {
+        if ($visit_log->visit_status_id == 1) {
+            $CI->fpdf->Text(($x + 270), ($y + 336), $created_by_agency->agency_name . ' - '. $visit_log->first_name.' '.$visit_log->last_name);
+        } else if ($form3625->method_of_delivery_3_txt) {
+            $CI->fpdf->Text(($x + 270), ($y + 336), $form3625->method_of_delivery_3_txt);
+        } else {
+            $CI->fpdf->Text(($x + 270), ($y + 336), $created_by_agency->agency_name . ' - '. $visit_log->first_name.' '.$visit_log->last_name);
+        }
+    }
+    // $CI->fpdf->Text(($x + 270), ($y + 336), "Complete Therapies, L.L.C.");
+    // $pdf->SetFont('Arial', 'B', 8.2);
+    // $CI->fpdf->Text(($x + 372), ($y + 336), "- Carol A. Rodriguez, LMT");
+
+    $CI->fpdf->Rect(( $cero_x + 15),($cero_y +373), 8.4, 8.4);
+    if ($form3625->method_of_delivery == 4) {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 17 ),($cero_y + 373.5),6);
+    }
+    $pdf->SetFont('Arial', '', 8.2);
+    $CI->fpdf->Text(($x + 10), ($y + 354), "Direct Purchase - Use only for service codes 15 and 16:");
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 370), "Authorized Service");
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +403), ($cero_x +551), ($cero_y +403));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +433), ($cero_x +551), ($cero_y +433));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +463), ($cero_x +551), ($cero_y +463));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +403), ($cero_x +12), ($cero_y +463));
+    $CI->fpdf->Line(($cero_x +147), ($cero_y +403), ($cero_x +147), ($cero_y +433));
+    $CI->fpdf->Line(($cero_x +375), ($cero_y +403), ($cero_x +375), ($cero_y +463));
+    $CI->fpdf->Line(($cero_x +460), ($cero_y +403), ($cero_x +460), ($cero_y +433));
+    $CI->fpdf->Line(($cero_x +242), ($cero_y +433), ($cero_x +242), ($cero_y +463));
+    $CI->fpdf->Line(($cero_x +551), ($cero_y +403), ($cero_x +551), ($cero_y +463));
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x - 1), ($y + 385), "13. Service Category");
+    $CI->fpdf->Text(($x - 1), ($y + 398), "SPECIALIZED THERAPY");
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 135), ($y + 385), "14. For Service Code 42 A-F. name specialized therapy");
+    $CI->fpdf->Text(($x + 135), ($y + 398), @$visit_type_discipline->mayor_discipline);
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 360), ($y + 385), "15. Service Code");
+    $CI->fpdf->Text(($x + 360), ($y + 398), $form3625->serv_code_box15);
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 445), ($y + 385), "16. Bill Code");
+    $CI->fpdf->Text(($x + 445), ($y + 398), $form3625->bill_code_box16);
+
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x - 1), ($y + 415), "17. Requisition Fee");
+    $CI->fpdf->Text(($x - 1), ($y + 428), $form3625->requis_feee_box17);
+    $pdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x + 70), ($y + 415), "(if applicable to services in 13. Service Category)");
+    $pdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x + 228), ($y + 415), "18. Requisition Fee Service Code");
+    $CI->fpdf->Text(($x + 228), ($y + 428), $form3625->requis_fee_serv_code_box18);
+    $CI->fpdf->Text(($x + 365), ($y + 415), "19. Requisition Fee Bill Code");
+    $CI->fpdf->Text(($x + 365), ($y + 428), $form3625->requis_fee_bill_code_box19);
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 448), "Comments:");
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +480), ($cero_x +551), ($cero_y +480));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +530), ($cero_x +551), ($cero_y +530));
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +480), ($cero_x +12), ($cero_y +530));
+    $CI->fpdf->Line(($cero_x +551), ($cero_y +480), ($cero_x +551), ($cero_y +530));
+    $CI->fpdf->SetXY($x -1, 485);
+    $pdf->SetFont('Arial', '', 8);
+    $comments = str_replace("\n", " ", substr($form3625->vt103_comments, 0, 550));
+    $pdf->MultiCell(520, 10, $comments);
+
+    $pdf->SetFont('Arial', 'B', 9);
+
+    if ($section_f) {
+        $CI->fpdf->Text(($x - 1), ($y + 516), "Section F - Record of Time");
+
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +548), ($cero_x +551), ($cero_y +548));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +560), ($cero_x +551), ($cero_y +560));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +572), ($cero_x +551), ($cero_y +572));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +584), ($cero_x +551), ($cero_y +584));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +596), ($cero_x +551), ($cero_y +596));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +608), ($cero_x +551), ($cero_y +608));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +620), ($cero_x +551), ($cero_y +620));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +632), ($cero_x +551), ($cero_y +632));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +644), ($cero_x +551), ($cero_y +644));
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +662), ($cero_x +415.5), ($cero_y +662));
+
+        $CI->fpdf->Line(($cero_x +12), ($cero_y +548), ($cero_x +12), ($cero_y +662));
+        $CI->fpdf->Line(($cero_x +32), ($cero_y +548), ($cero_x +32), ($cero_y +662));
+        $CI->fpdf->Line(($cero_x +146.5), ($cero_y +548), ($cero_x +146.5), ($cero_y +662));
+        $CI->fpdf->Line(($cero_x +166.5), ($cero_y +548), ($cero_x +166.5), ($cero_y +662));
+        $CI->fpdf->Line(($cero_x +281), ($cero_y +548), ($cero_x +281), ($cero_y +662));
+        $CI->fpdf->Line(($cero_x +301), ($cero_y +548), ($cero_x +301), ($cero_y +662));
+        $CI->fpdf->Line(($cero_x +415.5), ($cero_y +548), ($cero_x +415.5), ($cero_y +662));
+        $CI->fpdf->Line(($cero_x +435.5), ($cero_y +548), ($cero_x +435.5), ($cero_y +644));
+        $CI->fpdf->Line(($cero_x +551), ($cero_y +548), ($cero_x +551), ($cero_y +644));
+
+        $pdf->SetFont('Arial', '', 7);
+        $CI->fpdf->Text(($x - 1), ($y + 530), "Day");
+        $CI->fpdf->Text(($x + 20), ($y + 530), "Time In - Time Out/Units/Amount");
+        $CI->fpdf->Text(($x + 133), ($y + 530), "Day");
+        $CI->fpdf->Text(($x + 154), ($y + 530), "Time In - Time Out/Units/Amount");
+        $CI->fpdf->Text(($x + 268), ($y + 530), "Day");
+        $CI->fpdf->Text(($x + 287), ($y + 530), "Time In - Time Out/Units/Amount");
+        $CI->fpdf->Text(($x + 401), ($y + 530), "Day");
+        $CI->fpdf->Text(($x + 421), ($y + 530), "Time In - Time Out/Units/Amount");
+
+        $CI->fpdf->Text(($x + 2), ($y + 542), "1");
+        $CI->fpdf->Text(($x + 2), ($y + 554), "2");
+        $CI->fpdf->Text(($x + 2), ($y + 566), "3");
+        $CI->fpdf->Text(($x + 2), ($y + 578), "4");
+        $CI->fpdf->Text(($x + 2), ($y + 590), "5");
+        $CI->fpdf->Text(($x + 2), ($y + 602), "6");
+        $CI->fpdf->Text(($x + 2), ($y + 614), "7");
+        $CI->fpdf->Text(($x + 2), ($y + 629), "8");
+        $CI->fpdf->Text(($x + 136), ($y + 542), "9");
+        $CI->fpdf->Text(($x + 135), ($y + 554), "10");
+        $CI->fpdf->Text(($x + 135), ($y + 566), "11");
+        $CI->fpdf->Text(($x + 135), ($y + 578), "12");
+        $CI->fpdf->Text(($x + 135), ($y + 590), "13");
+        $CI->fpdf->Text(($x + 135), ($y + 602), "14");
+        $CI->fpdf->Text(($x + 135), ($y + 614), "15");
+        $CI->fpdf->Text(($x + 135), ($y + 629), "16");
+        $CI->fpdf->Text(($x + 270), ($y + 542), "17");
+        $CI->fpdf->Text(($x + 270), ($y + 554), "18");
+        $CI->fpdf->Text(($x + 270), ($y + 566), "19");
+        $CI->fpdf->Text(($x + 270), ($y + 578), "20");
+        $CI->fpdf->Text(($x + 270), ($y + 590), "21");
+        $CI->fpdf->Text(($x + 270), ($y + 602), "22");
+        $CI->fpdf->Text(($x + 270), ($y + 614), "23");
+        $CI->fpdf->Text(($x + 270), ($y + 629), "24");
+        $CI->fpdf->Text(($x + 403), ($y + 542), "25");
+        $CI->fpdf->Text(($x + 403), ($y + 554), "26");
+        $CI->fpdf->Text(($x + 403), ($y + 566), "27");
+        $CI->fpdf->Text(($x + 403), ($y + 578), "28");
+        $CI->fpdf->Text(($x + 403), ($y + 590), "29");
+        $CI->fpdf->Text(($x + 403), ($y + 602), "30");
+        $CI->fpdf->Text(($x + 403), ($y + 614), "31");
+
+        for ($i=1; $i <= 8 ; $i++) {
+            if (isset($section_f_visits[$i])) {
+                if ($profile_id == 1 OR $profile_id == 3) {
+                    $CI->fpdf->Text(($x + 20), ($y + 542 + (($i-1)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') $'. $section_f_visits[$i]->amount );
+                } else {
+                    $CI->fpdf->Text(($x + 20), ($y + 542 + (($i-1)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') ' );
+                }
+
+            }
+        }
+
+        for ($i=9; $i <= 16 ; $i++) {
+            if (isset($section_f_visits[$i])) {
+                if ($profile_id == 1 OR $profile_id == 3) {
+                    $CI->fpdf->Text(($x + 154), ($y + 542 + (($i-9)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') $'. $section_f_visits[$i]->amount );
+                } else {
+                    $CI->fpdf->Text(($x + 154), ($y + 542 + (($i-9)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') ' );
+                }
+            }
+        }
+
+        for ($i=17; $i <= 24 ; $i++) {
+            if (isset($section_f_visits[$i])) {
+                if ($profile_id == 1 OR $profile_id == 3) {
+                    $CI->fpdf->Text(($x + 287), ($y + 542 + (($i-17)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') $'. $section_f_visits[$i]->amount );
+                } else {
+                    $CI->fpdf->Text(($x + 287), ($y + 542 + (($i-17)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') ' );
+                }
+
+            }
+        }
+
+        for ($i=25; $i <= 31 ; $i++) {
+            if (isset($section_f_visits[$i])) {
+                if ($profile_id == 1 OR $profile_id == 3) {
+                    $CI->fpdf->Text(($x + 421), ($y + 542 + (($i-25)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') $'. $section_f_visits[$i]->amount );
+                } else {
+                    $CI->fpdf->Text(($x + 421), ($y + 542 + (($i-25)*12) ), $section_f_visits[$i]->timein.'-'.$section_f_visits[$i]->timeout.' ('. $section_f_visits[$i]->units . ') ' );
+                }
+            }
+        }
+
+        $pdf->SetFont('Arial', 'B', 7);
+        if ($profile_id == 1 OR $profile_id == 3) {
+            $CI->fpdf->Text(($x + 403), ($y + 631.5), "Total Units/Amount:");
+            $CI->fpdf->Text(($x + 480), ($y + 631.5), $section_f_total_units.($section_f_total_amount ? ' / $'.$section_f_total_amount : ''));
+        } else {
+            $CI->fpdf->Text(($x + 403), ($y + 631.5), "Total Units:");
+            $CI->fpdf->Text(($x + 480), ($y + 631.5), $section_f_total_units);
+        }
+
+        $CI->fpdf->Line(($cero_x +488), ($cero_y +648), ($cero_x +488), ($cero_y +663));
+        $CI->fpdf->Line(($cero_x +488), ($cero_y +648), ($cero_x +551), ($cero_y +648));
+        $CI->fpdf->Line(($cero_x +488), ($cero_y +663), ($cero_x +551), ($cero_y +663));
+        $CI->fpdf->Line(($cero_x +551), ($cero_y +648), ($cero_x +551), ($cero_y +663));
+    }
+
+    $y += 10;
+    $cero_y += 10;
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 1), ($y + 650), "Section G - Certification:");
+    $pdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x + 107), ($y + 650), "This is to certify that I provided the services");
+    $CI->fpdf->Text(($x - 1), ($y + 660), "recorded above or that I completed all work required according to all");
+    $CI->fpdf->Text(($x - 1), ($y + 670), "specifications.");
+    $CI->fpdf->Line(($cero_x +307), ($cero_y +692.8), ($cero_x +432), ($cero_y +692.8));
+    $pdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x + 290), ($y + 675), "Signature -- Applicant/Individual/LAR");
+    $CI->fpdf->Line(($cero_x +476), ($cero_y +692.8), ($cero_x +545), ($cero_y +692.8));
+    $pdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x + 437), ($y + 667), "Date :");
+    if (isset($form3625->pat_3625_signature) AND $form3625->pat_3625_signature != "") {
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$form3625->pat_3625_signature;
+        $CI->fpdf->Image( $img_path, ($x + 285), ($y + 633 - 7), 90, 40);
+        // $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+        // $CI->fpdf->Text(($x + 467), ($y + 655), standard_date(mysql_to_unix($form3625->pat_signed_date)));
+        $CI->fpdf->Text(($x + 460), ($y + 665), standard_date(mysql_to_unix($visitlog->visit_date_time)));
+    }
+
+    $y += 10;
+    $cero_y += 10;
+
+    $CI->fpdf->Line(($cero_x +13), ($cero_y +725), ($cero_x +160), ($cero_y +725));
+    $pdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x + 5), ($y + 708), "Signature -- Person Delivering Service");
+    $CI->fpdf->Line(($cero_x +200), ($cero_y +725), ($cero_x +270), ($cero_y +725));
+    $pdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x + 158), ($y + 698), "Date :");
+    if (isset($form3625->clinician_3625_signature) AND $form3625->clinician_3625_signature != "") {
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$form3625->clinician_3625_signature;
+        $CI->fpdf->Image( $img_path, ($x + 5), ($y + 673.2), 58);
+        // $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+        // $CI->fpdf->Text(($x + 210), ($y + 693), standard_date(mysql_to_unix($form3625->clinician_signed_date)));
+        $CI->fpdf->Text(($x + 184), ($y + 696), standard_date(mysql_to_unix($visitlog->visit_date_time)));
+    }
+
+    $CI->fpdf->Line(($cero_x +298), ($cero_y +725), ($cero_x +440), ($cero_y +725));
+    $pdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x + 311), ($y + 708), "Signature -- Timekeeper");
+    $CI->fpdf->Line(($cero_x +476), ($cero_y +725), ($cero_x +545), ($cero_y +725));
+    $pdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x + 437), ($y + 698), "Date :");
+    if (isset($form3625->caregiver_signature) AND $form3625->caregiver_signature != "") {
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$form3625->caregiver_signature;
+        $CI->fpdf->Image( $img_path, ($x + 300), ($y + 673.2), 58);
+        // $CI->fpdf->SetFont($data_font, '', $__FONT['PDF']['FORM_SMALL']);
+        // $CI->fpdf->Text(($x + 467), ($y + 693), standard_date(mysql_to_unix($form3625->caregiver_signed_date)));
+        $CI->fpdf->Text(($x + 457), ($y + 696), standard_date(mysql_to_unix($visitlog->visit_date_time)));
+    }
+
+    // $CI->fpdf->Output('test_pdf',$output);
+
+    $title_text = "Form 3625 Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+
+    switch($output){
+        case 'D':
+            $filename_only = "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+            $filename = $filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+        case 'F':
+            //$filename = $filename.'tmp/'.time().'_'.$visit_log_id.'_pq_ptpn.pdf';
+            $c = 1;
+            while(file_exists($filename.'tmp/'.$filename_only.'.pdf'))
+            {
+                $filename_only =  "Patient ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text." _".$c;
+                $c++;
+            }
+            $filename = $filename.'tmp/'.$filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+    }
+
+    return $filename;
+
+}

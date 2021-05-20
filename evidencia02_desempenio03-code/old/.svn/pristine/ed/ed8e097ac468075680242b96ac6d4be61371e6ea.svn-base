@@ -1,0 +1,245 @@
+<?php  
+
+class AuthVisits extends MY_Controller {
+
+    function AuthVisits () {
+
+        parent::MY_Controller();
+        $this->tpl->assign("resource_path", "patient/authvisits");        
+        $this->load->model('cms485mcaidpavisitsmdl');
+    }
+
+	function index ( $patient_id, $cms485_id=null ) {
+    
+    if (is_null($cms485_id) || $cms485_id == '') {
+			$soc = $this->socmdl->getCurrent($patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $cms485_id = $episode->cms485_id;			
+		}
+    
+		$this->tpl->assign("entity_id", $patient_id.'/'.$cms485_id);
+		$this->tpl->assign("add_sufix", "Authorized Visit");
+		//$this->tpl->assign_include("filter_tpl", "patient/authvisits/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+	function grid ( $patient_id, $cms485_id=null ) {
+    //$authvisits = $this->cms485mcaidpavisitsmdl->get($patient_id);
+    if (is_null($cms485_id) || $cms485_id == '') {
+			$soc = $this->socmdl->getCurrent($patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $cms485_id = $episode->cms485_id;			
+		}
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Author ID"));
+		$head->append($this->xml->Element("column", "width=*", "Authorization Period"));
+    $head->append($this->xml->Element("column", "width=*", "SN"));
+    $head->append($this->xml->Element("column", "width=*", "PT"));
+    $head->append($this->xml->Element("column", "width=*", "OT"));
+    $head->append($this->xml->Element("column", "width=*", "ST"));
+    $head->append($this->xml->Element("column", "width=*", "HHA"));
+		$head->append($this->xml->Element("column", "width=*;type=ro", "Notes"));
+		
+		//$head->append($this->xml->Element("column", "width=*", "Created by"));
+		//$head->append($this->xml->Element("column", "width=*", "Date"));
+   // $head->append($this->xml->Element("column", "width=*", "Changed by"));
+		//$head->append($this->xml->Element("column", "width=*", "Date"));		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->cms485mcaidpavisitsmdl->get($patient_id, $cms485_id) as $authvisit) {
+      $cell = $this->xml->Element("row", "id=" . $authvisit->cms_485_mcaid_pa_visits_id);			
+      
+			$cell->append($this->xml->Element("cell", null, $authvisit->authorization_id));			
+      $cell->append($this->xml->Element("cell", null, date("m/d/Y",mysql_to_unix($authvisit->author_from_date)).' - '.date("m/d/Y",mysql_to_unix($authvisit->author_end_date)) ));
+      $cell->append($this->xml->Element("cell", null, $authvisit->nbr_sn_visits));
+      $cell->append($this->xml->Element("cell", null, $authvisit->nbr_pt_visits));
+      $cell->append($this->xml->Element("cell", null, $authvisit->nbr_ot_visits));
+      $cell->append($this->xml->Element("cell", null, $authvisit->nbr_st_visits));
+      $cell->append($this->xml->Element("cell", null, $authvisit->hha_nbr_visits));
+      
+      // comments 
+      $comments = $authvisit->authvisits_notes;      
+      $comments = str_replace("\n","",$comments );
+      $comments = str_replace("\r","",$comments );
+      $comments = str_replace("'","\\'",$comments );
+      $commentsCellStr = '<![CDATA[';
+      if($comments!="")
+        $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; Tip(\''.$comments.'\', OFFSETY, 18);"><img src="'.$this->config->config["base_url"].'style/images/icon_note.jpg" border="0" /></a>&nbsp;';
+      
+      $commentsCellStr .= ']]>';  
+      $cell->append($this->xml->Element("cell", null, $commentsCellStr));  
+      
+      //$cell->append($this->xml->Element("cell", null, $authvisit->created_by));
+      //$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($authvisit->pavisit_create_date))));
+      //$cell->append($this->xml->Element("cell", null, @$authvisit->changed_by));
+      /*if($authvisit->pavisit_modify_date){
+        $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($authvisit->pavisit_modify_date))));
+      }else{
+        $cell->append($this->xml->Element("cell", null,'' ));
+      }
+      */
+      
+			$document->append($cell);
+
+		}
+	}
+
+	function add ( $patient_id, $cms485_id=null ) {
+    if (is_null($cms485_id) || $cms485_id == '') {
+			$soc = $this->socmdl->getCurrent($patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $cms485_id = $episode->cms485_id;			
+		}
+    
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign("cms485_id", $cms485_id);
+		$this->tpl->assign("patient_id", $patient_id);		
+		$this->tpl->assign("entity_id", $patient_id.'/'.$cms485_id);
+		
+		$this->validation->set_rules(array('authorization_id'=>'required', 'author_from_date'=>'required', 'author_end_date'=>'required', 'nbr_sn_visits'=>'required', 'hha_nbr_visits'=> 'required', 'nbr_pt_visits' => 'required','nbr_ot_visits'=>'required','nbr_st_visits'=>'required'));
+		
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/authvisits/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->cms485mcaidpavisitsmdl);
+			$this->cms485mcaidpavisitsmdl->create_user_id = $this->getUsAgyId();
+			$this->cms485mcaidpavisitsmdl->cms485_id 	 = $cms485_id;
+			$this->cms485mcaidpavisitsmdl->insert();
+			
+			$this->tpl->assign('gmessage', "Authorized visit" . $this->lang->line('grl_add_msg'));
+			
+      // send notification to team members
+      if($this->input->post('notify_team')){
+        $msg_to_arr = array();
+        foreach($this->teammdl->get($patient_id, null, null,null,null,null,array(9)) as $user){
+          $msg_to_arr[] = $user->us_agy_id;
+        }
+        
+        $patient = $this->patientmdl->getById($patient_id);
+        
+        $_POST['msg_to'] = implode(",",$msg_to_arr);
+        $_POST['patient'] = $patient_id;
+        $_POST['msg_imp'] = 0;
+        $_POST['msg_subject'] = 'Medicaid/HMO authorization updated';
+        $_POST['msg_text'] = 'Medicaid/HMO authorization visits have been added or updated for patient '.$patient->first_name.' '.$patient->last_name.'.';
+        
+        $this->assignPostData($this->messagemdl);
+    		$this->messagemdl->user_from = $this->getUsAgyId();
+
+    		$this->msg_id = $this->messagemdl->insert();
+        
+        $msg_to = explode(',', $this->input->post("msg_to"));  
+        if (sizeof($msg_to) > 0) {
+    			foreach (explode(',', $this->input->post("msg_to")) as $user_to)
+    				$this->usermessagemdl->insert($this->msg_id, $user_to, $this->input->post("msg_imp"));
+    			if ($this->input->post('patient') > 0) {
+    				$this->messagemdl->setPatient($this->msg_id, $this->input->post('patient'));
+    			}
+    		}    
+      }
+      
+			$this->index($patient_id);
+			
+		}
+
+	}
+	
+	function edit ( $patient_id, $cms485_id=null, $cms_485_mcaid_pa_visits_id ) {
+    if (is_null($cms485_id) || $cms485_id == '') {
+			$soc = $this->socmdl->getCurrent($patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $cms485_id = $episode->cms485_id;			
+		}
+      
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign("record_id", $cms_485_mcaid_pa_visits_id);
+		$this->tpl->assign("entity_id", $patient_id.'/'.$cms485_id);
+		
+		$authvisit = $this->cms485mcaidpavisitsmdl->getById($cms_485_mcaid_pa_visits_id);
+		$this->assignObject($authvisit);
+		
+		$this->validation->set_rules(array('authorization_id'=>'required', 'author_from_date'=>'required', 'author_end_date'=>'required', 'nbr_sn_visits'=>'required', 'hha_nbr_visits'=> 'required', 'nbr_pt_visits' => 'required','nbr_ot_visits'=>'required','nbr_st_visits'=>'required'));
+		
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/authvisits/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->cms485mcaidpavisitsmdl);
+      $this->cms485mcaidpavisitsmdl->modify_user_id = $this->getUsAgyId();
+			$this->cms485mcaidpavisitsmdl->modify_date 	 = date("Y-m-d H:i:s");
+
+			$this->cms485mcaidpavisitsmdl->update($cms_485_mcaid_pa_visits_id);
+			
+			$this->tpl->assign('gmessage', "Authorized visit " . $this->lang->line('grl_upd_msg'));
+
+      // send notification to team members
+      if($this->input->post('notify_team')){
+        $msg_to_arr = array();
+        foreach($this->teammdl->get($patient_id, null, null,null,null,null,array(9)) as $user){
+          $msg_to_arr[] = $user->us_agy_id;
+        }
+        
+        $patient = $this->patientmdl->getById($patient_id);
+        
+        $_POST['msg_to'] = implode(",",$msg_to_arr);
+        $_POST['patient'] = $patient_id;
+        $_POST['msg_imp'] = 0;
+        $_POST['msg_subject'] = 'Medicaid/HMO authorization updated';
+        $_POST['msg_text'] = 'Medicaid/HMO authorization visits have been added or updated for patient '.$patient->first_name.' '.$patient->last_name.'.';
+        
+        $this->assignPostData($this->messagemdl);
+    		$this->messagemdl->user_from = $this->getUsAgyId();
+
+    		$this->msg_id = $this->messagemdl->insert();
+        
+        $msg_to = explode(',', $this->input->post("msg_to"));  
+        if (sizeof($msg_to) > 0) {
+    			foreach (explode(',', $this->input->post("msg_to")) as $user_to)
+    				$this->usermessagemdl->insert($this->msg_id, $user_to, $this->input->post("msg_imp"));
+    			if ($this->input->post('patient') > 0) {
+    				$this->messagemdl->setPatient($this->msg_id, $this->input->post('patient'));
+    			}
+    		}    
+      }
+      
+			$this->index($patient_id);
+			
+		}
+
+	}
+	
+	function delete ( $patient_id, $cms485_id=null, $cms_485_mcaid_pa_visits_id ) {
+    if (is_null($cms485_id) || $cms485_id == '') {
+			$soc = $this->socmdl->getCurrent($patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $cms485_id = $episode->cms485_id;			
+		}
+		
+		$authvisit = $this->cms485mcaidpavisitsmdl->getById($cms_485_mcaid_pa_visits_id);
+		
+		
+    $this->cms485mcaidpavisitsmdl->delete($cms_485_mcaid_pa_visits_id);
+    $this->tpl->assign('gmessage', "Authorized visit " . $this->lang->line('grl_del_msg'));
+    
+		$this->index($patient_id, $cms485_id);
+				
+	}
+
+}

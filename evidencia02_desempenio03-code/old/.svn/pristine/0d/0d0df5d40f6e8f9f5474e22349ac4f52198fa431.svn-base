@@ -1,0 +1,180 @@
+<?
+
+ class Referral extends MY_Controller {
+
+	var $rules;
+
+	function Referral () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "referral");
+		
+		$this->tpl->assign('referral_type_list', $this->parametermdl->getByType(11));
+		
+		$this->rules = array ('referral_name'			=> 'required',
+							  // 'tab_011_referral_type'	=> 'required',
+							  'phone_cell'  			=> 'valid_phone',
+							  'phone_work'  			=> 'valid_phone',
+							  'fax'  				 	=> 'valid_phone',
+							  'email'  					=> 'valid_email');
+		
+	}
+	
+	function index () {
+
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		
+		$this->tpl->assign(array("list_title" => "Referral Sources", "add_sufix" => " Referral Source"));
+		$this->tpl->assign_include("filter_tpl", "referral/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=30", "Referral"));
+		$head->append($this->xml->Element("column", "width=*",  "Type"));
+		// $head->append($this->xml->Element("column", "width=35", "Facility"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->referralmdl->get($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('tab_011_referral_type')) as $referral) {
+			
+			$cell = $this->xml->Element("row", "id=" . $referral->referral_id);
+			$cell->append($this->xml->Element("cell", null, $referral->referral_id));
+			$cell->append($this->xml->Element("cell", null, $referral->referral_name));
+			$cell->append($this->xml->Element("cell", null, $referral->tab_description));
+			// $cell->append($this->xml->Element("cell", null, $referral->facility_name));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add () {
+		
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Referral Source");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "referral/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->referralmdl);
+			// $this->referralmdl->insert(is_null($this->input->post('facility_id')) ? $this->getAgencyId() : null);
+			$this->referralmdl->insert( $this->getAgencyId() );
+			
+			$this->tpl->assign('gmessage', $this->referralmdl->referral_name . $this->lang->line('grl_add_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function edit ( $referral_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $referral_id);
+		
+		$this->assignObject($this->referralmdl->getByReferralId($referral_id));
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Edit Referral Source");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "referral/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->referralmdl);
+			// $this->referralmdl->update($referral_id, is_null($this->input->post('facility_id')) ? $this->getAgencyId() : null);
+			$this->referralmdl->update($referral_id, $this->getAgencyId() );
+			
+			$this->tpl->assign('gmessage', $this->referralmdl->referral_name . $this->lang->line('grl_upd_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function delete ( $referral_id ) {
+		
+		$referral = $this->referralmdl->getByReferralId($referral_id);
+		
+		$this->referralmdl->delete($referral_id);
+		
+		$this->tpl->assign('gmessage', $referral->referral_name . $this->lang->line('grl_del_msg'));
+		$this->index();
+		
+	}
+
+	function suggest ( $keyword ) {
+		
+		$this->xml->root_name = "results";
+		$document = $this->xml->Document();
+		
+		foreach ($this->referralmdl->suggest($this->getAgencyId(), $keyword) as $referral) {
+			
+			$document->append($this->xml->Element("rs", "id=" . $referral->referral_id . ";info=", $referral->referral_name));
+		
+		}
+		
+	}
+	
+	function modalAdd () {
+		
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "referral/mform");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->referralmdl);
+			$this->referralmdl->insert(is_null($this->input->post('facility_id')) ? $this->getAgencyId() : null);
+			
+			echo "<SCRIPT>
+			parent.refreshReferral('" . $this->referralmdl->referral_name . "', " . $this->referralmdl->referral_id . ")
+			</SCRIPT>";
+			
+		}
+		
+	}
+	function referralList () {
+		
+		$document = $this->xml->Document();
+		
+			$document->append($this->xml->Option("", "Select Option"));
+		
+		foreach ($this->usagymdl->getReferralNameByAgency($this->getAgencyId()) as $referral_id => $referral) {
+			
+			
+			$document->append($this->xml->Option($referral_id, $referral));
+			
+		}
+		
+	}
+	
+
+ }

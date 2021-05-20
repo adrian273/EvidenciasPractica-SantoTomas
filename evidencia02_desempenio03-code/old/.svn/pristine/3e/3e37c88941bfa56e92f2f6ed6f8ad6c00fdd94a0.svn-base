@@ -1,0 +1,36 @@
+<?
+
+ class Dischargesummary extends MY_Controller {
+
+	function Dischargesummary () {
+		
+		parent::MY_Controller();
+	}
+
+	function index ( $patient_id ) {
+
+		if ($this->validation->run() == TRUE) {
+
+			$this->assignPostData($this->patientmdl);
+			$this->patientmdl->updateDischarged($patient_id);
+			
+			$this->tpl->assign('success_string', $this->agencymdl->agency_name . $this->lang->line('grl_upd_msg'));
+			
+		}
+
+		$patient = $this->patientmdl->getById($patient_id);
+		
+		$this->tpl->assign('patient', $patient);
+		
+		$this->tpl->assign("resource_path", "patient/dischargesummary/index/" . $patient_id);
+
+		$this->tpl->assign('no_delete_form', true);
+		$this->tpl->assign('no_cancel_form', true);
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "patient/dischargesummary/form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+}

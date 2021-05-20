@@ -1,0 +1,248 @@
+<?php
+
+ class CliniciansAvailableMap extends MY_Controller {
+
+	function CliniciansAvailableMap () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "cliniciansavailablemap");
+		
+	}
+	function index ( $patient_address = null ) {
+		$this->tpl->assign_include("dynamic_tpl", "patient/cliniciansavailblemap_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+
+	function find_clinician_tbase (  ) {
+		$this->tpl->assign_include("dynamic_tpl", "patient/find_clinician_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+
+	function service_area() {
+		$this->load->model('agencyserviceareamdl');
+
+		$this->tpl->assign('city_list', $this->agencyserviceareamdl->getCitiesByAgency($this->getAgencyId()));
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", "grid_service_area");
+
+        $this->tpl->assign_include("filter_tpl", "patient/service_area_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function grid_service_area() {
+		$this->load->model('useraddressmdl');
+		$this->load->model('agencyserviceareamdl');
+
+		$this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*", "Clinician Name"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "Nbr Patients"));
+        $head->append($this->xml->Element("column", "width=10;align=center", "Load"));
+        $head->append($this->xml->Element("column", "width=10;align=left", "Score"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        if ($this->input->post('city')) {
+        	$city = $this->agencyserviceareamdl->getCityDetail($this->input->post('city'));
+        	if (!empty($city)) {
+        		$_POST['search_city'] = $city->city;
+	        	$_POST['search_state'] = $city->state_id;
+	        	// print_r($_POST);
+	        	foreach ($this->useraddressmdl->searchUsersByAddress() as $user) {
+	        		// Find user no of current patients to calculate his load%
+					$user->no_patients = $this->patientmdl->getCountByUsAgyId($user->us_agy_id, null, 2);
+					if (!($user->estimated_monthly_patients)) {
+						$user->estimated_monthly_patients = 0;
+					}
+
+					if ($user->estimated_monthly_patients > 0) {
+						$result= ($user->no_patients/$user->estimated_monthly_patients);
+						$user->load_perc = $result*100;
+					} else if($user->no_patients > 0) {
+						$user->load_perc = 100;
+					} else {
+						$user->load_perc = 0;
+					}
+					$score = '<![CDATA[';
+					//$score = '';
+					if ($user->score) {
+						for ($i=1; $i <= $user->score; $i++) { 
+							//$score .= '*';         
+							$score.= '<img src="'.$this->config->config["base_url"].'style/images/star.svg" width="16" border="0"/>';
+						}
+					}
+					$score .= ']]>'; 
+					
+					
+
+	        		$cell = $this->xml->Element("row", "id=" . $user->user_id);
+	        		$cell->append($this->xml->Element("cell", null, $this->xml_entities($user->complete_name)));
+	        		$cell->append($this->xml->Element("cell", null, $user->no_patients));
+	        		$cell->append($this->xml->Element("cell", null, (int)$user->load_perc.'%'));
+	        		$cell->append($this->xml->Element("cell", null, $score));
+
+	        		$document->append($cell);
+	        	}
+        	}
+        }
+	}	
+
+	function json_service_area() {
+		$this->load->model('useraddressmdl');
+		$this->load->model('agencyserviceareamdl');
+
+		$users = array();
+		$city = array();
+        if ($this->input->post('city')) {
+        	$city = $this->agencyserviceareamdl->getCityDetail($this->input->post('city'));
+        	if (!empty($city)) {
+        		$_POST['search_city'] = $city->city;
+	        	$_POST['search_state'] = $city->state_id;
+	        	// print_r($_POST);
+	        	foreach ($this->useraddressmdl->searchUsersByAddress() as $user) {
+	        		// Find user no of current patients to calculate his load%
+					$user->no_patients = $this->patientmdl->getCountByUsAgyId($user->us_agy_id, null, 2);
+					if (!($user->estimated_monthly_patients)) {
+						$user->estimated_monthly_patients = 0;
+					}
+
+					if ($user->estimated_monthly_patients > 0) {
+						$user->load_perc = (int)($user->no_patients/$user->estimated_monthly_patients)*100;
+					} else if($user->no_patients > 0) {
+						$user->load_perc = 100;
+					} else {
+						$user->load_perc = 0;
+					}
+
+					$score = '';
+					if ($user->score) {
+						for ($i=1; $i <= $user->score; $i++) { 
+							$score .= '*';
+						}
+					}
+
+					$user->score = $score;
+
+	        		$users[] = $user;
+	        	}
+        	}
+        }
+
+        echo json_encode(array('clinicians'=>$users, 'city'=>$city));
+	}
+
+	function map_view ( $patient_address = null ) {
+		$this->load->model('agencyserviceareamdl');
+
+		//echo "patient_address is " . $patient_address;
+		$clinicians = array();
+		// without profile id 4 (the physician)
+		foreach($this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, true, false, null, array(4), 1 ) as $user){
+		/*foreach($this->usagymdl->getAllClinicians($this->getAgencyId()) as $user){*/
+			if (isset($user->notes)) {
+				unset($user->notes);
+			}
+			array_walk($user, function(&$item, $key){
+				$item = str_replace(",", "", $item);
+				$item = str_replace("'", "", $item);
+				$item = str_replace('"', '', $item);
+			});
+
+			// Find user no of current patients to calculate his load%
+			$user->no_patients = $this->patientmdl->getCountByUsAgyId($user->us_agy_id, null, 2);
+			
+			if (!($user->estimated_monthly_patients)) {
+				$user->estimated_monthly_patients = 0;
+			}
+
+			if ($user->estimated_monthly_patients > 0) {
+				$user->load_perc = ($user->no_patients/$user->estimated_monthly_patients)*100;
+			} else if($user->no_patients > 0) {
+				$user->load_perc = 100;
+			} else {
+				$user->load_perc = 0;
+			}
+				
+			$clinicians[] = $user;
+		}
+
+		$clinicians_with_patient_info = array();
+		
+		$patientIds = array();
+		foreach($this->visitlogmdl->get_patients_user_info($this->getAgencyId(), $this->getAgencyType()) as $user){
+			if (!in_array($user->patient_id, $patientIds)) {
+				if (isset($user->notes)) {
+					unset($user->notes);
+				}
+				array_walk($user, function(&$item, $key){
+					$item = str_replace(",", "", $item);
+					$item = str_replace("'", "", $item);
+					$item = str_replace('"', '', $item);
+				});
+
+				// Find user no of current patients to calculate his load%
+				$user->no_patients = $this->patientmdl->getCountByUsAgyId($user->us_agy_id, null, 2);
+				if (!($user->estimated_monthly_patients)) {
+					$user->estimated_monthly_patients = 0;
+				}
+
+				if ($user->estimated_monthly_patients > 0) {
+					$user->load_perc = ($user->no_patients/$user->estimated_monthly_patients)*100;
+				} else if($user->no_patients > 0) {
+					$user->load_perc = 100;
+				} else {
+					$user->load_perc = 0;
+				}
+
+				$clinicians_with_patient_info[] = $user;
+				$patientIds[] = $user->patient_id;
+			}
+		}
+
+		$this->tpl->assign("patient_address", $patient_address );
+		$this->tpl->assign("clinicians_json", str_replace("'", "", json_encode(array('clinicians'=>$clinicians))) );
+		$this->tpl->assign("clinicians_with_patient_info_json", str_replace("'", "", json_encode(array('clinicians'=>$clinicians_with_patient_info))) );
+		// $this->tpl->assign("clinicians_with_patient_info_json", str_replace("'", "", json_encode(array('clinicians'=>array()))) );
+		
+		$this->tpl->assign('city_list', $this->agencyserviceareamdl->getCitiesByAgency($this->getAgencyId()));
+
+		$this->tpl->assign_include("dynamic_tpl", "patient/cliniciansavailblemap");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function xml_entities($text, $charset = 'UTF-8')
+    {
+        // First we encode html characters that are also invalid in xml
+        $text = htmlentities($text, ENT_COMPAT, $charset, false);
+
+        // Note: &apos; is useless in UTF-8 or in UTF-16
+        $arr_xml_special_char = array(
+            "&quot;",
+            "&amp;",
+            "&apos;",
+            "&lt;",
+            "&gt;"
+        );
+
+        // Building the regex string to exclude all strings with xml special char
+        $arr_xml_special_char_regex = "(?";
+        foreach ($arr_xml_special_char as $key => $value) {
+            $arr_xml_special_char_regex .= "(?!$value)";
+        }
+        $arr_xml_special_char_regex .= ")";
+
+        // Scan the array for &something_not_xml; syntax
+        $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+
+        // Replace the &something_not_xml; with &amp;something_not_xml;
+        $replacement = '&amp;${1}';
+        return preg_replace($pattern, $replacement, $text);
+    }
+
+ }

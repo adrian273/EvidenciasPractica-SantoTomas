@@ -1,0 +1,318 @@
+<?
+
+ class Team extends MY_Controller {
+
+	var $rules 			= array ('user_id' => 'required');
+	var $fields 		= array ('user_id' => 'Clinician/User');
+
+	function Team () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/team");
+		$this->tpl->assign(array("tab_page" => true));
+		
+		$this->validation->set_fields($this->fields);
+		
+	}
+
+	function index ( $patient_id ) {
+
+		$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+
+		if ($this->hasPermission(14) && $this->getAgencyType() != 'C')  {
+//			$this->tpl->assign("checkHandler", "1");
+		} else {
+			$this->tpl->assign(array("no_grid_buttons" => true));
+		}
+		
+		if ($this->getAgencyType() == 'C' && $this->getUserProfileId() == 3) {
+			$this->tpl->assign(array("no_grid_buttons" => false));
+		}
+		
+		$this->tpl->assign(array("add_sufix" => "Assign User to Team"));
+		$this->tpl->assign('entity_id', $patient_id);
+		$this->tpl->assign_include("filter_tpl", "patient/team/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+	
+	}	
+	
+	function grid ( $patient_id ) {
+		
+		$logic_list = $this->lang->line('logic_list');
+		$logic_list[NULL] = 'No';
+		$user_status_list = array('A'=>'Active','I'=>'Inactive');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=20", "Clinician/User"));
+		$head->append($this->xml->Element("column", "width=*;type=link", "Clinician Phone"));
+		$head->append($this->xml->Element("column", "width=*", "Status"));
+		$head->append($this->xml->Element("column", "width=20", "Agency/Contractor"));
+		//$head->append($this->xml->Element("column", "width=*",  "Assigned by"));
+		$head->append($this->xml->Element("column", "width=*;type=img;align=center",  "SN Approver"));
+		$head->append($this->xml->Element("column", "width=*;type=img;align=center",  "Therapist Approver"));
+		$head->append($this->xml->Element("column", "width=*;type=img;align=center",  "Case Manager"));
+		$head->append($this->xml->Element("column", "width=10;type=img;align=center",  "Primary"));
+		/*if ($this->hasPermission(14) || $this->getAgencyType() == 'C') $head->append($this->xml->Element("column", "width=10;align=center;type=linkc", "Actions"));*/
+		$head->append($this->xml->Element("column", "width=10;type=link;align=center",  "Credentials"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->teammdl->get($patient_id, $this->input->post('keyword'), $this->input->post('discipline_id')) as $user) {
+			// $usagy = $this->usagymdl->getByUsAgyId($user->assigned_by_user_id);
+			// @$assigned_by = $this->usermdl->getById($usagy->user_id);			
+			@$assigned_by_user_agency = $this->agencymdl->getByAgencyId($user->agency_id);
+			
+			$cell = $this->xml->Element("row", "id=" . $user->ppr_id);
+			$cell->append($this->xml->Element("cell", null, $user->last_name . " " . $user->first_name . " (" . $user->short_description.")". ($user->legal_name != '' ? ' - '.$user->legal_name : '') ));
+      
+			if($user->phone_cell != ""){
+				$cell->append($this->xml->Element("cell", null, $user->phone_cell.'^tel:'.$user->phone_cell));        
+			}else{
+				$cell->append($this->xml->Element("cell", null, ''));        
+			}
+      
+			//$cell->append($this->xml->Element("cell", null, ($user->agency_id != $this->getAgencyId() ? $user->agency_name : "")));
+			$cell->append($this->xml->Element("cell", null,  @$user_status_list[$user->user_status]));
+			$cell->append($this->xml->Element("cell", null, @$assigned_by_user_agency->agency_name));
+			
+			$cell->append($this->xml->Element("cell", null, $this->config->config['base_url'] . "style/images/" . ($user->approver_type_id == 1 ? 'icon_enable.gif' : 'blank.gif')));
+			$cell->append($this->xml->Element("cell", null, $this->config->config['base_url'] . "style/images/" . ($user->approver_type_id == 2 ? 'icon_enable.gif' : 'blank.gif')));
+			$cell->append($this->xml->Element("cell", null, $this->config->config['base_url'] . "style/images/" . ($user->approver_type_id == 3 ? 'icon_enable.gif' : 'blank.gif')));
+			
+			
+			$cell->append($this->xml->Element("cell", null, $this->config->config['base_url'] . "style/images/" . ($user->primary == 1 ? 'icon_enable.gif' : 'blank.gif')));
+			/*if (!$this->teammdl->hasUserTaskAssigned($patient_id, $user->us_agy_id) && $this->getAgencyId() == $user->agency_id) { 
+				$cell->append($this->xml->Element("cell", null, "Remove^" . $this->config->config['index_url'] . "patient/team/delete/" . $patient_id . "/" . $user->ppr_id . "^Are you sure to delete this menber?"));
+			}*/
+			$cell->append($this->xml->Element("cell", null, "Credentials^" . $this->config->config['index_url'] . "useragency/credential/index/" . $user->us_agy_id ."/yes/yes" ));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add ( $patient_id ) {		
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('entity_id', $patient_id);
+		
+		//echo $this->getAgencyId();
+		$patient_info = $this->patientmdl->getById($patient_id);
+
+		$agency_users_list = $this->usagymdl->getByAgencyId($patient_info->agency_id, null, null, null, null, false);
+		$member_list = $this->usagymdl->getMemberTeamWithDisciplineByAgency($this->getAgencyId(), $patient_id);
+
+		$this->tpl->assign('member_list', $member_list);
+		$this->tpl->assign('agency_users_list', $agency_users_list);
+		//echo $this->getAgencyId() . "<br />";
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());			
+		//echo "<pre>"; print_r($agency); echo "</pre>";
+		//exit;				
+		$this->validation->set_rules($this->rules);
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/team/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			//echo "<pre>"; print_r($_POST); echo "</pre>"; exit;
+			$this->assignPostData($this->teammdl);
+			$this->teammdl->assigned_by_user_id = $this->getUsAgyId();
+			if ( $this->getAgencyType() == 'C' AND $this->input->post('user_type') == 'agy') {
+				// when a contractor creates an agency user from the patients Team, we should create table PPR with approver_type_id=3
+				$this->teammdl->approver_type_id = 3;
+			}
+			$this->teammdl->insert($patient_id);
+			
+			if ( $this->getAgencyType() == 'C' AND $this->input->post('user_type') == 'agy') {
+				// when a contractor creates an agency user from the patients Team, create 3 records in us_agy_permission.permission_id=16, 17 and 18.
+				$this->usagypermissionmdl->insert($this->teammdl->user_id, 16);
+				$this->usagypermissionmdl->insert($this->teammdl->user_id, 17);
+				$this->usagypermissionmdl->insert($this->teammdl->user_id, 18);
+			}
+
+			$patient 	  = $this->patientmdl->getById($patient_id);
+			@$assigned_by = $this->usagymdl->getByUsAgyId($this->teammdl->assigned_by_user_id);
+			$ppr = $this->teammdl->getByPPRId($this->teammdl->ppr_id);
+			$ppr_assigned_date = $ppr->assigned_date;
+			if($patient_info->state_id == 45) { // add 2 hours in the time if state_id = 45
+				$ppr_assigned_date = date('Y-m-d H:i:s', strtotime($ppr_assigned_date) + (2 * 60 * 60));
+			}
+			
+			$notification_subject = "New Patient: " . $patient->first_name . " " . $patient->last_name .  ", " .
+									"Assigned by: " . @$assigned_by->complete_name . ", " .
+									"Assigned Date/Time: " . standard_date(mysql_to_unix($ppr_assigned_date), 'USA_DATE_TIME');
+			
+			
+			$this->messagemdl->user_from = $this->getUsAgyId();
+			$this->messagemdl->msg_subject = $notification_subject;
+			$this->messagemdl->msg_text = $this->teammdl->message_to_user;
+			$this->messagemdl->insert();
+			
+			$this->usermessagemdl->insert($this->messagemdl->msg_id, $this->teammdl->user_id, 0);
+			
+			//if($_POST['user_type'] != 'agy') {
+			
+				$user = $this->usagymdl->getByUsAgyId($this->teammdl->user_id);
+				$usAgyInfo = $this->usagymdl->getByUsAgyId($this->teammdl->user_id);
+				$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+				if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+					$this->load->library('email');
+					$this->email->from('noreply@homehealthsoft.com', $agency->agency_name);
+					$this->email->to($userToInfo->user_email); 
+					$this->email->subject($notification_subject);
+	
+					$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->teammdl->message_to_user;
+					// $this->email->set_mailtype("html"); 
+	
+					$this->email->message($body);	
+					$this->email->send();				
+				}
+			//}
+			$this->tpl->assign('gmessage', "Member" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	
+	function edit ( $patient_id, $ppr_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('entity_id', $patient_id);
+		$this->tpl->assign('record_id', $ppr_id);
+		$this->tpl->assign('edit_user_status', false);
+		
+		$us_agy = $this->teammdl->getByPPRId($ppr_id);
+		$can_edit_approver_perms = false;
+		if ($us_agy->agency_id == $this->getAgencyId()) {		
+			$array_aux = array();
+			if (count($this->usagypermissionmdl->getByUsAgyId($us_agy->us_agy_id, 16))) $array_aux[1] = "SN Approver";
+			if (count($this->usagypermissionmdl->getByUsAgyId($us_agy->us_agy_id, 17))) $array_aux[2] = "PT Approver";
+			if (count($this->usagypermissionmdl->getByUsAgyId($us_agy->us_agy_id, 18))) $array_aux[3] = "Case Manager";
+			
+			$this->tpl->assign('us_agy_approver_perms', $array_aux);
+      
+      		$can_edit_approver_perms = true;
+
+      		$agency = $this->agencymdl->getByAgencyId($us_agy->agency_id);
+      		if($agency->agency_type == 'C' AND $this->getUserProfileId() == 3){
+        	$this->tpl->assign('edit_user_status', true);
+      		}
+      		else if($this->hasPermission(14)){
+        		$this->tpl->assign('edit_user_status', true);      
+      		}
+		} else {
+			$agency = $this->agencymdl->getByAgencyId($us_agy->agency_id);
+			// Allow edit Approver Permission when the patient's agency-status=SA, 
+			// we should allow a user with profile=Company,
+			if($agency->agency_type == 'A' AND $agency->agency_status == 'SA' AND $this->getUserProfileId() == 3){
+				$array_aux = array();
+				if (count($this->usagypermissionmdl->getByUsAgyId($us_agy->us_agy_id, 16))) $array_aux[1] = "SN Approver";
+				if (count($this->usagypermissionmdl->getByUsAgyId($us_agy->us_agy_id, 17))) $array_aux[2] = "PT Approver";
+				if (count($this->usagypermissionmdl->getByUsAgyId($us_agy->us_agy_id, 18))) $array_aux[3] = "Case Manager";
+				
+				$this->tpl->assign('us_agy_approver_perms', $array_aux);
+				$can_edit_approver_perms = true;
+	      
+			}
+		}
+		
+		$patient = $this->patientmdl->getById($patient_id);
+		$this->assignObject($us_agy);						
+		$this->validation->set_rules($this->rules);
+		if ($this->validation->run() == FALSE) {
+			/*if ($us_agy->agency_id != $this->getAgencyId()) {
+				$this->tpl->assign('no_commit_form', true); 
+			} */
+      		$user_status_list = array('A'=>'Active','I'=>'Inactive');
+      		
+      		if ($this->getUserProfileId() == 1 OR $this->getUserProfileId() == 3 ) {
+				$this->tpl->assign('no_commit_form', false);	
+			}else{
+				$this->tpl->assign('no_commit_form', true);	
+			}
+
+      		$this->tpl->assign('user_status_list', $user_status_list); 
+      		$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/team/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} 
+		else {
+			
+			$this->assignPostData($this->teammdl);
+			$this->teammdl->update($patient_id, $ppr_id);
+			$this->teammdl->updatePatientPrimary($ppr_id, ($this->input->post('primary') ? 1 : NULL));
+			
+			if ($can_edit_approver_perms) {				
+				if ($this->input->post('approver_type_id')) {
+					$this->teammdl->cleanPatientApprover($patient_id, $this->input->post('approver_type_id'), $us_agy->agency_id);
+					$this->teammdl->assignPatientApprover($ppr_id, $this->input->post('approver_type_id'));
+					$cms485 = $this->episodemdl->getCurrentByPatientId($patient_id);
+					if (count($this->visitlogmdl->getByEpsodeId($cms485->cms485_id, null, ($this->getAgencyType() == 'A' ? 3 : 8), null, null, null, $this->input->post('approver_type_id')))) {
+						
+						$ppr = $this->teammdl->getByPPRId($ppr_id);
+						$reassign = null;
+						$reassign->us_agy_id = $ppr->us_agy_id;
+						$reassign->patient_id = $patient_id;
+						$reassign->approver_type_id = $this->input->post('approver_type_id');
+						
+						$this->tpl->assign('reassign', $reassign);
+					}
+					
+				} else {
+					$this->teammdl->assignPatientApprover($ppr_id, null);
+				}
+			}
+
+			
+			$this->tpl->assign('gmessage', "Member" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($patient_id);
+			
+		}
+		
+	}
+	
+	
+	function delete ( $patient_id, $ppr_id ) {
+		$ppr = $this->teammdl->getByPPRId($ppr_id);
+		$us_agy = $this->usagymdl->getByUsAgyId($ppr->us_agy_id);
+		$visit_log = $this->visitlogmdl->getVisitTaskList($us_agy->user_id);
+		
+		if (empty($visit_log)) {
+			$this->teammdl->delete($ppr_id);
+			$this->tpl->assign('gmessage', "Member" . $this->lang->line('grl_del_msg'));
+			$this->index($patient_id);
+		}
+		else {
+			/*echo "<script>alert('User can not be deleted - Visits exist for this user. You may Inactivate this user to maintain history information or submit a Heat Ticket for this user to be permanently removed');</script>";
+			$this->edit($patient_id, $ppr_id );*/
+			$this->tpl->assign('patient_id', $patient_id);
+			$this->tpl->assign('ppr_id', $ppr_id);
+			$this->tpl->assign_include("dynamic_tpl", "patient/team/msg_team");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		}
+	}
+
+	function reassignPending  ( $us_agy_id, $patient_id, $approver_type_id ) {
+		
+		$cms485 = $this->episodemdl->getCurrentByPatientId($patient_id);
+		
+		foreach ($this->visitlogmdl->getByEpsodeId($cms485->cms485_id, null, 3, null, null, null, $approver_type_id) as $visit_log) {
+			
+			$this->visitlogmdl->updateUserApprover($visit_log->visit_log_id, $us_agy_id);
+			
+		}
+
+		$document = $this->xml->Document();
+		
+	}
+	
+ }

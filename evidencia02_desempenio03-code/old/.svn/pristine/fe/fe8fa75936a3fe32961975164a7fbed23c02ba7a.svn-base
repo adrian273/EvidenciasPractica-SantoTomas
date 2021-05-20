@@ -1,0 +1,298 @@
+<input type="hidden" value="" name="record_ids" id="record_ids">
+
+<table border="0" height="100%" width="98%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td>
+		{* <select name="search_type" onchange="switchDisplay('fd1');switchDisplay('fd2'); setValue('fd2', ''); setValue('fd1', '');">
+			<option value="1">User Name</option>
+			<option value="2">Visit/Task Name</option>
+		</select> &nbsp;
+		
+		<input type="text" name="keyword" id="fd1" style="width: 150px">
+		{html_options first_option='All Events' options=$visit_type_list id="fd2" style="display:none;width: 150px" selected=$visit_type_id name='visit_type_id' onchange="loadGrid()"}
+		
+		
+		
+		<input type="submit" value="Search"> *}
+		
+		<!-- <input type="text" name="keyword" value="" placeholder="search by keyword..." onkeyup="loadGrid();" />	 -->
+		<input type="hidden" name="visit_type" id="visit_type" />
+
+		<div id="toolbarObj" style="float: left"></div>
+		
+    </td>
+	<td align="center">
+		{if $therapy_type eq 'S'}
+			<a href="javascript:void(0);" data-id="ALL" class="js-visit-type">ALL</a> &nbsp;
+			<a href="javascript:void(0);" data-id="AQ" class="js-visit-type">AQ</a> &nbsp;
+			<a href="javascript:void(0);" data-id="BE" class="js-visit-type">BE</a> &nbsp; 
+			<a href="javascript:void(0);" data-id="MA" class="js-visit-type">MA</a> &nbsp; 
+			<a href="javascript:void(0);" data-id="MU" class="js-visit-type">MU</a> &nbsp; 
+			<a href="javascript:void(0);" data-id="RE" class="js-visit-type">RE</a> &nbsp; 
+			<a href="javascript:void(0);" data-id="HBR" class="js-visit-type">HBR</a> &nbsp; 
+		{else}
+			<a href="javascript:void(0);" data-id="ALL" class="js-visit-type">ALL</a> &nbsp; {* display All visit types (just like today) *}
+			<a href="javascript:void(0);" data-id="SN" class="js-visit-type">SN</a> &nbsp; {* display only Nurse visits (vit_visit_type.visit_type_id=22) *}    
+			<a href="javascript:void(0);" data-id="PT" class="js-visit-type">PT</a> &nbsp; {* display only PT visits  (vit_visit_type.visit_type_id=10 and 12) *} 
+			<a href="javascript:void(0);" data-id="OT" class="js-visit-type">OT</a> &nbsp; {* display only OT visits  (vit_visit_type.visit_type_id=40 and 42) *} 
+			<a href="javascript:void(0);" data-id="ST" class="js-visit-type">ST</a> &nbsp; {* display only ST visits   (vit_visit_type.visit_type_id=60 and 62) *} 
+			<a href="javascript:void(0);" data-id="MV" class="js-visit-type">MV</a> &nbsp; {* display only Missed visits   (vit_visit_type.visit_type_id=320) *} 
+			<a href="javascript:void(0);" data-id="DO" class="js-visit-type">DO</a> &nbsp; {* display only Doctor orders  (vit_visit_type.visit_type_id=200 and 201)  *}
+			<a href="javascript:void(0);" data-id="EV" class="js-visit-type">EV</a> &nbsp; {* display only Events  (vit_visit_type.visit_type_id=400 to 410) *} 
+			<a href="javascript:void(0);" data-id="CN" class="js-visit-type">CN</a> {* display only Comm Notes  (vit_visit_type.visit_type_id=350) *} 
+		{/if}
+	</td>
+    <td align="right">
+    	{if $therapy_type neq 'S'}
+			{html_options first_option='All Status' options=$visit_status_list name='visit_status_id' onchange='loadGrid()'}
+			<br>
+		{/if}
+		Search: <input type="text" name="keyword" value="" onkeyup="loadGrid();" style="margin-top: 3px;" />	
+    </td>
+  </tr>
+</table> 
+
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		//webBar.addSeparator('sp1', 3);
+		//webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		/*case 'print':
+		  printSelected()
+		  break;	*/
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>
+
+<script language="JavaScript" type="text/javascript">
+	function email_visits_confirm() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			var record_ids = grid.getCheckedRows(0);
+	     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+				
+			//var w2 = dhxWins.createWindow("w2", 10, 10, 400, 350);
+			var w2 = dhxWins.createWindow("w2", 10, 10, 800, 400);
+			w2.setText("Email Visits/Tasks");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+		    //w2.denyResize(); // deny resizing
+		    //w2.denyMove(); 
+		    dhxWins.window('w2').center();
+		    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}{$resource_path}/email_visits/{$patient_id}/"+record_ids);
+		{literal}}{/literal} else {literal}{{/literal}
+			alert("At least one Task/Visit must be selected");
+   	    {literal}}{/literal}
+    	
+    {literal}}{/literal}
+
+	
+	function show_emails(visit_log_id) {literal}{{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+		var w2 = dhxWins.createWindow("w2", 10, 10, 800, 400);
+		w2.setText("Visit Emails");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}{$resource_path}/show_emails/" + visit_log_id);
+    	
+    {literal}}{/literal}	
+
+	function printVisits() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			//alert(grid.getCheckedRows(0));
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}{$resource_path}/pdf/{$patient_id}';
+			gform.target='_blank';
+			gform.submit();
+		{literal}}{/literal} else {literal}{{/literal}
+			alert("At least one Task/Visit must be selected");
+   	    {literal}}{/literal}
+	{literal}}{/literal}  
+	
+	function printSign() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			//alert(grid.getCheckedRows(0));
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}{$resource_path}/pdf_sign/{$patient_id}/{$entity_id}';
+			gform.target='_blank';
+			gform.submit();
+		{literal}}{/literal} else {literal}{{/literal}
+			alert("At least one Task/Visit must be selected");
+   	    {literal}}{/literal}
+	{literal}}{/literal}  
+
+	function editRegister ( id ) {literal}{{/literal}
+		var allow_future_dated_visits= '{$agency_settings->allow_future_dated_visits}';
+		
+		if(grid.getUserData(id, 'visit_type_id') != 101 && grid.getUserData(id, 'visit_type_id') != 104) {literal}{{/literal} // it means if visit type = 101 or 104 then allow to see all future visits
+			if (id > 0 && grid.getUserData(id, 'date_diff') > 0 && allow_future_dated_visits != 1) {literal}{{/literal}
+				alert('Can not open future dated tasks.');
+				return;
+			{literal}}{/literal}
+		{literal}}{/literal}	
+			
+		if (id > 0){literal}{{/literal}		
+			{if $open_new_window eq 1}
+				//top.open_top_popup("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id+"/nw");						
+				window.open("{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id+"/nw", "_blank");				
+			{else}
+				document.location = "{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id;
+			{/if}
+			
+			
+		}
+	  
+	{literal}}{/literal}
+
+	{literal}
+
+
+      //window.onload = loadCalendarSelector;
+            
+      function loadCalendarSelector() {
+		    mCal = new dhtmlxCalendarObject("date_filter");  
+		    mCal.setSkin('dhx_blue');  
+		    mCal.setDateFormat('%m-%d-%Y');
+		    mCal.setOnClickHandler(loadGrid);
+		    mCal.draw();
+       }
+       
+       
+       function reassignApprover () {
+       
+			if (grid.getCheckedRows(0)) {{/literal}
+				ajax('{$index_url}{$resource_path}/reassignApprover/' + grid.getCheckedRows(0), ajaxParseAction);
+{literal}
+			}
+       
+       }
+{/literal}
+
+	function edit_schedule(visit_log_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 350, 250);
+			w2.setText("Edit Visit Schedule Time");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/task/task/edit_schedule/"+visit_log_id);
+			
+    	
+  {literal}}{/literal}
+
+ function restore(visit_log_id) {literal}{
+ 			if(confirm('Are you sure want to restore the visit?')){{/literal}
+     	ajax('{$index_url}{$resource_path}/restore/' + visit_log_id, ajaxParseAction);
+{literal}
+			}
+    	
+  }{/literal}
+	
+	function restored(status) {literal}{
+			if(status==1)
+ 			$('.tbl_msg_ok').html("Visit has been restored").fadeIn(function(){ $(this).fadeOut(5000);});    	
+			else
+ 			$('.tbl_msg').html("Visit Not restored").fadeIn(function(){ $(this).fadeOut(5000);});    				
+  	}{/literal}
+  	
+  	function confirmMissedVisit ( visit_log_id ) {literal}{
+ 
+     	if (confirm('Are you sure you want to make this a Missed Visit?')) {
+     		{/literal}document.location = index_url + 'patient/task/missed/{if $entity_id}{$entity_id}/{/if}' + visit_log_id;
+     		{literal}
+     	}
+    	
+    }{/literal}
+
+    function confirmReturnVisit ( visit_log_id, billing_processed ) {literal}{
+ 		var msg = '';
+ 		if (billing_processed) {
+ 			msg = 'Warning: Payroll and/or Billing has already been processed for this note. ';
+ 		}
+ 		msg += 'Are you sure you want to Return this Visit?';
+     	if (confirm(msg)) {
+     		{/literal}ajax('{$index_url}{$resource_path}/returnVisit/' + visit_log_id, ajaxParseAction);
+     		{literal}
+     	}
+    	
+    }{/literal}
+
+	function capture_signature(visit_log_id) {literal}{{/literal}
+		//alert(visit_log_id);
+		//alert(grid.getCheckedRows(0));
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+		w2.setText("Capture Patient Digital Signature");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		//w2.denyResize(); // deny resizing
+		//w2.denyMove(); 
+		w2.button("close")._doOnClick = function() {literal}{{/literal}
+			loadGrid();
+			w2.close();
+		{literal}}{/literal}	
+		
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}/task/task/capture_signature/" + visit_log_id);
+    {literal}}{/literal}	
+  
+  
+	$(document).ready(function(){literal}{{/literal}
+		$(".js-visit-type").click(function(){literal}{{/literal}
+			$("#visit_type").val($(this).attr("data-id"));
+			loadGrid();
+		{literal}}{/literal});
+	{literal}}{/literal})
+</script>

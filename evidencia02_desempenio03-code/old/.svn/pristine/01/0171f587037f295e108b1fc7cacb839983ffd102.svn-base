@@ -1,0 +1,186 @@
+
+<script language="JavaScript" type="text/javascript">
+	
+	function afterload () {literal}{{/literal}
+	
+	{literal}}{/literal}
+	
+	function editRegister ( id ) {literal}{{/literal}
+	
+		if (id > 0)
+			document.location = "{$index_url}{$resource_path}/{$resource_edit|default:"edit"}{if $entity_id}/{$entity_id}{/if}/" + id;
+	  
+	{literal}}{/literal}
+	
+</script>
+
+<table border="0" height="100%" width="100%" cellpadding="4" cellspacing="0" align="center"> 
+ {if $list_title}
+  <tr> 
+    <td valign="top" nowrap class="title" colspan="3">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$list_title}
+    </td>
+  </tr>
+  {/if}
+  {if $filter_tpl != ""}
+  <tr id="gfilter">
+   <form id="gform" method="POST" onsubmit="loadGrid(); return false;">
+    <input type="hidden" id="fecha_help">
+    <td colspan="3" height="40">
+		{include file=$filter_tpl}
+    </td>
+   </form>
+  </tr>
+  {else}
+  <tr>
+    <td colspan="3" height="10"></td>
+  </tr>
+  {/if}
+  <tr> 
+    <td colspan="3" height="100%">
+		<div id="grid_area" style="height: 99%; width: 100%"></div>
+    </td>
+  </tr>
+  <tr height="30"> 
+    <td nowrap width="30%" style="padding-top: 5px" valign="bottom">
+		{if !$no_grid_buttons}
+			<input type="button" class="btn" value="{$grl_add} {$add_sufix}" onclick="document.location = '{$index_url}{$resource_path}/{$resource_add|default:"add"}{if $entity_id}/{$entity_id}{/if}'">
+		{/if}
+    	{if $list_title == 'My Patients'}
+			<input type="button" class="btn" value="Quick Admit / Referral" onclick="document.location = '{$index_url}{$resource_path}/quickadmit'">
+		{/if}
+
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+
+		{if !$no_grid_buttons}
+		<input type="button" value="Print Medication List" onclick="gform.action='{$index_url}{$resource_path}/pdflist/{$entity_id}';gform.submit()">
+		{/if}
+    </td>
+    <td nowrap align="center" nowrap width="40%">
+    	{if $gmessage != ''}<span class="tbl_msg_ok" style="height: 25px">{$gmessage}</span>{/if}
+    </td>
+    <td nowrap width="30%" align="right" valign="bottom">
+		<div id="grid_paginal"></div>
+    </td>
+  </tr>
+
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	document.body.style.overflow = 'hidden';
+
+	var grid;
+	
+	var dhxWins;
+
+	function loadGrid () {literal}{{/literal}
+	
+		if (document.getElementById("grid_paginal").innerHTML != "") {literal}{{/literal}
+		
+			grid.clearAll();
+			grid.updateFromXMl("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform');
+			
+		{literal}}{/literal} else {literal}{{/literal}
+	
+			document.getElementById("grid_paginal").innerHTML = "";
+			document.getElementById("grid_area").innerHTML = "";
+			
+		    grid = new dhtmlXGridObject("grid_area");
+	    	grid.setImagePath("{$base_url}style/grid/imgs/")
+	    	grid.iconImagePath = "{$base_url}style/grid/imgs/";
+	    	grid.setSkin("light");
+	    	grid.enablePaging(true, 30, 5, "grid_paginal");
+	    	{if !$noedit}grid.setOnRowSelectHandler(editRegister);{/if}
+	    	{if $checkHandler}
+	    		grid.setOnCheckHandler(checkRegister);
+	    	{/if}
+	    	
+	    	grid.enableSmartXMLParsing(true);
+	    	
+	    	grid.kidsXmlFile = "{$index_url}{$resource_path}/child";
+    		grid.loadXMLPost("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform', afterload);
+	    	grid.setSizes();
+    	
+    	{literal}}{/literal}
+    	
+	{literal}}{/literal}
+	
+	function deleteRegister () {literal}{{/literal}
+
+		if (grid.getSelectedId(0)) document.location = "{$index_url}{$resource_path}/delete{if $entity_id}/{$entity_id}{/if}/" + grid.getSelectedId();
+	  
+	{literal}}{/literal}
+	
+	function checkRegister ( idr, idc, value ) {literal}{{/literal}
+	
+		ajax("{$index_url}{$resource_path}/checkHandler{if $entity_id}/{$entity_id}{/if}/" + idr + "/" + idc + "/" + value, ajaxParseAction);
+	  
+	{literal}}{/literal}
+
+
+    function checkEpass(){literal}{{/literal}
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 200);
+		w1.setText("Enter your Electronic Password");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}/patient/medication/modalCheckEpassword/{$entity_id}");
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    
+
+    {literal}}{/literal}
+    
+    function showApprovals(){literal}{{/literal}
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 0, 0, 400, 400);
+		w1.setText("Medication Approvals");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}/patient/medication/modalMedicationApprovals/{$entity_id}");
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    
+
+    {literal}}{/literal}
+
+    function cancelModal () {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+
+	
+	
+	loadGrid();
+	
+</script>

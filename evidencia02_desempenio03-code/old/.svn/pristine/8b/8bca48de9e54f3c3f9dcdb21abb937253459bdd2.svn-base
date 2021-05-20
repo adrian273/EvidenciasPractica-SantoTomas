@@ -1,0 +1,74 @@
+<?php
+
+ class AgencySettingsMdl extends Model {
+
+	var $agency_id;
+	var $pt_approver;
+	var $sn_approver;
+	var $invoice_seq_nbr;
+	var $ptpn_req_co_sign;
+	var $override_ptpn_sup_co_sign;
+	var $allow_future_dated_visits;
+	var $block_pt_new_visit_on_hold_cert_end; // Block new visits for patients On-Hold or after certification has completed= 1/0. Default 1 (YES).
+
+	var $pt_validation;
+	var $ot_validation;
+	var $st_validation;
+
+	var $send_invoice;
+	var $send_visit_note;
+	var $send_upload_doc;
+	var $send_in_bulk;
+	var $send_tracking_sheet;
+	var $send_invoice_note;
+	var $track_goals_ptpn;
+	
+	function AgencySettingsMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $agency_id, $config=null ) {
+	
+		$this->db->where('agency_id', $agency_id);
+		$query = $this->db->get('agy_agency_settings');
+		
+		if (is_null($config)) {
+			return $query->row();
+		} else {
+			return $query->row()->$config;
+		}			
+	
+	}
+	
+	function insert ( $agency_id ) {
+		if (is_null($this->block_pt_new_visit_on_hold_cert_end)) {
+			$this->block_pt_new_visit_on_hold_cert_end = 1;
+		}
+		
+		$this->agency_id = $agency_id;
+		
+		$this->db->insert("agy_agency_settings", $this);
+		
+	}
+	
+	function update ( $agency_id ) {
+		if (is_null($this->block_pt_new_visit_on_hold_cert_end)) {
+			$this->block_pt_new_visit_on_hold_cert_end = 1;
+		}
+		
+		$this->agency_id = $agency_id;
+		
+		$this->db->where("agency_id", $agency_id);
+		$this->db->update("agy_agency_settings", $this);
+		
+	}
+	
+	function updateFlex($agency_id, $attribute, $value, $where = 'agency_id') {
+		$this->db->where($where, $agency_id);
+		$this->db->set($attribute, $value);
+		$this->db->update('agy_agency_settings');
+	}
+  
+ }

@@ -1,0 +1,40 @@
+
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+	<td width="10" align="right">&nbsp;</td>
+    <td>
+		<div style="float: left; margin-right: 30px;">
+			<b>Date Start:</b>
+			<input type="text" id="date_start" name="date_start" onpropertychange="loadGrid();" value="{$date_start}" size="10" 
+			onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_start'), document.getElementById('date_end')); return false;" >
+			&nbsp;&nbsp;&nbsp;
+			
+			<b>End:</b>
+			<input type="text" id="date_end" name="date_end" onChange="loadGrid();" onpropertychange="loadGrid();" value="{$date_end}" size="10"
+			onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('date_start'), document.getElementById('date_end')); return false;" >
+			&nbsp;
+			{* <input type="submit" value="Update" id="update_filter" onclick="loadGrid();" /> *}
+		</div>
+		<div style="float: left; margin-right: 30px;">
+			<label><input type="radio" name="status" value="1" onclick="loadGrid();" checked> Active</label>
+			<label><input type="radio" name="status" value="0" onclick="loadGrid();"> Inactive</label>
+		</div>
+		<div style="float: left; margin-right: 30px;">
+			<strong>Search</strong>
+			<input type="hidden" name="date_filter" value="payment" />
+			<input type="text" name="keyword" value="" placeholder="search by keyword..." onkeyup="loadGrid();" />
+		</div>
+    </td>
+
+  </tr>
+</table>
+<script type="text/javascript" language="javascript">
+$(document).ready(function() {literal}{{/literal}
+	// Look for changes in the value
+	$("#date_start, #date_end").bind("propertychange change click keyup input paste", function(e){literal}{{/literal}
+		loadGrid();
+	{literal}}{/literal});
+{literal}}{/literal});
+</script>

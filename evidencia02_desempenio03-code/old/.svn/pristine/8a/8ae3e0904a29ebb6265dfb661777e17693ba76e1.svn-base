@@ -1,0 +1,362 @@
+<?
+
+include('doctororderdocument.php');
+
+class DoctorOrder extends DoctorOrderDocument {
+
+	var $rules = array("doc_doctor_order_type_id" => "required",
+					   "order_date"				  => "required",
+					   "order_description"		  => "required",
+					   "doctor_office_id"		  => "required");
+
+	function DoctorOrder() {
+	
+		parent::DoctorOrderDocument();
+		
+		$this->tpl->assign("resource_path", "doctororder/doctororder");
+
+	}
+
+	function index ( $doctor_order_id ) {
+
+		$this->tpl->assign("faction", "index");
+		$this->tpl->assign("record_id", $doctor_order_id);
+		
+		$this->tpl->assign("tab_page", true);
+		
+		$doctor_order = $this->doctorordermdl->getByDoctorOrderId($doctor_order_id);
+		
+		$this->tpl->assign('patient_list', $this->getPatients(null, null, false));
+		$this->tpl->assign('order_type_list', $this->docdoctorordertypemdl->getAdd());
+		$this->tpl->assign('doctor_office',  $this->agencymdl->getByAgencyId($doctor_order->doctor_office_id));
+		
+//		if ($doctor_order->tab_023_order_status > 2 || $doctor_order->order_by_user_id != $this->getUsAgyId()) {
+//			$this->tpl->assign('no_commit_form', true);
+//		}
+		
+		$this->assignObject($doctor_order);
+		$this->tpl->assign('order_by', $this->usagymdl->getByUsAgyId($doctor_order->order_by_user_id));
+		$this->assignObject($this->patientmdl->getById($doctor_order->patient_id));
+		
+		$this->tpl->assign('doctor_office_id', $doctor_order->doctor_office_id);
+		
+		if ($this->input->post('doc_doctor_order_type_id') == 4 AND $this->input->post('tab_023_order_status') != 2) {
+			//$this->rules['tab_094_expected_time_sign'] = "required";
+		}
+
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+      if ($this->session->userdata('doctororder_return')) {
+        $this->tpl->assign('cancel_action', $this->session->userdata('doctororder_return'));
+      }
+			$this->setfbase($doctor_order_id);
+			$this->tpl->assign_include("dynamic_form", "doctor_order/document/doctororder");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->assignPostData($this->docdoctorordermdl);
+			$this->assignPostData($this->doctorordermdl);
+			
+			$this->docdoctorordermdl->update($doctor_order_id, $this->input->post('tab_023_order_status'));
+			$this->doctorordermdl->update($doctor_order_id);
+			
+			$this->updateEdition($doctor_order_id);
+			
+      if ($this->session->userdata('doctororder_return')) {
+				header("Location: " . $this->config->config["index_url"] . $this->session->userdata('doctororder_return'));
+        $this->session->unset_userdata('task_return');
+				return;
+			}else{
+        redirect('doctororder/front');
+      }
+			
+
+		}
+		
+	}
+	
+	function add () {
+		
+		$this->tpl->assign("faction", "add");
+		$this->tpl->assign("default_date", date('Y-m-d'));
+		if (!$this->input->post('tab_094_expected_time_sign')) $this->tpl->assign("tab_094_expected_time_sign", 4);
+		
+		$this->tpl->assign('patient_list', $this->getPatients(null, null, false));
+		$this->tpl->assign('order_type_list', $this->docdoctorordertypemdl->getAdd());
+		if ($this->input->post('patient_id')) { 
+			$this->tpl->assign('doctor_office_list',  $this->patientdoctorofficemdl->get($this->input->post('patient_id'), false));
+		}
+		
+		$this->tpl->assign('agency_list', $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false));
+		
+		if ($this->input->post('doc_doctor_order_type_id') == 4) {
+			$this->rules['tab_094_expected_time_sign'] = "required";
+		}
+		
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Doctor Order");
+			$this->tpl->assign_include("dynamic_tpl", "doctor_order/document/fbase");
+			$this->tpl->assign_include("dynamic_form", "doctor_order/document/doctororder");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->assignPostData($this->docdoctorordermdl);
+			$this->assignPostData($this->doctorordermdl);
+			
+			$this->docdoctorordermdl->order_by_user_id = $this->getUsAgyId();
+			$this->docdoctorordermdl->insert($this->input->post('patient_id'), $this->input->post('tab_023_order_status'));
+			
+			$this->doctorordermdl->insert($this->docdoctorordermdl->doc_doctor_order_id);
+			
+			$this->updateEdition($this->docdoctorordermdl->doc_doctor_order_id);
+			
+			redirect('doctororder/front');
+
+		}
+		
+	}
+	
+	function addContractor () {
+		
+		$this->tpl->assign("faction", "addContractor");
+		$this->tpl->assign("default_date", date('Y-m-d'));
+		if (!$this->input->post('tab_094_expected_time_sign')) $this->tpl->assign("tab_094_expected_time_sign", 4);
+		
+//		if ($this->input->post('agency_id')) {
+			$this->tpl->assign('patient_list', $this->patientmdl->getByUsAgyIdAndAgency($this->getUsAgyId(), $this->input->post('agency_id'), null, null, false));
+//		}
+		$this->tpl->assign('physician_list',  $this->teammdl->getAll($this->input->post('patient_id'), array(9), null, false));
+		$this->tpl->assign('order_type_list', $this->docdoctorordertypemdl->getAdd());
+		
+		$this->tpl->assign('agency_list', $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false));
+		
+		if ($this->input->post('doc_doctor_order_type_id') == 4) {
+			$this->rules['tab_094_expected_time_sign'] = "required";
+		}
+		
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Doctor Order");
+			$this->tpl->assign_include("dynamic_tpl", "doctor_order/document/fbase");
+			$this->tpl->assign_include("dynamic_form", "doctor_order/document/doctororder_contractor");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->assignPostData($this->docdoctorordermdl);
+			$this->assignPostData($this->doctorordermdl);
+			
+			$this->docdoctorordermdl->order_by_user_id = $this->getUsAgyId();
+			$this->docdoctorordermdl->insert($this->input->post('patient_id'), $this->input->post('tab_023_order_status'));
+			
+			$this->doctorordermdl->insert($this->docdoctorordermdl->doc_doctor_order_id);
+			
+			redirect('doctororder/front');
+
+		}
+		
+	}
+	
+	function delete ( $doctor_order_id ) {
+		
+		$this->docdoctorordermdl->delete($doctor_order_id);
+		
+		redirect('doctororder/front');
+		
+	}
+	
+	function physicianList ( $patient_id ) {
+		
+		$document = $this->xml->Document();
+		
+		$document->append($this->xml->Option("", "Select Option"));
+		
+		foreach ($this->patientdoctorofficemdl->get($patient_id) as $doctor) {
+			
+			$document->append($this->xml->Option($doctor->doctor_office_id, $doctor->agency_name));
+			
+		}
+		
+	}
+	
+	function patientList ( $agency_id ) {
+		
+		$document = $this->xml->Document();
+		
+		$document->append($this->xml->Option("", "Select Option"));
+		
+		foreach ($this->patientmdl->getByUsAgyIdAndAgency($this->getUsAgyId(), $agency_id, null, null, false) as $id => $patient) {
+			
+			$document->append($this->xml->Option($id, $patient));
+			
+		}
+		
+	}
+	
+	function pdfPage ( $__FONT, $doctor_order, $agency ) {
+        $cero_x = 11;
+        $cero_y = 2;
+		$this->fpdf->Open();
+		$this->fpdf->AddPage();
+		
+        $this->fpdf->SetDrawColor(130, 100);
+        //$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->SetFont('Arial','B',12);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $agency->agency_name); // agency name
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 20 ),"Licensed and Certified Home Health Agency");
+        
+        $this->fpdf->Rect(8,25, 577, 760);
+        
+        //$this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetFont('Arial', 'B', 13);
+        if($doctor_order->doc_doctor_order_type_id==5)
+        $this->fpdf->Text(210, 38, "DOCTOR COMMUNICATION NOTE");
+        else
+        $this->fpdf->Text(260, 38, "DOCTOR ORDER");
+        //$this->fpdf->Text(460, 38, "Order Date   " . standard_date(mysql_to_unix($doctor_order->order_date)));
+        
+    	$this->fpdf->Line(8 , 42.5, 585, 42.5);
+    	
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $address = $agency->address.", ".$agency->city.", ".$agency->state_name_short.", ".$agency->zip;
+        $this->fpdf->Text(11, 800, $address);
+        $this->fpdf->Text(350, 800, "Phone: " . $agency->phone_primary);
+        $this->fpdf->Text(470, 800, "Fax: " . $agency->fax);
+        $this->fpdf->Text(230, 820, "HomeHealthSoft Inc.   2006 – ".date("Y")." ©");
+	}
+	
+	function pdf ( $doctor_order_id ) {
+
+		// getting data
+		$doctor_order = $this->doctorordermdl->getByDoctorOrderId($doctor_order_id);
+		$patient 	  = $this->patientmdl->getById($doctor_order->patient_id);
+		$agency	      = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$doctor_office = $this->agencymdl->getByAgencyId($doctor_order->doctor_office_id);
+		$order_by 	  = $this->usagymdl->getByUsAgyId($doctor_order->order_by_user_id);
+		
+		$path_ticket = realpath("style/images/icon_enable_negro.gif");
+		
+        $__FONT['PDF']['SIZE'] = 11;
+        $__FONT['PDF']['FORM_MEDIUM'] = 10;
+        //$__FONT['PDF']['FORM_SMALL'] = 9;
+        $__FONT['PDF']['FORM_SMALL'] = 10;
+        $__FONT['PDF']['FORM_SMALL2'] = 9;
+        $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+        $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+        $__FONT['PDF']['FORM_arial8'] = 9.5;
+		
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH', $this->config->item('fonts_path'));
+
+		$this->pdfPage($__FONT, $doctor_order, $agency);
+      
+      // Order Date
+      $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 55+30, "Order Date: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 55+30, standard_date(mysql_to_unix($doctor_order->order_date)));
+      
+    
+    	// physician
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 70+30+10, "Physician: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 70+30+10, $doctor_office->agency_name);
+	    
+    	// physician
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 85+30+20, "Patient Name: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 85+30+20, $patient->first_name . ' ' . $patient->last_name);
+	    
+    	// order by
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 100+30+30, "Ordered By: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 100+30+30, $order_by->complete_name);
+	    
+    	// order by
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 115+30+40, "Order Description: ");
+	    
+	    $eje_y = 115+15+30+40+10;
+		$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+    /*$this->fpdf->SetXY(11, $eje_y);
+    $this->fpdf->MultiCell(566, 12, $doctor_order->order_description);
+        */		
+    	$lines = explode("\n", wordwrap(@$doctor_order->order_description, 86, "\n"));
+		foreach ($lines as $substring) {
+			
+			//$this->fpdf->Text(150, $eje_y, $substring);
+			$this->fpdf->Text(30, $eje_y, $substring);      
+      		$this->fpdf->SetLineWidth( 0.5 );
+      		$this->fpdf->Line(30, $eje_y+4, 554, $eje_y+4);
+        
+			$eje_y += 15;
+			
+			if ($eje_y > 660) {
+				$this->pdfPage($__FONT, $doctor_order, $agency);
+
+        		$this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+        		$this->fpdf->Text(30, 55, "Order Description: ");
+
+				$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+				$eje_y = 55+30;
+			}
+			
+		}
+		
+		if ($eje_y >= 675) {
+			$this->pdfPage($__FONT, $doctor_order, $agency);
+		}
+		
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 700-20,  "Clinician Signature:");
+    $this->fpdf->Text(125, 700-20, "____________________________________________            Date: _____________");
+//	    if ($doctor_order->electronic_signed == 1 ) {
+	    if ($doctor_order->tab_023_order_status == 2 ) {
+	      $this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+  			//$this->fpdf->Text(130, 700-20, "" . $order_by->complete_name);
+  			$this->fpdf->Text(130, 700-20, "ELECTRONICALLY SIGNED BY " . $order_by->complete_name);
+  			//$this->fpdf->Text(430, 700-20, standard_date(mysql_to_unix($doctor_order->sent_date)));	    	
+  			$this->fpdf->Text(430, 700-20, standard_date(mysql_to_unix($doctor_order->order_date)));	    	
+	    }
+      if($doctor_order->doc_doctor_order_type_id!=5)  {
+  	    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+  	    $this->fpdf->Text(30, 740-20, "Physician Signature:");
+  	    $this->fpdf->Text(130, 740-20, "____________________________________________          Date: _____________");
+
+  		$this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+  	    if (!is_null($doctor_order->signed_date)) {	    
+    			if ($doctor_order->electronic_doctor_sign == 1) {
+    				$this->fpdf->Text(130, 740-20, "ELECTRONICALLY SIGNED BY " . $doctor_office->agency_name);
+    			} else if ($doctor_order->tab_023_order_status != 2 ) {
+    				$this->fpdf->Text(130, 740-20, "MANUALLY SIGNED BY " . $doctor_office->agency_name);
+    				$this->fpdf->Text(130, 750-20, "(MANUAL ORIGINAL COPY SHOULD BE IN PATIENT'S FOLDER)");
+    			}
+  	    }
+  	    
+  	    if ($doctor_order->tab_023_order_status != 2 AND $doctor_order->signed_date) {	    
+  			$this->fpdf->Text(430, 740-20, standard_date(mysql_to_unix($doctor_order->signed_date)));
+  	    }
+  	    
+      }  
+        $this->fpdf->Output('order_order.pdf','D');
+        
+	}
+
+}

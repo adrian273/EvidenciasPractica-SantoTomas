@@ -1,0 +1,160 @@
+<?php
+
+ class Form8606AMdl extends Model {
+
+    var $vt101_id;
+    var $visit_log_id;
+    var $order_date;
+    var $requested_skilled;
+    var $list_of_none;
+    var $case_manager_user_id;
+    var $date_sign_case_manager;
+    var $diagnosis;
+    var $brief_descrip;
+    var $specif_qual_cond;
+    var $describe_attach;
+    var $can_components;
+    var $if_no_describe;
+    var $describe_plan;
+    var $pt_signature;
+    var $pt_signed_date;
+    var $clinician_signature;
+    var $clinician_signed_date;
+    var $cm_signature;
+    var $cm_signed_date;
+
+    // Addendum Form
+	var $adden_diagnosis;
+	var $adden_ther_evaluation;
+	var $adden_no_title_field;
+	var $adden_client_diagnosis;
+	var $adden_intervention;
+	var $adden_base_line1;
+	var $adden_goals1;
+	var $adden_objectives1;
+	var $adden_base_line2;
+	var $adden_goals2;
+	var $adden_objectives2;
+	var $adden_base_line3;
+	var $adden_goals3;
+	var $adden_objectives3;
+	var $adden_duration;
+	var $adden_amount;
+	var $adden_location;
+
+	var $upload_document_name;
+    var $upload_document_name2;
+
+	function Form8606AMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt101_form_8606a');
+		return $query->row();
+	
+	}
+
+	function getEmpty ( ) {
+		return $this;
+	}
+
+	function insert () {
+	
+		$this->db->insert('vt101_form_8606a', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->vt101_id);
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$this->db->update('vt101_form_8606a', $this);
+	
+	}
+	
+	function getPrevious ( $user_id=null, $previous_date, $episode_id, $allepisodes=false ) {
+		$soc_id = null;
+        if($allepisodes AND $episode_id){      
+          $this->db->select('soc_id');
+          $this->db->where('cms485_id', $episode_id);
+          $query = $this->db->get('cms_485');    
+          $row = $query->row_array();
+          $soc_id = $row['soc_id'];
+        }
+        
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt101_form_8606a.visit_log_id');
+		
+        if (!is_null($user_id))
+		  $this->db->where('visit_user_id', $user_id);
+		  $this->db->where('visit_date_time <', $previous_date);
+		if(!is_null($soc_id)){
+            $this->db->join('cms_485',   'cms_485.soc_id = '.$soc_id);
+            $this->db->where('vis_visit_log.cms485_id=cms_485.cms485_id');
+            $this->db->group_by('vis_visit_log.visit_log_id');
+        }else{
+            $this->db->where('cms485_id', $episode_id);
+		}
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt101_form_8606a');
+		return $query->result();
+		
+	}
+  
+    function getNext ( $user_id=null, $previous_date, $episode_id ) {
+		
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt101_form_8606a.visit_log_id');
+		
+        if (!is_null($user_id))
+		  $this->db->where('visit_user_id', $user_id);
+		
+        $this->db->where('visit_date_time >', $previous_date);
+		$this->db->where('cms485_id', $episode_id);
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt101_form_8606a');
+		return $query->result();
+		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new Form8606AMdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->vt101_id = $object1->vt101_id;
+		$object->visit_log_id = $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('vt101_form_8606a', $object);
+		
+	}
+	
+    function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+
+        $this->db->where($where, $visit_log_id);
+        $this->db->set($attribute, $value);
+
+        $this->db->update('vt101_form_8606a');
+
+    }
+
+    function delete($visit_log_id) {
+
+        $this->db->where('visit_log_id', $visit_log_id);
+        $this->db->delete('vt101_form_8606a');
+
+    }
+
+ }

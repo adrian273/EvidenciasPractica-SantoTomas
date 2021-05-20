@@ -1,0 +1,45 @@
+<?
+class DoctorOrderMdl extends Model {
+
+	var $doctor_order_id;
+	var $doc_doctor_order_id;
+	var $order_description;
+
+	function DoctorOrderMdl() {
+		
+		parent::Model();
+		
+	}
+
+	function getByDoctorOrderId ( $doctor_order_id ) {
+
+		$this->db->join('doc_doctor_order', 'doc_doctor_order.doc_doctor_order_id = doctor_order.doc_doctor_order_id');
+		
+		$this->db->where("doctor_order.doc_doctor_order_id", $doctor_order_id);
+		
+		$query = $this->db->get("doctor_order");
+		return $query->row();
+		
+	}
+	
+	function insert ( $doc_doctor_order_id ) {
+
+		$this->doc_doctor_order_id = $doc_doctor_order_id;
+
+		$this->db->insert("doctor_order", $this);
+		$this->doctor_order_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $doc_doctor_order_id ) {
+
+		$doctor_order = null;
+		$doctor_order->order_description = $this->order_description;
+		
+		$this->db->where("doc_doctor_order_id", $doc_doctor_order_id);
+
+		$this->db->update("doctor_order", $doctor_order);
+		
+	}
+	
+}

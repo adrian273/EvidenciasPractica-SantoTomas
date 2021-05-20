@@ -1,0 +1,90 @@
+<?
+
+ class UploadDocumentsMdl extends Model {
+
+	var $document_id; 	 	
+	var $patient_id;
+	var $document_type;
+	var $upload_date;
+	var $notes;
+	var $document;
+	var $create_user_id;
+
+	function UploadDocumentsMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $patient_id, $keyword=null, $document_type=null ) {
+	
+		$this->db->join('tab_parameters', 'upload_documents.document_type = tab_parameters.tab_value AND tab_parameters.tab_type = 104', 'LEFT');
+		$this->db->order_by("upload_date", "desc");
+		
+		if (!is_null($keyword)) {
+			$this->db->like('document', $keyword);
+		}
+		
+		if (!is_null($document_type)) {
+			$this->db->where("document_type", $document_type);
+		}
+		
+		$this->db->where("upload_documents.patient_id", $patient_id);
+		
+		$query = $this->db->get('upload_documents');
+		return $query->result();
+
+	}
+	
+	function getById ( $document_id ) {
+		
+		$this->db->select('upload_documents.*');
+		$this->db->join('tab_parameters', 'upload_documents.document_type = tab_parameters.tab_value AND tab_parameters.tab_type = 104', 'LEFT');
+
+		$this->db->where('document_id', $document_id);
+		$query = $this->db->get('upload_documents');
+		return $query->row();
+	}
+	
+	function insert ( $patient_id, $document ) {
+		
+		$this->patient_id = $patient_id;
+		$this->document = $document;
+		
+		$this->db->insert('upload_documents', $this);
+		$this->document_id = $this->db->insert_id();
+		
+	}	
+	
+	function update ( $document_id, $patient_id=null ) {
+		
+		$this->document_id = $document_id;
+		$this->patient_id = $patient_id;
+		
+		$this->db->where('document_id', $document_id);
+		
+		$this->db->update('upload_documents', $this);
+		
+	}
+	
+	function delete ( $document_id ) {
+		
+		$this->db->where('document_id', $document_id);
+		
+		$this->db->delete('upload_documents'); 
+		
+	}
+
+	function typeList ( $patient_id, $keyword=null ) {
+		$this->db->select('document_type');
+		if (!is_null($keyword)) {			
+			$this->db->like('document_type', $keyword);
+		}
+		
+		$this->db->or_where("upload_documents.patient_id = " . $patient_id . ")");
+
+		$query = $this->db->get('upload_documents');
+		return $query->result();				
+	}
+	
+ }

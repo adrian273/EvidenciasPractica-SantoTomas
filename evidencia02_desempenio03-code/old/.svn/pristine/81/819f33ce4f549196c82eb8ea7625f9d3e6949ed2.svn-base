@@ -1,0 +1,318 @@
+<script language="JavaScript" type="text/javascript">
+  
+  {literal}
+  
+  function approve () {
+  	setValue('visit_status_id', 4); 		
+  	tform.submit();
+  }
+  
+  {/literal}
+</script>
+  
+
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center"> 
+  <tr>
+    <td colspan="2" height="20px">
+    
+		{if $task_page}
+		<div style="float: right">
+			{section name=page_loop loop=$task_page start=0}
+				<div id="btnpag{$smarty.section.page_loop.iteration}" onclick="hidePages({$task_page}); switchDisplay('pag{$smarty.section.page_loop.iteration}'); this.className = 'div_page_tab div_page_tab_selected'" class="div_page_tab">Page {$smarty.section.page_loop.iteration}</div>
+			{/section}
+		</div>
+		{/if}
+    	
+    </td>
+  </tr>
+
+  <tr bgcolor="#BFDFFF">
+    <td valign="bottom" nowrap class="title" colspan="2">
+    	<div style="float: left">
+    		<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$form_title}
+    	</div>
+    	<div style="float: left; padding-left: 20px">
+			<table border="0" width="50%" cellpadding="0" cellspacing="0"> 
+			  <tr>
+			  	<td class="ftitle" style="width: 25%" nowrap>Patient:</td>
+			    <td style="width: 25%" nowrap>&nbsp;&nbsp;{$patient->first_name} {$patient->last_name}</td>
+			  	<td class="ftitle" style="width: 25%" nowrap>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certification:</td>
+			    <td style="width: 25%" nowrap>&nbsp;&nbsp;{$episode_start_date|date_format:"%m-%d-%Y":"":true}  to {$episode_end_date|date_format:"%m-%d-%Y":"":true}</td>
+			  </tr>
+			</table>
+    	</div>
+    	{if !$hide_top_right}
+    	<div style="float: right; font-size: 10px">
+    		<a href="javascript:void(0)" onclick="document.location='{$index_url}{$resource_path}/pdf/{$visit_log_id}'">print <img src="{$image_url}pdf.gif" style="vertical-align: bottom" border="0"></a> |
+    		<a href="javascript:void(0)" onclick="document.getElementById('form_div').scrollTop = 0">top</a> | 
+    		<a href="javascript:void(0)" onclick="document.getElementById('form_div').scrollTop = document.getElementById('form_div').scrollHeight">bottom</a>
+    	</div>
+    	{/if}
+    </td>
+  </tr>
+
+  <tr> 
+     <td valign="bottom">
+  		
+  		{if ($visit_status_id == 3 || $visit_status_id == 8) && $can_approve}
+  			<input type="button" class="btn" value="{$grl_approve}" onclick="approve()">
+  			<input type="button" class="btn" value="{$grl_return}" onclick="setValue('visit_status_id', 5); tform.submit()">
+  		{/if}
+
+  		{if $visit_status_id == 1 OR $visit_status_id == 2 OR $visit_status_id == 5 OR $visit_status_id == 6}
+  			{if $upload_document_name || $upload_document_name2}
+  				<input type="button" class="btn" value="{$grl_subt_app}" onclick="setValue('visit_status_id', 3); tform.submit()">
+  			{/if}
+  		{/if}
+  		
+  		{if $visit_status_id == 4 && $return_from_approved == true}
+  			<input type="button" class="btn" value="{$grl_return}" onclick="document.location = '{$index_url}{$resource_path}/returnFromApproved/{$visit_log_id}'">
+  		{/if}
+  		
+  		{if $reactive_enable}
+  			<input type="button" class="btn" value="{$grl_reactivate}" onclick="document.location = '{$index_url}task/task/reactivate/{$visit_log_id}{if $window eq 'nw'}/nw{/if}'">
+  		{/if}
+
+  		{$smarty.capture.addition_button}
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+
+  		{if $print_url}
+  			<input type="button" class="btn" value="Print" onclick="tform.action='{$print_url}';document.tform.submit()">
+  		{else}
+  			<input type="button" class="btn" value="Print" onclick="tform.action='{$index_url}{$resource_path}/pdf/{$visit_log_id}';document.tform.submit()">
+  		{/if}
+
+  		{if $cancel_action}
+				{if $window eq 'nw'}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();">
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">*}
+				{else}
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">
+				{/if}
+  		{else}
+				{if $window eq 'nw'}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();"> 
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/approval'">*}
+				{else}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/approval'">
+				{/if}			  			
+  		{/if}
+
+    </td>
+    <td>
+    	{if $task_form_updated}
+    		<span class="tbl_msg_ok">Form {$grl_upd_msg}</span>
+    	{/if}
+    	{if $task_elimination_enable}
+    	<input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister({$visit_log_id})" style="float: right">
+		{/if}
+    </td>
+  </tr>
+
+  <tr> 
+    <td height="100%" valign="top" colspan="2">
+	  <div id="form_div" style="overflow: auto; height: 100%">
+		  {include file=$dynamic_form}
+
+			<table border="0" width="100%" cellpadding="0" cellspacing="4" style="padding-bottom:100px;"> 
+			 <form name="tform" id="tform" method="POST" action="{$index_url}{$resource_path}/changeStatus/{$visit_log_id}">
+	 		 <input type="hidden" id="fecha_help">
+	 		 <input type="hidden" id="visit_status_id" name="visit_status_id" value="">
+	 		 {if $visit_type_id != 200 & $visit_type_id != 103}
+				  {if $show_user_comments}
+				  <tr>
+				    <td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User Comments</td>
+				  </tr> 
+				  <tr>
+				    <td height="10"></td>
+				  </tr>
+				  <tr>
+				    <td>
+				    	{$user_comments}
+				    </td>
+				  </tr>   
+				  {/if}
+				  {if $show_cm_comments}
+				  <tr>
+				    <td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Case Manager Comments</td>
+				  </tr> 
+				  <tr>
+				    <td height="10"></td>
+				  </tr>
+				  <tr>
+				    <td>
+				    	<textarea name="comments" cols="60" rows="5" wrap="auto" {if $visit_status_id == 4 || $visit_status_id == 5}disabled{/if}>{$comments}</textarea>
+				    	<i>This field is not printed</i>
+				    </td>
+				  </tr>
+				  {/if}
+
+				<tr>
+					<td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency Comments</td>
+				</tr> 
+				{if $can_write_agency_cm_comments}
+					  <tr>
+					    <td height="10"></td>
+					  </tr>
+					  <tr>
+					    <td>
+					    	<textarea name="agency_cm_comments" cols="60" rows="5" wrap="auto">{$agency_cm_comments}</textarea><i>This field is not printed</i>
+					    </td>
+					  </tr>
+				{elseif $agency_cm_comments neq ''}
+				  	  <!-- <tr>
+					    <td class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency Comments</td>
+					  </tr> --> 
+					  <tr>
+					    <td height="10"></td>
+					  </tr>
+					  <tr>
+					    <td>
+				    		<i>{$agency_cm_comments|nl2br}</i>
+				    		<input type="hidden" name="agency_cm_comments" value="{$agency_cm_comments}">
+				    	</td>
+					  </tr>
+			  	{/if}
+			  	
+			  {/if}
+			 </form>
+			</table> 
+			
+	  </div>
+		
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2"></td>
+  </tr>
+  <tr> 
+     <td valign="bottom">
+  		
+  		{if ($visit_status_id == 3 || $visit_status_id == 8) && $can_approve}
+  			<input type="button" class="btn" value="{$grl_approve}" onclick="approve()">
+  			<input type="button" class="btn" value="{$grl_return}" onclick="setValue('visit_status_id', 5); tform.submit()">
+  		{/if}
+
+  		{if $visit_status_id == 1 OR $visit_status_id == 2 OR $visit_status_id == 5 OR $visit_status_id == 6}
+  			{if $upload_document_name || $upload_document_name2}
+  				<input type="button" class="btn" value="{$grl_subt_app}" onclick="setValue('visit_status_id', 3); tform.submit()">
+  			{/if}
+  		{/if}
+  		
+  		{if $visit_status_id == 4 && $return_from_approved == true}
+  			<input type="button" class="btn" value="{$grl_return}" onclick="document.location = '{$index_url}{$resource_path}/returnFromApproved/{$visit_log_id}'">
+  		{/if}
+  		
+  		{if $reactive_enable}
+  			<input type="button" class="btn" value="{$grl_reactivate}" onclick="document.location = '{$index_url}task/task/reactivate/{$visit_log_id}{if $window eq 'nw'}/nw{/if}'">
+  		{/if}
+
+  		{$smarty.capture.addition_button}
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+
+  		{if $print_url}
+  			<input type="button" class="btn" value="Print" onclick="tform.action='{$print_url}';document.tform.submit()">
+  		{else}
+  			<input type="button" class="btn" value="Print" onclick="tform.action='{$index_url}{$resource_path}/pdf/{$visit_log_id}';document.tform.submit()">
+  		{/if}
+
+  		{if $cancel_action}
+				{if $window eq 'nw'}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();">
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">*}
+				{else}
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">
+				{/if}
+  		{else}
+				{if $window eq 'nw'}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();"> 
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/approval'">*}
+				{else}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/approval'">
+				{/if}			  			
+  		{/if}
+
+    </td>
+    <td>
+    	{if $task_form_updated}
+    		<span class="tbl_msg_ok">Form {$grl_upd_msg}</span>
+    	{/if}
+    	{if $task_elimination_enable}
+    	<input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister({$visit_log_id})" style="float: right">
+		{/if}
+    </td>
+  </tr>
+  {if !$no_commit_form}</form>{/if}
+</table> 
+<script language="JavaScript" type="text/javascript">
+
+{if $task_form_updated}
+	setTimeout(function()
+		{literal} { {/literal}
+		$('.tbl_msg_ok').fadeOut();
+		{literal} } {/literal}
+	, 6000);	
+{/if}
+
+	function deleteRegister ( record_id ) {literal}{{/literal}
+
+		if (confirm('Are you sure to delete this task?')) document.location = "{$index_url}task/task/delete/" + record_id+"{if $window eq 'nw'}/nw{/if}";
+	  
+	{literal}}{/literal}
+	
+	function hidePages ( num_pages ) {literal}{{/literal}
+
+		for(i=1; i <= num_pages; i++) {literal}{{/literal}
+			switchDisplay2('pag' + i, 'none'); 
+			setClass('btnpag' + i, 'div_page_tab'); 
+		{literal}}{/literal}
+		
+		document.getElementById('form_div').scrollTop = 0;
+	  
+	{literal}}{/literal}
+	
+	{if $task_page}
+		setClass('btnpag1', 'div_page_tab  div_page_tab_selected'); 
+	{/if}
+	
+</script>
+<script language="JavaScript" type="text/javascript">
+
+    var dhxWins;
+    	
+    function modalForm ( title, faction, visit_log_id ) {literal}{{/literal}
+ 
+     	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 300, 300);
+		w1.setText(title);
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').center();
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}task/approval/" + faction + "/" + visit_log_id);
+
+    {literal}}{/literal}
+    
+    function cancelModal () {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+    function open_popup (url, WD, HT) {literal}{{/literal}
+		window.open(url);			
+  	{literal}}{/literal}
+    document.getElementById('form_div').style.height = getWindowHeight() - 120 + "px";
+    document.body.style.overflow = 'hidden';
+    
+
+</script>

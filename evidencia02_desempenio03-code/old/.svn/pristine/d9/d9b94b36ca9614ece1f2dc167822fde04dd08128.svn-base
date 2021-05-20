@@ -1,0 +1,607 @@
+<?
+
+ class Agency extends MY_Controller {
+
+	function Agency () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "contractor/agency");
+
+	}
+	
+	function index () {
+
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+		$this->tpl->assign('add_sufix', 'Prospect');
+		$this->tpl->assign("list_title", "Agency List");
+		
+		 $this->tpl->assign('additional_buttons', array('Export to Excel'=>'grid.toExcel(\''.$this->config->config['base_url'].'export/generate.php\');'));
+		
+		$this->tpl->assign_include("filter_tpl", "contractor/agency_filter");
+		$this->tpl->assign_include("dynamic_tpl", "contractor/agency_gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid () {
+		$this->load->model('contractorcontactsmdl');
+
+		$contractor_id = $this->getAgencyId();
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;type=link", "Agency"));
+		$head->append($this->xml->Element("column", "width=*", "Contact Name"));
+		$head->append($this->xml->Element("column", "width=*", "Agency Email"));
+		$head->append($this->xml->Element("column", "width=12", "Phone"));
+		$head->append($this->xml->Element("column", "width=12", "Fax"));
+		$head->append($this->xml->Element("column", "width=*", "Case Manager"));
+		$head->append($this->xml->Element("column", "width=8;align=center;type=link", "Actions"));		
+    	$head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		if ($this->input->post('agency_type') == 'A')
+			$data = $this->agencycontractormdl->getByContractor($this->getAgencyId(), 'A');
+		else
+			//$data = $this->agencymdl->getByParent($this->getAgencyId());
+			$data = $this->agencycontractormdl->getByContractor($this->getAgencyId());
+		
+		foreach ($data as $agency) {
+			$caseManager = $this->contractorcontactsmdl->getCaseManager($contractor_id, $agency->agency_id);
+
+			$cell = $this->xml->Element("row", "id=" . $agency->agency_id);
+			$cell->append($this->xml->Element("cell", null, $agency->agency_name."^javascript:agencyDetail(" . $agency->agency_id . ")"));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($agency->contact_name)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($agency->agency_email)));
+
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($agency->contact_phone)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($agency->fax)));
+      
+      		if (!empty($caseManager) AND isset($caseManager->last_name)) {
+				$cell->append($this->xml->Element("cell", null, $this->xml_entities($caseManager->first_name. " " . $caseManager->last_name)));
+			} else {
+		      $cell->append($this->xml->Element("cell", null, null));
+			}
+			
+	      	if($agency->agency_status=='SA')
+		      $cell->append($this->xml->Element("cell", null, "Add :Patient^". $this->config->config['index_url'] . "patient/mypatient/quickadmit/".$agency->agency_id));
+	      	else
+		      $cell->append($this->xml->Element("cell", null, ""));
+		      
+	      	$cell->append($this->xml->Element("cell", null, "Detail^". $this->config->config['index_url'] . "agencyprofile/demographic/index/".$agency->agency_id));
+      
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add () {
+		
+		$this->tpl->assign('faction', 'add');
+		
+		$rules = array ('agency_name'	=> 'required',
+						'first_name'  	=> 'required',
+						'user_email' 	=> 'required|valid_email',
+						'email_confirm' => 'required|matches[user_email]');
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign('form_title', 'Add Prospect');
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "prospecto/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			// inserting agency
+			$this->assignPostData($this->agencymdl);
+			$this->agencymdl->agency_type = 'P';
+			$this->agencymdl->agency_parent_id = $this->getAgencyId();
+			$this->agencymdl->insert();
+			
+			// inserting logged user to prospect
+			$user = $this->usermdl->getById($this->getUserId());
+			
+			// agency setting
+			$this->agencysettingsmdl->sn_approver = $this->usagymdl->us_agy_id;
+			$this->agencysettingsmdl->pt_approver = $this->usagymdl->us_agy_id;
+			$this->agencysettingsmdl->insert($this->agencymdl->agency_id);
+
+			$this->usagymdl->first_name = $user->first_name;
+			$this->usagymdl->last_name = $user->last_name;
+			$this->usagymdl->middle_initial = $user->middle_initial;
+			$this->usagymdl->user_email = $user->user_email;
+			$this->usagymdl->agency_id = $this->agencymdl->agency_id;
+			$this->usagymdl->user_id = $user->user_id;
+			$this->usagymdl->profile_id = 1;
+			$this->usagymdl->insert();
+
+			// assiging all permissions to logged user (manager)
+			foreach ($this->permissionmdl->getAll() as $permission) {
+				$this->usagypermissionmdl->insert($this->usagymdl->us_agy_id, $permission->permission_id);
+			}
+			
+			$this->usagymdl->us_agy_id = NULL;
+
+			// inserting user
+			$this->assignPostData($this->usermdl);
+			$this->usermdl->insert();
+			
+			// inserting user agency
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->agency_id = $this->agencymdl->agency_id;
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->profile_id = 1;
+			$this->usagymdl->insert();
+			
+			// inserting agency contractor
+			$this->agencycontractormdl->contractor_id = $this->getAgencyId();
+			$this->agencycontractormdl->insert($this->agencymdl->agency_id);
+
+			// assiging all permissions to first user (manager)
+			foreach ($this->permissionmdl->getAll() as $permission) {
+				$this->usagypermissionmdl->insert($this->usagymdl->us_agy_id, $permission->permission_id);
+			}
+			
+			// sending user acces information
+			$pass = passgen();
+			$emailtext = $this->emailtextmdl->get(3);
+			
+			$body = str_replace('{user_id}', $this->usermdl->user_email, $emailtext->email_content);
+			$body = str_replace('{user_password}', $pass, $body);
+			$body = str_replace('{app_url}', $this->config->site_url(), $body);
+			
+			$this->load->library('email');
+			$this->email->from('support@homehealthsoft.com', 'HHS Support');
+			$this->email->to($this->usermdl->user_email); 
+			$this->email->subject($emailtext->email_subject);
+			$this->email->message($body);	
+			$this->email->send();
+			
+			// sending user->agency message
+			$emailtext = $this->emailtextmdl->get(4);
+			$agency = $this->agencymdl->getByAgencyId($this->agencymdl->agency_id);
+			
+			$body = str_replace('{user_first_name}', $this->usagymdl->first_name, $emailtext->email_content);
+			$body = str_replace('{agency_name}', $agency->agency_name, $body);
+			
+			$this->load->library('email');
+			$this->email->from('support@homehealthsoft.com', 'HHS Support');
+			$this->email->to($this->usagymdl->user_email); 
+			$this->email->subject($emailtext->email_subject);
+			$this->email->message($body);	
+			$this->email->send();
+			
+			// output message and return to list
+			$this->tpl->assign('gmessage', $this->agencymdl->agency_name . $this->lang->line('grl_add_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function listing($agency_id,$active_tab='patients'){
+		$agency = $this->agencymdl->getByAgencyId($agency_id);
+		$this->tpl->assign('active_tab',   $active_tab);
+			
+		$this->tpl->assign("list_title", "Listing");
+		/*$data = $this->agencycontractormdl->getByContractornew($agency_id);
+		$agency_name = array();
+		foreach ($data as $agency) {
+			$agency_name = $agency->agency_name;
+		}*/
+		
+		$this->tpl->assign("form_title", $agency->agency_name);
+		$this->tpl->assign("agency_id", $agency_id);
+		$this->tpl->assign("agency_status", $agency->agency_status);
+		$this->tpl->assign_include("dynamic_tpl", "contractor/base");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function users($agency_id){
+		$this->tpl->assign("entity_id", $agency_id);
+		$this->tpl->assign("resource_grid", "users_grid");
+		$this->tpl->assign("resource_add", "add_agency_user");
+		
+		$agency = $this->agencymdl->getByAgencyId($agency_id);
+		if($this->getAgencyType() == 'C' AND $agency->agency_status == 'SA'  ) {
+			$this->tpl->assign("resource_edit", "edit_agency_user");
+		} else {
+			$this->tpl->assign("noedit", true);
+		}
+
+		$this->tpl->assign("add_sufix", "User");
+
+		$this->tpl->assign_include("filter_tpl", "contractor/agency_users_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function users_grid ( $agency_id ) {
+		
+		$agency_types = $this->lang->line('agency_type_list');
+		$status		  = $this->lang->line('agency_status_list');
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		// $head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=19", "First Name"));
+		$head->append($this->xml->Element("column", "width=19", "Last Name"));
+		$head->append($this->xml->Element("column", "width=19", "Email"));
+		$head->append($this->xml->Element("column", "width=19", "Phone"));
+		$head->append($this->xml->Element("column", "width=*", "Profile"));
+		$head->append($this->xml->Element("column", "width=*;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		// only profile=agency manager show, edit, create
+		foreach ($this->usagymdl->getByAgencyId($agency_id, $this->input->post('keyword'), $this->input->post('search_type'), null) as $user) {
+			
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			// $cell->append($this->xml->Element("cell", null, $user->us_agy_id));
+			$cell->append($this->xml->Element("cell", null, $user->user_first_name));
+			$cell->append($this->xml->Element("cell", null, $user->user_last_name));
+			$cell->append($this->xml->Element("cell", null, $user->user_email));
+			$cell->append($this->xml->Element("cell", null, $user->user_phone_cell));
+			$cell->append($this->xml->Element("cell", null, $user->profile_name));
+			if ($user->profile_id == 1) {
+				$cell->append($this->xml->Element("cell", null, "Send Invitation^javascript:send_invitation(" . $user->us_agy_id.")"));
+			} else {
+				$cell->append($this->xml->Element("cell", null, ''));
+			}
+
+
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function add_agency_user ( $agency_id ) {
+		
+		$this->tpl->assign(array("entity_id" => $agency_id));
+		$this->tpl->assign('faction', 'add_agency_user');
+		$this->tpl->assign('payment_type_list', array (
+				'check' => 'Check',
+				'directdepo' => 'Direct Deposit',
+				'other' => 'Other'
+			));
+		
+		$rules = array ('first_name'  	=> 'required',
+						'last_name'  	=> 'required',
+						'profile_id'  	=> 'required',
+						'discipline_id' => 'required');
+						
+		if ($this->input->post('discipline_id') != 9) {
+			$rules['user_email'] 	= 'required|valid_email|callback_verif_email';
+			$rules['email_confirm'] = 'required|matches[user_email]';
+		}
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign('type_employee_list', $this->parametermdl->getByType(6));
+			$this->tpl->assign("profile_list", $this->profilemdl->get(false));
+			$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+			$this->tpl->assign("user_status_list", $this->parametermdl->getByType(21));
+
+			$this->tpl->assign("form_title", "Add User");
+			$this->tpl->assign("profile_only", 1); // profile = manager only
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/useragency/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$user = $this->usermdl->getByEmail($this->input->post('user_email'));
+			if (!count($user) || $this->input->post('user_email') == '') { // user not exist: create new
+	
+				$this->assignPostData($this->usermdl);
+				$this->usermdl->insert();
+				
+				$pass = passgen();
+				$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+
+				// sending user acces information
+
+				if ($this->input->post('send_invitation_now') == 1 AND !is_null($this->usermdl->user_email)) {
+					$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+					$user_info = $this->usermdl->getById($this->session->userdata('user_id')); 			
+					// $user_us_agy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+
+					// Sending invitatiion email
+					$emailtext = $this->emailtextmdl->get(10);
+					
+					$subject = $emailtext->email_subject;
+					// $subject = str_replace('{from_name}', $user_info->first_name.' '.$user_info->last_name, $subject);
+					$subject = str_replace('{from_name}', $company->agency_name, $subject);
+
+					$body = str_replace('{user_first_name}', $this->usermdl->first_name, $emailtext->email_content);
+					$body = str_replace('{user_id}', $this->usermdl->user_email, $body);
+					$body = str_replace('{user_password}', $pass, $body);
+					$body = str_replace('{app_url}', 'https://www.homehealthsoft.com', $body);	
+					// $body = str_replace('{app_url}', $this->config->site_url(), $body);
+					$body = str_replace('{contractor_name}', $company->agency_name, $body);
+					
+					$this->load->library('email');
+					// $this->email->from('support@homehealthsoft.com', $user_info->first_name.' '.$user_info->last_name);
+					$this->email->from('support@homehealthsoft.com', $company->agency_name);
+					$this->email->to($this->usermdl->user_email); 
+					$this->email->subject($subject);
+					// $this->email->subject($emailtext->email_subject);
+					$this->email->message($body);	
+					$this->email->send();					
+				}
+
+			} else { // user exist: get user_id
+
+				$this->usermdl->user_id = $user->user_id;
+
+			}
+			
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->insert();
+			
+			// Fetching Geocode
+			$user = $this->usermdl->getById($this->usagymdl->user_id); 
+
+			$address = $user->address;
+
+			if ($user->city) {
+				$address .= ','.$user->city;
+			}
+
+			if ($user->state_name_long) {
+				$address .= ','.$user->state_name_long;
+			}
+
+			if ($user->zip_code) {
+				$address .= ','.$user->zip_code;
+			}
+
+			if ($address) {
+				$address = str_replace(' ','+',$address);
+				$url = 'https://maps.google.com/maps/api/geocode/json?key=AIzaSyBy5FYliiTZgc5mZPSoQmt_XwXRtaju4FY&address='.$address.'&region=USA&sensor=false';
+
+			    $curl=curl_init();
+			    curl_setopt( $curl, CURLOPT_URL, $url );
+		        // curl_setopt( $curl, CURLOPT_SSL_VERIFYPEER, FALSE );
+		        // curl_setopt( $curl, CURLOPT_SSL_VERIFYHOST, 0 );
+		        curl_setopt( $curl, CURLOPT_RETURNTRANSFER, TRUE );	            
+		        $response = curl_exec($curl);
+
+		        $info = curl_getinfo( $curl );
+	            curl_close( $curl );
+
+	            $latitude = null;
+		        $longitude = null;
+	            
+	            if ($info['http_code'] == 200) {
+	            	$output= json_decode($response);
+			        if ($output->status == 'OK') {
+				    	if (isset($output->results[0]->geometry->location->lat)) {
+				        	$latitude = $output->results[0]->geometry->location->lat;
+				        }
+
+				        if (isset($output->results[0]->geometry->location->lng)) {
+				        	$longitude = $output->results[0]->geometry->location->lng;
+				        }
+			        }
+	            }
+
+		        
+		        if ($latitude AND $longitude) {
+		        	$this->usermdl->updateGeocode($user->user_id, $latitude, $longitude);
+		        }
+			}
+			
+			$this->tpl->assign('gmessage', $this->usagymdl->first_name . " " . $this->usagymdl->last_name . $this->lang->line('grl_add_msg'));
+			
+			$this->users($agency_id);
+			
+		}
+		
+	}
+
+	function edit_agency_user ( $agency_id, $us_agy_id ) {
+		//echo "<pre>"; print_r($us_agy_id); echo "</pre>";
+		$this->tpl->assign('faction', 'edit_agency_user/'.$agency_id);
+		$this->tpl->assign('record_id', $us_agy_id);
+		//echo "<br />Logged in user agency id => " . $us_agy_id; 
+		$this->tpl->assign('other_lang_list', $this->parametermdl->getByType(10));
+		
+		$usagy = $this->usagymdl->getByUsAgyId($us_agy_id);
+		$agency = $this->agencymdl->getByAgencyId($usagy->agency_id);
+		if ($agency_id != $usagy->agency_id) {
+			show_404();
+		}
+
+		$allow_edit = false;
+		
+		if($this->getAgencyType() == 'C' AND $agency->agency_status == 'SA'  ) {
+			$allow_edit = true;
+		}
+
+		$user = $this->usermdl->getById($usagy->user_id);
+		
+		$this->tpl->assign('payment_type_list', array (
+				'check' => 'Check',
+				'directdepo' => 'Direct Deposit',
+				'other' => 'Other'
+			));
+
+		
+		$this->assignObject($usagy);
+
+		
+		$user_us_agy_id = $this->getUsAgyId();
+		$user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);   
+		$this->tpl->assign('log_user_profile_id', $user_us_agy->profile_id);     
+
+		// $this->tpl->assign("allow_profile_edit", $allow_profile_edit);    
+		$this->tpl->assign("allow_edit", $allow_edit);    
+		if(!$allow_edit)
+			$this->tpl->assign("no_grid_buttons", true);
+
+		$rules = array (//'first_name'  	=> 'required',
+			//'last_name'  	=> 'required',
+			'profile_id'  	=> 'required',
+			'discipline_id' => 'required',
+			//'phone_cell' 	=> 'valid_phone',
+			//'fax'	  		=> 'valid_phone',
+			'phone_work'	=> 'valid_phone');
+
+		$this->validation->set_rules($rules);
+		if($allow_edit){
+			if ($this->validation->run() == TRUE) {
+				// update_user
+				//echo "<pre>"; print_r($_POST); echo "<pre>"; exit;
+
+				$new_address = '';
+				$fetch_geocode = false;
+
+				if($usagy->user_id > 0 && (isset($_POST['update_user']) && $_POST['update_user'] == 'yes')) {
+					// fetching old address
+					$user = $this->usermdl->getById($usagy->user_id); 
+					$old_address = $user->address;
+
+					if ($user->city) {
+						$old_address .= ','.$user->city;
+					}
+
+					if ($user->state_name_long) {
+						$old_address .= ','.$user->state_name_long;
+					}
+
+					if ($user->zip_code) {
+						$old_address .= ','.$user->zip_code;
+					}
+
+					$this->assignPostData($this->usermdl);
+					$this->usermdl->update($usagy->user_id);
+
+					// fetching new address
+					$user = $this->usermdl->getById($usagy->user_id); 
+					$new_address = $user->address;
+
+					if ($user->city) {
+						$new_address .= ','.$user->city;
+					}
+
+					if ($user->state_name_long) {
+						$new_address .= ','.$user->state_name_long;
+					}
+
+					if ($user->zip_code) {
+						$new_address .= ','.$user->zip_code;
+					}
+
+					if ($old_address != $new_address) {
+						$fetch_geocode = true;
+					}
+				}
+				$this->assignPostData($this->usagymdl);		
+				$this->usagymdl->first_name = $usagy->first_name;
+				$this->usagymdl->last_name = $usagy->last_name;
+				$this->usagymdl->update($us_agy_id);
+
+				if ($fetch_geocode) {
+					if (!$new_address) {
+						# reset lat lng because address is empty now
+						$this->usermdl->updateGeocode($usagy->user_id, null, null);
+					} else {
+						$address = str_replace(' ','+',$new_address);
+				        $geocode=file_get_contents('https://maps.google.com/maps/api/geocode/json?key=AIzaSyBy5FYliiTZgc5mZPSoQmt_XwXRtaju4FY&address='.$address.'&region=USA&sensor=false');
+				        $output= json_decode($geocode);
+				        $latitude = null;
+				        $longitude = null;
+				        if (isset($output->results[0]->geometry->location->lat)) {
+				        	$latitude = $output->results[0]->geometry->location->lat;
+				        }
+
+				        if (isset($output->results[0]->geometry->location->lng)) {
+				        	$longitude = $output->results[0]->geometry->location->lng;
+				        }
+
+				        if ($latitude AND $longitude) {
+				        	$this->usermdl->updateGeocode($usagy->user_id, $latitude, $longitude);
+				        }
+					}
+				}
+				
+				$this->tpl->assign('success_string', $this->usagymdl->first_name . " " . $this->usagymdl->last_name . $this->lang->line('grl_upd_msg'));
+			}
+		}
+    	##
+    	#	when the profile of the logged user = Office Clerk..on the detail only display the demographic tab. AND only allow to add/edit users with profile PHYSICIAN.      
+		$user_us_agy_id = $this->getUsAgyId();
+		$user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);   
+		
+		$user = $this->usermdl->getById($usagy->user_id); 
+		$this->tpl->assign('user', $user);		
+		$this->tpl->assign('usersex', $user->tab_002_sex);
+		$this->tpl->assign('user_otherlang', $user->tab_010_other_lang_1);		
+		$this->tpl->assign('user_profile_id', $user_us_agy->profile_id);
+	    
+		if(!$allow_edit){
+			$this->tpl->assign('no_commit_form', true);
+		}
+
+		$this->tpl->assign('type_employee_list', $this->parametermdl->getByType(6));
+		$this->tpl->assign("profile_list", $this->profilemdl->getByType('profile_agency', false));
+		$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+		$this->tpl->assign("user_status_list", $this->parametermdl->getByType(21));
+
+		$this->tpl->assign("tab_page", true);
+		$this->lang->language['grl_cancel'] = 'Back';
+		$this->tpl->assign("cancelbtn", true);
+		$this->tpl->assign("cancel_url", 'contractor/agency/users/'.$usagy->agency_id);
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "contractor/useragency/edit_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+
+	function xml_entities($text, $charset = 'UTF-8') {
+		// First we encode html characters that are also invalid in xml
+		$text = htmlentities($text, ENT_COMPAT, $charset, false);
+
+		// Note: &apos; is useless in UTF-8 or in UTF-16
+		$arr_xml_special_char = array (
+			"&quot;",
+			"&amp;",
+			"&apos;",
+			"&lt;",
+			"&gt;"
+		);
+
+		// Building the regex string to exclude all strings with xml special char
+		$arr_xml_special_char_regex = "(?";
+		foreach ($arr_xml_special_char as $key => $value) {
+			$arr_xml_special_char_regex .= "(?!$value)";
+		}
+		$arr_xml_special_char_regex .= ")";
+
+		// Scan the array for &something_not_xml; syntax
+		$pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+
+		// Replace the &something_not_xml; with &amp;something_not_xml;
+		$replacement = '&amp;${1}';
+		return preg_replace($pattern, $replacement, $text);
+	}
+	
+ }

@@ -1,0 +1,55 @@
+<?
+
+ class EpisodeMedicationMdl extends Model {
+
+	var $cms_485_med_id;
+	var $med_id;
+	var $cms485_id;
+
+	function EpisodeMedicationMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $cms485_id ) {
+	
+		$this->db->join('pat_medication', 'pat_medication.med_id = cms_485_med.med_id', 'LEFT');
+		$this->db->join('tab_parameters', 'pat_medication.tab_084_route = tab_parameters.tab_value AND tab_parameters.tab_type = 84', 'LEFT');
+		
+		$this->db->where("cms485_id", $cms485_id);
+		
+		$query = $this->db->get('cms_485_med');
+		return $query->result();
+
+	}
+	
+	function getByPatientMedication ( $cms485_id, $med_id ) {
+	
+		$this->db->where("cms485_id", $cms485_id);
+		$this->db->where("med_id", $med_id);
+		
+		$query = $this->db->get('cms_485_med');
+		return $query->row();
+
+	}
+	
+	function insert ( $cms485_id ) {
+		
+		$this->cms_485_med_id = null;
+		$this->cms485_id = $cms485_id;
+		
+		$this->db->insert('cms_485_med', $this);
+		$this->cms_485_med_id = $this->db->insert_id();
+		
+	}
+	
+	function delete ( $cms_485_med_id ) {
+		
+		$this->db->where('cms_485_med_id', $cms_485_med_id);
+		
+		$this->db->delete('cms_485_med');
+		
+	}
+	
+ }

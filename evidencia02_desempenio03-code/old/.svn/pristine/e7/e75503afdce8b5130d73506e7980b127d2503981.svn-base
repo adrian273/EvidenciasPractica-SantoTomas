@@ -1,0 +1,393 @@
+<?
+
+ class CompanyInvoiceMdl extends Model {
+
+	var $invoice_id;
+	var $agency_contractor_id;
+	var $invoice_no; 	 	
+	var $invoice_date;
+	var $sent_date;
+	var $invoice_due_date;
+	var $invoice_amount;
+  // var $invoice_payment;
+  var $agency_notes;
+  var $invoice_status;
+	var $is_special;
+	var $invoice_note;
+
+	function CompanyInvoiceMdl () {
+
+		parent::Model();
+		
+	}
+	
+	
+  function getById ( $invoice_id ) {	
+		$this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = invoice_view.agency_contractor_id');    		
+    $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');    
+    $this->db->where("invoice_view.invoice_id", $invoice_id);    
+    $query = $this->db->get('invoice_view');
+		return $query->row();
+	}
+  
+  /*function getByIdForAgency ( $invoice_id ) {  
+    $this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = invoice_view.agency_contractor_id');
+    $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id'); 
+    $this->db->where("invoice_view.invoice_id", $invoice_id);    
+    $query = $this->db->get('invoice_view');
+    return $query->row();
+  }*/
+  
+	function getByContractor ( $contractor_id ) {	
+		//$this->db->select('*, date(invoice_view.invoice_due_date + interval 60 day) as past_due');
+		$this->db->select('*, count(sent_email_instance_details.id) as sent_email_log_count');
+		$this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = invoice_view.agency_contractor_id');
+    $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id'); 
+		$this->db->join('sent_email_instance_details', "invoice_view.invoice_id = sent_email_instance_details.source_id && sent_email_instance_details.source_name = 'INVO'", 'LEFT');
+    $this->db->where("invoice_view.agency_contractor_id IN (SELECT agency_contractor_id FROM agency_contractor WHERE contractor_id={$contractor_id})", NULL, FALSE);
+    $this->db->order_by('invoice_view.invoice_date','DESC');
+    
+    if ($invoice_no = $this->input->post('invoice_no')) {
+      $this->db->like("invoice_no", $invoice_no);
+    }
+    if ($invoice_from_date = $this->input->post('invoice_from_date')) {
+      $this->db->where("invoice_date >=", standard_date(human_to_unix($invoice_from_date), 'MYSQL_NOTIME'));
+    }	
+    if ($invoice_to_date = $this->input->post('invoice_to_date')) {
+      $this->db->where("invoice_date <=", standard_date(human_to_unix($invoice_to_date), 'MYSQL_NOTIME'));
+    }
+    if ($invoice_date = $this->input->post('invoice_date')) {
+      $this->db->where("invoice_date =", standard_date(human_to_unix($invoice_date), 'MYSQL_NOTIME'));
+    }
+	
+    if($past_due = $this->input->post('past_due')) {
+      switch($past_due){
+        case '-7d':
+          $this->db->where("date(now()) >= date(invoice_due_date - interval 7 day)");break;
+        case '-15d':
+          $this->db->where("date(now()) >= date(invoice_due_date - interval 15 day)");break;
+        case '1d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 1 day)");break;
+        case '7d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 7 day)");break;
+        case '15d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 15 day)");break;
+        case '30d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 30 day)");break;
+        case '45d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 45 day)");break;
+        case '60d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 60 day)");break; 
+        case '90+d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 90 day)");break; 
+      }  
+      if($past_due != ""){
+        $this->db->where('invoice_view.invoice_status','NP');
+      }
+        
+    }
+	$this->db->group_by('invoice_view.invoice_id'); 
+    $this->db->order_by('invoice_view.invoice_date, invoice_view.invoice_id', 'desc');
+    
+    $query = $this->db->get('invoice_view');		
+    //echo $this->db->last_query();
+		return $query->result();
+	}
+  
+  /*function getByAgency ( $agency_id ) { 
+    //$this->db->select('*, date(invoice_view.invoice_due_date + interval 60 day) as past_due');
+    $this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = invoice_view.agency_contractor_id');
+    $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.contractor_id'); 
+    $this->db->where("invoice_view.agency_contractor_id IN (SELECT agency_contractor_id FROM agency_contractor WHERE agency_id={$agency_id})", NULL, FALSE);
+    $this->db->order_by('invoice_view.invoice_date','DESC');
+    
+    if ($invoice_no = $this->input->post('invoice_no')) {
+      $this->db->like("invoice_no", $invoice_no);
+    }
+    if ($invoice_date = $this->input->post('invoice_date')) {
+      $this->db->where("invoice_date =", standard_date(human_to_unix($invoice_date), 'MYSQL_NOTIME'));
+    }
+    // if($past_due = $this->input->post('past_due')) {
+      switch($past_due){
+        case '-7d':
+          $this->db->where("date(now()) >= date(invoice_due_date - interval 7 day)");break;
+        case '-15d':
+          $this->db->where("date(now()) >= date(invoice_due_date - interval 15 day)");break;
+        case '1d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 1 day)");break;
+        case '7d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 7 day)");break;
+        case '15d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 15 day)");break;
+        case '30d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 30 day)");break;
+        case '45d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 45 day)");break;
+        case '60d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 60 day)");break; 
+        case '90+d':
+          $this->db->where("date(now()) >= date(invoice_due_date + interval 90 day)");break; 
+      }  
+      if($past_due != "")
+      $this->db->where('invoice_view.agency_paid_status','NP');
+    
+    $query = $this->db->get('invoice_view');   
+    //echo $this->db->last_query();
+    return $query->result();
+  }*/
+  
+	function getByContractorId ( $agency_contractor_id, $agency_filter="all", $order_by="invoice_date", $sort="DESC" ) {
+      $partial_payment_sql = "";
+
+	    $this->db->select('*, count(sent_email_instance_details.id) as sent_email_log_count'); 
+
+      $this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = invoice_view.agency_contractor_id');       
+      $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');
+	    $this->db->join('sent_email_instance_details', "invoice_view.invoice_id = sent_email_instance_details.source_id && sent_email_instance_details.source_name = 'INVO'", 'LEFT');   
+      $this->db->where("invoice_view.agency_contractor_id", $agency_contractor_id); 
+
+      if ($this->input->post('patient_id')) {
+        $this->db->join('vis_visit_log', 'vis_visit_log.co_invoice_id = invoice_view.invoice_id');
+        $this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+        $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+        $this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+        $this->db->where('pat_patient.patient_id', $this->input->post('patient_id'));
+      }
+
+      if ($agency_filter == "paid") {
+        $join_where = array();
+        if ($invoice_from_date = $this->input->post('invoice_from_date')) {
+          $join_where[] = "payment_date >= '" . standard_date(human_to_unix($invoice_from_date), 'MYSQL_NOTIME') . "'";
+        } 
+        if ($invoice_to_date = $this->input->post('invoice_to_date')) {
+          $join_where[] = "payment_date <= '" . standard_date(human_to_unix($invoice_to_date), 'MYSQL_NOTIME') . "'";
+        }
+
+        if (!empty($join_where)) {
+          $this->db->where('invoice_view.invoice_id IN ( SELECT invoice_id FROM invoice_payments WHERE '.implode(" AND ", $join_where).')');
+
+          $partial_payment_sql = 'SELECT SUM(payment_amount) as partial_payment FROM invoice_payments WHERE '.implode(" AND ", $join_where);
+
+        } else {
+          $partial_payment_sql = 'SELECT SUM(payment_amount) as partial_payment FROM invoice_payments';
+
+        }
+        $this->db->where('invoice_view.invoice_payment >', 0);
+      } else {
+        if ($agency_filter == "due") {
+          $this->db->where('invoice_view.balance >', 0);
+        }
+
+        if ($invoice_from_date = $this->input->post('invoice_from_date')) {
+          $this->db->where("invoice_date >=", standard_date(human_to_unix($invoice_from_date), 'MYSQL_NOTIME'));
+        } 
+        if ($invoice_to_date = $this->input->post('invoice_to_date')) {
+          $this->db->where("invoice_date <=", standard_date(human_to_unix($invoice_to_date), 'MYSQL_NOTIME'));
+        }  
+      }
+
+
+      if ($invoice_from_date_print = $this->input->post('invoice_from_date_print')) {
+        $this->db->where("invoice_date >=", standard_date(human_to_unix($invoice_from_date_print), 'MYSQL_NOTIME'));
+      } 
+      if ($invoice_to_date_print = $this->input->post('invoice_to_date_print')) {
+        $this->db->where("invoice_date <=", standard_date(human_to_unix($invoice_to_date_print), 'MYSQL_NOTIME'));
+      }  
+      
+      $this->db->order_by('invoice_view.'.$order_by,$sort);    
+      $this->db->order_by('invoice_view.invoice_id','DESC');
+	    $this->db->group_by('invoice_view.invoice_id');     
+      $query = $this->db->get('invoice_view');    
+      $result = $query->result();
+
+      if ($partial_payment_sql) {
+        foreach ($result as $key => $row) {
+          $sql = "";
+          if (stripos($partial_payment_sql, " where ") !== FALSE) {
+            $sql = $partial_payment_sql. ' AND invoice_id='.$row->invoice_id;
+          } else {
+            $sql = $partial_payment_sql. ' WHERE invoice_id='.$row->invoice_id;
+          }
+
+
+          $query = $this->db->query($sql);    
+          // echo $this->db->last_query()."<hr>";
+          $tmp = $query->row();
+          $row->partial_payment = $tmp->partial_payment;
+          $result[$key] = $row;
+        }
+      }
+
+      return $result;
+      
+  }
+
+  function getByInvoiceNo ( $agency_contractor_id, $invoice_no="DESC" ) {	
+    $this->db->where("invoice_view.agency_contractor_id", $agency_contractor_id); 
+		$this->db->where("invoice_view.invoice_no", $invoice_no); 
+		  
+    $query = $this->db->get('invoice_view'); 
+    return $query->row();
+  }
+  
+  function getTotalBalance($agency_id){
+    $partial_payment_sql = "";
+    if ($agency_filter = $this->input->post('agency_filter')) {
+      if ($agency_filter == "paid") {
+        $join_where = array();
+        if ($invoice_from_date = $this->input->post('invoice_from_date')) {
+          $join_where[] = "payment_date >= '" . standard_date(human_to_unix($invoice_from_date), 'MYSQL_NOTIME') . "'";
+        } 
+        if ($invoice_to_date = $this->input->post('invoice_to_date')) {
+          $join_where[] = "payment_date <= '" . standard_date(human_to_unix($invoice_to_date), 'MYSQL_NOTIME') . "'";
+        }
+
+        if (!empty($join_where)) {
+          $this->db->where('invoice_view.invoice_id IN ( SELECT invoice_id FROM invoice_payments WHERE '.implode(" AND ", $join_where).')');
+
+          
+          $partial_payment_sql = 'SELECT SUM(payment_amount) as partial_payment FROM invoice_payments';
+        
+          $partial_payment_sql .= ' JOIN invoice_view ON invoice_view.invoice_id=invoice_payments.invoice_id';
+          $partial_payment_sql .= ' JOIN agency_contractor ON agency_contractor.agency_contractor_id=invoice_view.agency_contractor_id';
+
+          $partial_payment_sql .= ' WHERE '.implode(" AND ", $join_where);
+          $partial_payment_sql .= ' AND contractor_id='.$agency_id;
+        } else {
+          $partial_payment_sql = 'SELECT SUM(payment_amount) as partial_payment FROM invoice_payments';
+          
+          $partial_payment_sql .= ' JOIN invoice_view ON invoice_view.invoice_id=invoice_payments.invoice_id';
+          $partial_payment_sql .= ' JOIN agency_contractor ON agency_contractor.agency_contractor_id=invoice_view.agency_contractor_id';
+
+          $partial_payment_sql .= ' WHERE contractor_id='.$agency_id;
+        }
+
+
+
+        $this->db->where('invoice_view.invoice_payment >', 0);
+      } else {
+        if ($agency_filter == "due") {
+          $this->db->where('invoice_view.balance >', 0);
+        }
+        if ($invoice_from_date = $this->input->post('invoice_from_date')) {
+          $this->db->where("invoice_date >=", standard_date(human_to_unix($invoice_from_date), 'MYSQL_NOTIME'));
+        } 
+        if ($invoice_to_date = $this->input->post('invoice_to_date')) {
+          $this->db->where("invoice_date <=", standard_date(human_to_unix($invoice_to_date), 'MYSQL_NOTIME'));
+        }  
+      }
+    }
+
+    $this->db->select('SUM(balance) as balance, SUM(invoice_payment) as paid, SUM(invoice_amount) as amount');       
+    $this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = invoice_view.agency_contractor_id');    
+    $this->db->where("contractor_id", $agency_id);    
+    //$this->db->where("invoice_status", 'NP');    
+    $query = $this->db->get('invoice_view');    
+    $row = $query->row();
+    // return $row->balance;
+
+    if ($partial_payment_sql) {
+      $query = $this->db->query($partial_payment_sql);    
+      $tmp = $query->row();
+      $row->partial_payment = $tmp->partial_payment;
+    }
+
+    return $row;
+  }
+  
+  function getTotalComBalance($agency_contractor_id, $agency_filter="all"){
+    $partial_payment_sql = "";
+
+    $this->db->select('SUM(balance) as balance, SUM(invoice_payment) as paid, SUM(invoice_amount) as amount');       
+    $this->db->where("agency_contractor_id", $agency_contractor_id);    
+    //$this->db->where("invoice_status", 'NP'); 
+    if ($agency_filter == "paid") {
+      $join_where = array();
+      if ($invoice_from_date = $this->input->post('invoice_from_date')) {
+        $join_where[] = "payment_date >= '" . standard_date(human_to_unix($invoice_from_date), 'MYSQL_NOTIME') . "'";
+      } 
+      if ($invoice_to_date = $this->input->post('invoice_to_date')) {
+        $join_where[] = "payment_date <= '" . standard_date(human_to_unix($invoice_to_date), 'MYSQL_NOTIME') . "'";
+      }
+
+      if (!empty($join_where)) {
+        $this->db->where('invoice_view.invoice_id IN ( SELECT invoice_id FROM invoice_payments WHERE '.implode(" AND ", $join_where).')');
+        $partial_payment_sql = 'SELECT SUM(payment_amount) as partial_payment FROM invoice_payments';
+        
+        $partial_payment_sql .= ' JOIN invoice_view ON invoice_view.invoice_id=invoice_payments.invoice_id';
+
+        $partial_payment_sql .= ' WHERE '.implode(" AND ", $join_where);
+        $partial_payment_sql .= ' AND agency_contractor_id='.$agency_contractor_id;
+      } else {
+        $partial_payment_sql = 'SELECT SUM(payment_amount) as partial_payment FROM invoice_payments';
+        
+        $partial_payment_sql .= ' JOIN invoice_view ON invoice_view.invoice_id=invoice_payments.invoice_id';
+        $partial_payment_sql .= ' WHERE agency_contractor_id='.$agency_contractor_id;
+      }
+
+      $this->db->where('invoice_view.invoice_payment >', 0);
+    } else {
+      if ($agency_filter == "due") {
+        $this->db->where('invoice_view.balance >', 0);
+      }
+
+      if ($invoice_from_date = $this->input->post('invoice_from_date')) {
+        $this->db->where("invoice_date >=", standard_date(human_to_unix($invoice_from_date), 'MYSQL_NOTIME'));
+      } 
+      if ($invoice_to_date = $this->input->post('invoice_to_date')) {
+        $this->db->where("invoice_date <=", standard_date(human_to_unix($invoice_to_date), 'MYSQL_NOTIME'));
+      }  
+    }
+		
+    $this->db->order_by('invoice_view.invoice_date','DESC');    
+    $query = $this->db->get('invoice_view');	
+    
+    $row = $query->row();
+
+    if ($partial_payment_sql) {
+      $query = $this->db->query($partial_payment_sql);    
+      $tmp = $query->row();
+      $row->partial_payment = $tmp->partial_payment;
+    }
+
+    return $row;
+    // return $row->balance;
+  }
+
+  // added by ksa to get the agency balance from cmpany_agency table
+  function getTotalAgencyBalance($agency_contractor_id){
+    // $this->db->select('SUM(agency_balance) AS balance');        
+    $this->db->select('SUM(balance) AS balance');    		
+    $this->db->where("agency_contractor_id", $agency_contractor_id);    
+    // $this->db->where("agency_paid_status", 'NP');    
+    $query = $this->db->get('invoice_view');		
+    $row = $query->row();
+    return $row->balance;
+  }  
+  function updateFlex($invoice_id, $attribute, $value, $where = 'invoice_id') {
+		$this->db->where($where, $invoice_id);
+		$this->db->set($attribute, $value);
+		$this->db->update('company_invoice');
+	}
+  
+	function insert ( $agency_contractor_id ) {		
+		$this->agency_contractor_id = $agency_contractor_id;		
+		$this->db->insert('company_invoice', $this);
+		$this->invoice_id = $this->db->insert_id();	
+    return $this->invoice_id;
+	}	
+	
+	function delete ( $invoice_id ) {		
+		$this->db->where('invoice_id', $invoice_id);		
+		$this->db->delete('company_invoice'); 		
+	}
+
+  function amount_reduction($invoice_id, $reduction_amount){
+    $this->db->query("UPDATE company_invoice SET company_invoice.invoice_amount=company_invoice.invoice_amount-{$reduction_amount} WHERE company_invoice.invoice_id = {$invoice_id}");
+  }
+
+  function payment_reduction($invoice_id, $reduction_amount){
+    $this->db->query("UPDATE company_invoice SET company_invoice.invoice_payment=company_invoice.invoice_payment-{$reduction_amount} WHERE company_invoice.invoice_id = {$invoice_id}");
+  }
+
+ }

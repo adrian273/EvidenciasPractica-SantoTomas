@@ -1,0 +1,75 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr><td height="10">&nbsp;</td></tr>
+  <tr><td>
+  <div id="toolbarObj" style="float: left"></div>
+  </td></tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	function checkall() {literal}{{/literal}
+    rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+  	{literal}}{/literal}
+
+  	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+  	{literal}}{/literal}
+
+  	var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+  	webBar.addButton("none", 2, "None");
+  	
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+    switch (eid)
+    {literal}{{/literal}
+    case 'all':
+      checkall()
+      break;
+    case 'none':
+      uncheckall()
+      break;    
+    {literal}}{/literal}
+    {literal}}{/literal});
+  
+
+    var dhxWins;
+    	
+
+	function sendCredentials() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			var record_ids = grid.getCheckedRows(0);
+	     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+				
+			var w2 = dhxWins.createWindow("w2", 10, 10, 460, 250);
+			w2.setText("Send Credential Email");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}{$resource_path}/send_credentials/{$entity_id}/"+record_ids);
+		{literal}}{/literal} else {literal}{{/literal}
+			alert("At least one credential must be selected");
+   	    {literal}}{/literal}
+    	
+    {literal}}{/literal}
+</script>

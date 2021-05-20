@@ -1,0 +1,560 @@
+<?php
+include("visitform.php");
+
+class dorder extends VisitForm{
+	
+	var $rules = array("visit_date_time"		 => "required",
+				   		"do_description" => "required",
+				   		"order_type_id" => "required",
+				   		"phys_user_id"	 => "required");
+
+	var $fields = array("visit_date_time"			=> "Order Date",
+				   		"do_description"	=> "Order Description",
+				   		"order_type_id" => "Order Type",
+				   		"phys_user_id"		=> "Physician Name");
+	function dorder()
+	{
+		parent :: VisitForm();
+		$this->load->model('dordermdl');
+		$this->tpl->assign("resource_path", "task/dorder");
+
+
+	}
+
+	function index($visit_log_id, $action = 'task', $window = 'self') {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+		
+		$this->validation->set_rules($this->rules);
+		$this->validation->set_fields($this->fields);
+
+		if ($this->validation->run() == TRUE) {
+
+			$this->updateFormEdition($visit_log_id);
+			//			$this->visitlogmdl->updateStatus($visit_log_id, 6);
+			$visit_date = standard_date(human_to_unix($this->input->post('visit_date_time')), 'MYSQL_NOTIME');
+			$can_update_visit_date = FALSE;
+			$loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			// if (in_array($visitlog->visit_type_id, array(101,104))) {
+			// Now For alternative therapies, allow the creation of visits/tasks before the cms_485.start_date
+			if ($loggedInAgency->provides_altern_therapy == 'Y') {
+				$can_update_visit_date = TRUE;
+			}else if(strtotime($visit_date) >= strtotime($visitlog->episode_start_date) 
+					AND strtotime($visit_date) <= strtotime($visitlog->episode_end_date)){
+				$can_update_visit_date = TRUE;
+			}
+			
+			if ($can_update_visit_date) {
+				$visit_date_time_hour = ((int) ($this->input->post('visit_time_Hour') == 12 ? 0 : $this->input->post('visit_time_Hour')) + ($this->input->post('visit_time_Meridian') == 'am' ? 0 : 12));
+				$visit_date_time = standard_date(human_to_unix($this->input->post('visit_date_time')), 'MYSQL_NOTIME') . " " . $visit_date_time_hour . ":" . $this->input->post('visit_time_Minute');
+				$this->visitlogmdl->updateFlex($visit_log_id, 'visit_date_time', $visit_date_time );
+			}
+
+			$this->assignPostData($this->dordermdl);
+
+			if (count($this->dordermdl->get($visit_log_id))) {				
+				$this->dordermdl->update($visit_log_id);
+				if ($this->input->post('phys_user_id') !== FALSE) {					
+					$this->visitlogmdl->updateFlex($visit_log_id, 'phys_user_id', $this->input->post('phys_user_id') );
+					$doctor_office_user = $this->usagymdl->getByUsAgyId($this->input->post('phys_user_id'));          
+                	$this->visitlogmdl->updateFlex($visit_log_id, 'doctor_office_id', $doctor_office_user->agency_id );
+				}
+			} else {
+				// $this->dordermdl->provider_sign_date = standard_date(now(), 'MYSQL');
+				$this->dordermdl->insert($visit_log_id);
+				if ($this->input->post('phys_user_id') !== FALSE) {					
+					$this->visitlogmdl->updateFlex($visit_log_id, 'phys_user_id', $this->input->post('phys_user_id') );
+					$doctor_office_user = $this->usagymdl->getByUsAgyId($this->input->post('phys_user_id'));          
+                	$this->visitlogmdl->updateFlex($visit_log_id, 'doctor_office_id', $doctor_office_user->agency_id );
+				}
+			}
+
+			$this->formRedirection($visit_log_id);
+
+			if ($this->session->userdata('task_return')) {
+				header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+				return;
+			}
+
+		}
+
+		$patient = $this->getPatientInfo($visit_log_id);
+		if (is_null($visitlog->phys_user_id)) {			
+			$cms485 = $this->episodemdl->getById($visitlog->cms485_id);
+			$visitlog->phys_user_id = $cms485->phys_user_id;			
+		}
+		$this->assignObject($visitlog);
+		$this->tpl->assign('time', strtotime($visitlog->visit_date_time));
+		$physician_list = array();
+		foreach ($this->patientdoctorofficemdl->get($patient->patient_id, false) as $doctor_office_id => $name) {
+			$doctorOfficeUsers = $this->usagymdl->getByAgencyId($doctor_office_id, null, null, 7);
+			
+			if (count($doctorOfficeUsers)) {
+				$doctorOfficeAdmin = $doctorOfficeUsers[0];
+				$physician_list[$doctorOfficeAdmin->us_agy_id] = $name;				
+			}
+		}
+		
+		$this->tpl->assign('physician_list',  $physician_list);
+		
+		$DO = $this->dordermdl->get($visit_log_id);
+		
+		// if (!$DO->primary_diag OR !$DO->secondary_diag OR !$DO->primary_diag_date OR !$DO->secondary_diag_date) {
+		if (TRUE) {
+			$prev_eval = array();
+			$this->load->model('ptevmdl');
+			$ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($ptevs) == 0) {
+				$ptevs = $this->ptevmdl->getPrevious(null, @ $visitlog->visit_date_time, @ $visitlog->cms485_id, TRUE); // look all PTEV of current SOC        
+			}			
+			if (count($ptevs)) {
+				$prev_eval = $ptevs[count($ptevs) - 1];				
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('otevmdl');
+				$otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+				if (count($otevs) == 0) {
+					$otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($otevs)) {
+					$prev_eval = $otevs[count($otevs) - 1];
+				}
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('stevmdl');
+				$stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+				if (count($stevs) == 0) {
+					$stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($stevs)) {
+					$prev_eval = $stevs[count($stevs) - 1];
+				}			
+			}
+
+			
+			if (isset($prev_eval->primary_diag)) {
+				// @$DO->primary_diag = $prev_eval->primary_diag;
+				$this->tpl->assign("primary_diag", $prev_eval->primary_diag);
+			}
+
+			if (isset($prev_eval->secondary_diag)) {
+				// @$DO->secondary_diag = $prev_eval->secondary_diag;
+				$this->tpl->assign("secondary_diag", $prev_eval->secondary_diag);
+			}
+
+			if (isset($prev_eval->primary_diag_date)) {
+				// @$DO->primary_diag_date = $prev_eval->primary_diag_date;
+				$this->tpl->assign("primary_diag_date", $prev_eval->primary_diag_date);
+			}
+
+			if (isset($prev_eval->secondary_diag_date)) {
+				// @$DO->secondary_diag_date = $prev_eval->secondary_diag_date;
+				$this->tpl->assign("secondary_diag_date", $prev_eval->secondary_diag_date);
+			}
+
+		}
+
+		$this->assignObject($DO);
+
+		if ($this->session->userdata('task_return')) {
+			$this->tpl->assign('cancel_action', $this->config->config["index_url"] . $this->session->userdata('task_return'));
+		}
+		$this->tpl->assign('hide_top_right', true);
+		$this->tpl->assign('order_type_list', $this->docdoctorordertypemdl->getAdd());
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/dorder");
+		$this->setfbase($visit_log_id, $action);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	/**
+	* Send doctor order as attachment to given email adresses
+	*/
+	function emailto_physician($visit_log_id){
+		$this->tpl->assign("entity_id", $visit_log_id);
+		$this->tpl->assign("faction", "emailto_physician");
+		$this->validation->set_rules(array('to' => 'required'));
+		$this->validation->set_fields(array('to' => 'Doctor Office Email'));
+        
+        $visit_log = $this->visitlogmdl->getById($visit_log_id);
+        $doctorid = $visit_log->phys_user_id;
+        if (is_null($doctorid)) {
+            $cms485 = $this->episodemdl->getById($visit_log->cms485_id);
+            $doctorid = $cms485->phys_user_id;  
+        }
+        $doctor = $this->usagymdl->getByUsAgyId($doctorid);
+        $doctor_office = $this->agencymdl->getByAgencyId($doctor->agency_id);      
+		// $this->tpl->assign("to", $doctor->email);
+		$this->tpl->assign("to", $doctor_office->agency_email);
+		
+		$agency_info = $this->agencymdl->getByAgencyId($this->getAgencyId());      
+        $this->tpl->assign("agency_email", $agency_info->agency_email);
+        $this->tpl->assign("agency_comments", $visit_log->agency_comments);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "task/emailto_physician");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		}else{
+			$this->load->helper('visit_pdf');
+            $this->load->library('email');
+            $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+
+            if ($visit_type->visit_program == null) {
+                continue;
+            }
+            $method = $visit_type->visit_program.'_pdf';
+
+            if(!function_exists($method)){          
+                exit("Method not exist to attach file!");
+            }
+            $this->load->model($visit_type->visit_program.'mdl');
+            $filename = $method($visit_log_id);
+            $toemails = $this->input->post('to');
+            $emails = explode(",", $toemails);
+            $message = $this->input->post('message');
+
+            $patient  = $this->patientmdl->getById($visit_log->patient_id);
+
+            foreach ($emails as $email) {
+            	$email = trim($email);
+	            if ($this->email->valid_email($email)) {        
+	            	// $subject = "Patient ".$patient->first_name." ".$patient->last_name." DOCTOR ORDER Order Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+                    $subject = $this->input->post('subject');
+                    if (!$subject) {
+                        $subject = 'Please see attached order(s) for your signature and approval -  Priority=Normal. Thank you';
+                    }
+                    $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+                    $this->email->to($email);                       
+                    $this->email->subject($subject);
+
+                    $body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$message;
+	            	// $this->email->set_mailtype("html"); 
+
+                    $this->email->message($body);   
+                    $this->email->set_mailtype("html");   
+                    $this->email->attach($filename);
+                    $this->email->send();
+                    //$this->email->print_debugger();
+                    $this->email->clear();
+                    // Update Status as Sent to Pahysician
+                    $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 2);
+                    // setting date sent to physician
+	                $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', standard_date(now(), 'MYSQL'));
+	                $this->visitlogmdl->updateFlex($visit_log_id, 'tab105_delivery_sent_via', 2); 
+	                if ($this->input->post('agency_comments') != "") {
+	                	$this->visitlogmdl->updateFlex($visit_log_id, 'agency_comments', $this->input->post('agency_comments')); 
+	                }
+	                if($this->input->post('copyto_agency') == '1'){
+                        $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+                        $this->email->to($agency_info->agency_email);              
+                        $this->email->subject("Copy of - ".$subject);
+
+                        $body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$message;
+	            		// $this->email->set_mailtype("html"); 
+                        
+                        $this->email->message($body);      
+                        // $this->email->attach($filename);
+                        $this->email->send();
+                    }
+                    $this->email->clear(true);
+	            }
+        	}
+        	echo "<b>Email sent to physician.</b>";
+			echo "<SCRIPT>alert('Email sent to physician.'); parent.cancelModal();</SCRIPT>";
+		}
+	}
+	function signedby_physician($visit_log_id){
+		$this->tpl->assign("entity_id", $visit_log_id);
+		$this->tpl->assign("faction", "signedby_physician");
+		$this->validation->set_rules(array('signed_by_physician_date' => 'required'));
+		$this->validation->set_fields(array('signed_by_physician_date' => 'Physician Sign Date'));
+        
+        $visit_log = $this->visitlogmdl->getById($visit_log_id);
+        if ($this->validation->run() == FALSE) {
+        	$this->assignObject($visit_log);
+			$this->tpl->assign_include("dynamic_tpl", "task/signedby_physician");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		}else{
+			/*$this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 3);
+            // setting date signed by physician
+            $this->visitlogmdl->updateFlex($visit_log_id, 'signed_by_physician_date', standard_date($this->input->post('signed_by_physician_date'), 'MYSQL')); 
+            // if ($this->input->post('agency_comments') != "") {
+                $this->visitlogmdl->updateFlex($visit_log_id, 'agency_comments', $this->input->post('agency_comments')); 
+            // }*/
+            echo "<SCRIPT>parent.cancelModal3();</SCRIPT>";
+		}
+	}
+	function sentto_physician($visit_log_id){
+        $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 2); 
+        // setting date sent to physician
+        $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', standard_date(now(), 'MYSQL')); 
+        echo "1";exit();                              
+    }
+	function pdfPage ( $__FONT, $doctor_order, $agency ) {
+        $cero_x = 11;
+        $cero_y = 2;
+		$this->fpdf->Open();
+		$this->fpdf->AddPage();
+		
+        $this->fpdf->SetDrawColor(130, 100);
+        //$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->SetFont('Arial','B',12);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $agency->agency_name); // agency name
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 20 ),"Licensed and Certified Home Health Agency");
+        
+        $this->fpdf->Rect(8,25, 577, 760);
+        
+        //$this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetFont('Arial', 'B', 13);
+        $this->fpdf->Text(260, 38, "DOCTOR ORDER");
+        //$this->fpdf->Text(460, 38, "Order Date   " . standard_date(mysql_to_unix($doctor_order->do_date)));
+        
+    	$this->fpdf->Line(8 , 42.5, 585, 42.5);
+    	
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $address = $agency->address.", ".$agency->city.", ".$agency->state_name_short.", ".$agency->zip;
+        $this->fpdf->Text(11, 800, $address);
+        $this->fpdf->Text(350, 800, "Phone: " . $agency->phone_primary);
+        $this->fpdf->Text(470, 800, "Fax: " . $agency->fax);
+        // $this->fpdf->Text(230, 820, "HomeHealthSoft Inc.   2006 – ".date("Y")." ©");
+        $this->fpdf->Text(250, 820, "HomeHealthSoft Inc.");
+	}
+	
+	function pdf ( $visit_log_id ) {
+		$this->load->helper('visit_pdf');
+	    dorder_pdf($visit_log_id,'D');
+	    
+	    return;
+
+		
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+
+		// getting data
+		// $doctor_order = $this->doctorordermdl->getByDoctorOrderId($doctor_order_id);
+		$doctor_order = $this->dordermdl->get($visit_log_id);
+		$patient 		= $this->patientmdl->getById($visit_log->patient_id);
+		
+		$agency	      = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$doctorid = $visit_log->phys_user_id;
+		if (is_null($doctorid)) {
+			$cms485 = $this->episodemdl->getById($visit_log->cms485_id);
+			$doctorid = $cms485->phys_user_id;	
+		}
+		$doctor = $this->usagymdl->getByUsAgyId($doctorid);
+		// $doctor_office = $this->agencymdl->getByAgencyId($doctor_order->doctor_office_id);
+		// $order_by 	  = $this->usagymdl->getByUsAgyId($doctor_order->order_by_user_id);
+		
+		/*
+		* Retrieve 4 diagnosis field from previous eval
+		*/
+		$primary_diag = "";
+		$secondary_diag = "";
+		$primary_diag_date = "";
+		$secondary_diag_date = "";
+
+		if (TRUE) {
+			$prev_eval = array();
+			$this->load->model('ptevmdl');
+			$ptevs = $this->ptevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id);
+			if (count($ptevs) == 0) {
+				$ptevs = $this->ptevmdl->getPrevious(null, @ $visit_log->visit_date_time, @ $visit_log->cms485_id, TRUE); // look all PTEV of current SOC        
+			}			
+			if (count($ptevs)) {
+				$prev_eval = $ptevs[count($ptevs) - 1];				
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('otevmdl');
+				$otevs = $this->otevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id);
+				if (count($otevs) == 0) {
+					$otevs = $this->otevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($otevs)) {
+					$prev_eval = $otevs[count($otevs) - 1];
+				}
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('stevmdl');
+				$stevs = $this->stevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id);
+				if (count($stevs) == 0) {
+					$stevs = $this->stevmdl->getPrevious(null, $visit_log->visit_date_time, $visit_log->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($stevs)) {
+					$prev_eval = $stevs[count($stevs) - 1];
+				}			
+			}
+
+			
+			if (isset($prev_eval->primary_diag)) {
+				$primary_diag = $prev_eval->primary_diag;				
+			}
+
+			if (isset($prev_eval->secondary_diag)) {
+				$secondary_diag = $prev_eval->secondary_diag;				
+			}
+
+			if (isset($prev_eval->primary_diag_date)) {
+				$primary_diag_date = date("m-d-Y", strtotime($prev_eval->primary_diag_date));				
+			}
+
+			if (isset($prev_eval->secondary_diag_date)) {
+				$secondary_diag_date = date("m-d-Y", strtotime($prev_eval->secondary_diag_date));				
+			}
+
+		}
+
+		$path_ticket = realpath("style/images/icon_enable_negro.gif");
+		
+        $__FONT['PDF']['SIZE'] = 11;
+        $__FONT['PDF']['FORM_MEDIUM'] = 10;
+        //$__FONT['PDF']['FORM_SMALL'] = 9;
+        $__FONT['PDF']['FORM_SMALL'] = 10;
+        $__FONT['PDF']['FORM_SMALL2'] = 9;
+        $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+        $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+        $__FONT['PDF']['FORM_arial8'] = 9.5;
+		
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH', $this->config->item('fonts_path'));
+
+		$this->pdfPage($__FONT, $doctor_order, $agency);
+      
+      	// Order Date
+      	$this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 55+30, "Order Date: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 55+30, standard_date(mysql_to_unix($doctor_order->do_date)));
+      
+    
+    	// physician
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 70+30, "Physician: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 70+30, $doctor->first_name ." ".$doctor->last_name);
+	    
+    	// physician
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 85+30, "Patient Name: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 85+30, $patient->first_name . ' ' . $patient->last_name);
+	    
+    	// order by
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 100+30+20, "Ordered By: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 100+30+20, $visit_log->first_name." ".$visit_log->last_name);
+
+	    // Diagnosis field
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 115+30+20, "Primary Dx: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 115+30+20, $primary_diag);
+
+	    // Diagnosis Date field
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(380, 115+30+20, "Prim Dx Date: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(500, 115+30+20, $primary_diag_date);
+
+	    // Diagnosis field
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 130+30+20, "Therapy Dx: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 130+30+20, $secondary_diag);
+
+	    // Diagnosis Date field
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(380, 130+30+20, "Ther Dx Date: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(500, 130+30+20, $secondary_diag_date);
+	    
+    	// order description
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 145+30+30, "Order Description: ");
+	    
+	    $eje_y = 145+15+30+30+10;
+		$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+    	/*$this->fpdf->SetXY(11, $eje_y);
+		$this->fpdf->MultiCell(566, 12, $doctor_order->order_description);
+        */
+		foreach (str_split($doctor_order->do_description, 77) as $substring) {
+			
+			//$this->fpdf->Text(150, $eje_y, $substring);
+			$this->fpdf->Text(30, $eje_y, $substring);      
+      		$this->fpdf->SetLineWidth( 0.5 );
+      		$this->fpdf->Line(30, $eje_y+4, 554, $eje_y+4);
+        
+			$eje_y += 15;
+			
+			if ($eje_y > 660) {
+				$this->pdfPage($__FONT, $doctor_order, $agency);
+
+        		$this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+        		$this->fpdf->Text(30, 55, "Order Description: ");
+
+				$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+				$eje_y = 55+30;
+			}
+			
+		}
+		
+		if ($eje_y >= 675) {
+			$this->pdfPage($__FONT, $doctor_order, $agency);
+		}
+		
+    	/*$this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 700-20,  "Clinician Signature:");
+	    $this->fpdf->Text(125, 700-20, "____________________________________________            Date: _____________");
+//	    if ($doctor_order->electronic_signed == 1 ) {
+	    if ($doctor_order->tab_023_order_status == 2 ) {
+	      $this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+  			//$this->fpdf->Text(130, 700-20, "" . $order_by->complete_name);
+  			$this->fpdf->Text(130, 700-20, "ELECTRONICALLY SIGNED BY " . $order_by->complete_name);
+  			//$this->fpdf->Text(430, 700-20, standard_date(mysql_to_unix($doctor_order->sent_date)));	    	
+  			$this->fpdf->Text(430, 700-20, standard_date(mysql_to_unix($doctor_order->do_date)));	    	
+	    }*/
+
+      // if($doctor_order->doc_doctor_order_type_id!=5)  {
+  	    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+  	    $this->fpdf->Text(30, 740-20, "Physician Signature:");
+  	    $this->fpdf->Text(130, 740-20, "____________________________________________          Date: _____________");
+
+  		$this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+  	    // if (!is_null($doctor_order->signed_date)) {	    
+    			if ($visit_log->tab_023_doctor_order_status == 3) {
+    				$this->fpdf->Text(130, 740-20, "ELECTRONICALLY SIGNED BY " . $doctor->first_name ." ".$doctor->last_name);
+    			} /*else if ($doctor_order->tab_023_order_status != 2 ) {
+    				$this->fpdf->Text(130, 740-20, "MANUALLY SIGNED BY " . $doctor->first_name ." ".$doctor->last_name);
+    				$this->fpdf->Text(130, 750-20, "(MANUAL ORIGINAL COPY SHOULD BE IN PATIENT'S FOLDER)");
+    			}*/
+  	    // }
+  	    
+  	    /*if ($doctor_order->tab_023_order_status != 2 AND $doctor_order->signed_date) {	    
+  			$this->fpdf->Text(430, 740-20, standard_date(mysql_to_unix($doctor_order->signed_date)));
+  	    }*/
+  	    
+      // }  
+        $this->fpdf->Output('doctor_order.pdf','D');
+        
+	}
+
+}
+?>

@@ -1,0 +1,99 @@
+</form>
+<script type="text/javascript" src="{$base_url}style/maskedinput.js"></script>
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/edit_timein/{$visit_log_id}">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  <tr>		
+		<td height="10"><b>Patient Name:</b> </td>
+    <td height="10">
+			{$patient->first_name} {$patient->last_name}
+    </td>
+  </tr>	
+	  <tr>		
+		<td height="10"><b>Visit Date:</b> </td>
+    <td height="10">
+			{$visit_date_time}
+    </td>
+  </tr>	
+
+  <tr>		
+		<td height="10"><b>Visit Time in:</b> </td>
+    <td height="10">
+			<input type="text" name="visited_time_in_hm" id="visited_time_in_hm" value="{$visited_time_in|truncate:5:"":true}" size="5" maxlength="5" onchange="update_visit_time_out(event);" />
+			<b>Duration</b> <input type="text" name="visit_duration" id="visit_duration" value="{$visit_duration}" size="2" maxlength="2" onchange="update_visit_time_out(event);"/> min
+					{literal}
+						<script>
+						jQuery(function($){
+							$("#visited_time_in_hm").mask("99:99");
+							$("#visit_duration").mask("99");
+						});
+		
+						
+						function update_visit_time_out(evt){
+							
+							var time_in = document.getElementById('visited_time_in_hm').value;
+							if(time_in.toString().length == 2 && time_in.indexOf(':') < 0 ){
+								document.getElementById('visited_time_in_hm').value = time_in+':';
+								return;
+							}
+							if(time_in.toString().length < 5)
+							return;
+							
+							ghour = time_in.substring(0,2);
+							gmin = time_in.substring(3,5);
+							if(ghour.indexOf(':') >= 0 || gmin.indexOf(':') >= 0)
+							{
+								return;
+							}
+														
+							ghour = parseInt(ghour,10);
+							gmin = parseInt(gmin,10);
+							
+							if(ghour > 23 || gmin > 59)
+							{
+								alert('Invalid visit time in');
+								return;
+							}
+							
+
+							gduration = parseInt(document.getElementById('visit_duration').value,10);
+							if(isNaN(gduration)){
+								alert('Invalid duration');
+								return;
+							}
+							
+							gtime = ghour*60+gmin+gduration;
+							
+							ghour = parseInt((gtime/60),10);
+							gmin = gtime - ghour*60;
+							if(ghour > 23)
+							{
+								alert('Invalid time in and out');
+								//return;
+							}
+							if(ghour.toString().length==1)
+							ghour = '0'+ghour;
+							if(gmin.toString().length==1)
+							gmin = '0'+gmin;
+							
+							document.getElementById('visited_time_out_hm_lbl').innerHTML = ghour+':'+gmin;
+							document.getElementById('visited_time_out_hm').value = ghour+':'+gmin;
+						}
+						</script>
+					{/literal}
+    </td>
+	</tr>
+	<tr>	
+		<td height="10"><b>Visit Time out</b></td>
+		<td>
+			<label id="visited_time_out_hm_lbl">{$visited_time_out|truncate:5:"":true}</label>
+		  <input type="hidden" name="visited_time_out_hm" id="visited_time_out_hm" value="{$visited_time_out|truncate:5:"":true}" size="5" maxlength="5"  readonly="" /> 
+		</td>
+  </tr>	
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>

@@ -1,0 +1,242 @@
+<?
+
+ class AgencyMdl extends Model {
+
+	var $agency_id;
+	var $agency_parent_id;
+  	var $agency_type;
+  	var $agency_status = 'Act';
+  	var $agency_end_date;
+  	var $agency_name;
+  	var $doctor_office_npi;
+  	var $address;
+  	var $address2;
+  	var $city;
+  	var $state_id;
+  	var $zip;
+  	var $zip2;
+  	var $po_box_address;
+  	var $po_box_city;
+  	var $po_box_state_id;
+  	var $po_zip1;
+  	var $po_zip2;
+  	var $phone_primary;
+  	var $phone_secondary;
+  	var $fax;
+  	var $web_address;
+  	var $agency_email;
+  	var $contact_name;
+  	var $contact_phone;
+  	var $contact_extention;
+	var $assoc_branches;
+  	var $npi;
+  	var $ein;
+  	var $state_assigned_id;
+  	var $branch_id_num_M0016;
+  	var $cms_cert_num_M0010;
+  	var $state_prov_number;
+  	var $medicaid_hmo;
+  	var $branch_state_M0014;
+  	var $medicare_lic_nbr;
+  	var $medicare_lic_issue_date;
+  	var $medicare_lic_exp_date;
+  	var $medicaid_lic_nbr;
+  	var $medicaid_lic_issue_date;
+  	var $medicaid_lic_exp_date;
+  	var $comments;
+  	var $tab_066_time_zone;
+  	var $spe_cma_name;
+  	var $F3625_agency_type;
+	var $F3625_contract_no;
+	var $F8606A_CMA_vendor_nbr;
+	var $F3625_measure_unit;
+	var $F3625_req_visit;
+	var $F3625_req_sig;
+	var $ptpn_req_co_sign;
+  	var $create_datetime;
+	var $modify_datetime;
+	var $logo;
+	var $invoice_due_days;
+	var $invoice_include_additonal_info;
+	var $invoice_terms; // Value 0=Nbr of Days, 1=Due on Receipt, Default = 0
+
+	var $provides_altern_therapy;
+	var $validate_medical_rec_nbr; // default 0, when value is 1 then pat_patient.medical_rec_nbr is required
+	var $superv_sign_require; // default 0, when value is 1 then muvi supervisor is required to approve
+	var $send_invoice_to_patient; // default 0, when value is 1 then invoice will send to Patient Email
+	var $print_therapist_name_in_invoice; // 1 or 0 default to 0 
+	var $print_agency_or_contractor_on_notes; // enum agency,contractor and both default to agency
+	var $deals_with_groups; // default 0, when value is 1 then invoice will use flat rate assigned while patient create
+	var $sort_invoice_by_lastname; // default 0, when value is 1 then invoice details will sort sort by patient last name
+
+
+
+	function AgencyMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $keyword=null, $search_type=null, $agency_type=null, $state_id=null ) {
+	
+		/*if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}*/
+		$this->db->select("agy_agency.*, sta_states.*, (SELECT count(pat_patient.patient_id) from pat_patient WHERE pat_patient.agency_id = agy_agency.agency_id) as total_patient");
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+		if (!is_null($keyword)) {
+			//$like_array = array("agency_name" => $keyword, "contact_name" => $keyword, "phone_primary" => $keyword, "agency_status" => $keyword, "create_datetime" => $keyword);
+			$like_where = "(agency_name LIKE '%" . $keyword . "%' OR contact_name LIKE '%" . $keyword . "%' OR phone_primary LIKE '%" . $keyword . "%' OR agency_status LIKE '%" . $keyword . "%' OR create_datetime LIKE '%" . $keyword . "%')";
+			$this->db->where($like_where);
+		}
+		
+		
+		if (!is_null($agency_type)) {
+			$this->db->where("agency_type", $agency_type);
+		}
+		if (!is_null($state_id)) {      
+		  $this->db->where("agy_agency.state_id", $state_id);
+		}
+		$this->db->order_by("agency_name", "asc"); 
+		
+		$query = $this->db->get('agy_agency');
+		return $query->result();			
+	
+	}
+	
+	function getByAgencyId ( $agency_id ) {
+	
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+	
+		$this->db->where("agency_id", $agency_id);
+	
+		$query = $this->db->get('agy_agency');
+		return $query->row();			
+	
+	}
+	
+	function getByParent ( $agency_id ) {
+	
+		$this->db->join('sta_states', 'sta_states.state_id = agy_agency.state_id', ' LEFT');
+	
+		$this->db->where("agency_parent_id", $agency_id);
+	
+		$query = $this->db->get('agy_agency');
+		return $query->result();			
+	
+	}
+	
+	function getByNpi ( $doctor_office_npi ) {
+	
+	
+		$this->db->where("doctor_office_npi", $doctor_office_npi);
+	
+		$query = $this->db->get('agy_agency');
+		return $query->row();			
+	
+	}
+	
+	function insert () {
+		$this->create_datetime = date('Y-m-d');
+		$this->db->insert("agy_agency", $this);
+		$this->agency_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $agency_id ) {
+		
+		$this->db->where("agency_id", $agency_id);
+		$this->db->update("agy_agency", $this);
+		
+	}
+	
+	function updateByAgency ( $agency_id ) {
+		
+		$this->db->set("contact_name", $this->contact_name);
+		$this->db->set("contact_phone", $this->contact_phone);
+		$this->db->set("contact_phone", $this->contact_phone);
+		$this->db->set("agency_name", $this->agency_name);
+		$this->db->set("po_box_address", $this->po_box_address);
+		$this->db->set("address", $this->address);
+		$this->db->set("po_box_city", $this->po_box_city);
+		$this->db->set("city", $this->city);
+		$this->db->set("po_box_state_id", $this->po_box_state_id);
+		$this->db->set("state_id", $this->state_id);
+		$this->db->set("zip", $this->zip);
+		$this->db->set("phone_primary", $this->phone_primary);
+		$this->db->set("agency_email", $this->agency_email);
+		$this->db->set("phone_secondary", $this->phone_secondary);
+		$this->db->set("web_address", $this->web_address);
+		$this->db->set("fax", $this->fax);
+		$this->db->set("state_assigned_id", $this->state_assigned_id);
+		$this->db->set("npi", $this->npi);
+		$this->db->set("ein", $this->ein);
+		$this->db->set("medicare_lic_nbr", $this->medicare_lic_nbr);
+		$this->db->set("medicare_lic_issue_date", $this->medicare_lic_issue_date);
+		$this->db->set("medicare_lic_exp_date", $this->medicare_lic_exp_date);
+		$this->db->set("medicaid_lic_nbr", $this->medicaid_lic_nbr);
+		$this->db->set("medicaid_lic_issue_date", $this->medicaid_lic_issue_date);
+		$this->db->set("medicaid_lic_exp_date", $this->medicaid_lic_exp_date);
+		$this->db->set("tab_066_time_zone", $this->tab_066_time_zone);
+		$this->db->set("medicaid_hmo", $this->medicaid_hmo);
+		
+		$this->db->where("agency_id", $agency_id);
+		
+		$this->db->update("agy_agency");
+		
+	}
+	
+	function updateAgencyDetails ( $agency_id ) {
+
+		$this->db->set("state_assigned_id", $this->state_assigned_id);
+		$this->db->set("branch_id_num_M0016", $this->branch_id_num_M0016);
+		$this->db->set("contact_name", $this->contact_name);
+		$this->db->set("address", $this->address);
+		$this->db->set("address2", $this->address2);
+		$this->db->set("city", $this->city);
+		$this->db->set("state_id", $this->state_id);
+		$this->db->set("zip", $this->zip);
+		$this->db->set("npi", $this->npi);
+		$this->db->set("cms_cert_num_M0010", $this->cms_cert_num_M0010);
+		$this->db->set("state_prov_number", $this->state_prov_number);
+		$this->db->set("contact_name", $this->contact_name);
+		$this->db->set("contact_phone", $this->contact_phone);
+		$this->db->set("contact_extention", $this->contact_extention);
+		// $this->db->set("assoc_branches", $this->assoc_branches);
+		
+		$this->db->where("agency_id", $agency_id);
+		$this->db->update("agy_agency");
+		
+	}
+
+	function updateAgencySettings ( $agency_id ) {
+
+		$this->db->set("F3625_agency_type", $this->F3625_agency_type);
+		$this->db->set("F3625_contract_no", $this->F3625_contract_no);
+		$this->db->set("F8606A_CMA_vendor_nbr", $this->F8606A_CMA_vendor_nbr);
+		$this->db->set("F3625_measure_unit", $this->F3625_measure_unit);
+		$this->db->set("F3625_req_visit", $this->F3625_req_visit);
+		$this->db->set("F3625_req_sig", $this->F3625_req_sig);
+		$this->db->set("ptpn_req_co_sign", $this->ptpn_req_co_sign);
+		$this->db->set("invoice_due_days", $this->invoice_due_days);
+				
+		$this->db->where("agency_id", $agency_id);
+		$this->db->update("agy_agency");
+				
+	}
+
+	function delete ( $agency_id ) {
+		
+		$this->db->where("agency_id", $agency_id);
+		$this->db->delete("agy_agency");
+		
+	}
+
+	function updateFlex($agency_id, $attribute, $value, $where = 'agency_id') {
+		$this->db->where($where, $agency_id);
+		$this->db->set($attribute, $value);
+		$this->db->update('agy_agency');
+	}
+
+
+ }

@@ -1,0 +1,196 @@
+<?php
+
+ class Quartsummmdl extends Model {
+
+    var $vt104_id;
+    var $visit_log_id;
+    var $order_date;
+    var $quarter_year;
+    var $diagnosis;
+    var $initial_annual_eval;
+    var $frequency_duration;
+    var $coord_text;
+    var $base_line1;
+    var $goals1;
+    var $objectives1;
+    var $base_line2;
+    var $goals2;
+    var $objectives2;
+    var $base_line3;
+    var $goals3;
+    var $objectives3;
+    var $client_participation;
+    var $missed_visits_nbr;
+    var $missed_visits_reason;
+    var $treatment_goal1;
+    var $current_prog_goal1;
+	var $met_unmet_revised1;
+	var $spec_revision1;
+    var $treatment_goal2;
+	var $current_prog_goal2;
+	var $met_unmet_revised2;
+	var $spec_revision2;
+    var $treatment_goal3;
+    var $current_prog_goal3;
+	var $met_unmet_revised3;
+	var $spec_revision3;
+	var $pt_signature;
+	var $pt_signed_date;
+	var $clinician_signature;
+    var $clinician_signed_date;
+	var $dsa_signature;
+	var $dsa_signed_date;
+	var $upload_document_name;
+	var $addendum;
+	
+
+	function Quartsummmdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt104_form_332b_quar');
+		return $query->row();
+	
+	}
+
+	function getEmpty ( ) {
+		return $this;
+	}
+
+	function insert () {
+	
+		$this->db->insert('vt104_form_332b_quar', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->vt104_id);
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$this->db->update('vt104_form_332b_quar', $this);
+	
+	}
+	
+    function delete($visit_log_id) {
+
+        $this->db->where('visit_log_id', $visit_log_id);
+        $this->db->delete('vt104_form_332b_quar');
+
+    }
+
+	function getPrevious ( $user_id=null, $previous_date, $episode_id, $allepisodes=false, $discipline_id=null ) {
+		$soc_id = null;
+        if($allepisodes AND $episode_id){      
+          $this->db->select('soc_id');
+          $this->db->where('cms485_id', $episode_id);
+          $query = $this->db->get('cms_485');    
+          $row = $query->row_array();
+          $soc_id = $row['soc_id'];
+        }
+        
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt104_form_332b_quar.visit_log_id');
+		
+        if (!is_null($user_id)){
+		  $this->db->where('visit_user_id', $user_id);
+        } else if (!is_null($discipline_id)) {
+        	$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+        	$this->db->where('us_agy.discipline_id', $discipline_id );
+        }
+        
+	  	$this->db->where('visit_date_time <', $previous_date);
+		
+		if(!is_null($soc_id)){
+            $this->db->join('cms_485',   'cms_485.soc_id = '.$soc_id);
+            $this->db->where('vis_visit_log.cms485_id=cms_485.cms485_id');
+            $this->db->group_by('vis_visit_log.visit_log_id');
+        }else{
+            $this->db->where('cms485_id', $episode_id);
+		}
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt104_form_332b_quar');
+		return $query->result();
+		
+	}
+  
+    function getNext ( $user_id=null, $previous_date, $episode_id, $discipline_id=null ) {
+		
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt104_form_332b_quar.visit_log_id');
+		
+        if (!is_null($user_id)){
+		  $this->db->where('visit_user_id', $user_id);
+        } else if (!is_null($discipline_id)) {
+        	$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+        	$this->db->where('us_agy.discipline_id', $discipline_id );
+        }
+		
+        $this->db->where('visit_date_time >', $previous_date);
+		$this->db->where('cms485_id', $episode_id);
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt104_form_332b_quar');
+		return $query->result();
+		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new Quartsummmdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->vt101_id = $object1->vt101_id;
+		$object->visit_log_id = $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('vt104_form_332b_quar', $object);
+		
+	}
+	
+    function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+
+        $this->db->where($where, $visit_log_id);
+        $this->db->set($attribute, $value);
+
+        $this->db->update('vt104_form_332b_quar');
+
+    }
+
+    // function quarterlyTimePeriod(){
+    // 	$dateseparator = explode('-', $order_date);
+    // 	$month = $dateseparator['1'];
+    // 	$arrary1 = [01,02,03];
+    // 	$arrary2 = [04,05,06];
+    // 	$arrary3 = [07,08,09];
+    // 	$arrary3 = [10,11,12];
+
+    // 	if (in_array($month, $arrary1))
+  		// {
+  		// 	return "Quarter1";
+  		// }
+  		// else if (in_array($month, $arrary2))
+  		// {
+  		// 	return "Quarter2";
+  		// }
+  		// else if (in_array($month, $arrary3))
+  		// {
+  		// 	return "Quarter3";
+  		// }
+  		// else{
+  		// 	return "Quarter4";
+  		// }
+    	
+    // }
+
+
+}

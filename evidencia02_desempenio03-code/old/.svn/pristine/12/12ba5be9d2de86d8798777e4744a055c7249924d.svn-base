@@ -1,0 +1,448 @@
+<?
+
+ class user extends MY_Controller {
+
+	function user () {
+		
+		parent::MY_Controller();
+		$this->load->model('payrollbatchprocessmdl');
+
+		$this->tpl->assign("resource_path", "payroll/user");
+		$this->tpl->assign("tab_page",true);
+
+	}
+
+	function index(){
+		$this->tpl->assign_include("dynamic_tpl", "payroll/user/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function ready () {
+		$visit_user_id = $this->getUsAgyId();
+
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("noedit", true);
+		$this->tpl->assign("resource_grid", 'listReadyGrid');
+		$this->tpl->assign("visit_user_id", $visit_user_id);
+		$this->tpl->assign("visit_user", $this->usagymdl->getByUsAgyId($visit_user_id));
+		
+		/*$this->tpl->assign("visit_date_ini", $visit_date_ini);
+		$this->tpl->assign("visit_date_fin", $visit_date_fin);*/
+		$this->session->unset_userdata('payroll_ready_form_data');
+		$visit_date_ini = null;
+		$visit_date_fin = null;	
+		$date_filter_type = null;	
+		$payroll_cycle_id = null;
+		$payment_date = null;
+		$this->load->model('payrollcyclesmdl');		
+		if(isset($_POST) && !empty($_POST)) {
+			$this->session->set_userdata('payroll_ready_form_data', $_POST);
+			$date_filter_type = $this->input->post('date_filter_type');
+			if(isset($_POST['date_filter_type']) && $_POST['date_filter_type'] == 'cycle') {
+				
+				if(isset($_POST['payroll_cycle_id']) && $_POST['payroll_cycle_id'] > 0) {
+					$payroll_cycle_id = $_POST['payroll_cycle_id'];
+					$payroll_detail = $this->payrollcyclesmdl->getById($this->input->post('payroll_cycle_id'));
+					//echo "<pre>"; print_r($payroll_detail); echo "</pre>";
+					// set the dates from the payroll_Cycle table
+					$visit_date_ini = date('m-d-Y', strtotime($payroll_detail->from_date));
+					$visit_date_fin = date('m-d-Y', strtotime($payroll_detail->to_date));
+					$payment_date = date('m-d-Y', strtotime($payroll_detail->payment_date));
+				}
+			} else {
+				$visit_date_ini = $this->input->post('visit_date_ini');
+				$visit_date_fin = $this->input->post('visit_date_fin');
+				$payment_date = $this->input->post('payment_date');
+			}
+		} else {
+			// set the default values for the form when page loads initially
+			# get the default payroll_cycle that falls in the current date
+			$payroll_detail = $this->payrollcyclesmdl->getByDate(date('Y-m-d'), $this->getAgencyId());
+			if(!empty($payroll_detail)) {
+				$payroll_cycle_id = $payroll_detail->id;
+				$date_filter_type = 'cycle';
+				
+				$visit_date_ini = date('m-d-Y', strtotime($payroll_detail->from_date));
+				$visit_date_fin = date('m-d-Y', strtotime($payroll_detail->to_date));
+				$payment_date = date('m-d-Y', strtotime($payroll_detail->payment_date));
+				$session_data_to_set = array('payroll_cycle_id' => $payroll_cycle_id, 'date_filter_type' => $date_filter_type);
+				$this->session->set_userdata('payroll_ready_form_data', $session_data_to_set);
+			}
+			//echo "<pre>"; print_r($payroll_detail); echo "</pre>";
+		}
+		$this->tpl->assign("entity_id", $visit_date_ini . '/' .  $visit_date_fin);
+		$this->tpl->assign("date_filter_type", $date_filter_type);
+		$this->tpl->assign("payroll_cycle_id", $payroll_cycle_id);
+		$this->tpl->assign("payment_date", $payment_date);
+		
+		$this->load->model('payrollcyclesmdl');
+		$payroll_pars = array('filters' => array('agency_id' => $this->getAgencyId()));
+		$payroll_options = $this->payrollcyclesmdl->get($payroll_pars, false);
+		$this->tpl->assign("payroll_options", $payroll_options);
+		//echo "asdfasdf<pre>"; print_r($payrolls); echo "</pre>";
+		
+		$status = ($this->getAgencyType() == 'A' ? array(4) : array(3, 4));
+		$total = $this->payrollmdl->getTotal($visit_user_id, null, $visit_date_ini, $visit_date_fin, $status);
+		$this->tpl->assign("total_amount", moneyformat(@$total->sum_visit_amount + @$total->sum_mileage_amount));
+		
+		if ($visit_date_ini) {
+			$visit_check = $this->payrollmdl->compare_entry(standard_date(human_to_unix($visit_date_ini), 'MYSQL'), $status);
+			$this->tpl->assign("visit_check", $visit_check);
+		}
+		
+		$cycleYears = array();
+		for ($i=date("Y"); $i >= date("Y")-3 ; $i--) { 
+			$cycleYears[$i] = $i;
+		}
+
+		$this->tpl->assign("cycleYears", $cycleYears);
+		$this->tpl->assign("paginate", 'false');
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/user/ready_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+	}
+
+	function listReadyGrid ( $visit_date_ini=null, $visit_date_fin=null ) {
+		$visit_user_id = $this->getUsAgyId();
+
+		$tab_32_assess_type_lsit = $this->parametermdl->getByType(32);
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		// $head->append($this->xml->Element("column", "width=6;align=center",  "Confirmed"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=10", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Duration"));
+		//$head->append($this->xml->Element("column", "width=10;align=center", "Units"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Visit \$"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Mileage \$"));
+		$head->append($this->xml->Element("column", "width=10", "Patient Name "));
+		// $head->append($this->xml->Element("column", "width=*", "Visit Status"));
+		$head->append($this->xml->Element("column", "width=*", "Approved by"));
+		$head->append($this->xml->Element("column", "width=*", "Date"));
+		// $head->append($this->xml->Element("column", "width=*;type=link;align=center", "Action"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//$status = ($this->getAgencyType() == 'A' ? array(4) : array(3, 4, 8));
+		$status = ($this->getAgencyType() == 'A' ? array(4) : array(3, 4));
+		$visit_date_ini = null;
+		$visit_date_fin = null;		
+		//echo "<pre>"; print_r($_POST); echo "</pre>";
+		if($this->session->userdata('payroll_ready_form_data')){
+			$form_data = $this->session->userdata('payroll_ready_form_data');
+			//echo "<pre>"; print_r($form_data); echo "</pre>";
+			if(isset($form_data['date_filter_type']) && $form_data['date_filter_type'] == 'cycle') {
+				$this->load->model('payrollcyclesmdl');
+				if(isset($form_data['payroll_cycle_id']) && $form_data['payroll_cycle_id'] > 0) {
+					$payroll_detail = $this->payrollcyclesmdl->getById($form_data['payroll_cycle_id']);
+					//echo "<pre>"; print_r($payroll_detail); echo "</pre>";
+					// set the dates from the payroll_Cycle table
+					$visit_date_ini = date('m-d-Y', strtotime($payroll_detail->from_date));
+					$visit_date_fin = date('m-d-Y', strtotime($payroll_detail->to_date));
+				}
+			} else {
+				$visit_date_ini = (isset($form_data['visit_date_ini']) && $form_data['visit_date_ini'] != '')?$form_data['visit_date_ini']:null;
+				$visit_date_fin = (isset($form_data['visit_date_fin']) && $form_data['visit_date_fin'] != '')?$form_data['visit_date_fin']:null;
+			}
+		}
+			
+		foreach ($this->payrollmdl->listDetail($visit_user_id, $status, $visit_date_ini, $visit_date_fin, 1) as $visit_log) {
+			
+			$t1 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in);
+			$t2 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out);
+			$visit_unit = $this->visitunitmdl->get(($t2 - $t1) / 60);
+			
+			$approver = $this->usagymdl->getByUsAgyId($visit_log->user_approver);
+
+			$cell = $this->xml->Element("row", "id=" . $visit_log->visit_log_id);
+			/*if ($visit_log->payroll_confirmed == 1) {
+				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/grid/imgs/item_chk1.gif'>")));
+			} else {
+				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/grid/imgs/item_chk0.gif'>")));
+			}*/
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit_log->visit_date_time), 'USA_DATE')));
+
+			$visit_description = "";
+			if($visit_log->visit_type_id  == 10){
+				$this->load->model('ptevmdl');
+				$PTEV = $this->ptevmdl->get($visit_log->visit_log_id );        
+				$visit_description .= $visit_log->visit_description.' – '.@$tab_32_assess_type_lsit[$PTEV->tab_32_assess_type];
+			}else{
+				$visit_description .= $visit_log->visit_description;
+			}
+
+			if($visit_log->billable_YN == 0){
+				$visit_description .= " (NB)";
+				$visit_log->visit_amount = 0.00;
+				$visit_log->mileage_amount = 0.00;
+			}
+
+			$cell->append($this->xml->Element("cell", null, $visit_description));
+			if($visit_log->visit_type_id  == 320)
+				$cell->append($this->xml->Element("cell", null, '00:00:00'));
+			else
+				$cell->append($this->xml->Element("cell", null, $visit_log->visit_duration));
+
+			//$cell->append($this->xml->Element("cell", null, @$visit_unit->unit_value));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->visit_amount)));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->mileage_amount)));
+			$cell->append($this->xml->Element("cell", null, $visit_log->pat_first_name . " " . $visit_log->pat_last_name));
+			// $cell->append($this->xml->Element("cell", null, $visit_log->tab_description));
+			$cell->append($this->xml->Element("cell", null, @$approver->first_name . " " . @$approver->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit_log->approve_date)) ));
+			
+			// $cell->append($this->xml->Element("cell", null, "Edit Payment^javascript:modalEditForm(" . $visit_log->visit_log_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function pending ($visit_date_ini=null, $visit_date_fin=null ) {
+		$visit_user_id = $this->getUsAgyId();
+
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("noedit", true);
+		$this->tpl->assign("resource_grid", 'listPendingGrid');
+		$this->tpl->assign("visit_user_id", $visit_user_id);
+		$this->tpl->assign("visit_user", $this->usagymdl->getByUsAgyId($visit_user_id));
+		$this->tpl->assign("entity_id", $visit_date_ini . '/' .  $visit_date_fin);
+		$this->tpl->assign("visit_date_ini", $visit_date_ini);
+		$this->tpl->assign("visit_date_fin", $visit_date_fin);
+		$status = ($this->getAgencyType() == 'A' ? array(3) : array(8));
+		$total = $this->payrollmdl->getTotal($visit_user_id, null, $visit_date_ini, $visit_date_fin, $status, 'R', 0);
+		// print_r($total);exit();
+		$this->tpl->assign("total_amount", moneyformat(@$total->sum_visit_amount + @$total->sum_mileage_amount));
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/user/pending_filter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+	}
+
+	function listPendingGrid ( $visit_date_ini=null, $visit_date_fin=null ) {
+		$visit_user_id = $this->getUsAgyId();
+
+		$tab_32_assess_type_lsit = $this->parametermdl->getByType(32);
+    
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		// $head->append($this->xml->Element("column", "width=6;align=center",  "Confirmed"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=10", "Visit Type"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Duration"));
+		//$head->append($this->xml->Element("column", "width=10;align=center", "Units"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Visit \$"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Mileage \$"));
+		$head->append($this->xml->Element("column", "width=10", "Patient Name"));
+		// $head->append($this->xml->Element("column", "width=*", "Visit Status"));
+		$head->append($this->xml->Element("column", "width=*", "Approved by"));
+		$head->append($this->xml->Element("column", "width=*", "Date"));
+		// $head->append($this->xml->Element("column", "width=*;type=link;align=center", "Action"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		//$status = ($this->getAgencyType() == 'A' ? array(4) : array(3, 4, 8));
+		$status = ($this->getAgencyType() == 'A' ? array(3) : array(8));
+		
+		foreach ($this->payrollmdl->listDetail($visit_user_id, $status, $visit_date_ini, $visit_date_fin) as $visit_log) {
+			
+			$t1 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in);
+			$t2 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out);
+			$visit_unit = $this->visitunitmdl->get(($t2 - $t1) / 60);
+			
+			$approver = $this->usagymdl->getByUsAgyId($visit_log->user_approver);
+
+			$cell = $this->xml->Element("row", "id=" . $visit_log->visit_log_id);
+			/*if ($visit_log->payroll_confirmed == 1) {
+				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/grid/imgs/item_chk1.gif'>")));
+			} else {
+				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<img src='" . $this->config->config['base_url'] . "style/grid/imgs/item_chk0.gif'>")));
+			}*/
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit_log->visit_date_time), 'USA_DATE')));
+
+			$visit_description = "";
+			if($visit_log->visit_type_id  == 10){
+				$this->load->model('ptevmdl');
+				$PTEV = $this->ptevmdl->get($visit_log->visit_log_id );        
+				$visit_description .= $visit_log->visit_description.' - '.@$tab_32_assess_type_lsit[$PTEV->tab_32_assess_type];
+			}else{
+				$visit_description .= $visit_log->visit_description;
+			}
+
+			if($visit_log->billable_YN == 0){
+				$visit_description .= " (NB)";
+				$visit_log->visit_amount = 0.00;
+				$visit_log->mileage_amount = 0.00;
+			}
+
+			$cell->append($this->xml->Element("cell", null, $visit_description));
+			if($visit_log->visit_type_id  == 320)
+				$cell->append($this->xml->Element("cell", null, '00:00:00'));
+			else
+				$cell->append($this->xml->Element("cell", null, $visit_log->visit_duration));
+
+			//$cell->append($this->xml->Element("cell", null, @$visit_unit->unit_value));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->visit_amount)));
+			$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->mileage_amount)));
+			$cell->append($this->xml->Element("cell", null, $visit_log->pat_first_name . " " . $visit_log->pat_last_name));
+			// $cell->append($this->xml->Element("cell", null, $visit_log->tab_description));
+			$cell->append($this->xml->Element("cell", null, @$approver->first_name . " " . @$approver->last_name));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit_log->approve_date)) ));
+			
+			// $cell->append($this->xml->Element("cell", null, "Edit Payment^javascript:modalEditForm(" . $visit_log->visit_log_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+
+   function history(){
+   		$this->tpl->assign("no_grid_buttons", true);   		
+		$this->tpl->assign("resource_grid", 'gridHistory');
+		$this->tpl->assign("resource_edit", 'visitsinstub');  
+		$this->tpl->assign_include("filter_tpl", "payroll/history/byuser_filter");
+
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+   }
+
+   function gridHistory () {
+		$user_id = $this->getUsAgyId();
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=11;align=center;type=link", "Process Date"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period From"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Period End"));
+		$head->append($this->xml->Element("column", "width=13;align=left", "User"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Nbr of Payable Visits"));
+		$head->append($this->xml->Element("column", "width=11", "Check Amount"));
+		$head->append($this->xml->Element("column", "width=11", "Check Number"));
+		$head->append($this->xml->Element("column", "width=11", "Date of Check"));
+		$head->append($this->xml->Element("column", "width=7;type=link;align=center", "Actions"));
+		$head->append($this->xml->Element("column", "width=*;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->payrollbatchmdl->get($this->getAgencyId(), $user_id, 'C') as $payroll) {
+			
+			$cell = $this->xml->Element("row", "id=" . $payroll->payroll_batch_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_date), 'USA_DATE_TIME').'^'.$this->config->config['index_url'] . "payroll/user/visitsinstub/" . $payroll->payroll_batch_id ));
+			// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_date), 'USA_DATE_TIME')));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_period_from))));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->payroll_batch_process_period_end))));
+			$cell->append($this->xml->Element("cell", null, $payroll->first_name . " " . $payroll->last_name));
+			$cell->append($this->xml->Element("cell", null, $payroll->visit_count));
+			$cell->append($this->xml->Element("cell", null, moneyformat(@$payroll->sum_visit_amount + @$payroll->sum_mileage_amount)));
+			$cell->append($this->xml->Element("cell", null, $payroll->check_no));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($payroll->check_date))));
+			$cell->append($this->xml->Element("cell", null, "Detail".'^'.$this->config->config['index_url'] . "payroll/user/visitsinstub/" . $payroll->payroll_batch_id ));
+			$cell->append($this->xml->Element("cell", null, "Print^javascript:print(" . $payroll->payroll_batch_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function visitsinstub($stubId){
+		$user_id = $this->getUsAgyId();
+
+		$stub = $this->payrollbatchmdl->getOne($stubId);
+   		 // echo "<pre>"; print_r($stub); echo "</pre>";exit();
+		if ($stub->us_agy_id != $user_id) {
+			show_404();
+			return;
+		}
+
+		$this->assignObject($stub);
+
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("resource_grid", 'gridvisitsinstub/'. $stubId);
+		
+		$this->tpl->assign_include("filter_tpl", "payroll/user/stubsinbatch_gfilter");
+
+		$this->tpl->assign('additional_buttons', 
+			array(
+				'Print' => "print(".$stubId.")",
+				'Back' => "document.location='" . $this->config->config['index_url'] . "payroll/user/history/'" 			
+			));
+
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+   function gridvisitsinstub($stubId){
+   		$tab_32_assess_type_lsit = $this->parametermdl->getByType(32);
+   		
+   		$user_id = $this->getUsAgyId();
+   		
+   		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=14;align=center", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=18", "Visit Type"));
+		// $head->append($this->xml->Element("column", "width=14;align=center", "Duration"));
+		// $head->append($this->xml->Element("column", "width=10;align=center", "Units"));
+		$head->append($this->xml->Element("column", "width=12;align=center", "Visit Amount \$"));
+		$head->append($this->xml->Element("column", "width=12;align=center", "Mileage \$"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name "));
+    	// $head->append($this->xml->Element("column", "width=8;type=link;align=center", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$stub = $this->payrollbatchmdl->getOne($stubId);
+		if ($stub->us_agy_id == $user_id) {
+			foreach ($this->payrollbatchmdl->getHistoryDetail($stubId) as $visit_log) {
+				
+				$t1 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in);
+				$t2 = mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out);
+				$visit_unit = $this->visitunitmdl->get(($t2 - $t1) / 60);
+				
+				$visit_description = "";
+				if($visit_log->visit_type_id  == 10){
+					$this->load->model('ptevmdl');
+					$PTEV = $this->ptevmdl->get($visit_log->visit_log_id );        
+					$visit_description .= $visit_log->visit_description.' - '.@$tab_32_assess_type_lsit[$PTEV->tab_32_assess_type];
+				}else{
+					$visit_description .= $visit_log->visit_description;
+				}
+
+				if($visit_log->billable_YN == 0){
+					$visit_description .= " (NB)";
+					$visit_log->visit_amount = 0.00;
+					$visit_log->mileage_amount = 0.00;
+				}
+				$visit_log->visit_description = $visit_description;
+
+				$cell = $this->xml->Element("row", "id=" . $visit_log->visit_log_id);
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit_log->visit_date_time), 'USA_DATE')));
+				$cell->append($this->xml->Element("cell", null, $visit_log->visit_description));
+				// $cell->append($this->xml->Element("cell", null, $visit_log->visit_duration));
+				// $cell->append($this->xml->Element("cell", null, @$visit_unit->unit_value));
+				$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->visit_amount)));
+				$cell->append($this->xml->Element("cell", null, moneyformat($visit_log->mileage_amount)));
+				$cell->append($this->xml->Element("cell", null, $visit_log->first_name . " " . $visit_log->last_name));
+	      		// $cell->append($this->xml->Element("cell", null, "Edit Payment^javascript:modalEditForm(" . $visit_log->visit_log_id . ")"));
+				$document->append($cell);
+				
+			}		
+		}
+		
+
+		
+		
+   }
+
+
+	
+
+}

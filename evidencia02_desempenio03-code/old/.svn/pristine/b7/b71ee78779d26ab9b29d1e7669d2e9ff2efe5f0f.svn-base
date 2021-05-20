@@ -1,0 +1,184 @@
+<table border="0" width="100%" cellpadding="2" cellspacing="0"> 
+  <input type="hidden" name="us_agy_id" value="{$us_agy_id}">
+  <input type="hidden" name="agency_id" value="{$agency_id}">
+  <input type="hidden" name="user_id" value="{$user_id}">
+  <input type="hidden" name="user_email" value="{$user_email}">
+  <input type="hidden" name="payroll_visit_rate" value="{$payroll_visit_rate}">
+  <input type="hidden" name="payroll_mileage_rate" value="{$payroll_mileage_rate}">
+  <input type="hidden" name="create_datetime" value="{$create_datetime|date_format}">
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User Email and Status</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">User Email Account</td>
+    <td><i>{$email}</i></td>
+    <td class="ftitle">User Status</td>
+    <td>
+    	{html_radios name='tab_021_user_status' options=$user_status_list selected=$tab_021_user_status}
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Personal Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">User First Name</td>
+    <td><input type="text" name="first_name" value="{$first_name}"> *</td>
+    <td class="ftitle">Date of Birth</td>
+    <td>
+    	<input type="text" id="date_birth" name="date_birth" value="{$date_birth|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_birth'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">User Last Name</td>
+    <td><input type="text" name="last_name" value="{$last_name}"> *</td>
+    <td class="ftitle">Sex:</td>
+    <td>{html_options options=$sex_list selected=$tab_002_sex name='tab_002_sex'}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">S.S.N.</td>
+    <td><input type="text" name="soc_sec_nbr" value="{$soc_sec_nbr}"></td>
+    <td class="ftitle">Other Language:</td>
+    <td>{html_options options=$other_lang_list selected=$tab_010_other_lang_1 name='tab_010_other_lang_1'}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">Address</td>
+    <td><input type="text" name="address" value="{$address}"></td>
+    <td class="ftitle">Cell Phone</td>
+    <td><input type="text" name="phone_cell" value="{$phone_cell}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">City</td>
+    <td><input type="text" name="city" value="{$city}"></td>
+    <td class="ftitle">Fax</td>
+    <td><input type="text" id="fax" name="fax" value="{$fax}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">State</td>
+    <td>{html_options options=$state_list selected=$state_id name='state_id'}</td>
+    <td class="ftitle">Phone</td>
+    <td><input type="text" id="phone_work" name="phone_work" value="{$phone_work}"  ></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Zip Code</td>
+    <td><input type="text" name="zip_code" value="{$zip_code}"></td>
+    <td class="ftitle">Cover Area</td>
+    <td><input type="text" id="cover_area" name="cover_area" value="{$cover_area}"  ></td>
+  </tr>  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Profesional Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+ 
+  <tr> 
+    <td class="ftitle">Discipline</td>
+    <td>
+		{if $profile_id==6 && $discipline_id ==9}
+    	<input type="hidden" id="discipline_id" name="discipline_id" value="{$discipline_id}">
+			Physian
+		{else}
+
+		{html_options options=$discipline_list selected=$discipline_id name='discipline_id' onchange='upinVisibility(this.value)'} *
+		{/if}
+		</td>
+  </tr>
+  <tbody id="upin_td" style="display: none">
+	  <tr>
+	    <td class="ftitle">NPI</td>
+	    <td>
+	    	<input type="text" id="upin" name="npi" value="{$npi}">
+	    </td>
+	  </tr>
+	  <tr>
+	    <td class="ftitle">Upin</td>
+	    <td>
+	    	<input type="text" id="upin" name="upin" value="{$upin}">
+	    </td>
+	  </tr>
+  </tbody>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User Profile</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr> 
+    <td class="ftitle">Profile</td>
+    <td>{html_options options=$profile_list selected=$profile_id name='profile_id'} *</td>
+  </tr>
+  <tr> 
+    <td class="ftitle"></td>
+    <td>
+      <label><input type="radio" {if $contractor_or_employee neq 'C'}checked="checked"{/if} value="E" name="contractor_or_employee">Employee</label>
+      <label><input type="radio" {if $contractor_or_employee eq 'C'}checked="checked"{/if} value="C" name="contractor_or_employee">Contractor</label> *
+      <br>
+      <span class="stip">"Payroll Stubs will be created for this user" when Employee is selected and "Invoices will be created for this user" when Contractor is selected.</span>      
+    </td>
+  </tr>
+  <tr> 
+    <td class="ftitle">Electronic sign setup</td>
+    <td>{html_radios options=$logic_list selected=$electronic_sign_setup id='electronic_sign_setup' name='electronic_sign_setup'} *</td>
+  </tr>
+  <tr>    
+      <td class="ftitle"><b>Default Payment Type</b></td>
+      <td>
+        {html_options options=$payment_type_list selected=$default_payment_type name='default_payment_type'}
+      </td>
+  </tr>
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Comments</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+    	<textarea name="notes" rows="5" cols="50" wrap="auto">{$notes}</textarea>
+    </td>
+  </tr>
+  
+</table> 
+<script type="text/javascript" src="{$base_url}style/maskedinput.js"></script>
+
+
+<script language="JavaScript" type="text/javascript">
+
+	{literal}
+		jQuery(function($){
+   $("#phone_work").mask("999-999-9999");
+   $("#fax").mask("999-999-9999");
+  
+});
+	{/literal}
+
+	function upinVisibility ( discipline_id ) {literal}{{/literal}
+
+		if (discipline_id == 9)  {literal}{{/literal}
+			switchDisplay2('upin_td', '');
+			setCheckedValue('electronic_sign_setup',0);
+		{literal}}{/literal} else {literal}{{/literal}
+		 	switchDisplay2('upin_td', 'none');setValue('upin', '');
+		 	setCheckedValue('electronic_sign_setup',1);
+		{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+	upinVisibility({$discipline_id});
+	
+
+	
+</script>

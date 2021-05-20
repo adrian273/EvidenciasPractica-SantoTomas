@@ -1,0 +1,72 @@
+<?
+
+ class AgencyContractorRateMdl extends Model {
+
+	var $contractor_rate_id;
+	var $agency_contractor_id; 	 	
+	var $visit_type_id;
+	var $rate_effective_date;
+	var $company_rate;
+	var $modify_user_id;
+	var $modify_date;
+
+	function AgencyContractorRateMdl () {
+
+		parent::Model();
+		
+	}
+	
+	
+  function getById ( $contractor_rate_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = agency_contractor_rate.visit_type_id');    
+		
+    $this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = agency_contractor_rate.agency_contractor_id');    
+    
+    $this->db->join('agy_agency', 'agy_agency.agency_id = agency_contractor.agency_id');
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = agency_contractor_rate.modify_user_id' , 'left');
+		$this->db->where("agency_contractor_rate.contractor_rate_id", $contractor_rate_id);		
+		$query = $this->db->get('agency_contractor_rate');
+		return $query->row();
+	}
+  
+	function getByContractorId ( $agency_contractor_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = agency_contractor_rate.visit_type_id');    
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = agency_contractor_rate.modify_user_id' , 'left');
+    
+		$this->db->where("agency_contractor_rate.agency_contractor_id", $agency_contractor_id);		
+    
+		$this->db->order_by("vit_visit_type.visit_description", "ASC");		
+		$this->db->order_by("agency_contractor_rate.rate_effective_date", "DESC");		
+    
+		$query = $this->db->get('agency_contractor_rate');
+		return $query->result();
+	}
+	
+	
+  function updateFlex($contractor_rate_id, $attribute, $value, $where = 'contractor_rate_id') {
+
+		$this->db->where($where, $contractor_rate_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('agency_contractor_rate');
+
+	}
+  
+	function insert ( $agency_contractor_id ) {
+		
+		$this->agency_contractor_id = $agency_contractor_id;		
+		$this->db->insert('agency_contractor_rate', $this);
+		$this->contractor_rate_id = $this->db->insert_id();		
+	}	
+	
+	function delete ( $contractor_rate_id ) {
+		
+		$this->db->where('contractor_rate_id', $contractor_rate_id);
+		
+		$this->db->delete('agency_contractor_rate'); 
+		
+	}
+
+ }

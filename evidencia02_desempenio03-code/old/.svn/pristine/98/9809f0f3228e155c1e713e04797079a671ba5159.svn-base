@@ -1,0 +1,125 @@
+<?
+
+class Contractornotes extends MY_Controller {
+
+	function Contractornotes () {
+		
+		parent::MY_Controller();
+		$this->load->model('contractornotesmdl');
+		$this->load->model('AgencyContractorMdl');
+		$this->tpl->assign("resource_path", "contractor/contractornotes");
+		$this->tpl->assign('tab_page', true);
+		
+	}
+
+	function index ($agency_id) {
+		$this->tpl->assign("entity_id", $agency_id);
+		$this->tpl->assign("add_sufix", "Note");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	
+	function grid ( $agency_id ) {
+        $contractor_id = $this->getAgencyId();
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=15", "Note Date"));
+		// $head->append($this->xml->Element("column", "width=15", "Type"));
+		$head->append($this->xml->Element("column", "width=*", "Notes Description"));
+        $head->append($this->xml->Element("column", "width=*", "Created By"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+        $data_note = $this->contractornotesmdl->getContractorNotes($contractor_id, $agency_id);
+        foreach ($data_note as $note) {
+            $cell = $this->xml->Element("row", "id=" . $note->contractor_note_id );
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($note->note_date))));
+            $cell->append($this->xml->Element("cell", null, $note->note));
+            $cell->append($this->xml->Element("cell", null, $note->first_name." ".$note->last_name));
+            $document->append($cell);
+        }
+	}
+
+	function add ( $agency_id ) {
+
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign("entity_id", $agency_id);
+		
+		$this->validation->set_rules(array('note' => 'required'));
+        $this->validation->set_fields(array('note' => 'Note'));
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "contractor/notes/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		}
+		else {
+
+		    $this->assignPostData($this->contractornotesmdl);
+			$this->contractornotesmdl->us1_user_id1 = $this->getUserId();
+			$this->contractornotesmdl->contractor_id = $this->getAgencyId();
+			$this->contractornotesmdl->agency_id = $agency_id;
+
+			if( $this->getAgencyType() == 'C') {
+				$this->contractornotesmdl->insert();
+				$this->session->set_userdata('success_string', "Note has been created.");
+				$this->index($agency_id);
+			}
+			else {
+				exit(" You are not a contractor");
+			}
+		}
+
+	}
+
+	function edit ( $agency_id, $contractor_note_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign("entity_id", $agency_id);
+        $this->tpl->assign("record_id", $contractor_note_id);
+		$note = $this->contractornotesmdl->getById($contractor_note_id);
+
+		if ($note->us1_user_id1 != $this->getUserId()) {
+			exit(" You are not allowed to edit this note");
+		}
+
+		$this->assignObject($note);
+
+		
+		$this->validation->set_rules(array('note' => 'required'));
+		$this->validation->set_fields(array('note' => 'Note'));
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign('no_commit_form', FALSE);
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "contractor/notes/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			$this->assignPostData($this->contractornotesmdl);
+			$this->contractornotesmdl->update($contractor_note_id,  $this->input->post('note'));
+
+			$this->tpl->assign('gmessage', "Note " . $this->lang->line('grl_upd_msg'));
+			$this->index($agency_id);
+			
+		}
+
+	}
+	
+	function delete ( $agency_id, $contractor_note_id ) {
+
+        $note = $this->contractornotesmdl->getById($contractor_note_id);
+
+        if ($note->us1_user_id1 != $this->getUserId()) {
+            exit(" You are not allowed to edit this note");
+        } else {
+            $this->contractornotesmdl->delete($contractor_note_id);
+            $this->tpl->assign('gmessage', "Note " . $this->lang->line('grl_del_msg'));
+
+            $this->index($agency_id);
+        }
+	}
+
+
+
+}

@@ -1,0 +1,105 @@
+<script language="JavaScript" type="text/javascript">
+	
+	function discipline_option_populated(e)  {literal}{{/literal}
+	    console.log(document.getElementById("visit_user_disc").length);
+		if(document.getElementById("visit_user_disc").length < 2){literal}{{/literal}
+		  	document.getElementById("tr_disc").style.display = 'none';
+		  	document.getElementById("tr_disc_title").style.display = 'none';
+	  	{literal}}{/literal}
+	  	else {literal}{{/literal}
+		  	document.getElementById("tr_disc").style.display = 'block';
+		  	document.getElementById("tr_disc_title").style.display = 'block';
+	  	{literal}}{/literal}
+	{literal}}{/literal}
+
+	function refreshDisciplineList ( us_agy_id ) {literal}{{/literal}
+  		if(us_agy_id != '')
+  		ajaxComboBox('{$index_url}patient/calendar/getUserDisciplineList/', us_agy_id, 'visit_user_disc');
+  		else 
+  		document.getElementById('visit_user_disc').innerHTML = '';
+	  	
+	{literal}}{/literal}
+
+</script>
+
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="6"> 
+	<form name="edit_event_form" id="edit_event_form" method="POST">
+  {if $error_string}
+		<tr>
+			<td class="error tbl_msg">{$error_string}</td>
+		</tr>
+		{/if}
+	
+	  <tr>
+	    <td class="ftitle">Estimated Visit Time In:</td>
+	  </tr>
+	  <tr>
+	    <td>
+	    	{html_select_time display_seconds=false use_24_hours=true minute_interval=5 prefix='visit_time_' time=$time}
+	    </td>
+	  </tr>
+	  <tr>
+	    <td class="ftitle" nowrap>User/Clinician:</td>
+	  </tr>
+	  <tr>
+	    <td nowrap>
+			{html_options options=$team_list selected=$visit_user_id name='visit_user_id' onchange="refreshDisciplineList(this.value)"}
+		</td>
+	  </tr>
+	  <tr id="tr_disc_title">
+	    <td class="ftitle" nowrap>Discipline:</td>
+	  </tr>
+	  <tr id="tr_disc">
+	    <td nowrap>
+	    	{html_options options=$user_discipline_lists has_firts_option=false  name='visit_user_disc' id="visit_user_disc" }	
+			
+		</td>
+	  </tr>
+		<!-- 
+		 Check auth visit for tab_102_prim_insura_type = 2 (Medicaid)  
+		 {*if $tab_102_prim_insura_type eq 2 && $authvisits|@count gt 0*} 
+		-->
+		<!-- Check auth visit for all -->
+		{if $authvisits|@count gt 0}
+		<tr>
+	    <td class="ftitle" nowrap>Select One Record:</td>
+	  </tr>
+		<tr>
+	    <td nowrap>
+				<table>
+				<tr>
+					<td></td><td class="ftitle" nowrap>Authorization ID</td><td class="ftitle" nowrap>Authorization Period</td><td class="ftitle" nowrap>SN</td><td class="ftitle" nowrap>PT</td><td class="ftitle" nowrap>OT</td><td class="ftitle" nowrap>ST</td><td class="ftitle" nowrap>HHA</td>
+				</tr>	
+				{foreach from=$authvisits item=authvisit}	  
+				<tr>
+					<td>
+						<input type="radio" name="cms_485_mcaid_pa_visits_id" value="{$authvisit->cms_485_mcaid_pa_visits_id}" />
+					</td>
+					<td>{$authvisit->authorization_id}</td>
+					<td>{$authvisit->author_from_date|date_format:"%m/%d/%Y"} - {$authvisit->author_end_date|date_format:"%m/%d/%Y"}</td>
+					<td>{$authvisit->sn_nbr_visits}</td>
+					<td>{$authvisit->nbr_pt_visits}</td>
+					<td>{$authvisit->nbr_ot_visits}</td>
+					<td>{$authvisit->nbr_st_visits}</td>
+					<td>{$authvisit->hha_nbr_visits}</td>
+				</tr>		
+				{/foreach}
+				</table>
+			</td>
+		</tr>			
+		{/if}
+	  <tr>
+	    <td nowrap height="100%" valign="bottom">
+	      	<input type="submit" class="btn" value="Continue" onclick="tt_HideInit()">
+	      	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.cancelModal()">
+		</td>
+	  </tr>
+	  </form>
+	</table>
+  
+  <script>
+  	var element = document.getElementById('visit_user_disc');
+
+	element.addEventListener('DOMSubtreeModified', discipline_option_populated);
+  	discipline_option_populated();
+  </script>

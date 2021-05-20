@@ -1,0 +1,87 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Referral Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Referral Name</td>
+    <td><input type="text" name="referral_name" value="{$referral_name}"> *</td>
+    <td class="ftitle">Referral Type</td>
+    <td>{html_options options=$referral_type_list name='tab_011_referral_type' selected=$tab_011_referral_type}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">Address</td>
+    <td><input type="text" name="address" value="{$address}"></td>
+    <td class="ftitle">Birth Date</td>
+    <td>
+    	<input type="text" id="date_birth" name="date_birth" value="{$date_birth|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_birth'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">City</td>
+    <td><input type="text" name="city" value="{$city}"></td>
+    <td class="ftitle">Work Phone</td>
+    <td><input type="text" name="phone_work" value="{$phone_work}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">State</td>
+    <td>{html_options options=$state_list selected=$state_id name='state_id'}</td>
+    <td class="ftitle">Cell Phone</td>
+    <td><input type="text" name="phone_cell" value="{$phone_cell}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Zip Code</td>
+    <td><input type="text" name="zip_code" value="{$zip_code}"></td>
+    <td class="ftitle">Fax</td>
+    <td><input type="text" name="fax" value="{$fax}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Email</td>
+    <td><input type="text" name="email" value="{$email}"></td>
+  </tr>
+  
+  
+<!--   <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Facility</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="25" class="stip" valign="top">Fill this field if Referral Source is related with a Facility</td>
+  </tr>
+  <tr>
+    <td class="ftitle">Facility Name</td>
+    <td>
+    	<input type="text" name="facility_name" id="facility_suggest" value="{$facility_name}">
+    	<input type="hidden" id="facility_id" name="facility_id" value="{$facility_id}">
+    </td>
+  </tr>
+ -->
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Comments</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+    	<textarea name="comments" rows="5" cols="50" wrap="auto">{$comments}</textarea>
+    </td>
+  </tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+    var options_xml = {literal}{{/literal}
+            script:"{$index_url}facility/suggest/",
+            varname:"input",
+            callback: function (obj) {literal}{{/literal} setValue('facility_id', obj.id); {literal}}{/literal},
+            noinput: function () {literal}{{/literal} setValue('facility_id', ''); {literal}}{/literal}
+
+    {literal}}{/literal};
+
+    var as_xml = new AutoSuggest('facility_suggest', options_xml);
+    
+</script>

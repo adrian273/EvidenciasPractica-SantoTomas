@@ -1,0 +1,524 @@
+<?php
+class Compose extends MY_Controller {
+
+	var $msg_id = '';
+	var $msg_subject = '';
+	var $msg_text = '';
+	var $cms485_id = null;
+	var $visit_log_id = '';
+
+	function Compose() {
+
+		parent :: MY_Controller();
+
+		$this->tpl->assign("resource_path", "mail/compose");
+
+	}
+
+	function index($back_path = 'inbox') {
+
+		$this->tpl->assign("us_agy_list", $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false));
+		$this->tpl->assign("patient_list", $this->getPatients(null, null, false));
+
+		$this->tpl->assign("back_path", $back_path);
+		
+		
+		$this->tpl->assign("email_type", 1);
+		
+		if ($back_path != 'allcomnotes') {
+			$this->tpl->assign("tab_page", true);
+		}
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign_include("dynamic_tpl", "mail/compose_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function modalCheckEpassword() {
+
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+
+		$rules = array (
+			'user_epass' => 'required|callback_verify_epass'
+		);
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign_include("dynamic_tpl", "epass/modal_epass_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			echo "<script>parent.document.getElementById('frmCompose').submit()</script>";
+			/*echo "<script>parent.submitForm()</script>";*/
+		}
+
+	}
+
+	function addTo() {
+
+		$this->tpl->assign("resource_grid", "addToGrid");		
+		$this->tpl->assign("agency_type", $this->getAgencyType());
+
+		//$this->tpl->assign_include("dynamic_tpl", "mail/add_grid");
+		$this->tpl->assign_include("dynamic_tpl", "mail/add_to_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+
+	function agencyUsers() {
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$names = array ();
+		foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) { // without profile id 4 (the physician)
+			$names[] = '"' . addslashes($user->last_name . " " . $user->first_name) . '"';
+		}
+
+		$name_source_obj = "[" . implode(",", $names) . "]";
+		$this->tpl->assign("name_source_obj", $name_source_obj);
+
+		$this->tpl->assign("resource_grid", "agencyUsersGrid");
+
+		$this->tpl->assign_include("dynamic_tpl", "mail/add_grid");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function contractors() {
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$names = array ();
+		foreach ($this->usagymdl->getContrcatorUsersByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) { // without profile id 4 (the physician)
+
+			$names[] = '"' . addslashes($user->last_name . " " . $user->first_name) . '"';
+		}
+
+		$name_source_obj = "[" . implode(",", $names) . "]";
+		$this->tpl->assign("name_source_obj", $name_source_obj);
+
+		$this->tpl->assign("status_filter", true);
+		$this->tpl->assign("resource_grid", "contractorsGrid");
+
+		$this->tpl->assign_include("dynamic_tpl", "mail/add_grid");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function allUsers() {
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$names = array ();
+
+		foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) { // without profile id 4 (the physician)
+			$names[] = '"' . addslashes($user->last_name . " " . $user->first_name) . '"';
+		}
+
+		foreach ($this->usagymdl->getContrcatorUsersByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) { // without profile id 4 (the physician)
+
+			$names[] = '"' . addslashes($user->last_name . " " . $user->first_name) . '"';
+
+		}
+
+		$name_source_obj = "[" . implode(",", $names) . "]";
+		$this->tpl->assign("name_source_obj", $name_source_obj);
+
+		$this->tpl->assign("resource_grid", "allUsersGrid");
+
+		$this->tpl->assign_include("dynamic_tpl", "mail/add_grid");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function agencyUsersGrid() {
+
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10;type=ch", ""));
+		$head->append($this->xml->Element("column", "width=*", "User"));
+		if ($agency->agency_type == 'C') {
+			$head->append($this->xml->Element("column", "width=*", "Company Name"));
+		}
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) { // without profile id 4 (the physician)
+
+			//foreach ($this->usagymdl->getByAgencyId($this->getAgencyId()) as $user) {
+
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->last_name . " " . $user->first_name));
+			if ($agency->agency_type == 'C') {
+				$cell->append($this->xml->Element("cell", null, $user->agency_name));
+			}
+			$document->append($cell);
+
+		}
+
+	}
+
+	function contractorsGrid() {
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10;type=ch", ""));
+		$head->append($this->xml->Element("column", "width=*", "User"));
+		if ($agency->agency_type != 'C') {
+			$head->append($this->xml->Element("column", "width=*", "Company Name"));
+		}
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->usagymdl->getContrcatorUsersByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) { // without profile id 4 (the physician)
+
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->last_name . " " . $user->first_name));
+			$cell->append($this->xml->Element("cell", null, $user->agency_name));
+			$document->append($cell);
+
+		}
+
+	}
+
+	function allUsersGrid() {
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10;type=ch", ""));
+		$head->append($this->xml->Element("column", "width=*", "User"));
+		$head->append($this->xml->Element("column", "width=*", "Company Name"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) { // without profile id 4 (the physician)
+			//foreach ($this->usagymdl->getByAgencyId($this->getAgencyId()) as $user) {			
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->last_name . " " . $user->first_name));
+			$cell->append($this->xml->Element("cell", null, $user->agency_name));
+			$document->append($cell);
+		}
+
+		foreach ($this->usagymdl->getContrcatorUsersByAgencyId($this->getAgencyId(), $this->input->post('keyword'), $this->input->post('search_type'), $this->input->post('profile_id'), null, true, false, $agency->agency_type, array (
+				4
+			)) as $user) {
+
+			$cell = $this->xml->Element("row", "id=" . $user->us_agy_id);
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->last_name . " " . $user->first_name));
+			$cell->append($this->xml->Element("cell", null, $user->agency_name));
+			$document->append($cell);
+
+		}
+
+	}
+
+	function reply($message_id, $replyall = 0) {
+
+		$this->tpl->assign("us_agy_list", $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, false));
+		$this->tpl->assign("patient_list", $this->getPatients(null, null, null, false));
+
+		$msg = $this->messagemdl->get($message_id);
+		if ($msg->user_from == 0) {
+			exit("Please create a Heat Ticket to communicate with ADMIN");			
+		}
+
+		$user_from = $this->usagymdl->getByUsAgyId($msg->user_from);
+		$this->assignObject($msg);
+
+		// reply selected
+		$replyTo = array ();
+		if ($replyall == 1) {
+			$replyTo = $this->usermessagemdl->getByMessageId($message_id);
+		}
+		$replyTo[$user_from->us_agy_id] = $user_from->first_name . " " . $user_from->last_name;
+		//array_push($replyTo, $msg->user_from);    
+		$this->tpl->assign("users_to", $replyTo);
+
+		// body message
+		$text = "\n\n-----------------------------\n";
+		$text .= standard_date(mysql_to_unix($msg->msg_date), 'USA_DATE_TIME') . " " . $user_from->complete_name . " wrote:\n\n";
+		$text .= $msg->msg_text;
+
+		$this->tpl->assign("msg_text", $text);
+		$this->tpl->assign("msg_subject", "Re: " . $msg->msg_subject);
+		$this->tpl->assign("email_type", 1);
+
+		$this->tpl->assign_include("dynamic_tpl", "mail/compose_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function sendMsg($back_path = 'inbox', $is_communication_note = false) {
+		// var_dump($this->validation->valid_email("km.shareful@gmail.com"));exit();
+		//		$this->msg_subject	= $this->input->post("msg_subject");
+		//		$this->msg_text		= "\n".$this->input->post("msg_text");
+
+		$rules['msg_subject']  	= 'required';
+		$fields['msg_subject'] 	= 'Subject';
+		
+		$rules['msg_text']  	= 'required';
+		$fields['msg_text'] 	= 'Body Message';			
+
+		$rules['msg_to']  		= 'required';
+		$fields['msg_to'] 		= 'User(s) to';			
+
+		$patient_id = $this->input->post('patient');
+		if ($back_path == 'mycomnotes' || $back_path == 'allcomnotes' || $back_path == 'comnotes') {
+			$fields['msg_text'] = 'Communication Description';
+
+			$rules['patient']  	= 'required';
+			$fields['patient'] 	= 'Patient';
+
+			$rules['msg_date']  	= 'required|callback_validateCommDate['.$patient_id.']';
+			$fields['msg_date'] 	= 'Communication Date';			
+		}
+		
+		// set message date as current date
+		$_POST['msg_date'] = date("m-d-Y H:i:s");
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		if ($this->validation->run() == FALSE) {
+			$this->index($back_path);
+			return;
+		}
+
+		// exit("validation passed!");
+
+		/*$add_to_pat_chart = $this->input->post("add_to_pat_chart");
+		if (isset ($add_to_pat_chart) AND $add_to_pat_chart == 1) {
+			// do nothing
+		} else {
+			$add_to_pat_chart = 0;
+		}*/
+
+		$this->assignPostData($this->messagemdl);
+		$this->messagemdl->user_from = $this->getUsAgyId();
+		if (isset($this->messagemdl->cms485_id)) {
+			unset($this->messagemdl->cms485_id);
+		}
+		
+		
+		$attachments = array();
+		if (isset($_FILES['msg_file'])) {
+			foreach ($_FILES['msg_file']['name'] as $key => $fname) {
+				if($_FILES['msg_file']['error'][$key]==0){
+					$fname = time().'_'.basename($fname);
+					$fname = str_replace(" ","_",$fname);
+					$fname = str_replace("%","_",$fname);
+					$fname = str_replace("#","",$fname);
+					$fname = str_replace("'","",$fname);
+					$fname = str_replace('"',"",$fname);
+					if(move_uploaded_file($_FILES['msg_file']['tmp_name'][$key], FCPATH.'/datastore/attachment/'.$fname)) {
+						$attachments[] = $fname;
+					}
+				}
+			}
+		}
+
+		
+		$this->msg_id = $this->messagemdl->insert();
+		if (!empty($attachments)) {
+			$this->messagemdl->upload($this->msg_id, implode("||", $attachments));
+		}
+
+		if ($back_path == 'mycomnotes' || $back_path == 'allcomnotes' || $back_path == 'comnotes') {
+			// Create record in visit log table to visible to patient calendar
+			$cms485_id = $this->cms485_id;  			
+			$this->cms485_id = null;
+
+			$visit_type_id = 350;
+
+            $this->visitlogmdl->visit_log_id = null;
+            $this->visitlogmdl->cms485_id = $cms485_id;
+            $this->visitlogmdl->visit_type_id = $visit_type_id;
+            $this->visitlogmdl->visit_asigned_by = $this->getUsAgyId();
+            $this->visitlogmdl->visit_user_id = $this->visitlogmdl->visit_asigned_by;
+            $visit_date = standard_date(human_to_unix($this->input->post('msg_date')), 'MYSQL');    
+            $this->visitlogmdl->visit_date_time = $visit_date;
+            $this->visitlogmdl->visit_status_id = 9; 
+            
+            $visittype = $this->visittypemdl->getById($visit_type_id);
+    		if (isset($this->visitlogmdl->msg_id)) {
+				unset($this->visitlogmdl->msg_id);
+			}
+
+			if(isset($this->visitlogmdl->msg_subject)){
+				unset($this->visitlogmdl->msg_subject);
+			}
+
+			if(isset($this->visitlogmdl->msg_text)){
+				unset($this->visitlogmdl->msg_text);
+			}
+
+            $this->visitlogmdl->insert($visittype->billable_yn);
+            $this->visit_log_id = $this->visitlogmdl->visit_log_id;
+
+            $this->visitlogmdl->updateFlex($this->visit_log_id, 'visit_status_id', 9);
+
+            $this->messagemdl->updateFlex($this->msg_id, 'patient_id', $patient_id);
+            $this->messagemdl->updateFlex($this->msg_id, 'visit_log_id', $this->visit_log_id);
+            $this->messagemdl->updateFlex($this->msg_id, 'msg_type', 'comnote');
+            $this->messagemdl->updateFlex($this->msg_id, 'msg_date', standard_date(human_to_unix($this->input->post('msg_date')), 'MYSQL'));
+            $this->visit_log_id = null;
+		}
+
+		$msg_to = explode(',', $this->input->post("msg_to"));
+		if (sizeof($msg_to) > 0) {
+			$this->load->library('email');
+			$usAgyInfo = $this->usagymdl->getByUsAgyId($this->messagemdl->user_from);
+			$userFromInfo = $this->usermdl->getById($usAgyInfo->user_id);
+			foreach (explode(',', $this->input->post("msg_to")) as $user_to){	
+				$this->usermessagemdl->insert($this->msg_id, $user_to, $this->input->post("msg_imp"));
+				
+				// send to personal email if user have this settings ON
+				$usAgyInfo = $this->usagymdl->getByUsAgyId($user_to);
+				$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+				$sendToPersonalEmail = FALSE;
+				if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+					// send all internel email to personal
+					$sendToPersonalEmail = TRUE;
+				} else if ($userToInfo->internal_email_to_mailbox == 2 AND $this->validation->valid_email($userToInfo->user_email)) {
+					// send important (created by user) internel email to personal
+					if ($this->input->post("email_type") == '1') {
+						$sendToPersonalEmail = TRUE;
+					}
+				}
+				
+				if ( $sendToPersonalEmail) {
+					$this->email->from('noreply@homehealthsoft.com', $userFromInfo->last_name.' '.$userFromInfo->first_name.' (HHS)');
+					$this->email->to($userToInfo->user_email);
+					$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+					
+					$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+      				// $this->email->set_mailtype("html"); 
+
+					$this->email->message($body);      
+					if ($this->messagemdl->msg_attachment != "") {	
+						$attachments = explode("||", $this->messagemdl->msg_attachment);
+						foreach ($attachments as $file) {
+							$this->email->attach(FCPATH.'/datastore/attachment/'.$file);
+						}
+					}
+					$this->email->send();
+					//$this->email->print_debugger();
+					$this->email->clear();
+				}
+			}
+			if ($this->input->post('patient') > 0) {
+				$this->messagemdl->setPatient($this->msg_id, $this->input->post('patient'));
+			}
+		} else if ($this->input->post('patient') > 0) {
+			$this->messagemdl->setPatient($this->msg_id, $this->input->post('patient'));
+			foreach ($this->teammdl->get($this->input->post('patient')) as $user_to){
+				$this->usermessagemdl->insert($this->msg_id, $user_to->us_agy_id, $this->input->post("msg_imp"));
+			}
+		}
+		
+		$config = & get_config();
+		if ($back_path == 'mycomnotes' || $back_path == 'allcomnotes' || $back_path == 'comnotes') {
+			if ($this->input->post('cancel_url') != "") {
+				header("Location: " . $this->input->post('cancel_url'));				
+			}else{
+				header("Location: " . $config['index_url'] . "mail/". $back_path . "/index/1");
+			}
+		} else {
+			if (!$is_communication_note)
+				header("Location: " . $config['index_url'] . "mail/mail/index/".$back_path."/1");
+			else
+				header("Location: " . $config['index_url'] . "mail/comnotes/index/1");
+		}
+
+	}
+
+	function getTeam($patient_id) {
+
+		$document = $this->xml->Document();
+
+		foreach ($this->teammdl->getActive($patient_id) as $user_to) {
+
+			$document->append($this->xml->Element("js", "script=addTo('" . $user_to->first_name . ' ' . $user_to->last_name . "', " . $user_to->us_agy_id . ")"));
+
+		}
+
+	}
+
+	function validateCommDate($communication_date, $patient_id){
+		if (!$patient_id) {
+			$this->validation->set_message('validateCommDate', "Select patient.");
+			return false;
+		}
+		$given_communication_date = $communication_date;
+		$communication_date = standard_date(human_to_unix($communication_date), 'MYSQL_NOTIME');
+		
+		// Find current episode first
+		$soc = $this->socmdl->getCurrent($patient_id);
+		$cms485 = $this->episodemdl->getCurrent($soc->soc_id);
+		
+		// make sure the visit date is not outside the current certification. 
+		if(strtotime($communication_date) >= strtotime($cms485->episode_start_date) 
+		AND strtotime($communication_date) <= strtotime($cms485->episode_end_date)) {
+			$this->cms485_id = $cms485->cms485_id;
+			return true;             
+		}/* else {
+			foreach ($this->episodemdl->getEpisodeByPatientId($patient_id) as $cms485) {
+				// make sure the visit date is not outside the certification. 
+				// echo "episode: {$cms485->episode_start_date} to {$cms485->episode_end_date}<br>";
+				if(strtotime($communication_date) >= strtotime($cms485->episode_start_date) 
+				AND strtotime($communication_date) <= strtotime($cms485->episode_end_date)) {
+					$this->cms485_id = $cms485->cms485_id;
+					return true;             
+				}
+			}
+		}*/
+	
+		// create comm note although date is not in a cms period.
+		return true;
+		
+		/*$this->validation->set_message('validateCommDate', "Communication Date {$given_communication_date} is not in the period of current episode for the selected patient!");
+		return false;*/
+		
+	}
+
+	function UploadFile() {
+
+		//$fattach['upload_path'] = './style/images/attachment/';
+		$fattach['upload_path'] = './datastore/attachment/';
+		$fattach['allowed_types'] = 'gif|jpg|png|doc|pdf|xls|ppt';
+		$fattach['max_size'] = '0';
+		$fattach['max_width'] = '0';
+		$fattach['max_height'] = '0';
+		$fattach['overwrite'] = TRUE;
+		$fattach['encrypt_name'] = TRUE;
+
+		$this->load->library('upload');
+		$this->upload->initialize($fattach);
+
+		if (!$this->upload->do_upload("msg_file"))
+			return false;
+
+		return true;
+	}
+
+}

@@ -1,0 +1,71 @@
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/{$faction}/{$contractor_id}">
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+  <tr>		
+		<td height="10">Cleint Program: *</td>
+    <td height="10">
+    	{html_options options=$gov_program_list name='client_program' id='client_program' selected=$client_program onchange='other_rate()'} 
+    </td>
+  </tr>
+  <tr>   
+    <td height="10">Visit Type: *</td>
+    <td height="10">
+      {html_options options=$visit_type_list name='visit_type_id' id='visit_type_id' selected=$visit_type_id} 
+    </td>
+  </tr>
+  <tr class="private_rate_wrap" style="display: none;">    
+    <td height="10">Private Rate: *</td>
+    <td height="10">
+      <input type="text" name="rate1" value="{$rate1}" id="rate1"  size="6" maxlength="6"/>
+    </td>
+  </tr>
+  <tr class="other_rate_wrap" style="display: none;">    
+    <td height="10">BA Rate: *</td>
+    <td height="10">
+      <input type="text" name="ba_rate" value="{$ba_rate}" id="ba_rate"  size="6" maxlength="6"/>
+    </td>
+  </tr>
+  <tr class="other_rate_wrap" style="display: none;">    
+    <td height="10">MA Rate: *</td>
+    <td height="10">
+      <input type="text" name="ma_rate" value="{$ma_rate}" id="ma_rate"  size="6" maxlength="6"/>
+    </td>
+  </tr>
+  <tr>		
+		<td height="10">Effective Date: *</td>
+    <td height="10">
+			<input type="text" id="rate_effective_date" name="rate_effective_date" value="{$rate_effective_date|date_format}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('rate_effective_date'), document.getElementById('fecha_help'));return false;" >		
+    </td>
+  </tr>	
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+
+<script>
+{literal}
+ function other_rate(){
+ 	  var client_program = $('#client_program').val();
+ 	  if(client_program == 'PRIVATE'){
+		    $('.private_rate_wrap').show();
+        $('.other_rate_wrap').hide();
+	  } else if(client_program != '') {
+      $('.private_rate_wrap').hide();
+        $('.other_rate_wrap').show();
+    }else {
+        $('.private_rate_wrap').hide();
+        $('.other_rate_wrap').hide();
+    }
+ }
+ other_rate();
+{/literal} 
+</script>

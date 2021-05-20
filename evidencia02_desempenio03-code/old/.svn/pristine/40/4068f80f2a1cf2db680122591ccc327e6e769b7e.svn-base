@@ -1,0 +1,251 @@
+<script type="text/javascript" language="javascript">
+function print_preview_order(){literal}{{/literal}
+	
+	winW = (document.body.offsetWidth-1030)/2;
+	
+		var url='{$base_url}index.php/patient/coordcare/print_case_conference/{$entity_id}/{$record_id}';
+		var objWin = window.open(url,"OpenWindow","width=1030,height=600,left="+winW+",top=250,menubar=no,scrollbars=yes,toolbar=no,status=no,directories=no,resizable=no");
+		objWin.focus();
+	
+{literal}}{/literal}
+</script>
+<!--
+<div class="main_form_html" style="width:1000px;">
+<div align="center" class="main_frm" style="border:solid 1px #000000; min-height:500px; padding-left:10px;">
+-->
+<table cellpadding="0" cellspacing="1" width="119%" class="brdr_b">
+
+	
+	<tr>
+		<td colspan="4" valign="top" nowrap class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle" /> Summary details</td>
+	</tr>
+	
+	
+	<tr>
+		<td class="tab3 ftitle">Task Type </td>
+		<td class="tab4"><input type="radio" name="conference_type" id="conference_type" value="30" {if $conference_type eq "30"}checked="checked"{/if} /> 30 Days Summary</td>
+		<td class="tab4"><input type="radio" name="conference_type" id="conference_type" value="60" {if $conference_type eq "60"}checked="checked"{/if} /> 60 Days Summary</td>
+		<td class="tab4"><input type="radio" name="conference_type" id="conference_type" value="TC" {if $conference_type eq "TC"}checked="checked"{/if} /> Team Conference </td>
+	</tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	<tr>
+		<td class="tab3 ftitle">Summary/Conference Date</td>
+		<td colspan="3"><input type="text" name="conference_date" id="conference_date" value="{$conference_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)" /> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('conference_date'), document.getElementById('fecha_help'));return false;" ></td></tr>
+	</tr>
+	<tr><td>&nbsp;</td></tr>
+	<tr>
+		<td class="tab3 ftitle">Patient Condition</td>
+		<td colspan="4"><div><input type="checkbox" name="pat_cond_declined" id="pat_cond_declined" value="1" {if $pat_cond_declined}checked{/if} /> Declined &emsp;&emsp; <input type="checkbox" name="pat_cond_unstable" id="pat_cond_unstable" value="1" {if $pat_cond_unstable}checked{/if} /> Unstable&emsp;&emsp; <input type="checkbox" name="pat_cond_unchanged" id="pat_cond_unchanged" value="1" {if $pat_cond_unchanged}checked{/if} /> Unchanged &emsp;&emsp; <input type="checkbox" name="pat_cond_improved" id="pat_cond_improved" value="1" {if $pat_cond_improved}checked{/if} /> Improved&emsp;&emsp; <input type="checkbox" name="pat_cond_stable" id="pat_cond_stable" value="1" {if $pat_cond_stable}checked{/if} />  Stable </div></td>
+	</tr>
+	<tr><td>&nbsp;</td></tr>
+	
+	<tr>
+		<td class="tab3 ftitle">Unusual Home/Social Environment</td>
+		<td colspan="3"><input type="text" name="unusual_home" id="unusual_home" value="{$unusual_home}" style="width:400px;" /></td></tr>
+	<tr>
+	
+	<td>&nbsp;</td></tr>
+
+	<tr>
+		<td class="tab3 ftitle" valign="top">Homebound Status</td>
+		<td class="tab4" valign="top"><ul style="list-style:none;">
+			<li><input type="checkbox" name="hbs_1_bed" id="hbs_1_bed" value="1" {if $hbs_1_bed}checked{/if} /> Bed/Chair/Wheelchair Bound</li>
+			<li><input type="checkbox" name="hbs_2_requieres" id="hbs_2_requieres" value="1" {if $hbs_2_requieres}checked{/if} /> Unsteady Gait</li>
+			<li><input type="checkbox" name="hbs_3_poor" id="hbs_3_poor" value="1" {if $hbs_3_poor}checked{/if} /> Severe Disabling Pain</li>
+		</ul></td>
+		<td class="tab4"><ul style="list-style:none;">
+			<li><input type="checkbox" name="hbs_4_unsteady" id="hbs_4_unsteady" value="1" {if $hbs_4_unsteady}checked{/if} /> Requires assistive sevice</li>
+			<li><input type="checkbox" name="hbs_5_fatigue" id="hbs_5_fatigue" value="1" {if $hbs_5_fatigue}checked{/if} /> Fatigue</li>
+			<li><input type="checkbox" name="hbs_6_severe" id="hbs_6_severe" value="1" {if $hbs_6_severe}checked{/if} /> Needs assistance to leave the house safely </li>
+		</ul></td>
+		<td class="tab4" valign="top"><ul style="list-style:none;">
+		<li><input type="checkbox" name="hbs_7_needs" id="hbs_7_needs" value="1" {if $hbs_7_needs}checked{/if} /> Poor Endurance </li>
+		</ul></td>
+	
+	</tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	<tr>
+		<td class="tab3 ftitle" valign="top">Summary/Progress Towards Goals/Continued Need  </td>
+		<td colspan="3"><textarea rows="4" cols="40" name="summ_prog_goals" id="summ_prog_goals" style="width:400px;">{$summ_prog_goals}</textarea></td>
+	
+	<tr>
+	<tr><td>&nbsp;</td></tr>
+	
+	
+	<tr>
+		<td class="tab3 ftitle" valign="top">Nutritional Needs </td>
+		<td colspan="3"><textarea rows="2" cols="40" name="nutritional_needs" id="nutritional_needs" style="width:400px;">{$nutritional_needs}</textarea></td>	
+	<tr>	
+	<tr><td>&nbsp;</td></tr>
+	
+	<tr>
+		<td class="tab3 ftitle">Advance Directives: </td>
+		<td class="tab4"><input type="radio" name="adv_dir_dnr" id="adv_dir_dnr" value="Y" {if $adv_dir_dnr eq "Y"}checked="checked"{/if} /> Yes</td>
+		<td class="tab4"><input type="radio" name="adv_dir_dnr" id="adv_dir_dnr" value="N" {if $adv_dir_dnr eq "N"}checked="checked"{/if} /> No</td>
+		<td class="tab4"><input type="radio" name="adv_dir_dnr" id="adv_dir_dnr" value="NI" {if $adv_dir_dnr eq "NI"}checked="checked"{/if} /> Not Interested </td>
+	</tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	
+	<tr>
+		<td class="tab3 ftitle" valign="top">New Diagnosis/Problems </td>
+		<td colspan="3"><textarea rows="2" cols="40" name="new_diag_prob" id="new_diag_prob" style="width:400px;">{$new_diag_prob}</textarea></td>	
+	<tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	
+	<tr>
+		<td class="tab3 ftitle" valign="top">New Goals </td>
+		<td colspan="3"><textarea rows="2" cols="40" name="new_goals" id="new_goals" style="width:400px;">{$new_goals}</textarea></td>	
+	<tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	
+	<tr>
+		<td class="tab3 ftitle" valign="top">New/Changed/Discontinued/Medications </td>
+		<td colspan="3"><textarea rows="2" cols="40" name="new_change_disc" id="new_change_disc" style="width:400px;">{$new_change_disc}</textarea></td>	
+	<tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	<tr>
+		<td class="subtitle" colspan="4"><img src="{$image_url}button_small_side.png" style="vertical-align: middle" />  Disciplines Present	</td>
+		
+	</tr>
+	<tr><td>&nbsp;</td></tr>
+	<tr>
+	<td class="tab3 ftitle">Check the Clinicians/Disciplines that are present</td>
+		<td colspan="3">{html_checkboxes name='case_conf_disciplines' options=$ppr_list
+selected=$case_conf_disciplines separator='&nbsp;'}</td>
+	</tr>
+	<tr><td>&nbsp;</td></tr>
+	<!--
+	*****************************************************************************************
+	<tr>
+		<td></td>
+		<td colspan="3">
+			<table width="641">
+				<tr>
+					<td class="tab3">
+						
+							<div>1. <input type="checkbox" name="cli_dis_1" /> Lucas Barrios, SN </div>
+							<div>4. <input type="checkbox" name="cli_dis_1" /> Mary Smith, PT </div>
+			
+		
+					</td>
+					<td class="tab3">
+						
+							<div>2. <input type="checkbox" name="cli_dis_2" /> Jose Lopez, ST	</div>
+							<div>5. <input type="checkbox" name="cli_dis_2" /> Ann Phillips, OT	</div>
+						
+					
+					</td>
+					<td class="tab3" colspan="2" valign="top">
+						
+							<div>3. <input type="checkbox" name="cli_dis_3" /> Michael Angelo, PT 	</div>
+					
+					
+					</td>
+				</tr>
+		  </table>
+		</td>	
+	</tr>
+	******************************************************************************************
+	<tr><td>&nbsp;</td></tr> -->
+	<tr>
+		<td colspan="4" class="subtitle"> <img src="{$image_url}button_small_side.png" style="vertical-align: middle" />  Future Visits Frequency Recommended</td>
+	</tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	
+	<tr>
+		<td class="tab3 ftitle" valign="top">Future Visits Frequency Recommended </td>
+		<td colspan="3"><textarea rows="3" cols="40" name="future_visits" id="future_visits" style="width:400px;">{$future_visits}</textarea></td>	
+	<tr>
+	<tr><td>&nbsp;</td></tr>
+	
+	<tr><td colspan="4">
+	
+	
+	<tr><td>&nbsp;</td></tr>
+	<tr>
+		<td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle" />  Skills Needs, Additional Comments</td>
+	</tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	
+	<tr>
+		<td class="tab3 ftitle" valign="top">Additional Comments </td>
+		<td colspan="3"><textarea rows="3" cols="40" name="additional_comments" id="additional_comments" style="width:400px;">{$additional_comments}</textarea></td>	
+	<tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	<tr>
+		<td colspan="4" class="subtitle"> <img src="{$image_url}button_small_side.png" style="vertical-align: middle" /> Primary Nurse or PT Signature</td>
+	</tr>
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	<tr>
+		<td class="tab3 ftitle">
+			<div>Primary Nurse or PT </div>
+			<div class="d2"><input type="checkbox" name="sum_sent_physician" id="sum_sent_physician" value="1" {if $sum_sent_physician}checked{/if} />Summary Sent to Physician</div>
+		</td>
+		<td class="tab3">
+			<div>
+				<!--<select name="nurse_or_pt_user_id" id="nurse_or_pt_user_id">
+					<option value="1" id="nurse_or_pt_user_id" > Judy Hendrickson </option>
+                    
+				</select>  -->
+                {html_options options=$nurse_or_pt_user name='nurse_or_pt_user_id' selected=$nurse_or_pt_user_id}
+			
+			</div>
+			<div class="d2">
+			<!--
+				<select name="physician_user_id" id="physician_user_id">
+					<option value="1" id="physician_user_id"> Select Doctor here  </option>
+				</select>	
+			-->
+			{html_options options=$physician_list name='physician_user_id' selected=$physician_user_id}
+			</div>
+		</td>
+		<td class="tab3 ftitle">
+			<div>Date signed </div>
+			<div class="d2">Date sent </div>
+		</td>
+		<td class="tab3">
+			<div><input type="text" name="nurse_or_pt_date" id="nurse_or_pt_date" value="{$nurse_or_pt_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)" /><img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('nurse_or_pt_date'), document.getElementById('fecha_help'));return false;" ></div>
+			<div class="d2"><input type="text" name="sum_sent_physician_date" id="sum_sent_physician_date" value="{$sum_sent_physician_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)" /><img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('sum_sent_physician_date'), document.getElementById('fecha_help'));return false;" ></div>
+		</td>
+	
+	
+	</tr>
+	<tr><td>&nbsp;</td></tr>
+	
+	<!--<tr>
+	<td colspan="4"><input type="submit" name="" value="Save" style="background:#CCCCCC; border:solid 1px #000000;" /></td>
+	
+	</tr> -->
+	
+	<tr><td>&nbsp;</td></tr>
+	
+	
+	
+
+
+		
+
+
+</table>
+<!--
+</div>
+</div>	
+-->

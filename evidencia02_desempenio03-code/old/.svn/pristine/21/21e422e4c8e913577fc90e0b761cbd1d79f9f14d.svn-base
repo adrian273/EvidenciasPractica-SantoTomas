@@ -1,0 +1,47 @@
+</form>
+<form id="gform" name="gform" method="POST" action="{$index_url}{$resource_path}/confirmPaymentSelected/{$usagyids}{if $popup eq 1}/1{else}/0{/if}/{$visit_date_ini}/{$visit_date_fin}" onsubmit="return validateForm();">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  {if $popup neq 1}
+  <tr>
+    <td valign="top" nowrap class="title" colspan="2">
+      Create Payroll Stub for selected Users
+    </td>
+  </tr>
+  {/if}
+  <tr>
+    <td colspan="2">
+      <b>Payment Date: </b> <input type="text" id="payment_date" name="payment_date" value="{$payment_date|date_format}" size="10"
+        onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">  
+      <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('payment_date'),document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>		
+		<td height="10" colspan="2">
+			<p>Press Submit to confirm Payroll Processing. Once is complete, an entry in folder Payment History will be created from where you can Edit or Print Payment Stubs or Invoices</p>
+    </td>
+  </tr>	
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Submit">
+      {if $cancel_url}
+        <input type="button" class="btn" value="{$grl_cancel}" onclick="window.location.href='{$cancel_url}'">
+      {else}
+        <input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w1').close()">
+      {/if}
+      
+    </td>
+  </tr>
+</table> 
+</form>
+<script type="text/javascript">
+  {literal}
+    function validateForm(){
+      if ($('input[name="payment_date"]').val()!='') {
+        return true;
+      } else{
+        alert("Please enter Payment Date!");
+        return false;
+      }
+    }
+  {/literal}
+</script>

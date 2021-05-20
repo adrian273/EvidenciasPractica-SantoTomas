@@ -1,0 +1,152 @@
+<?
+
+ class AuditLogMdl extends Model {
+
+	var $audit_id;
+	var $user_id;
+	var $login_datetime;
+	
+
+	function AuditLogMdl () {
+
+		parent::Model();
+		
+	}
+	
+
+	function get($keyword=null, $search_type=null) {
+		
+		//$this->db->select("us_agy.*,dis_discipline.*,sta_states.*,us1_user.user_email as email, CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name",false);
+		$this->db->join('us_agy', 'us_agy.user_id = audit_log.user_id');
+		$this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+		$this->db->join('sta_states', 'sta_states.state_id = us_agy.state_id', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+    
+    if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like('us1_user.'.$search_type, $keyword);
+		}
+    
+		$this->db->order_by('login_datetime','DESC');
+    
+		$query = $this->db->get('audit_log');
+		return $query->result();
+		
+	}
+
+	function getById ( $audit_id ) {
+		
+		//$this->db->select("us_agy.*,dis_discipline.*,sta_states.*,us1_user.user_email as email, CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name",false);
+		$this->db->join('us_agy', 'us_agy.user_id = audit_log.user_id');
+    $this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+		$this->db->join('sta_states', 'sta_states.state_id = us_agy.state_id', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->where("audit_log.audit_id", $audit_id);
+		
+		$query = $this->db->get('audit_log');
+		return $query->row();
+		
+	}
+
+	
+	function getByUsAgyId ( $us_agy_id ) {
+		
+		$this->db->select("us_agy.*,dis_discipline.*,sta_states.*,us1_user.user_email as email, CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name",false);
+		$this->db->join('us_agy', 'us_agy.user_id = audit_log.user_id', 'LEFT');
+		$this->db->join('sta_states', 'sta_states.state_id = us_agy.state_id', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->where("us_agy.us_agy_id", $us_agy_id);
+		
+		$query = $this->db->get('audit_log');
+		return $query->row();
+		
+	}
+	
+	function getByUserAgencyId ( $agency_id ) {
+		
+    $this->db->select("us_agy.*,dis_discipline.*,sta_states.*,us1_user.user_email as email, CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name",false);
+		$this->db->join('us_agy', 'us_agy.user_id = audit_log.user_id');
+		$this->db->join('sta_states', 'sta_states.state_id = us_agy.state_id', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->where("us_agy.agency_id", $agency_id);
+		
+		$query = $this->db->get('audit_log');
+		return $query->row();		   
+	}
+	
+	function getByUserId ( $user_id, $keyword=null, $search_type=null ) {
+		
+		$this->db->join('us_agy', 'us_agy.user_id = audit_log.user_id');
+		$this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+		$this->db->join('x_profile', 'us_agy.profile_id = x_profile.profile_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('tab_parameters', 'us_agy.tab_006_employee_type = tab_parameters.tab_value AND tab_parameters.tab_type = 6', 'LEFT');
+		
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}
+		
+		
+		$this->db->where("us_agy.user_id", $user_id);
+		//vanlt add
+		//$this->db->orderby("agency_name");
+		
+		$query = $this->db->get('audit_log');
+		return $query->result();
+		
+	}
+
+	function getCountByUserId ( $user_id) {
+		$this->db->where("user_id", $user_id);
+		$query = $this->db->get('audit_log');
+		return $query->num_rows();		
+	}
+	
+	function getByAgencyId ( $agency_id, $keyword=null, $search_type=null) {
+		$this->db->join('us_agy', 'us_agy.user_id = audit_log.user_id');
+		$this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+		$this->db->join('x_profile', 'us_agy.profile_id = x_profile.profile_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('tab_parameters', 'us_agy.tab_006_employee_type = tab_parameters.tab_value AND tab_parameters.tab_type = 6', 'LEFT');
+		
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}
+		
+		
+		$this->db->where("us_agy.agency_id", $agency_id);
+		//vanlt add
+		//$this->db->orderby("agency_name");
+		
+		$query = $this->db->get('audit_log');
+		return $query->result();
+    
+	}
+
+	function insert () {
+		
+		$this->login_datetime = date('Y-m-d H:i:s');
+		$this->db->insert("audit_log", $this);
+		$this->audit_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $audit_id ) {
+		
+		$this->db->where("audit_id", $audit_id);
+		$this->db->update("audit_log", $this);
+		
+	}
+	
+	
+	function delete ( $audit_id ) {
+		
+		$this->db->where("audit_id", $audit_id);
+		$this->db->delete("audit_log");
+		
+	}
+	
+ }

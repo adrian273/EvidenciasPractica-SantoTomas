@@ -1,0 +1,54 @@
+  
+  <script>
+  {literal}$(document).ready(function() {
+    $("input#keyword").autocomplete({
+    source: {/literal}{$name_source_obj}{literal}
+		});
+  });{/literal}
+  </script>
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr id="lala"> 
+    <!-- <td nowrap>
+  		{if $show_active_pat_filter}
+  		<input type="radio" name="patient_type" value="act" onclick='loadGrid()' checked/> Active Patients
+  		&nbsp;&nbsp;
+  		{/if}
+  		<input type="radio" name="patient_type" value="all" onclick='loadGrid()' {if !$show_active_pat_filter}checked{/if}/> All Patients
+  		&nbsp;&nbsp;&nbsp;&nbsp;
+    </td> -->
+    {if $show_my_pat_filter}
+    <td nowrap>
+      <label><input type="checkbox" name="my_patients" value="1" onclick='loadGrid()' /> My Patients</label>
+      &nbsp;&nbsp;&nbsp;&nbsp;
+    </td>
+    {/if}
+    <td nowrap>
+		<input type="text" name="keyword" id="keyword">
+		<input type="submit" value="Search">
+    </td>
+    <td align="right" style="padding-left: 20px" nowrap>
+    {html_options first_option='All Status' options=$patient_status_list name='tab_013_status' selected=$default_pat_filter_status onchange='loadGrid()'}
+    {if $agency_list}
+		{html_options first_option='All Agency' options=$agency_list name='agency_id' selected=$default_pat_filter_agency onchange='loadGrid()'}
+    {/if}
+
+    {if $show_lob_selection == true}
+      &nbsp;&nbsp;&nbsp;
+      {html_options options=$agency_products name='LOB' id='LOB' first_option="- Select Line of Business -" onchange=loadGrid()}
+    {/if}
+		
+    {*<input type="button" value="Print Patients" onclick="gform.action='{$index_url}{$resource_path}/pdflist';gform.submit()">
+    *}
+    </td>
+    <td align="right" width="100%">
+    </td>
+  </tr>
+</table> 
+
+<script type="text/javascript">
+  
+  function printPatients() {literal}{{/literal}
+    gform.action='{$index_url}{$resource_path}/pdflist';gform.submit()
+  {literal}}{/literal}
+
+</script>

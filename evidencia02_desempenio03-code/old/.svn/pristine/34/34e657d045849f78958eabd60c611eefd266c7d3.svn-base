@@ -1,0 +1,544 @@
+  {*<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>*}
+  <script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+  {literal}
+  <style type="text/css" media="screen">
+    .section-f th{
+      font-size: 11px; font-weight: bold; text-align: center;
+    }  
+    .section-f td{
+      font-size: 11px; font-weight: normal; text-align: center;
+    }  
+  </style>
+  {/literal}
+
+  <input type="hidden" name="vt103_id" value="{$vt103_id}">
+      
+  <input type="hidden" name="visited_time_in_hm" id="visited_time_in_hm" value="{$visited_time_in|truncate:5:"":true}" size="5" maxlength="5"  readonly="" /> 
+  <input type="hidden" name="visit_duration" id="visit_duration" value="{$visit_duration}" size="2" maxlength="2" onchange="update_visit_time_out(event);"/>
+  <input type="hidden" name="visited_time_out_hm" id="visited_time_out_hm" value="{$visited_time_out|truncate:5:"":true}" size="5" maxlength="5"  readonly="" />
+   
+    
+    <table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+    <tr style="display: none;">
+      <td colspan="4">
+        <table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+          <tr>
+            <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Order Information</td>
+          </tr>
+          <tr>
+            <td class="ftitle" valign="top">Ordered By</td>
+            <td valign="top">
+              {$visit_user_id_name}
+            </td>
+            <td valign="top"></td>
+            <td valign="top"></td>
+          </tr>
+          <tr>
+            <td class="ftitle" valign="top">Order Date</td>
+            <td valign="top">
+              <input type="text" id="visit_date_time" name="visit_date_time" value="{$visit_date_time}" 
+                onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+              <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_time'), document.getElementById('fecha_help'));return false;" >     
+            </td>
+            <td valign="top"></td>
+            <td valign="top"></td>
+          </tr>
+          <tr>
+            <td class="ftitle" valign="top">Visit Status</td>
+            <td valign="top">
+              <span style="margin-left:0; padding:5px; line-height: 26px; background-color:{$visit_tab_status_color}">{$tab_description}</span>
+            </td>
+            <td valign="top"></td>
+            <td valign="top"></td>
+          </tr>
+          <tr>
+            <td colspan="4" height="10"></td>
+          </tr>          
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Section A - Applicant/Individual Information</td>
+    </tr>
+    <tr>
+      <td colspan="4" valign="top">
+        <table width="100%">
+          <tr>
+            <td valign="top">
+              <b>1. Service Month/Year</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;{$service_month_year}
+            </td>
+            <td valign="top">
+              <b>2. Applicant/Individual Name</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;{$patient->first_name} {$patient->middle_initial} {$patient->last_name}
+            </td>
+            <td valign="top">
+              <b>3. Medicaid No</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;{$medicaidInsurance->ins_id}
+            </td>
+            <td valign="top">
+              <b>4. Social Security No.</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;{$patient->soc_sec_nbr}
+            </td>
+          </tr>      
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Section B - Provider Agency Information: Case Management Agency (CMA)/Direct Service Agency (DSA)</td>
+    </tr>
+    <tr>
+      <td colspan="4" valign="top">
+        <table width="100%">
+          <tr>
+            <td valign="top">
+              <b>5. Agency Type</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;<label><input type="radio" name="agency_type" value="CMA" {if $agency_type eq 'CMA'}checked="checked"{/if}> CMA</label>
+              <label><input type="radio" name="agency_type" value="DSA" {if $agency_type eq 'DSA' OR !$agency_type}checked="checked"{/if}> DSA</label>
+            </td>
+            <td valign="top">
+              <b>6. Agency Name</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;{$agency->agency_name}
+            </td>
+            <td valign="top">
+              <b>7. Contract No.</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="F3625_contract_no" value="{$agency->F3625_contract_no}">
+            </td>
+          </tr>      
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Section C - Pre-Enrollment Assessment Fees: CMA/DSA</td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <b>8. Case Management Service</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<label><input type="radio" name="case_manag_serv" value="FULL" {if $case_manag_serv eq 'FULL'} checked="checked" {/if} > Full Assessment</label>
+        <label><input type="radio" name="case_manag_serv" value="PARTIAL" {if $case_manag_serv eq 'PARTIAL'} checked="checked" {/if} > Partial Assessment</label>
+      </td>
+      <td colspan="2">
+        <b>9. DSA Services</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<label><input type="checkbox" name="dsa_services_full" value="Y" {if $dsa_services_full eq 'Y'} checked="checked"{/if}> Full Assessment</label>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Section D - Case Management Services</td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <b>10. Case Manager Name</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{$cm_approver->complete_name}
+      </td>
+      <td colspan="2">
+        <b>11. Case Management Services</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label><input type="checkbox" name="case_manag_serv_ongo" value="Y" {if $case_manag_serv_ongo eq 'Y'} checked="checked"{/if}> Ongoing</label>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Section E - Direct Services</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>12. Method of Delivery</b><br>
+        {if $created_by_agency_type eq 'C'}
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label><input type="radio" name="method_of_delivery" value="3" checked="checked"> Contract with Another Agency <span id="method_of_delivery_3_txt_span">- <b>Name of Individual and Company:</b> <input type="text" name="method_of_delivery_3_txt" value="{$created_by_agency_name} - {$visit_user_id_name}" readonly="readonly" size="50"></span></label><br>
+        {else if $created_by_agency_type eq 'A'}
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label><input type="radio" name="method_of_delivery" value="1" {if $method_of_delivery eq '1'} checked="checked"{/if}> Employee <span id="method_of_delivery_1_txt_span" {if $method_of_delivery neq '1'}style="display: none;"{/if}>- <b>Name of Employee:</b> <input type="text" name="method_of_delivery_1_txt" value="{$method_of_delivery_1_txt}" size="50"></span></label><br>
+
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label><input type="radio" name="method_of_delivery" value="2" {if $method_of_delivery eq '2'} checked="checked"{/if}> Personal Service Agreement <span id="method_of_delivery_2_txt_span" {if $method_of_delivery neq '2'}style="display: none;"{/if}>- <b>Name of Individual:</b> <input type="text" name="method_of_delivery_2_txt" value="{$method_of_delivery_2_txt}" size="50"></span></label><br>
+
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label><input type="radio" name="method_of_delivery" value="4" {if $method_of_delivery eq '4'} checked="checked"{/if}> Direct Purchase - Use only for service code 15 and 16</label>
+        {/if}
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Authorized Service</td>
+    </tr>
+    <tr>
+      <td colspan="4" valign="top">
+        <table width="100%">
+          <tr>
+            <td valign="top">
+              <b>13. Service Category</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SPECIALIZED THERAPY
+            </td>
+            <td valign="top">
+              <b>14. For Service Code 42 A-F, name specialized therapy</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{$visit_type_discipline->mayor_discipline}
+            </td>
+            <td valign="top">
+              <b>15. Service Code</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="serv_code_box15" value="{$serv_code_box15}" maxlength="10" size="10">
+            </td>
+            <td valign="top">
+              <b>16. Bill Code</b><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="bill_code_box16" value="{$bill_code_box16}" maxlength="10" size="10">
+            </td>
+          </tr>      
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" valign="top">
+        <table width="100%">
+          <tr>
+            <td valign="top">
+              <b>17. Requisition Fee </b>(If applicable to services in 13. Service Category<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="requis_feee_box17" value="{$requis_feee_box17}" maxlength="10" size="10">
+            </td>
+            <td valign="top">
+              <b>18. Requisition Fee Service Code</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="requis_fee_serv_code_box18" value="{$requis_fee_serv_code_box18}" maxlength="10" size="10">
+              
+            </td>
+            <td valign="top">
+              <b>19. Requisition Fee Bill Code</b><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="requis_fee_bill_code_box19" value="{$requis_fee_bill_code_box19}" maxlength="10" size="10">
+              
+            </td>
+          </tr>      
+        </table>
+      </td>
+    </tr>
+
+    <tr>
+      <td colspan="4">
+        <b>Comments:</b><br>
+        <textarea name="vt103_comments" style="width: 500px; height: 100px;" maxlength="550">{$vt103_comments}</textarea>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" height="10"></td>
+    </tr>
+    {if $section_f}
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Section F - Record of Time</td>
+    </tr>
+    {if $section_f_rate_errors}
+    <tr>
+      <td colspan="4">
+        <div style="color: red;">{$section_f_rate_errors}</div>
+      </td>
+    </tr>
+    {/if}
+    <tr>
+      <td colspan="4" valign="top">
+        <table width="100%" border="1" cellpadding="0" cellspacing="0" align="center" class="section-f">
+          <tr>
+            <th width="5%">Day</th>
+            <th width="20%">Time In - Time Out/Units/Amount</th>
+            <th width="5%">Day</th>
+            <th width="20%">Time In - Time Out/Units/Amount</th>
+            <th width="5%">Day</th>
+            <th width="20%">Time In - Time Out/Units/Amount</th>
+            <th width="5%">Day</th>
+            <th width="20%">Time In - Time Out/Units/Amount</th>
+          </tr>
+          <tr>
+            <td> 1 </td>
+            <td> {if $section_f_visits[1]} {$section_f_visits[1]->timein}-{$section_f_visits[1]->timeout} ({$section_f_visits[1]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[1]->amount} {/if} {/if} </td>
+            <td> 9 </td>
+            <td> {if $section_f_visits[9]} {$section_f_visits[9]->timein}-{$section_f_visits[9]->timeout} ({$section_f_visits[9]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[9]->amount} {/if} {/if} </td>
+            <td> 17 </td>
+            <td> {if $section_f_visits[17]} {$section_f_visits[17]->timein}-{$section_f_visits[17]->timeout} ({$section_f_visits[17]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[17]->amount} {/if} {/if} </td>
+            <td> 25 </td>
+            <td> {if $section_f_visits[25]} {$section_f_visits[25]->timein}-{$section_f_visits[25]->timeout} ({$section_f_visits[25]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[25]->amount} {/if} {/if} </td>
+          </tr>
+          <tr>
+            <td> 2 </td>
+            <td> {if $section_f_visits[2]} {$section_f_visits[2]->timein}-{$section_f_visits[2]->timeout} ({$section_f_visits[2]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[2]->amount} {/if} {/if} </td>
+            <td> 10 </td>
+            <td> {if $section_f_visits[10]} {$section_f_visits[10]->timein}-{$section_f_visits[10]->timeout} ({$section_f_visits[10]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[10]->amount} {/if} {/if} </td>
+            <td> 18 </td>
+            <td> {if $section_f_visits[18]} {$section_f_visits[18]->timein}-{$section_f_visits[18]->timeout} ({$section_f_visits[18]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[18]->amount} {/if} {/if} </td>
+            <td> 26 </td>
+            <td> {if $section_f_visits[26]} {$section_f_visits[26]->timein}-{$section_f_visits[26]->timeout} ({$section_f_visits[26]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[26]->amount} {/if} {/if} </td>
+          </tr>
+          <tr>
+            <td> 3 </td>
+            <td> {if $section_f_visits[3]} {$section_f_visits[3]->timein}-{$section_f_visits[3]->timeout} ({$section_f_visits[3]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[3]->amount} {/if} {/if} </td>
+            <td> 11 </td>
+            <td> {if $section_f_visits[11]} {$section_f_visits[11]->timein}-{$section_f_visits[11]->timeout} ({$section_f_visits[11]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[11]->amount} {/if} {/if} </td>
+            <td> 19 </td>
+            <td> {if $section_f_visits[19]} {$section_f_visits[19]->timein}-{$section_f_visits[19]->timeout} ({$section_f_visits[19]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[19]->amount} {/if} {/if} </td>
+            <td> 27 </td>
+            <td> {if $section_f_visits[27]} {$section_f_visits[27]->timein}-{$section_f_visits[27]->timeout} ({$section_f_visits[27]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[27]->amount} {/if} {/if} </td>
+          </tr>
+          <tr>
+            <td> 4 </td>
+            <td> {if $section_f_visits[4]} {$section_f_visits[4]->timein}-{$section_f_visits[4]->timeout} ({$section_f_visits[4]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[4]->amount} {/if} {/if} </td>
+            <td> 12 </td>
+            <td> {if $section_f_visits[12]} {$section_f_visits[12]->timein}-{$section_f_visits[12]->timeout} ({$section_f_visits[12]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[12]->amount} {/if} {/if} </td>
+            <td> 20 </td>
+            <td> {if $section_f_visits[20]} {$section_f_visits[20]->timein}-{$section_f_visits[20]->timeout} ({$section_f_visits[20]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[20]->amount} {/if} {/if} </td>
+            <td> 28 </td>
+            <td> {if $section_f_visits[28]} {$section_f_visits[28]->timein}-{$section_f_visits[28]->timeout} ({$section_f_visits[28]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[28]->amount} {/if} {/if} </td>
+          </tr>
+          <tr>
+            <td> 5 </td>
+            <td> {if $section_f_visits[5]} {$section_f_visits[5]->timein}-{$section_f_visits[5]->timeout} ({$section_f_visits[5]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[5]->amount} {/if} {/if} </td>
+            <td> 13 </td>
+            <td> {if $section_f_visits[13]} {$section_f_visits[13]->timein}-{$section_f_visits[13]->timeout} ({$section_f_visits[13]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[13]->amount} {/if} {/if} </td>
+            <td> 21 </td>
+            <td> {if $section_f_visits[21]} {$section_f_visits[21]->timein}-{$section_f_visits[21]->timeout} ({$section_f_visits[21]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[21]->amount} {/if} {/if} </td>
+            <td> 29 </td>
+            <td> {if $section_f_visits[29]} {$section_f_visits[29]->timein}-{$section_f_visits[29]->timeout} ({$section_f_visits[29]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[29]->amount} {/if} {/if} </td>
+          </tr>
+          <tr>
+            <td> 6 </td>
+            <td> {if $section_f_visits[6]} {$section_f_visits[6]->timein}-{$section_f_visits[6]->timeout} ({$section_f_visits[6]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[6]->amount} {/if} {/if} </td>
+            <td> 14 </td>
+            <td> {if $section_f_visits[14]} {$section_f_visits[14]->timein}-{$section_f_visits[14]->timeout} ({$section_f_visits[14]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[14]->amount} {/if} {/if} </td>
+            <td> 22 </td>
+            <td> {if $section_f_visits[22]} {$section_f_visits[22]->timein}-{$section_f_visits[22]->timeout} ({$section_f_visits[22]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[22]->amount} {/if} {/if} </td>
+            <td> 30 </td>
+            <td> {if $section_f_visits[30]} {$section_f_visits[30]->timein}-{$section_f_visits[30]->timeout} ({$section_f_visits[30]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[30]->amount} {/if} {/if} </td>
+          </tr>
+          <tr>
+            <td> 7 </td>
+            <td> {if $section_f_visits[7]} {$section_f_visits[7]->timein}-{$section_f_visits[7]->timeout} ({$section_f_visits[7]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[7]->amount} {/if} {/if} </td>
+            <td> 15 </td>
+            <td> {if $section_f_visits[15]} {$section_f_visits[15]->timein}-{$section_f_visits[15]->timeout} ({$section_f_visits[15]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[15]->amount} {/if} {/if} </td>
+            <td> 23 </td>
+            <td> {if $section_f_visits[23]} {$section_f_visits[23]->timein}-{$section_f_visits[23]->timeout} ({$section_f_visits[23]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[23]->amount} {/if} {/if} </td>
+            <td> 31 </td>
+            <td> {if $section_f_visits[31]} {$section_f_visits[31]->timein}-{$section_f_visits[31]->timeout} ({$section_f_visits[31]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[31]->amount} {/if} {/if} </td>
+          </tr>
+          <tr>
+            <td> 8 </td>
+            <td> {if $section_f_visits[8]} {$section_f_visits[8]->timein}-{$section_f_visits[8]->timeout} ({$section_f_visits[8]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[8]->amount} {/if} {/if} </td>
+            <td> 16 </td>
+            <td> {if $section_f_visits[16]} {$section_f_visits[16]->timein}-{$section_f_visits[16]->timeout} ({$section_f_visits[16]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[16]->amount} {/if} {/if} </td>
+            <td> 24 </td>
+            <td> {if $section_f_visits[24]} {$section_f_visits[24]->timein}-{$section_f_visits[24]->timeout} ({$section_f_visits[24]->units}) {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_visits[24]->amount} {/if} {/if} </td>
+            <td colspan="2" valign="top">
+              <b>Total Units/Amount: <span style="display: inline-block; padding: 1px; border: 1px solid #000000; height: 14px; width: 120px; margin-top: 2px;">{$section_f_total_units}{if $section_f_total_amount} / {if $login_user_profile_id eq 1 || $login_user_profile_id eq 3} ${$section_f_total_amount} {/if} {/if}</span></b>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    {/if}
+
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Signature</td>      
+    </tr> 
+    <tr>
+      <td>
+        <input class="btn" value="Applicant/Individual/LAR Signature" onclick="capture_pt_3625_signature({$visit_log_id})" type="button">
+      </td>
+      <td>
+        <input type="hidden" name="pat_3625_signature" value="{$pat_3625_signature}">
+        {if $pat_3625_signature != ""}
+          <img src="{$base_url}upload/signatures/{$pat_3625_signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+      </td>
+      <td colspan="2">
+        <input type="hidden" name="pat_3625_signed_date" value="{$pat_3625_signed_date|date_format:"%m-%d-%Y":"":true}">
+        {if $pat_3625_signature != ""}
+          <b>Date: </b> {$visit_date_time}
+        {/if}
+      </td>
+    </tr>
+   
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Clinician Signature</td>
+      
+    </tr> 
+    <tr>
+      <td>
+        <input class="btn" value="Therapist Signature" onclick="capture_clinician_3625_signature({$visit_log_id})" type="button">
+      </td>      
+      <td>
+        <input type="hidden" name="clinician_3625_signature" value="{$clinician_3625_signature}">
+        {if $clinician_3625_signature != ""}
+          <img src="{$base_url}upload/signatures/{$clinician_3625_signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+      </td>
+      <td colspan="2">
+        <input type="hidden" name="clinician_3625_signed_date" value="{$clinician_3625_signed_date|date_format:"%m-%d-%Y":"":true}">
+        {if $clinician_3625_signature != ""}
+          <b>Date: </b> {$visit_date_time}   
+        {/if}
+      </td>
+    </tr>
+
+    <tr style="display: none;">
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Caregiver Signature</td>
+    </tr> 
+    <tr style="display: none;">
+      <td>
+        <input class="btn" value="Time Keeper Signature" onclick="capture_caregiver_signature({$visit_log_id})" type="button">
+      </td>      
+      <td>
+        <input type="hidden" name="caregiver_signature" value="{$caregiver_signature}">
+        {if $caregiver_signature != ""}
+          <img src="{$base_url}upload/signatures/{$caregiver_signature}?{$smarty.now}" style="height: 70px;"  />
+        {/if}
+      </td>
+      <td colspan="2">
+        <input type="hidden" name="caregiver_signed_date" value="{$caregiver_signed_date|date_format:"%m-%d-%Y":"":true}">
+        {if $caregiver_signature != ""}
+          <b>Date: </b> {$visit_date_time}   
+        {/if}
+      </td>
+    </tr>
+    
+  </tbody>
+  </table>
+
+
+
+
+<script>
+{literal} 
+$(function(){
+	$('input[name=use_aquatic]').change(function(){
+        if (this.checked) {
+          // console.log($(this).attr('value'));
+            if($(this).attr('value') == '1') {
+                $('#aquatic_part').show();                
+            } else  {
+                $('#aquatic_part').hide();                
+            } 
+        } 
+  }); 
+
+  $('input[name=method_of_delivery]').change(function(){
+        if (this.checked) {
+        	// console.log($(this).attr('value'));
+            if($(this).attr('value') == '1') {
+                $('#method_of_delivery_1_txt_span').show();
+                $('#method_of_delivery_2_txt_span').hide();
+                $('#method_of_delivery_3_txt_span').hide();
+            } else if($(this).attr('value') == '2') {
+                $('#method_of_delivery_1_txt_span').hide();
+                $('#method_of_delivery_2_txt_span').show();
+                $('#method_of_delivery_3_txt_span').hide();
+            } else if($(this).attr('value') == '3') {
+                $('#method_of_delivery_1_txt_span').hide();
+                $('#method_of_delivery_2_txt_span').hide();
+                $('#method_of_delivery_3_txt_span').show();
+            } else if($(this).attr('value') == '4') {
+                $('#method_of_delivery_1_txt_span').hide();
+                $('#method_of_delivery_2_txt_span').hide();
+                $('#method_of_delivery_3_txt_span').hide();
+            } 
+        } 
+	});	
+});        
+
+function chars_limit_notice(field, limit){
+		if(!field || !limit)
+		return;
+		
+		if(document.getElementById(field).value.length >= limit){
+			document.getElementById(field+'_note').style.display='none';
+		}else{
+			document.getElementById(field+'_chars_left').innerHTML = limit - document.getElementById(field).value.length;
+			document.getElementById(field+'_note').style.display='';
+		} 
+}
+{/literal}
+function capture_pt_3625_signature(visit_log_id) {literal}{{/literal}
+  {if !$no_commit_form}
+    {if $visit_status_id eq 1}
+    setValue('visit_status_id', 2);
+    {/if}
+    autoSave();
+  {/if}
+	//alert(visit_log_id);
+	//alert(grid.getCheckedRows(0));
+	dhxWins = new dhtmlXWindows();
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+	w2.setText("Capture Patient Digital Signature");
+	w2.button("park").hide();
+	w2.button("minmax1").hide();
+	//w2.denyResize(); // deny resizing
+	//w2.denyMove(); 
+	w2.button("close")._doOnClick = function() {literal}{{/literal}
+		// loadGrid();
+		w2.close();
+	{literal}}{/literal}	
+	
+	dhxWins.window('w2').center();
+	dhxWins.window('w2').setModal(true);
+	w2.attachURL("{$index_url}/task/form3625/capture_pt_3625_signature/" + visit_log_id);
+{literal}}{/literal}
+
+function capture_clinician_3625_signature(visit_log_id) {literal}{{/literal}
+  {if !$no_commit_form}
+    {if $visit_status_id eq 1}
+    setValue('visit_status_id', 2);
+    {/if}
+    autoSave();
+  {/if}
+  //alert(visit_log_id);
+  //alert(grid.getCheckedRows(0));
+  dhxWins = new dhtmlXWindows();
+  dhxWins.setImagePath("{$base_url}style/window/imgs/");
+  
+  var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+  w2.setText("Capture Clinician Digital Signature");
+  w2.button("park").hide();
+  w2.button("minmax1").hide();
+  //w2.denyResize(); // deny resizing
+  //w2.denyMove(); 
+  w2.button("close")._doOnClick = function() {literal}{{/literal}
+    // loadGrid();
+    w2.close();
+  {literal}}{/literal}  
+  
+  dhxWins.window('w2').center();
+  dhxWins.window('w2').setModal(true);
+  w2.attachURL("{$index_url}/task/form3625/capture_clinician_3625_signature/" + visit_log_id);
+{literal}}{/literal}  
+
+function capture_caregiver_signature(visit_log_id) {literal}{{/literal}
+  {if !$no_commit_form}
+    {if $visit_status_id eq 1}
+    setValue('visit_status_id', 2);
+    {/if}
+    autoSave();
+  {/if}
+	//alert(visit_log_id);
+	//alert(grid.getCheckedRows(0));
+	dhxWins = new dhtmlXWindows();
+	dhxWins.setImagePath("{$base_url}style/window/imgs/");
+	
+	var w2 = dhxWins.createWindow("w2", 10, 10, 850, 500);
+	w2.setText("Capture Caregiver Digital Signature");
+	w2.button("park").hide();
+	w2.button("minmax1").hide();
+	//w2.denyResize(); // deny resizing
+	//w2.denyMove(); 
+	w2.button("close")._doOnClick = function() {literal}{{/literal}
+		// loadGrid();
+		w2.close();
+	{literal}}{/literal}	
+	
+	dhxWins.window('w2').center();
+	dhxWins.window('w2').setModal(true);
+	w2.attachURL("{$index_url}/task/form3625/capture_caregiver_signature/" + visit_log_id);
+{literal}}{/literal}	
+
+</script>  

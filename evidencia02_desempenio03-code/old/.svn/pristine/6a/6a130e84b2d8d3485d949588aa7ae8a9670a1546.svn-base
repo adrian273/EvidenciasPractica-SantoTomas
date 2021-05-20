@@ -1,0 +1,30 @@
+<?
+
+ class AgreementMdl extends Model {
+
+	var $agreement_id;
+	var $effectiv_date;
+  	var $agreement_text;
+  	var $creation_date;
+
+	function AgreementMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $agreement_id = 1) {
+	
+		$this->db->where("agreement_id", $agreement_id);
+	
+		$query = $this->db->get('agreement');
+		return $query->first_row();			
+	
+	}
+	function getLast () {
+		$this->db->order_by('agreement_id','desc');	
+		$query = $this->db->get('agreement');
+		return $query->first_row();			
+	}
+
+ }

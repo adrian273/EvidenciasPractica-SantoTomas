@@ -1,0 +1,71 @@
+<form action="{$index_url}contractor/contractornotes/insert_note/{$entity_id}" id="contractornotes" name="contractornotes" method="POST">
+  <table border="0" width="30%" cellpadding="2" cellspacing="0"> 
+    <!-- <input type="hidden" name="agency_contractor_note_id" value="{$agency_contractor_note_id}" /> -->
+    {if $gmessage != ''}
+      <tr>
+        <td nowrap align="center" nowrap width="40%" colspan="4">
+        <span class="tbl_msg_ok" style="height: 25px">{$gmessage}</span>
+        </td>
+      </tr>
+    {/if}
+    <tr>
+      <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle">Add Note</td>
+    </tr> 
+   
+    <tr> 
+      <td class="ftitle" valign="top">Note *</td>
+      <td><textarea name="note" id="note" value="{$note}" rows="3" cols="20"></textarea>
+    </tr>
+    <tr> 
+      <td class="ftitle"></td>
+      <!-- <td><button name="Button" type="submit"  value="Save">Save</button>   -->
+      <td><input type="submit" name="button" value="Save" onclick=""></td>  
+    </tr>
+   
+  </table> 
+</form>
+</br></br>
+<div>
+  <h3>Note List</h3>
+ 
+  {foreach from=$notedetails key=parent_menu_name item=notedetail}
+  <div style="border-top: 1px dotted #000000;">
+    <div>      
+      <span>
+        {$notedetail->first_name} {$notedetail->last_name}
+      </span>
+      <span>  
+        {$notedetail->note_date} wrote:
+      </span>
+    </div>
+    <div border="top" style="background-color: #f4f4f4">
+      {$notedetail->note}
+    </div>
+  </div>  
+  {/foreach}
+  
+</div>
+
+<script type="text/javascript">
+  
+</script>
+
+<!-- <script type="text/javascript">
+{literal}
+  function changeAgencyStatus(status){
+    $.ajax({
+      {/literal}url: '{$index_url}{$resource_path}/status_change/'+status+'/{$entity_id}',{literal}
+      method: 'get',
+      dataType: 'html',
+      success: function(data){
+        if (data=='1') {
+          alert('Status Updated.');
+        };
+        if(data!=1){
+          alert('Could not update Status.');
+        };
+      }
+    })
+  }
+{/literal}
+</script> -->

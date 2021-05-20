@@ -1,0 +1,176 @@
+
+<page style="font-size:16px;">
+    <page_header> </page_header>
+    <page_footer> </page_footer>
+    <table style="width:100%;" border="0" align="center">
+        <tr>
+            <td style="width: 20%; text-align: left;">
+				<?php 
+				if ($contractor_info->logo != ''){
+					$path =  FCPATH.'upload/logos/'. $contractor_info->logo;
+					$type = pathinfo($path, PATHINFO_EXTENSION);
+					$data = file_get_contents($path);
+					$base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+					/*<img src="<?php echo str_replace('https://','http://',$base_url) . 'upload/logos/'. $contractor_info->logo ?>" alt="" align="left">*/
+				?>
+					<img src="<?php echo $base64 ?>" alt="" align="left">
+				<?php } ?>
+            </td>
+            <td style="width:80%; text-align:left; padding-left: 120px;">
+				<h1><?=$contractor_info->agency_name?></h1>
+			</td>
+        </tr>
+    </table>
+    <table style="width:100%;" border="0"  align="center">
+        <tr>
+            <td style="width:100%;">
+				<table style="width: 100%;" align="center" border="0">
+                    <tr>
+                        <td style="width: 50%; text-align: left;"> FROM :<br/>
+                            <?=$contractor_info->agency_name?>
+                            .<br />
+                            <?=($contractor_info->address ? $contractor_info->address.'<br />' : '')?>
+                            <?=$contractor_info->city?>
+                            ,
+                            <?=$contractor_info->state_name_short?>
+                            <?=$contractor_info->zip?>
+                            <?=($contractor_info->po_zip2 ? ( $contractor_info->po_zip1 ? '-'.$contractor_info->po_zip2 : $contractor_info->po_zip2 ) : '')?>
+                            <?=(($contractor_info->po_zip1 OR $contractor_info->po_zip2) ? '<br />' : '')?>
+                            <br />
+                            Phone :
+                            <?=$contractor_info->phone_primary?>
+                            <br/>
+                            Fax :
+                            <?=$contractor_info->fax?>
+                            <br/>
+                            Email :
+                            <?=$contractor_info->agency_email?>
+                            <br/>
+                        </td>
+                        <td style="width: 25%;">&nbsp;</td>
+                        <td style="width: 25%;">
+							<table style="width:100%;" align="center" border="0">
+                                <tr>
+                                    <td colspan="2" style="width:100%; text-align:left;"><strong>STATEMENT</strong> </td>
+                                </tr>
+                                <tr style="background-color:#DDD">
+                                    <td style="width:50%; text-align:center; border-right:1px solid #000000;">DATE</td>
+                                    <td style="width:50%; text-align:right;">STATEMENT #</td>
+                                </tr>
+                                <tr>
+                                    <td style="width:50%; text-align:center; border-right:1px solid #000000;"><?php echo date("m-d-Y", time()); ?></td>
+                                    <td style="width:50%; text-align:right;">-</td>
+                                </tr>
+                                <tr style="background-color:#DDD;">
+                                    <td colspan="2" style="text-align:left;">STATEMENT PERIOD</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="text-align:left;">
+									
+                                    	<?php
+											if($post_data['invoice_from_date'] != '') {
+												echo $post_data['invoice_from_date']; 
+											}
+										?> - <?php
+											if($post_data['invoice_to_date'] != '') {
+												//echo date("m/d/Y", mysql_to_unix($post_data['invoice_to_date']));
+												echo $post_data['invoice_to_date'];
+											}
+										?>
+									</td>
+                                </tr>
+                            </table>
+						</td>
+                    </tr>
+                </table>
+                <table style="width: 100%; margin-top: 25px;" align="center" border="0">
+                    <tr>
+                        <td style="width: 50%; text-align: left;"><div style="width: 200px; background-color:#DDD;">BILL TO: </div>
+                            <?=$contact_name?>
+                            <br />
+                            <?=$agency_name?>
+                            <br />
+                            <?=$address?>
+                            <br />
+                            <?=$city?>
+                            ,
+                            <?=$state_name_short?>
+                            ,
+                            <?=$zip?>
+                        </td>
+                        <td style="width: 25%;">&nbsp;</td>
+                        <td style="width: 25%;" valign="top">
+							<table style="width:100%;" align="left" border="0" width="100%">
+                                <tr style="background-color:#DDD">
+                                    <td style="width: 100%;" align="left" style="text-align:left;">TOTAL DUE</td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 100%;" style="text-align:left;">$<?php echo number_format($total_due_balance, 2); ?></td>
+                                </tr>
+                            </table>
+						</td>
+                    </tr>
+                </table>
+				
+                <div style="margin-top:5px; border-bottom:1px dotted #000000; width:100%"></div>
+				
+                <table style="width:100%; margin-top:20px;" border="0"  align="center">
+                    <tr style="background-color:#DDD;">
+                        <td style="width:14%; text-align:left; padding-left:10px; border-right: 1px dotted #000000;">DATE</td>
+                        <td style="width:30%; text-align:left; padding-left:10px; border-right: 1px dotted #000000;">ACTIVITY</td>
+                        <td style="width:14%; text-align:left; padding-left:10px; border-right: 1px dotted #000000;">DUE DATE</td>
+                        <td style="width:14%; text-align:left; padding-left:10px; border-right: 1px dotted #000000;">AMOUNT</td>
+                        <td style="width:14%; text-align:left; padding-left:10px; border-right: 1px dotted #000000;">RECEIVED</td>
+                        <td style="width:14%; text-align:left; padding-left:10px; border-right: 1px dotted #000000;">BALANCE </td>
+                    </tr>
+					<?php
+						$total_invoice_amount = 0;
+						$total_payment = 0;
+						$total_balance = 0;
+						foreach($invoices as $invoice){
+							// if($invoice->balance <= 0){
+							// 	continue;
+							// }
+							$total_invoice_amount += $invoice->invoice_amount;
+							$total_payment += $invoice->total_payment;
+							$total_balance += $invoice->balance;
+					?>
+                    <tr>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;"><?php echo date("m/d/Y",strtotime($invoice->invoice_date)); ?></td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;">Invoice# <?php echo $invoice->invoice_no; ?></td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;"><?php echo date("m/d/Y",strtotime($invoice->invoice_due_date)); ?></td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;"><?php echo number_format($invoice->invoice_amount, 2); ?></td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;"><?php echo number_format($invoice->total_payment, 2); ?></td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;"><?php echo number_format($invoice->balance, 2); ?></td>
+                    </tr>
+					<?php } ?>
+					
+                    <tr>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;">&nbsp;</td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;">&nbsp;</td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;">&nbsp;</td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;">&nbsp;</td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;">&nbsp;</td>
+                        <td style="text-align:left; padding-left:10px; border-right: 1px dotted #000000;">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color:#DDD; padding-left:10px; border-right: 1px dotted #000000; text-align:left;">TOTALS:</th>
+                        <th style="background-color:#DDD; padding-left:10px; border-right: 1px dotted #000000; text-align:left;"></th>
+                        <th style="background-color:#DDD; padding-left:10px; border-right: 1px dotted #000000; text-align:left;"></th>
+                        <th style="background-color:#DDD; padding-left:10px; border-right: 1px dotted #000000; text-align:left;"><?php echo number_format($total_invoice_amount, 2); ?></th>
+                        <th style="background-color:#DDD; padding-left:10px; border-right: 1px dotted #000000; text-align:left;"><?php echo number_format($total_payment, 2); ?></th>
+                        <th style="background-color:#DDD; padding-left:10px; border-right: 1px dotted #000000; text-align:left;"><?php echo number_format($total_balance, 2); ?></th>
+                    </tr>
+                </table>
+			</td>
+        </tr>
+    </table>
+    <div style="position: absolute; left: 0px; bottom: 5px;">
+        <hr style="height:1px; width:100%;" />
+        <table style="width:100%;" align="center" border="0">
+            <tr>
+                <td style="width:100%; text-align:left;">Thank you for your business </td>
+            </tr>
+        </table>
+    </div>
+</page>

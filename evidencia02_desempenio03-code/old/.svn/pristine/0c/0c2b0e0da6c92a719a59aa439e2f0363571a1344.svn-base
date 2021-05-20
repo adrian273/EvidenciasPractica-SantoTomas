@@ -1,0 +1,306 @@
+<?php
+
+ class GrviMdl extends Model {
+
+    var $vt123_id;
+    var $visit_log_id;
+    var $pt_signed_date;
+    var $clinician_signature;
+    var $clinician_signed_date;
+    // var $cavi_notes;
+    var $upload_document_name;
+    var $resolution;
+    var $grvi_comments;
+    
+	function GrviMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt123_grievance_visit');
+		$row = $query->row();
+
+		array_walk($row, 'convert_special_chars');
+
+		return $row;
+	
+	}
+
+	function getEmpty ( ) {
+		return $this;
+	}
+
+	function insert () {
+	
+		$this->db->insert('vt123_grievance_visit', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->vt123_id);
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$this->db->update('vt123_grievance_visit', $this);
+	
+	}
+	
+	function getPrevious ( $user_id=null, $previous_date, $episode_id, $allepisodes=false ) {
+		$soc_id = null;
+        if($allepisodes AND $episode_id){      
+          $this->db->select('soc_id');
+          $this->db->where('cms485_id', $episode_id);
+          $query = $this->db->get('cms_485');    
+          $row = $query->row_array();
+          $soc_id = $row['soc_id'];
+        }
+        
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt123_grievance_visit.visit_log_id');
+		
+        if (!is_null($user_id))
+		  $this->db->where('visit_user_id', $user_id);
+		  $this->db->where('visit_date_time <', $previous_date);
+		if(!is_null($soc_id)){
+            $this->db->join('cms_485',   'cms_485.soc_id = '.$soc_id);
+            $this->db->where('vis_visit_log.cms485_id=cms_485.cms485_id');
+            $this->db->group_by('vis_visit_log.visit_log_id');
+        }else{
+            $this->db->where('cms485_id', $episode_id);
+		}
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt123_grievance_visit');
+		return $query->result();
+		
+	}
+  
+    function getNext ( $user_id=null, $previous_date, $episode_id ) {
+		
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt123_grievance_visit.visit_log_id');
+		
+        if (!is_null($user_id))
+		  $this->db->where('visit_user_id', $user_id);
+		
+        $this->db->where('visit_date_time >', $previous_date);
+		$this->db->where('cms485_id', $episode_id);
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt123_grievance_visit');
+		return $query->result();
+		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new GrviMdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->vt123_id = $object1->vt123_id;
+		$object->visit_log_id = $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('vt123_grievance_visit', $object);
+		
+	}
+	
+    function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+
+        $this->db->where($where, $visit_log_id);
+        $this->db->set($attribute, $value);
+
+        $this->db->update('vt123_grievance_visit');
+
+    }
+
+    function delete($visit_log_id) {
+
+        $this->db->where('visit_log_id', $visit_log_id);
+        $this->db->delete('vt123_grievance_visit');
+
+    }
+
+    function get_default_resolution() {
+    	return '<p>&nbsp;</p>
+<p style="text-align: center;"><strong>Annual Distribution of Grievance and Dispute Policies and Procedures, </strong><br />
+<strong>Affirmation of Individual Rights of Persons Receiving Services</strong></p>
+<p style="text-align: center;"><strong><u>Grievance Resolution for Persons Receiving Services</u></strong></p>
+<p>Each person has the right to raise complaints or grievances. Beat to your Rhythm LLC will assist persons in understanding this right and the process for making a grievance known upon entering services. The person making the grievance may do so in writing or verbally to the Owner, Director of Services, or any Managing Member of Beat to your Rhythm LLC. Making a complaint or grievance will not prejudice any future services or supports and the affected individual will not suffer any negative effects due to filing a complaint. Beat to your Rhythm LLC will ensure that no individual shall be coerced, intimidated, threatened or retaliated against because the individual has exercised his or her right to file a grievance or has participated in the grievance process. Every effort will be made to resolve the concern at the earliest stage and in a fair manner.</p>
+<p>Beat to your Rhythm LLC will provide this grievance process to the person receiving services and/or the individual&rsquo;s guardian or authorized representative in a manner understandable to all at the time that service begins, during the month of January for each year of continued services, when there is a change to the procedure, or upon request.</p>
+<p>Complaints and grievances may be about services, supports, contractors, employees or other areas that are not covered by the Dispute Resolution Procedure.</p>
+<ul>
+    <li>&nbsp;When someone wishes to make a grievance or complaint, they may do so in writing or verbally to Beat to your Rhythm LLC. If a verbal complaint is made to Beat to your Rhythm LLC, the complaint will be put in writing by the Owner, Director of Services, or any Managing Member for Beat to your Rhythm LLC for follow-up.</li>
+    <li>&nbsp;Beat to your Rhythm LLC will ensure that a written log is kept which tracks the complaint and its resolution.</li>
+    <li>&nbsp;The Owner or Director of Beat to your Rhythm LLC will try to resolve the complaint to the satisfaction of all parties as soon as possible. If an immediate resolution is not possible, Beat to your Rhythm LLC will offer an opportunity for all parties to come together to try to find a mutually acceptable solution. All parties will be informed about a meeting time and place at least 10 days before the meeting unless everyone involved wants to meet sooner.</li>
+    <li>&nbsp;Mediation may be used if both parties voluntarily agree to this process.</li>
+    <li>&nbsp;Beat to your Rhythm LLC will make all attempts to resolve the complaint within fifteen (15) days following any conversation or meeting.</li>
+    <li>&nbsp;Beat to your Rhythm LLC will ensure that agreements are documented and all involved parties receive copies of the decisions made during discussions, meetings or mediation, should they wish.</li>
+    <li>&nbsp;If the complaint or grievance cannot be resolved, and Beat to your Rhythm LLC&rsquo;s Owner has not been involved to-date, the complaint may be submitted to the Owner for consideration.</li>
+</ul>
+<p>Complainants that feel their complaints cannot be resolved through these procedures can submit them to the Health Facilities and Emergency Medical Services Division (HFEMSD) Home and Community Services complaint line, in person, mail or email. The division encourages complainants to try to resolve concerns first through Beat to your Rhythm LLC&rsquo;s grievance process, as this is often the quickest way to address the problem. If concerns cannot be addressed satisfactorily through these more informal processes or the complainant chooses not to utilize Beat to your Rhythm LLC&rsquo;s grievance processes, the complainant may file a formal complaint with the division.</p>
+<p>Complaint Intake Coordinator</p>
+<p>Health Facilities and Emergency Medical Services Division 4300 Cherry Creek Drive South<br />
+Denver, Colorado 80246</p>
+<p>Home and Community Services Complaint Line: (303) 692-2910 or (800) 842-8826</p>
+<p>&nbsp;&nbsp;</p>
+<p>If you need assistance to file a complaint with Beat to your Rhythm LLC, you may contact the following organizations for help:</p>
+<p><br />
+The Resource Exchange (Community Centered Board) (719) 380-1100</p>
+<p>Developmental Pathways (Community Centered Board) (303) 360-6600</p>
+<p>Rocky Mountain Human Services (Community Centered Board) (303) 636-5600</p>
+<p>Imagine! (Community Centered Board) (303) 665-7789</p>
+<p>North Metro Community Services (Community Centered Board) (303) 457-1001</p>
+<p>The Legal Center for People with Disabilities and Older People (303) 722-0300</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p style="text-align: center;"><strong><u>Dispute Resolution for Persons Receiving Services</u></strong></p>
+<p><strong>&nbsp;</strong></p>
+<p>Persons receiving services, parents, legal guardians, or authorized representatives (if within the scope of their duties) shall be offered a means for resolving disputes when one or more of the criteria listed below is met. The use of this procedure will not prejudice the future provision of services and supports to the individual receiving services. No individual may be terminated from services during the time negotiations of a dispute is occurring or during appeal of a decision.</p>
+<p>&nbsp;</p>
+<p>The law states that you have the right to contest or dispute the following types of decisions made by Beat to your Rhythm LLC:</p>
+<p>&nbsp;</p>
+<ul>
+    <li>&nbsp;A decision that you are not eligible for services and supports;</li>
+    <li>&nbsp;A decision that you are no longer eligible for services and supports;</li>
+    <li>&nbsp;A decision to provide, modify, reduce or deny services and supports set forth in your Individualized Plan;</li>
+    <li>&nbsp;A decision to terminate, or end, your services and supports.</li>
+</ul>
+<p>Beat to your Rhythm LLC <strong>does not determine Medicaid Waiver Eligibility</strong>. This is a function of the local CCB and/or the Division of Intellectual and Developmental Disabilities (DIDD). In decisions that affect Medicaid Eligibility, Beat to your Rhythm LLC will educate you regarding your right to appeal and what steps are necessary to follow in order to process a claim, should the need arise. Generally, the Case Management representative at the appropriate CCB will be contacted in order to file a formal appeal when decisions are made that impact your Medicaid Waiver Eligibility, or reduction in allocated/funded service units.</p>
+<p>Decisions made by Beat to your Rhythm LLC management and/or administration which impact your services and supports will be handled according to this Dispute Resolution policy and procedure.</p>
+<p>&nbsp;</p>
+<p>If Beat to your Rhythm LLC makes a decision affecting services and supports, as defined above, Beat to your Rhythm LLC will ensure that a written notice of action is provided to you, in accordance with the Colorado Department of Health Care Policy and Financing Rule 8.605.2 A-J, accompanied by this procedure to inform you of decisions proposed and to help you determine whether you want to contest or appeal the decision. The notice must be provided to you, in writing, at least fifteen (15) days before the action is to be effective.</p>
+<p>&nbsp;</p>
+<p>If you have been notified by Beat to your Rhythm LLC that it intends to take action that can be disputed, and you disagree with that action, you have the right to an appeal or complaint. The complaint should be in writing to the Managing Members of Beat to your Rhythm LLC, and Beat to your Rhythm LLC will respond with further explanation of the process that is to be followed, if you wish to file a formal complaint.</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p><strong><u>Contacting the Managing Members of Beat to your Rhythm LLC:</u></strong></p>
+<p><strong><u><br />
+</u></strong></p>
+<p>When you wish to dispute any actions made by Beat to your Rhythm LLC affecting services, please complete one of the following actions:</p>
+<p>&nbsp;</p>
+<ul>
+    <li>Send an email to the following administrative email:</li>
+</ul>
+<p>btyrmusictherapy@gmail.com</p>
+<p>&nbsp;</p>
+<p><strong>OR</strong></p>
+<p><strong>&nbsp;</strong></p>
+<ul>
+    <li>Send a written letter to Beat to your Rhythm LLC at the following address:</li>
+</ul>
+<p>Beat to your Rhythm LLC</p>
+<p>P.O. Box 652</p>
+<p>Palmer Lake, CO 80133</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>Depending on the nature of action to be taken, Beat to your Rhythm LLC may implement the original decision after the notice period of seven (7) business days has expired if you do not begin the dispute resolution process by filing an appeal before the 7 days have passed.&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p style="text-align: center;"><strong><u>Individual Rights of Persons Receiving Services</u></strong></p>
+<p><strong>&nbsp;</strong></p>
+<p>All persons receiving services through Beat to your Rhythm LLC have the right to the following:</p>
+<p>&nbsp;</p>
+<ul>
+    <li><u>The right to an individualized treatment plan</u>
+    <ul>
+        <li>This includes the right to participate in accepting or rejecting proposed treatments/techniques</li>
+    </ul>
+    </li>
+    <li><u>The right to humane care and treatment</u>
+    <ul>
+        <li>You have the right to get help from therapists who treat you fairly and not hurt or embarrass you</li>
+    </ul>
+    </li>
+    <li><u>The right to privacy and relationships</u>
+    <ul>
+        <li>You have the right to choose your relationships and friends and to choose when and where you will see and talk to them. You have the right to send and receive private mail, talk privately on the phone, with whomever you want.</li>
+    </ul>
+    </li>
+    <li><u>The right to personal belongings</u>
+    <ul>
+        <li>You have the right to keep and use your clothes, money, and other personal belongings, as you would like.</li>
+    </ul>
+    </li>
+    <li><u>The right to fair pay</u>
+    <ul>
+        <li>You have the right to be paid fairly for work that you do.</li>
+    </ul>
+    </li>
+    <li><u>The right to medical treatment</u>
+    <ul>
+        <li>You have the right to see any medical professional when you are sick or in need of treatment.</li>
+    </ul>
+    </li>
+    <li><u>The right to vote</u>
+    <ul>
+        <li>You have the right to vote if you are qualified to register</li>
+    </ul>
+    </li>
+    <li><u>The right to religion</u>
+    <ul>
+        <li>You have the right to choose any religion, attend any church that you choose, and the right to refuse to do anything that is against that religion.</li>
+    </ul>
+    </li>
+    <li><u>The right to privacy of reports and confidentiality</u>
+    <ul>
+        <li>You have the right to keep reports in your client file private unless you provide written consent allowing someone to look at these reports.</li>
+    </ul>
+    </li>
+</ul>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<ul>
+    <li><u>The right to explanation of rules</u>
+    <ul>
+        <li>You have the right to have an explanation of any rules required by Beat to your Rhythm LLC.</li>
+    </ul>
+    </li>
+    <li><u>The right to influence policies of Beat to your Rhythm LLC</u>
+    <ul>
+        <li>You have the right to make your opinion known in order to influence how services are provided.</li>
+    </ul>
+    </li>
+    <li><u>The right to notification</u>
+    <ul>
+        <li>You have the right to be notified if any changes that occur within Beat to you Rhythm LLC will affect you or any services that you receive through this agency.</li>
+    </ul>
+    </li>
+    <li><u>The right to sterilization</u>
+    <ul>
+        <li>You have the right to consent to sterilization procedures if you wish.</li>
+    </ul>
+    </li>
+    <li>The right to treatment, services, and communication on the behalf of all entities associated with Beat to your Rhythm LLC <strong>without</strong> exposure to any and all of the following: illegal or inhumane practices, violation of civil or legal rights, discrimination of any kind based on race, ethnicity, language, religion, marital status, gender, gender identity or expression, sexual orientation, age, ability, socioeconomic status, or political affiliation.</li>
+</ul>
+<p>&nbsp;</p>
+<p><strong><u>Suspension of Rights</u></strong></p>
+<p>Beat to your Rhythm does not possess the authority to suspend any individual rights, thus, any determination that deems suspension of rights as an appropriate action will be decided upon and carried out by the corresponding CCB.</p>
+<p><strong><u>Resources For Additional Questions Regarding Individual Rights You May Contact:</u></strong></p>
+<p>The Independence Center</p>
+<p>729 S Tejon St, Colorado Springs, CO</p>
+<p>Phone: 719-471-8181</p>
+<p>&nbsp;</p>
+<p>The Arc Pikes Peak Region</p>
+<p>12 N Meade Ave, Colorado Springs, CO</p>
+<p>Phone: 719-471-4800</p>
+<p>&nbsp;</p>
+<p>The Resource Exchange</p>
+<p>6385 Corporate Dr, Suite 301, Colorado Springs, CO</p>
+<p>Phone: 719-380-1100</p>';
+    }
+
+    function get_default_grvi_comments() {
+    	return 'I understand that I may contact any of the Managing Members of the agency at any time for further information or instructions.  
+
+I understand that is my duty to adhere to any policies and procedures as they have been provided to me, should I wish to initiate any dispute or grievance with any decisions made by the agency that affect services provided to myself, or to my child.';
+    }
+ }

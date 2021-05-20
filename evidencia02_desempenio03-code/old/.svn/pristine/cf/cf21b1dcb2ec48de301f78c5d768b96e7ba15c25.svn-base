@@ -1,0 +1,61 @@
+<table border=0 cellpadding="1" cellspacing=1 width="100%">
+	<tr>
+		<td class="ftitle" >Contact Name Name<input type="hidden" name="patient_id" value="{$med->patient_id}" /></td>
+		<td><input type="text" name="contact_name" value="{$contact_name}"> *</td>
+	</tr>
+	<tr>
+		<td class="ftitle">Relationship</td>
+		<td>
+		{html_options options=$relationship_list selected=$contact_relationship name='contact_relationship'} *		
+			
+		</td>
+	</tr>	
+	<tr>
+		<td class="ftitle">Address</td>
+		<td><input type="text" name="contact_address" value="{$contact_address}" size="50" /></td>
+	</tr>
+	<tr>
+		<td class="ftitle" >City</td>
+		<td><input type="text" name="contact_city" value="{$contact_city}" / /></td>
+	</tr>
+	<tr>
+	    <td class="ftitle">State</td>
+	    <td>{html_options options=$state_list selected=$contact_state name='contact_state'}</td>
+   	</tr>
+	<tr>
+		<td class="ftitle" >Zip</td>
+		<td><input type="text" name="contact_zip" value="{$contact_zip}" /></td>
+	</tr>
+	<tr>
+		<td class="ftitle" >Phone 1</td>
+		<td><input type="text" name="contact_phone1" id="contact_phone1" placeholder="123-456-7890" value="{$contact_phone1}" /> *</td>
+	</tr>
+	<tr>
+		<td class="ftitle" >Phone 2</td>
+		<td><input type="text" name="contact_phone2" id="contact_phone2" placeholder="123-456-7890" value="{$contact_phone2}" /></td>
+	</tr>
+	<tr>
+		<td class="ftitle">Comments</td>
+		<td><textarea name="contact_comments" cols="50">{$contact_comments}</textarea></td>
+	</tr>					
+</table>
+{literal}
+<script language="javascript" type="text/javascript">
+	
+	$( document ).ready(function() {
+		$('#contact_phone1').keyup(function() {		
+			this.value = this.value
+			.match(/\d*/g).join('')
+			.match(/(\d{0,3})(\d{0,3})(\d{0,4})/).slice(1).join('-')
+			.replace(/-*$/g, '');		
+		});
+		
+		$('#contact_phone2').keyup(function() {		
+			this.value = this.value
+			.match(/\d*/g).join('')
+			.match(/(\d{0,3})(\d{0,3})(\d{0,4})/).slice(1).join('-')
+			.replace(/-*$/g, '');		
+		});
+	});
+</script>
+{/literal}

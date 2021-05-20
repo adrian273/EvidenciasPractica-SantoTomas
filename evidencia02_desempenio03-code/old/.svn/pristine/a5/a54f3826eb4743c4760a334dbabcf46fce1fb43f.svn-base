@@ -1,0 +1,113 @@
+<?
+class patientmedicationmdl extends Model {
+
+	var $med_id;
+	var $patient_id;
+	var $med_descrip;
+	var $med_frecuency;
+	var $med_dose;
+	var $tab_084_route;
+	var $med_newcharge;
+	var $med_date;
+	var $med_comment;
+	var $creation_user;
+	var $creation_date;
+	var $modify_user;
+/*
+	var $approve_user;
+	var $approve_date;
+*/
+
+	function patientmedicationmdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $patient_id, $med_descrip=null, $tab_084_route=null,$med_newcharge=null ) {
+
+/* 		$this->db->join('us_agy',   	  'us_agy.us_agy_id = pat_medication.creation_user'); */
+		$this->db->join('us_agy',   	  'us_agy.user_id = pat_medication.modify_user','left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('tab_parameters', 'pat_medication.tab_084_route = tab_parameters.tab_value AND tab_parameters.tab_type = 84', 'LEFT');
+		
+		$this->db->where("pat_medication.patient_id", $patient_id);
+		
+		if (!is_null($tab_084_route)) {
+			$this->db->where("tab_084_route", $tab_084_route);
+		}
+		
+		if (!is_null($med_descrip)) {
+			$this->db->like("med_descrip", 'ASC');
+		}
+		if ($med_newcharge) {
+			$this->db->where("(med_newcharge = 1 or med_newcharge = 2)");
+		}
+		
+		$this->db->order_by("med_descrip", $med_descrip);
+		
+		$query = $this->db->get("pat_medication");
+		return $query->result();
+		
+	}
+
+	function getById ( $med_id ) {
+
+		$this->db->where("med_id", $med_id);
+		$query = $this->db->get("pat_medication");
+
+		return $query->row();
+		
+	}
+
+	function insert ( $patient_id, $creation_user ) {
+
+		$this->patient_id 		= $patient_id;
+		$this->creation_user 	= $creation_user;
+		$medication->modify_user= $this->modify_user;		 		
+		$this->creation_date = $medication->modify_date = standard_date(now(), 'MYSQL_NOTIME');
+		
+		$this->db->insert("pat_medication", $this);
+		
+	}
+	
+	function update ( $patient_id, $med_id ) {
+
+		$medication = null;
+		$medication->med_descrip 	= $this->med_descrip;
+		$medication->med_frecuency 	= $this->med_frecuency;
+		$medication->med_dose 		= $this->med_dose;
+		$medication->tab_084_route 	= $this->tab_084_route;
+		$medication->med_newcharge 	= $this->med_newcharge;
+		$medication->med_date 		= $this->med_date;
+		$medication->med_comment 	= $this->med_comment;
+		$medication->modify_user 	= $this->modify_user;
+		$medication->modify_date = standard_date(now(), 'MYSQL_NOTIME');		
+		
+		$this->db->where('med_id', $med_id);
+		
+		$this->db->update("pat_medication", $medication);
+		
+	}
+	
+	function updateApprove ( $med_id, $user_id ) {
+
+		$medication = null;
+		$medication->approve_date	= standard_date(now(), 'MYSQL_NOTIME');
+		$medication->approve_user	= $user_id;
+		
+		$this->db->where('med_id', $med_id);
+		
+		$this->db->update("pat_medication", $medication);
+		
+	}
+	
+	function delete ( $med_id ) {
+		
+		$this->db->where('med_id', $med_id);
+		
+		$this->db->delete("pat_medication");
+		
+	}
+	
+}

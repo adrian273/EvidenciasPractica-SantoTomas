@@ -1,0 +1,191 @@
+<?php
+
+ class Us1UserCredentialsMdl extends Model {
+    var $user_credential_id;
+	var $user_id;
+	var $tab_086_credential_type;
+	var $credential_id;
+	var $expiration_date;
+	var $alert_days;
+    var $notes;
+	var $attachment_id;
+    var $create_date_time;
+    var $verify_expiration;
+    var $send_date;
+    var $status; // Enum: 'Active','Inactive'
+
+	function Us1UserCredentialsMdl()
+    {
+        parent::Model();
+    }
+
+    function getById ( $user_id, $type=null, $status='Active', $agency_id=null ) {
+
+		$this->db->join('tab_parameters', 'us1_user_credentials.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+		$this->db->join('us1_user_credential_attachments', 'us1_user_credentials.attachment_id = us1_user_credential_attachments.attachment_id', 'LEFT');
+        $this->db->where('user_id', $user_id);
+        if (!is_null($status)) {
+            $this->db->where('us1_user_credentials.status', $status);
+        }
+        if (!is_null($type)) {
+		  $this->db->where('tab_086_credential_type', $type);
+        }
+
+        if ($agency_id) {
+            $this->db->join('agency_credential_types', 'agency_credential_types.credential_type=us1_user_credentials.tab_086_credential_type');
+            $this->db->where('agency_credential_types.agency_id', $agency_id);
+        }
+
+        $this->db->order_by("expiration_date", "asc");
+		$query = $this->db->get('us1_user_credentials');
+        // echo $this->db->last_query();
+        $row = $query->result();
+		return $row;
+
+    }
+
+    function getExpiredList ( $user_id, $type=null, $agency_id=null ) {
+        $this->db->select("*, DATEDIFF(us1_user_credentials.expiration_date,NOW()) as expiration_days_left,
+        DATEDIFF(NOW(),us1_user_credentials.send_date) as days_sent_email");
+		$this->db->join('tab_parameters', 'us1_user_credentials.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+		$this->db->join('us1_user_credential_attachments', 'us1_user_credentials.attachment_id = us1_user_credential_attachments.attachment_id', 'LEFT');
+
+        if ($agency_id) {
+            $this->db->join('agency_credential_types', 'agency_credential_types.credential_type=us1_user_credentials.tab_086_credential_type');
+            $this->db->where('agency_credential_types.agency_id', $agency_id);
+        }
+        
+        $this->db->where('user_id', $user_id);
+        $this->db->where('us1_user_credentials.status', 'Active');
+        $this->db->where('us1_user_credentials.verify_expiration', 'yes');
+        //$this->db->where('DATEDIFF(us1_user_credentials.expiration_date,NOW()) >=', 0);
+        $this->db->where('DATEDIFF(us1_user_credentials.expiration_date,NOW()) <=', 30);
+
+        if (!is_null($type)) {
+		  $this->db->where('tab_086_credential_type', $type);
+        }
+
+        if ($this->input->post('search_credential') != "") {
+            $this->db->like('tab_parameters.tab_description', $this->input->post('search_credential'));
+        }
+
+        $this->db->order_by("expiration_date", "asc");
+		$query = $this->db->get('us1_user_credentials');
+        $row = $query->result();
+		return $row;
+
+	}
+
+    function insert ($user_id=null) {
+        if (is_null($user_id)) {
+            $this->user_id = $this->session->userdata('user_id');
+        } else {
+            $this->user_id = $user_id;
+        }
+        if(!$this->verify_expiration)
+        $this->verify_expiration = 'yes';
+
+        // $this->expiration_date = preg_replace("/(\d+)\D+(\d+)\D+(\d+)/","$3-$1-$2",$expiration_date);
+        $this->create_date_time = date("Y-m-d H:i:s");
+        $this->db->insert('us1_user_credentials', $this);
+        $this->user_credential_id = $this->db->insert_id();
+        return $this->user_credential_id;
+	}
+    function getByCredentialId ( $user_credential_id ) {
+        $this->db->select("us1_user_credentials.*, tab_parameters.*, us1_user_credential_attachments.attachment");
+		$this->db->join('tab_parameters', 'us1_user_credentials.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+		$this->db->join('us1_user_credential_attachments', 'us1_user_credentials.attachment_id = us1_user_credential_attachments.attachment_id', 'LEFT');
+		$this->db->where('user_credential_id', $user_credential_id);
+		$query = $this->db->get('us1_user_credentials');
+		return $query->row();
+	}
+
+    function getUserInfos ( $user_credential_ids ) {
+        $this->db->select("us1_user_credentials.user_id, us1_user.*");
+        $this->db->join('us1_user', 'us1_user.user_id = us1_user_credentials.user_id', 'LEFT');
+
+        $this->db->where_in('user_credential_id', $user_credential_ids);
+
+        $this->db->group_by('us1_user_credentials.user_id');
+        $query = $this->db->get('us1_user_credentials');
+        return $query->result();
+    }
+    
+    function getByAgencyId ( $agency_id, $status='Active' ) {
+        $this->db->select("us1_user_credentials.*, us_agy.*, us1_user.*, tab_parameters.*, us1_user_credential_attachments.attachment,  DATEDIFF(expiration_date, NOW()) as expiration_days_left");
+        $this->db->join('us_agy', 'us_agy.user_id = us1_user_credentials.user_id');
+        $this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+        $this->db->join('tab_parameters', 'us1_user_credentials.tab_086_credential_type = tab_parameters.tab_value AND tab_parameters.tab_type = 86', 'LEFT');
+        $this->db->join('us1_user_credential_attachments', 'us1_user_credential_attachments.attachment_id = us1_user_credentials.attachment_id', 'LEFT');
+
+        $this->db->join('agency_credential_types', 'agency_credential_types.credential_type=us1_user_credentials.tab_086_credential_type');
+        $this->db->where('agency_credential_types.agency_id', $agency_id);
+
+        $this->db->where('us_agy.agency_id', $agency_id);
+        $this->db->where('us1_user_credentials.status', $status);
+
+        $this->db->order_by('expiration_date', 'ASC');
+
+        $query = $this->db->get('us1_user_credentials');
+
+        return $query->result();
+
+    }
+
+
+    function update($user_credential_id) {
+        $this->db->set('tab_086_credential_type', $this->tab_086_credential_type);
+        $this->db->set('expiration_date', $this->expiration_date);
+        $this->db->set('alert_days', $this->alert_days);
+        $this->db->set('credential_id', $this->credential_id);
+        $this->db->set('notes', $this->notes);
+        $this->db->set('status', $this->status);
+        // var_dump($this->status); exit();
+
+        if(!$this->verify_expiration)
+        $this->verify_expiration = 'yes';
+
+        $this->db->set('verify_expiration', $this->verify_expiration);
+
+        $this->db->where('user_credential_id', $user_credential_id);
+        $this->db->update('us1_user_credentials');
+    }
+    
+    function delete ( $user_credential_id ) {
+
+        $this->db->where('user_credential_id', $user_credential_id);
+        $this->db->delete('us1_user_credentials');
+
+    }
+
+    function updateSendDate($user_credential_id, $send_date) {
+        $this->db->set('send_date', $send_date);
+        $this->db->where('user_credential_id', $user_credential_id);
+        $this->db->update('us1_user_credentials');
+    }
+
+    /*function update ( $user_credential_id ) {
+        $expiration_date = $this->input->post("expiration_date");
+		$data = array(
+            'tab_086_credential_type' => $this->input->post("tab_086_credential_type"),
+            'credential_id' => $this->input->post("credential_id"),
+            'expiration_date' => preg_replace("/(\d+)\D+(\d+)\D+(\d+)/","$3-$1-$2",$expiration_date),
+            'alert_days' => $this->input->post("alert_days"),
+            'notes' => $this->input->post("notes"),
+        );
+		$this->db->where('user_credential_id', $user_credential_id);
+		$this->db->update('us1_user_credentials', $data);
+	}*/
+    function update_attachment ( $us1_user_credential_id, $attachment ) {
+        if(!$us1_user_credential_id OR !$attachment){
+            return 0;
+        }
+        $insert_data = array();
+        $insert_data['us1_user_credential_id'] = $us1_user_credential_id;
+        $insert_data['attachment'] = $attachment;
+        $this->db->insert('us1_user_credential_attachments',$insert_data);
+        $attachment_id = $this->db->insert_id();
+        $this->db->where('user_credential_id', $us1_user_credential_id);
+        $this->db->update('us1_user_credentials', array('attachment_id'=>$attachment_id));
+    }
+}

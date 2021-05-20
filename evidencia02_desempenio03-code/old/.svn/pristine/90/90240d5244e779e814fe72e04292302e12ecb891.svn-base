@@ -1,0 +1,113 @@
+<?php
+
+class SentEmailInstanceDetailMdl extends Model {
+
+	var $id;
+	var $sent_email_instance_id;
+	var $source_id;
+	var $source_name;
+	var $email;
+	
+
+	function SentEmailInstanceDetailMdl () {
+
+		parent::Model();
+		
+	}
+	
+
+	function get_instances($source_id=null) {
+		$this->db->select("sent_email_instance_details.*, sent_email_instances.*");
+		$this->db->join('sent_email_instances', 'sent_email_instances.id = sent_email_instance_details.sent_email_instance_id', 'left');
+		$this->db->where("sent_email_instance_details.source_name", $source_name);
+		if($source_id != null) {
+			$this->db->where("sent_email_instance_details.source_id", $source_id);
+		}
+		$this->db->group_by("sent_email_instances.sent_date");
+		$query = $this->db->get('sent_email_instance_details');
+		return $query->result();
+	}
+	
+	function get_emails($source_id=null, $source_name = 'NONB') {
+		$this->db->select("sent_email_instance_details.*, sent_email_instances.*");
+		$this->db->join('sent_email_instances', 'sent_email_instances.id = sent_email_instance_details.sent_email_instance_id', 'left');
+		$this->db->where("sent_email_instance_details.source_name", $source_name);
+		if($source_id != null) {
+			$this->db->where("sent_email_instance_details.source_id", $source_id);
+		}
+		$query = $this->db->get('sent_email_instance_details');
+		return $query->result();
+	}	
+	
+	function get_group_emails_by_sent_date($source_id=null, $source_name = 'NONB') {
+		$this->db->select("sent_email_instance_details.*, sent_email_instances.*");
+		$this->db->join('sent_email_instances', 'sent_email_instances.id = sent_email_instance_details.sent_email_instance_id', 'left');
+		$this->db->where("sent_email_instance_details.source_name", $source_name);
+		if($source_id != null) {
+			$this->db->where("sent_email_instance_details.source_id", $source_id);
+		}
+		$query = $this->db->get('sent_email_instance_details');
+		$all_emails_array = $query->result();
+		
+		// get all dates
+		$this->db->select("sent_email_instance_details.*, sent_email_instances.*");
+		$this->db->join('sent_email_instances', 'sent_email_instances.id = sent_email_instance_details.sent_email_instance_id', 'left');
+		if($source_id != null) {
+			$this->db->where("sent_email_instance_details.source_id", $source_id);
+		}
+		// $this->db->group_by("sent_email_instances.id");
+		// $this->db->group_by("sent_email_instances.sent_date");
+		$this->db->orderby("sent_email_instances.sent_date ASC");
+		$query = $this->db->get('sent_email_instance_details');
+		$dates = $query->result();
+		$fianal_data_array = array();
+		foreach($dates as $dk => $dv) {
+			$emails = array();
+			foreach($all_emails_array as $ek => $ev) {
+				// if($ev->sent_date == $dv->sent_date) {
+				// 	$fianal_data_array[$dv->sent_date][$ev->email] = $ev;
+				// }
+				if($ev->sent_email_instance_id == $dv->sent_email_instance_id) {
+					$emails[$ev->email] = $ev;
+				}
+
+				$fianal_data_array[$dv->sent_email_instance_id] = new stdClass();
+				$fianal_data_array[$dv->sent_email_instance_id]->sent_date = $dv->sent_date;
+				$fianal_data_array[$dv->sent_email_instance_id]->emails = $emails;
+			}
+		}
+		
+		// echo "<pre>"; print_r($fianal_data_array); exit();
+		return $fianal_data_array;
+	}	
+
+	function insert () {
+		$this->db->insert("sent_email_instance_details", $this);
+		$this->id = $this->db->insert_id();	
+	}
+	
+	function insert_batch ($insert_array) {
+		if(!empty($insert_array)) {
+			foreach($insert_array as $kk => $vv) {
+				$this->sent_email_instance_id = $vv['sent_email_instance_id'];
+				$this->source_id = $vv['source_id'];
+				if(isset($vv['source_name']) && $vv['source_name'] != '') {
+					$this->source_name = $vv['source_name'];
+				}
+				$this->email = $vv['email'];
+				$this->id = null;
+				$this->insert();
+			}
+		}
+	}
+	function update ( $id ) {
+		$this->db->where("id", $id);
+		$this->db->update("sent_email_instance_details", $this);	
+	}
+	
+	
+	function delete ( $id ) {
+		$this->db->where("id", $id);
+		$this->db->delete("sent_email_instance_details");
+	}
+}

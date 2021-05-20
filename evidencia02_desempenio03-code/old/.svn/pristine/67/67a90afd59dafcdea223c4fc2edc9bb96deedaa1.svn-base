@@ -1,0 +1,70 @@
+<?
+
+ class PatientDMEMdl extends Model {
+
+	var $pat_dme_id;
+	var $patient_id;
+	var $dme_description;
+	var $tab_008_status;
+	var $dme_date;
+	var $dme_comment;
+
+	function PatientDMEMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $patient_id, $dme_description=null ) {
+	
+		$this->db->join('tab_parameters', 'tab_parameters.tab_value = pat_dme.tab_008_status AND tab_parameters.tab_type = 8', 'LEFT');
+		
+		if (!is_null($dme_description)) {
+			$this->db->like("dme_description", $dme_description);
+		}
+		
+		$this->db->where("patient_id", $patient_id);
+		
+		$this->db->order_by('dme_date', 'ASC');
+		
+		$query = $this->db->get('pat_dme');
+		return $query->result();
+
+	}
+	
+	function getById ( $pat_dme_id ) {
+		
+		$this->db->join('tab_parameters', 'tab_parameters.tab_value = pat_dme.tab_008_status AND tab_parameters.tab_type = 8', 'LEFT');
+		$this->db->where('pat_dme_id', $pat_dme_id);
+		
+		$query = $this->db->get('pat_dme');
+		return $query->row();
+		
+	}
+	
+	function insert () {
+		
+		$this->db->insert('pat_dme', $this);
+		$this->pat_dme_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $pat_dme_id ) {
+		
+		$this->pat_dme_id = $pat_dme_id;
+		
+		$this->db->where('pat_dme_id', $pat_dme_id);
+		
+		$this->db->update('pat_dme', $this);
+		
+	}
+	
+	function delete ( $pat_dme_id ) {
+		
+		$this->db->where('pat_dme_id', $pat_dme_id);
+		
+		$this->db->delete('pat_dme'); 
+		
+	}
+	
+ }

@@ -1,0 +1,75 @@
+<?
+
+ class Calendar extends MY_Controller {
+
+	function Calendar () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/calendar");
+		$this->tpl->assign(array("tab_page" => true));
+		
+	}
+
+	function index ( $us_agy_id, $year=null, $month=null, $visit_type_id=null ) {
+
+		$year  = (is_null($year) ? date('Y') : $year);
+		$month = (is_null($month) ? date('n') : $month);
+		
+		$this->tpl->assign('cal_month', $month);
+		$this->tpl->assign('cal_year', $year);
+
+		if ((bool)preg_match( '/^[0-9]+$/', $visit_type_id) == false) $visit_type_id = null;
+
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign(array("visit_type_id" => $visit_type_id));
+		$this->tpl->assign('entity_id', $us_agy_id);
+	
+		$this->tpl->assign("cms_events", $this->visitlogmdl->getByUser($us_agy_id, $year, $month, $visit_type_id));
+		
+		$this->load->library('calendar');
+		$this->tpl->assign('calendar_table', $this->calendar->generate($year, $month));
+		// color legends
+		$this->tpl->assign('color_legends',$this->parametermdl->getColorLegends());
+		// calendar headers
+		// calendar headers
+		$this->tpl->assign('cal_header_month', $this->calendar->get_month_name($month));
+		$this->tpl->assign('cal_header_year', $year);
+		$this->tpl->assign('us_agy_id', $us_agy_id);
+		
+		// calendar navegation links
+		$date_prev_month = $this->calendar->adjust_date($month-1, $year);
+		$date_next_month = $this->calendar->adjust_date($month+1, $year);
+		
+		$this->tpl->assign('cal_prev_link', $date_prev_month['year'] . "/" . $date_prev_month['month'] . "/" . $visit_type_id);
+		$this->tpl->assign('cal_next_link', $date_next_month['year'] . "/" . $date_next_month['month'] . "/" . $visit_type_id);
+		
+		
+		$this->tpl->assign_include("dynamic_tpl", "useragency/calendar/calendar");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+	
+	}	
+	
+	function editEventForm ( $visit_log_id ) {
+		
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$this->assignObject($visitlog);
+		
+		$this->tpl->assign('team_list', 	  $this->teammdl->getAll($visitlog->patient_id));
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign('time_type', 	  (mdate("%A", mysql_to_unix($visitlog->visit_date_time)) == 'AM' ? '0' : '12'));
+		
+		$episode = $this->episodemdl->getById($visitlog->cms485_id);
+		$soc = $this->socmdl->getById($episode->soc_id);
+		$patient = $this->patientmdl->getById($soc->patient_id);
+		$agency  = $this->agencymdl->getByAgencyId($patient->agency_id);
+		
+		//$this->tpl->assign('patient_name', $patient->first_name . " " . $patient->last_name);
+		$this->tpl->assign('patient_name', $patient->last_name . " " . $patient->first_name);
+		$this->tpl->assign('agency_name',  $agency->agency_name);
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->ElementCData("divContent", null, $this->tpl->view("useragency/calendar/event_view", $this->lang->language, false)));
+		
+	}
+	
+ }

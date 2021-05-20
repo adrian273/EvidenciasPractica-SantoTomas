@@ -1,0 +1,226 @@
+<?
+
+ class Template extends MY_Controller {
+
+	var $rules;
+
+	function Template () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "systemtables/template");
+		
+		$this->tpl->assign('tab_page', true);
+		
+		$this->tpl->assign('template_type_list', $this->parametermdl->getByType(103));
+		
+		$this->rules = array ('template_name'			=> 'required',
+							  'template_text'			=> 'required');
+		
+	}
+	
+	function index () {
+
+		$this->tpl->assign('no_grid_buttons', true);
+		$this->tpl->assign('resource_edit', 'typeindex');
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*",  "Template Type"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->parametermdl->getByParameterType(103) as $templatetype) {
+			
+			$cell = $this->xml->Element("row", "id=" . $templatetype->tab_value);
+			$cell->append($this->xml->Element("cell", null, $templatetype->tab_description));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function typeindex ( $type ) {
+
+		$this->tpl->assign('entity_id', $type);
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('resource_edit', 'edit');
+		$this->tpl->assign('resource_grid', 'typeGrid');
+		$this->tpl->assign_include("filter_tpl", "sys_tables/template/topgrid");
+		
+		$this->tpl->assign(array("add_sufix" => " Template"));
+		
+		$this->tpl->assign('additional_buttons', array('Back' => "document.location='" . $this->config->config['index_url'] . "systemtables/template'"));
+		
+		$this->tpl->assign('parameter', $this->parametermdl->get(103, $type));
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function typeGrid ( $type ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=25",  "Template Name"));
+		$head->append($this->xml->Element("column", "width=*",  "Template Text"));
+		$head->append($this->xml->Element("column", "width=10;align=center;type=linkc", "Action"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->agencytemplatemdl->getByType($this->getAgencyId(), $type) as $template) {
+			
+			$cell = $this->xml->Element("row", "id=" . $template->template_id);
+			$cell->append($this->xml->Element("cell", null, $template->template_name));
+			$cell->append($this->xml->Element("cell", null, $template->template_text));
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "systemtables/template/delete/" . $type . "/" . $template->template_id . "^Are you sure to delete this template?"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add ( $type ) {
+		
+		$this->tpl->assign('faction', 'add');
+		
+		$this->tpl->assign('entity_id', $type);
+		$this->tpl->assign('parameter', $this->parametermdl->get(103, $type));
+		
+		$this->tpl->assign("resource_index", "typeindex");
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Template");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "sys_tables/template/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->agencytemplatemdl);
+			$this->agencytemplatemdl->insert($this->getAgencyId());
+			
+			$this->tpl->assign('gmessage', $this->agencytemplatemdl->template_name . $this->lang->line('grl_add_msg'));
+			
+			$this->typeindex($type);
+			
+		}
+		
+	}
+	
+	function edit ( $type, $template_id ) {
+		
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('entity_id', $type);
+		$this->tpl->assign('record_id', $template_id);
+		$this->tpl->assign("resource_index", "typeindex");
+		
+		$template = $this->agencytemplatemdl->get($template_id);
+		
+		if ($template->agency_id != $this->getAgencyId()) {
+			show_error("Not allowed to edit template.");	
+		}
+		
+		$this->assignObject($template);
+		$this->tpl->assign('parameter', $this->parametermdl->get(103, $template->tab_103_template_type));
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Edit Template");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "sys_tables/template/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->agencytemplatemdl);
+			$this->agencytemplatemdl->update($template_id, $this->getAgencyId());
+			
+			$this->tpl->assign('gmessage', $this->agencytemplatemdl->template_name . $this->lang->line('grl_upd_msg'));
+			
+			$this->typeindex($type);
+			
+		}
+		
+	}
+	
+	function delete ( $type, $template_id ) {
+		
+		$template = $this->agencytemplatemdl->get($template_id);
+		
+		if ($template->agency_id == $this->getAgencyId()) {
+		
+			$this->agencytemplatemdl->delete($template_id);
+			
+			$this->tpl->assign('gmessage', $template->template_name . $this->lang->line('grl_del_msg'));
+			
+		}
+		
+		
+		$this->typeindex($type);
+		
+	}
+	
+	function selectTemplate ( $type, $field ) {
+		
+		$this->tpl->assign('entity_id', $type);
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('resource_edit', 'actionSelectTemplate/' . $field);
+		$this->tpl->assign('no_grid_buttons', true);
+		$this->tpl->assign('resource_grid', 'selectTemplateGrid');
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function selectTemplateGrid ( $type ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=30",  "Template Name"));
+		$head->append($this->xml->Element("column", "width=*",  "Template Text"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->agencytemplatemdl->getByType($this->getAgencyId(), $type) as $template) {
+			
+			$cell = $this->xml->Element("row", "id=" . $template->template_id);
+			$cell->append($this->xml->Element("cell", null, $template->template_name));
+			$cell->append($this->xml->Element("cell", null, $template->template_text));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function actionSelectTemplate ( $field, $type, $template_id ) {
+		
+		$template = $this->agencytemplatemdl->get($template_id);
+		
+		if ($template->agency_id == $this->getAgencyId()) {
+      $template_text = str_replace("\n","\\n",$template->template_text);
+      echo "<SCRIPT>parent.insertValueQuery('" . $field . "', '" . $template_text . "');parent.cancelModal2()</SCRIPT>";
+			
+		}
+		
+	}
+
+ }

@@ -1,0 +1,380 @@
+<?php
+
+include ('admin_controller.php');
+
+ class User extends Admin_Controller {
+
+	function User () {
+		
+		parent::Admin_Controller();
+		
+		$this->tpl->assign("resource_path", "administrator/user");
+		$this->tpl->assign("profile_list", $this->profilemdl->get(false));
+		
+	}
+
+	function index () {
+
+		$this->tpl->assign(array("list_title" => "User", "noedit" => true, "no_grid_buttons" => true,'paginate'=>0));
+		$this->tpl->assign_include("filter_tpl", "administrator/useragency/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=tree", ""));
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=16", "User Name"));
+    	$head->append($this->xml->Element("column", "width=16", "Email"));
+		$head->append($this->xml->Element("column", "width=16", "Agency Name"));
+		//$head->append($this->xml->Element("column", "width=16", "Type Employee"));
+		$head->append($this->xml->Element("column", "width=*", "Profile"));
+		$head->append($this->xml->Element("column", "width=*", "Discipline"));
+		$head->append($this->xml->Element("column", "width=*;align=center;type=link", "Login as"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->usermdl->get($this->input->post('keyword'), $this->input->post('profile_id')) as $user) {			
+			if ($user->user_id == 0) { continue; }
+			
+			$us_agy = $this->usagymdl->getByUserId($user->user_id);
+			
+			$cell = $this->xml->Element("row", "id=" . $user->user_id . (count($us_agy) >= 2 ? ";xmlkids=1" : null));
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->user_id));
+			$cell->append($this->xml->Element("cell", null, $user->first_name . " " . $user->last_name));
+			$cell->append($this->xml->Element("cell", null, $user->user_email));
+			
+			if (count($us_agy) == 1) {
+				$cell->append($this->xml->Element("cell", null, $us_agy[0]->agency_name));
+				//$cell->append($this->xml->Element("cell", null, $us_agy[0]->tab_description));
+				$cell->append($this->xml->Element("cell", null, $us_agy[0]->profile_name));
+				$cell->append($this->xml->Element("cell", null, $us_agy[0]->description));
+				$cell->append($this->xml->Element("cell", null, "Login as^" . $this->config->config['index_url'] . "administrator/user/logas/" . $user->user_id . "^content"));
+			} else {
+				$cell->append($this->xml->Element("cell", null, null));
+				//$cell->append($this->xml->Element("cell", null, null));
+				$cell->append($this->xml->Element("cell", null, null));
+				$cell->append($this->xml->Element("cell", null, null));
+				$cell->append($this->xml->Element("cell", null, "Login as^" . $this->config->config['index_url'] . "administrator/user/logas/" . $user->user_id . "^content"));
+
+			}
+			
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+
+	function user2() {
+		$this->tpl->assign_include("dynamic_tpl", "administrator/useragency/list2_tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);		
+		
+	}	
+
+	function user2_users(){
+		$this->tpl->assign(array("noedit" => true, "no_grid_buttons" => true,'paginate'=>0));
+		$this->tpl->assign_include("filter_tpl", "administrator/useragency/list2_gfilter");
+		$this->tpl->assign("resource_grid", 'user2_grid');
+		$this->tpl->assign("items_per_page", 300);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function user2_doctors(){
+
+		$this->tpl->assign(array("noedit" => true, "no_grid_buttons" => true,'paginate'=>0));
+		$this->tpl->assign_include("filter_tpl", "administrator/useragency/list2_gfilter");
+		$this->tpl->assign("resource_grid", 'doctors_grid');
+		$this->tpl->assign("items_per_page", 300);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	
+
+	function user2_grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=tree", ""));
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=16;type=link", "Last Name"));
+		$head->append($this->xml->Element("column", "width=16", "First Name"));
+		$head->append($this->xml->Element("column", "width=16", "Phone"));
+    	$head->append($this->xml->Element("column", "width=16", "Email"));
+		$head->append($this->xml->Element("column", "width=*;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		
+		foreach ($this->usermdl->getOnlyUsers($this->input->post('keyword'), null, 3) as $user) {		
+			if ($user->user_id == 0) {continue;}
+						
+			$cell = $this->xml->Element("row", "id=" . $user->user_id);
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->user_id));
+			$cell->append($this->xml->Element("cell", null, $user->last_name. '^' . $this->config->config['index_url'] . "administrator/user/edit_user/" . $user->user_id));
+			$cell->append($this->xml->Element("cell", null, $user->first_name));
+			$cell->append($this->xml->Element("cell", null, $user->phone_cell));
+			$cell->append($this->xml->Element("cell", null, $user->user_email));
+			$cell->append($this->xml->Element("cell", null, "Login^" . $this->config->config['index_url'] . "administrator/user/logas/" . $user->user_id . "^content"));
+			
+				
+			
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function edit_user ( $user_id ) {
+		
+		$this->tpl->assign('faction', 'edit_user');
+		$this->tpl->assign('record_id', $user_id);
+		$user_data = $this->usermdl->getById($user_id);
+		$this->tpl->assign("no_delete_form", TRUE);
+		$this->assignObject($user_data);
+		
+		if ($tab_005_user_type == 3) {
+			$this->tpl->assign('resource_index', 'user2_doctors');	
+		}
+		else{
+			$this->tpl->assign('resource_index', 'user2_users');
+		}
+				
+		if ($this->validation->run() == TRUE) {
+		
+			$this->assignPostData($this->usermdl);
+			$this->usermdl->update($user_id);
+			$this->tpl->assign('msg', 'Record has been successfully updated');								
+		}
+
+		$this->tpl->assign("form_title", "Edit ");
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+		$this->tpl->assign_include("dynamic_form", "administrator/useragency/update_user");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		
+	}
+	
+	function doctors_grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=tree", ""));
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=16", "Last Name"));
+		$head->append($this->xml->Element("column", "width=16", "First Name"));
+		$head->append($this->xml->Element("column", "width=16", "Phone"));
+    	$head->append($this->xml->Element("column", "width=16", "Email"));
+		$head->append($this->xml->Element("column", "width=*;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		
+		foreach ($this->usermdl->getOnlyUsers($this->input->post('keyword'), 3) as $user) {		
+			if ($user->user_id == 0) {continue;}
+						
+			$cell = $this->xml->Element("row", "id=" . $user->user_id);
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->user_id));
+			$cell->append($this->xml->Element("cell", null, $user->last_name));
+			$cell->append($this->xml->Element("cell", null, $user->first_name));
+			$cell->append($this->xml->Element("cell", null, $user->phone_cell));
+			$cell->append($this->xml->Element("cell", null, $user->user_email));
+			
+			
+			$cell->append($this->xml->Element("cell", null, "Login^" . $this->config->config['index_url'] . "administrator/user/logas/" . $user->user_id . "^content"));
+			
+				
+			
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	
+	function child ( $user_id ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document(true, "parent=" . $user_id);
+
+		foreach ($this->usagymdl->getByUserId($user_id) as $user) {
+			
+			$cell = $this->xml->Element("row", "id=2");
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, $user->agency_name));
+			$cell->append($this->xml->Element("cell", null, $user->tab_description));
+			$cell->append($this->xml->Element("cell", null, $user->profile_name));
+			$cell->append($this->xml->Element("cell", null, $user->description));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function verif_email ( $user_email ) {
+	
+		$user = $this->usagymdl->getByEmailAgencyId($this->input->post('agency_id'), $user_email);
+		if (count($user)) {
+			$this->validation->set_message('verif_email', "The user already exist in this agency.");
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+	
+	}
+	
+	function add ( $agency_id ) {
+		
+		$this->tpl->assign(array("entity_id" => $agency_id));
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('payment_type_list', array (
+				'check' => 'Check',
+				'directdepo' => 'Direct Deposit',
+				'other' => 'Other'
+			));
+		
+		$rules = array ('first_name'  	=> 'required',
+						'last_name'  	=> 'required',
+						'profile_id'  	=> 'required',
+						'discipline_id' => 'required');
+						
+		if ($this->input->post('discipline_id') != 9) {
+			$rules['user_email'] 	= 'required|valid_email|callback_verif_email';
+			$rules['email_confirm'] = 'required|matches[user_email]';
+		}
+		
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add User");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/useragency/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$user = $this->usermdl->getByEmail($this->input->post('user_email'));
+			if (!count($user) || $this->input->post('user_email') == '') { // user not exist: create new
+	
+				$this->assignPostData($this->usermdl);
+				$this->usermdl->insert();
+				
+				$pass = passgen();
+				$this->usermdl->updatePassword($this->usermdl->user_id, $pass);
+
+			} else { // user exist: get user_id
+
+				$this->usermdl->user_id = $user->user_id;
+
+			}
+			
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->user_id = $this->usermdl->user_id;
+			$this->usagymdl->insert();
+			
+			$this->tpl->assign('gmessage', $this->usagymdl->first_name . " " . $this->usagymdl->last_name . $this->lang->line('grl_add_msg'));
+			
+			$this->index($agency_id);
+			
+		}
+		
+	}
+	
+	function edit ( $agency_id, $us_agy_id ) {
+		
+		$this->tpl->assign(array("entity_id" => $agency_id));
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $us_agy_id);
+		
+		$this->tpl->assign('other_lang_list', $this->parametermdl->getByType(10));
+		$this->tpl->assign('payment_type_list', array (
+				'check' => 'Check',
+				'directdepo' => 'Direct Deposit',
+				'other' => 'Other'
+			));
+
+		$this->assignObject($this->usagymdl->getByUsAgyId($us_agy_id));
+		
+		$rules = array ('first_name'  	=> 'required',
+						'last_name'  	=> 'required',
+						'profile_id'  	=> 'required',
+						'discipline_id' => 'required',
+						'phone_cell' 	=> 'valid_phone',
+						'fax'	  		=> 'valid_phone',
+						'phone_home'	=> 'valid_phone');
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+		
+			$this->tpl->assign("form_title", "Edit User");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/useragency/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->usagymdl);
+			$this->usagymdl->update($us_agy_id);
+			
+			$this->tpl->assign('gmessage', $this->usagymdl->first_name . " " . $this->usagymdl->last_name . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($agency_id);
+			
+		}
+		
+	}
+	
+	function delete ( $agency_id, $us_agy_id ) {
+		
+		$us_agy = $this->usagymdl->getByUsAgyId($us_agy_id);
+		
+		$this->usagymdl->delete($us_agy_id);
+		
+		$this->tpl->assign('gmessage', $us_agy->first_name . " " . $us_agy->last_name . $this->lang->line('grl_del_msg'));
+		$this->index($agency_id);
+		
+	}
+	
+	function logas ( $user_id ) {
+		
+		
+		$this->session->set_userdata('logged', TRUE);
+		$this->session->set_userdata('user_id', $user_id);
+		$this->session->set_userdata('agency_id', FALSE);
+		$this->session->set_userdata('logged_from_admin', TRUE);
+		
+		$user = $this->usermdl->getById($user_id);
+		
+		// checking how many agencies is associated
+		$us_agy = $this->usagymdl->getByUserId($user_id);
+
+		if (count($us_agy) == 1) {
+			$this->session->set_userdata('agency_id', $us_agy[0]->agency_id);
+		}
+
+		echo "<script>parent.parent.document.location = '" . $this->config->config['index_url']  ."'</script>";
+
+	}
+	
+ }

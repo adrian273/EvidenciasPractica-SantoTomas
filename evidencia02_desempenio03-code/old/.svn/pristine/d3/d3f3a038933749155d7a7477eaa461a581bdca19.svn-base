@@ -1,0 +1,150 @@
+<?php
+
+ class MuviMdl extends Model {
+
+    var $vt116_id;
+    var $visit_log_id;
+    var $gov_program;
+    var $activity;
+    var $affect;
+    var $goals;
+    var $treat_provided;
+    var $client_response;
+    var $pt_signed_date;
+    var $clinician_signature;
+    var $clinician_signed_date;
+    var $wlocation_therapy;
+    var $wpersons_present;
+    var $wactivity_descrip;
+    var $wspecific_skills;
+    var $wclient_response;
+    var $wsummary_activities;
+    var $wspecific_interven;
+    var $wgoals_objectives;
+    var $wprogress_lack_progress;
+    var $wgoal_focus;
+    var $wsuperv_signature;
+    var $wsuperv_signed_date;
+    var $upload_document_name;
+    var $upload_document_name2;
+    var $upload_covid_document;
+    var $wsuperv_signed_by;
+    var $session_type;
+
+	function MuviMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt116_music_visit');
+		$row = $query->row();
+
+		array_walk($row, 'convert_special_chars');
+
+		return $row;
+	
+	}
+
+	function getEmpty ( ) {
+		return $this;
+	}
+
+	function insert () {
+	
+		$this->db->insert('vt116_music_visit', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->vt116_id);
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$this->db->update('vt116_music_visit', $this);
+	
+	}
+	
+	function getPrevious ( $user_id=null, $previous_date, $episode_id, $allepisodes=false ) {
+		$soc_id = null;
+        if($allepisodes AND $episode_id){      
+          $this->db->select('soc_id');
+          $this->db->where('cms485_id', $episode_id);
+          $query = $this->db->get('cms_485');    
+          $row = $query->row_array();
+          $soc_id = $row['soc_id'];
+        }
+        
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt116_music_visit.visit_log_id');
+		
+        if (!is_null($user_id))
+		  $this->db->where('visit_user_id', $user_id);
+		  $this->db->where('visit_date_time <', $previous_date);
+		if(!is_null($soc_id)){
+            $this->db->join('cms_485',   'cms_485.soc_id = '.$soc_id);
+            $this->db->where('vis_visit_log.cms485_id=cms_485.cms485_id');
+            $this->db->group_by('vis_visit_log.visit_log_id');
+        }else{
+            $this->db->where('cms485_id', $episode_id);
+		}
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt116_music_visit');
+		return $query->result();
+		
+	}
+  
+    function getNext ( $user_id=null, $previous_date, $episode_id ) {
+		
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt116_music_visit.visit_log_id');
+		
+        if (!is_null($user_id))
+		  $this->db->where('visit_user_id', $user_id);
+		
+        $this->db->where('visit_date_time >', $previous_date);
+		$this->db->where('cms485_id', $episode_id);
+		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt116_music_visit');
+		return $query->result();
+		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new MuviMdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->vt116_id = $object1->vt116_id;
+		$object->visit_log_id = $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('vt116_music_visit', $object);
+		
+	}
+	
+    function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+
+        $this->db->where($where, $visit_log_id);
+        $this->db->set($attribute, $value);
+
+        $this->db->update('vt116_music_visit');
+
+    }
+
+    function delete($visit_log_id) {
+
+        $this->db->where('visit_log_id', $visit_log_id);
+        $this->db->delete('vt116_music_visit');
+
+    }
+
+ }

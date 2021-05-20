@@ -1,0 +1,131 @@
+<?
+
+ class MParams extends Model 
+ {
+	function MParams()
+	{
+		parent::Model();	
+	}
+	
+	function get_pacient_status_list()
+	{
+		//
+		
+		$this->db->select('tab_value,tab_description');
+		$this->db->where("tab_type", 13 );
+		$query = $this->db->get('tab_parameters');
+		//
+		return $query->result2('tab_value', 'tab_description');
+	}
+
+	function get_oasisc2_status_name($value)
+	{
+		//
+		
+		$this->db->select('tab_value,tab_description');
+		$this->db->where("tab_type", 97 );
+		$this->db->where("tab_value", $value );
+		$query = $this->db->get('tab_parameters');
+		$row = $query->row();
+		return isset($row->tab_description) ? $row->tab_description : null;		
+	}
+	
+	function get_visit_type_list( $only_existentes = false ) {
+		
+		if( $only_existentes ) {
+			$this->db->join('vis_visit_log',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		}
+		//
+		$this->db->select('DISTINCT( vit_visit_type.visit_type_id ) AS visit_type_id,visit_description');
+		$query = $this->db->get('vit_visit_type');
+		//
+		return $query->result2('visit_type_id', 'visit_description');
+	}
+	
+	function get_visit_type_list2( $only_existentes = false ) {
+		
+		if( $only_existentes ) {
+			$this->db->join('vis_visit_log',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		}
+		//
+		$this->db->select('DISTINCT( vit_visit_type.visit_type_id ) AS visit_type_id,visit_description');
+		$this->db->where("billable", 0);
+		$query = $this->db->get('vit_visit_type');
+		//
+		return $query->result2('visit_type_id', 'visit_description');
+	}
+	
+	function get_visit_status_list( $only_existentes = false )
+	{
+		
+		if( $only_existentes )
+		{
+			$this->db->join('vis_visit_log',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		}
+		//
+		$this->db->select('tab_value,tab_description');
+		$this->db->where("tab_type", 83 );
+		$query = $this->db->get('tab_parameters');
+		//
+		return $query->result2('tab_value', 'tab_description');
+	}
+	
+	function get_clinician_list( $agency_id=null, $agency_type='A', $status = 1 )
+	{
+		
+		$sql = "
+		SELECT 
+			vis_visit_log.visit_user_id ,
+			us_agy.us_agy_id ,
+			us_agy.user_id ,
+			CONCAT_WS(' ', us1_user.last_name, us1_user.first_name) as complete_name
+		FROM 
+			(vis_visit_log)
+		JOIN 
+			cms_485 ON cms_485.cms485_id = vis_visit_log.cms485_id
+		JOIN 
+			soc_start_of_care ON soc_start_of_care.soc_id = cms_485.soc_id
+		JOIN 
+			pat_patient ON soc_start_of_care.patient_id = pat_patient.patient_id
+		JOIN 
+			vit_visit_type ON vit_visit_type.visit_type_id = vis_visit_log.visit_type_id
+		LEFT JOIN 
+			us_agy ON us_agy.us_agy_id = vis_visit_log.visit_user_id
+		LEFT JOIN
+			us1_user
+		ON
+			us1_user.user_id = us_agy.user_id
+    	";
+    	if(!is_null($agency_id)){   
+    		if($agency_type=='C'){
+    			$sql .=" WHERE 
+    			us_agy.agency_id = '".$agency_id."'
+    			";      
+    		}else{
+    			$sql .=" WHERE 
+    			pat_patient.agency_id = '".$agency_id."'
+    			";
+    		}
+		}
+		if(!is_null($status)){  
+			$sql .= " AND us_agy.tab_021_user_status = ".$status;
+		}
+		
+    	$sql .= " ORDER BY us1_user.last_name ASC";
+		$query	= $this->db->query( $sql );
+		//
+    	//print( $this->db->last_query() );
+		return $query->result2('us_agy_id', 'complete_name');
+	}
+	
+	function get_name_user( $user_id ) 
+	{	
+		$this->db->select("*, CONCAT_WS(' ', first_name, last_name) as complete_name",false);
+		$this->db->where("user_id", $user_id);
+		//
+		$query = $this->db->get('us1_user');
+		return $query->row();
+	}
+ }
+
+ 

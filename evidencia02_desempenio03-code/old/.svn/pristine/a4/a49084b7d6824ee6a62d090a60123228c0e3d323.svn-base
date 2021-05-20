@@ -1,0 +1,116 @@
+<?
+
+ class ReferralMdl extends Model {
+
+	var $referral_id; 	 	
+	var $agency_id;
+	var $referral_name;
+	var $tab_011_referral_type;
+	var $facility_id;
+	var $address;
+	var $city;
+	var $state_id;
+	var $zip_code;
+	var $phone_cell;
+	var $phone_work;
+	var $fax;
+	var $email;
+	var $date_birth;
+	var $comments;
+
+	function ReferralMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $agency_id, $keyword=null, $referral_type=null ) {
+	
+		$this->db->join('tab_parameters', 'agy_referral_source.tab_011_referral_type = tab_parameters.tab_value AND tab_parameters.tab_type = 11', 'LEFT');
+		// $this->db->join('agy_facility',   'agy_facility.facility_id = agy_referral_source.facility_id', 'LEFT');
+		$this->db->order_by("referral_name", "asc");
+		
+		if (!is_null($keyword)) {
+			$this->db->like('referral_name', $keyword);
+		}
+		
+		if (!is_null($referral_type)) {
+			$this->db->where("tab_011_referral_type", $referral_type);
+		}
+		
+		$this->db->where("agy_referral_source.agency_id", $agency_id);
+		/*$this->db->where("(agy_facility.agency_id", $agency_id);
+		$this->db->or_where("agy_referral_source.agency_id = " . $agency_id . ")");*/
+		
+		$query = $this->db->get('agy_referral_source');
+		return $query->result();
+
+	}
+	
+	function getByReferralId ( $referral_id ) {
+		
+		$this->db->select('agy_referral_source.*');
+		
+		//$this->db->join('agy_facility',   'agy_facility.facility_id = agy_referral_source.facility_id', 'LEFT');
+		$this->db->where('referral_id', $referral_id);
+		
+		$query = $this->db->get('agy_referral_source');
+		return $query->row();
+		
+	}
+	
+	function getList ( $agency_id ) {
+
+		$this->db->join('agy_facility',   'agy_facility.facility_id = agy_referral_source.facility_id', 'LEFT');
+
+		$this->db->where("(agy_facility.agency_id", $agency_id);
+		$this->db->or_where("agy_referral_source.agency_id = " . $agency_id . ")");
+
+		$query = $this->db->get('agy_referral_source');
+		return $query->result2('referral_id', 'referral_name');			
+	
+	}
+	
+	function insert ( $agency_id ) {
+		
+		$this->agency_id = $agency_id;
+		
+		$this->db->insert('agy_referral_source', $this);
+		$this->referral_id = $this->db->insert_id();
+		
+	}	
+	
+	function update ( $referral_id, $agency_id=null ) {
+		
+		$this->referral_id = $referral_id;
+		$this->agency_id = $agency_id;
+		
+		$this->db->where('referral_id', $referral_id);
+		
+		$this->db->update('agy_referral_source', $this);
+		
+	}
+	
+	function delete ( $referral_id ) {
+		
+		$this->db->where('referral_id', $referral_id);
+		
+		$this->db->delete('agy_referral_source'); 
+		
+	}
+
+	function suggest ( $agency_id, $keyword ) {
+
+		$this->db->join('agy_facility',   'agy_facility.facility_id = agy_referral_source.facility_id', 'LEFT');
+		
+		$this->db->like('referral_name', $keyword);
+
+		$this->db->where("(agy_facility.agency_id", $agency_id);
+		$this->db->or_where("agy_referral_source.agency_id = " . $agency_id . ")");
+
+		$query = $this->db->get('agy_referral_source');
+		return $query->result();			
+	
+	}
+	
+ }

@@ -1,0 +1,91 @@
+
+<table width="100%" cellpadding=0 celspacing=1 border=0>
+	<tr>
+	    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Doctor Order Details</td>
+	</tr> 
+	<tr>
+	    <td colspan="4" height="10"></td>
+	</tr>
+	{if $doc_doctor_order_id}
+	<tr>
+		<td class="ftitle" >Ordered By</td>
+		<td>
+			{$order_by->first_name} {$order_by->last_name}
+		</td>
+	</tr>
+	{/if}
+	<tr>
+		<td class="ftitle" >Order Type</td>
+		<td>
+			{html_options options=$order_type_list name='doc_doctor_order_type_id' selected=$doc_doctor_order_type_id"} *
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle" >Order Date</td>
+		<td><input type="text" name="order_date" id="order_date" value="{$order_date|default:$default_date|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('order_date'), document.getElementById('fecha_help'));return false;" ></td>
+	</tr>
+	<tr>
+		<td class="ftitle" valign="top">Order Description<input type="hidden" name="cms485_id" value="{$cms485_id}"></td>
+		<td>
+			<textarea name="order_description" id="order_description" style="width:50%;" wrap="auto" rows="6">{$order_description}</textarea> *
+			<br><img src="{$image_url}document_add.png" style="vertical-align: middle"> <a href="javascript:addTemplate('order_description', 3, 200);">Template</a>
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle">Patient</td>
+		{if $faction == 'add'}
+		<td>
+			{html_options options=$patient_list name='patient_id' selected=$patient_id onchange="refreshPhysicianList(this.value)"} *
+		</td>
+		{else}
+		<td>
+			{$first_name} {$last_name}
+		</td>
+		{/if}
+	</tr>
+	<tr>
+		<td class="ftitle">Doctor Office</td>
+		<td>
+			{html_options options=$doctor_office_list id='doctor_office_id' name='doctor_office_id' selected=$doctor_office_id} *
+		</td>
+	</tr>
+		{include file='doctor_order/document/dateform.tpl'}
+</table>
+
+<script language="JavaScript" type="text/javascript">
+
+    var dhxWins;
+    
+    function addTemplate ( field, template_type, y_position ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w2 = dhxWins.createWindow("w2", (getWindowWidht()/2)-250, y_position, 500, 340);
+		w2.setText("Select Template");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+	    w2.denyResize(); // deny resizing
+	    w2.denyMove(); 
+	    dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}systemtables/template/selectTemplate/" + template_type + "/" + field);
+		
+    {literal}}{/literal}
+    
+    function cancelModal2 () {literal}{{/literal}
+ 
+     	dhxWins.window('w2').close();
+    	
+    {literal}}{/literal}
+
+
+    function refreshPhysicianList ( patient_id ) {literal}{{/literal}
+ 
+    	ajaxComboBox('{$index_url}doctororder/doctororder/physicianList/', patient_id, 'physician_id')
+    	
+    {literal}}{/literal}
+    
+ </script>

@@ -1,0 +1,649 @@
+<?php
+ include('visitform.php');
+
+  class Form3625 extends VisitForm {
+
+	function Form3625 () {
+		
+		parent::VisitForm();
+
+		$this->load->model('form3625mdl');
+		$this->tpl->assign("resource_path", "task/form3625");
+
+		// validate before submit for approval
+		$this->tpl->assign("validatationVisit", true);
+
+		$this->tpl->assign(array("tab_page" => true));		
+	}
+
+	function index($visit_log_id, $action = 'task', $window = 'self') {
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->getPatientInfo($visit_log_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		
+		$visit_type = $this->visittypemdl->getById($visitlog->visit_type_id);
+		$visit_type_discipline = $this->disciplinemdl->getById($visit_type->discipline_id);
+		$this->tpl->assign("visit_type_discipline", $visit_type_discipline);
+
+		// Visit User
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		if ($visitlog->visit_discipline_id) {
+			$user_discipline = $this->disciplinemdl->getById($visitlog->visit_discipline_id);
+			$visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+		}
+		$this->tpl->assign("visit_user", $visit_user);
+
+		// Section F
+		$section_f_visits = array();
+		$section_f_first_visit = null;
+		$visits = array();
+		$type_ids = array();
+		foreach ($this->visittypemdl->getByDisciplineId($visit_user->discipline_id) as $type_id => $type_name) {
+			$type_ids[] = $type_id;
+		}
+
+		// if ($this->getAgencyType() == 'C') {
+			// print_r($type_ids);exit();
+			$pat_contractor_id = $this->patientcontractormdl->getPatContractorId($visitlog->patient_id, $this->getAgencyId());
+			$patContractor = $this->patientcontractormdl->getById($pat_contractor_id);
+			$agency_contractor_id = $patContractor->agency_contractor_id;
+
+			// $visits = array();
+			$rate_errors = array();
+			$visit_timestamp = strtotime($visitlog->visit_date_time);
+			$start_date = date("Y",$visit_timestamp).'-'.date("m",$visit_timestamp).'-01';
+			$total_units = 0;
+			$total_amount = 0;
+			foreach($this->visitlogmdl->getVisitsForSectionF($visitlog, $visitlog->cms485_id, $type_ids, $start_date, date("Y-m-d",strtotime($visitlog->visit_date_time)) ) as $visit){
+				if(is_null($visit->visited_time_in) OR $visit->billable_YN != 1){      
+			      continue;
+			    }
+			    
+			    $units = 0;
+			    $visit_duration = 0;
+			    $visit_mount = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units, $visit_duration);
+
+			    $billing_visit_rate = 0;
+			    if ($units > 0 AND $visit->billable_YN == 1) {
+			    	$billing_visit_rate = $visit->co_final_rate;
+			    } elseif (!$visit->co_invoice_id) {
+				    /*if ($units > 0) {
+				    	$billing_visit_rate = $this->visitlogmdl->findCoRate($visit->visit_log_id);
+				    	if ($billing_visit_rate ===FALSE) {
+							$visit_type = $this->visittypemdl->getById($visit->visit_type_id);
+							$rate_errors[] = "No visit rate has been defined for the visit ".$visit_type->visit_description;
+						}
+				    }*/
+			    }
+
+			    
+				$tmp = array(
+					'day' => date("j",strtotime($visit->visit_date_time)),
+					'date' => date("Y-m-d",strtotime($visit->visit_date_time)),
+					'timein' => date("h:ia",strtotime($visit->visited_time_in)),
+					'timeout' => date("h:ia",strtotime($visit->visited_time_out)),
+					'duration' => $visit_duration,
+					'units' => $units,
+					'rate' => $billing_visit_rate,
+					'amount' => $visit_mount,
+					'id' => $visit->visit_log_id,
+					'type_id' => $visit->visit_type_id,
+					'visit_log_id' => $visit->visit_log_id,
+				);
+
+				if (is_null($section_f_first_visit)) {
+					$section_f_first_visit = $visit;
+				}
+
+				$visits[$tmp['day']] = (object) $tmp;
+				$total_amount += $tmp['amount'];
+				$total_units += $tmp['units'];
+			}
+
+			$section_f_visits = $visits;
+			if ($this->getAgencyType() == 'C') {
+				$total_amount = round($total_amount, 2);
+				
+				$this->tpl->assign("section_f", true);
+				$this->tpl->assign("section_f_visits", $visits);
+				$this->tpl->assign("section_f_rate_errors", implode("<br>", $rate_errors));
+				$this->tpl->assign("section_f_total_amount", $total_amount);
+				$this->tpl->assign("section_f_total_units", $total_units);
+			}
+			// End of Section F
+		// }
+
+		if ($section_f_first_visit) {
+			$visit_type = $this->visittypemdl->getById($section_f_first_visit->visit_type_id);
+			$visit_type_discipline = $this->disciplinemdl->getById($visit_type->discipline_id);
+			$this->tpl->assign("visit_type_discipline", $visit_type_discipline);
+		}
+
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+		$prev_visit_log_id = null;
+		$next_visit_log_id = null;
+
+		if (!count($this->form3625mdl->get($visit_log_id)) OR $visitlog->visit_status_id == 1) {
+			$form3625s = $this->form3625mdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($form3625s) == 0) {
+				$form3625s = $this->form3625mdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE);
+			}
+
+			if (count($form3625s)) {
+				$form3625 = $form3625s[count($form3625s) - 1];
+
+				$prev_visit_log_id = $form3625->visit_log_id;
+
+				$not_to_import = array (
+					'visit_log_id',
+					'vt103_id',					
+					'comments',					
+					'vt103_comments',					
+					'clinician_3625_signature',					
+					'clinician_3625_signed_date',					
+					'pat_3625_signature',					
+					'pat_3625_signed_date',					
+					'caregiver_signature',					
+					'caregiver_signed_date',					
+				);
+				foreach ($form3625 as $k => $v) {
+					if (!in_array($k, $not_to_import) AND property_exists($this->form3625mdl, $k))
+						$this->form3625mdl-> $k = $v;
+				}
+				if (count($this->form3625mdl->get($visit_log_id))) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->update($visit_log_id);
+				} else {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+			}
+		} else {
+			$form3625s = $this->form3625mdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($form3625s)) {
+				$form3625 = $form3625s[count($form3625s) - 1];
+				$prev_visit_log_id = $form3625->visit_log_id;
+			}
+		}
+
+
+		$form3625s = $this->form3625mdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+		if (count($form3625s)) {
+			$form3625 = $form3625s[0];
+			$next_visit_log_id = $form3625->visit_log_id;
+		}
+		//echo $prev_visit_log_id."::".$next_visit_log_id;exit;
+		//$this->tpl->assign("form", 'ptpn');  
+		$this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+		$this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+		$this->assignObject($visitlog);
+		$form3625 = $this->form3625mdl->get($visit_log_id);
+		$this->assignObject($form3625);
+
+		if ($visitlog->visit_status_id == 1) {
+			// Load deafult values from agency settings for particual discipline
+			$this->load->model('agencysettingmdl');
+			$agency_settings=$this->agencysettingmdl->getByAgencyDisciplineId($patient->agency_id, $visit_type->discipline_id);
+			if (!empty($agency_settings)) {
+				$form3625->serv_code_box15 = $agency_settings->F3625_box15;
+				$form3625->bill_code_box16 = $agency_settings->F3625_box16;
+				$form3625->requis_feee_box17 = $agency_settings->F3625_box17;
+				$form3625->requis_fee_serv_code_box18 = $agency_settings->F3625_box18;
+				$form3625->requis_fee_bill_code_box19 = $agency_settings->F3625_box19;
+				
+				$this->tpl->assign('serv_code_box15', $agency_settings->F3625_box15);
+				$this->tpl->assign('bill_code_box16', $agency_settings->F3625_box16);
+				$this->tpl->assign('requis_feee_box17', $agency_settings->F3625_box17);
+				$this->tpl->assign('requis_fee_serv_code_box18', $agency_settings->F3625_box18);
+				$this->tpl->assign('requis_fee_bill_code_box19', $agency_settings->F3625_box19);
+			}
+		}
+
+
+		
+    	$rules = array ('visit_date_time'  		=> 'required',
+						);
+    	$fields = array ('visit_date_time'  	=> 'Order Date',
+						);
+		
+    	if ($agency->F3625_req_sig ==1 AND $this->input->post('visit_status_id')==3) {
+			$rules['clinician_3625_signature'] = 'required';
+			$fields['clinician_3625_signature'] = 'Clinician Signature';
+
+			$rules['pat_3625_signature'] = 'required';
+			$fields['pat_3625_signature'] = 'Patient Signature';
+		}
+
+		if (sizeof($visits) == 0) {
+			$rules['vt103_comments'] = 'required';
+			$fields['vt103_comments'] = 'Comments';
+		}
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == TRUE) {
+			if($this->updateFormEdition($visit_log_id)){
+				$this->assignPostData($this->form3625mdl);
+
+				$form3625 = $this->form3625mdl->get($visit_log_id);
+				if (count($form3625)) {
+					$this->form3625mdl->update($visit_log_id);
+				} else {
+					$this->form3625mdl->insert($visit_log_id);
+				}
+
+				$this->agencymdl->updateFlex($patient->agency_id, 'F3625_contract_no', $this->input->post('F3625_contract_no'));
+
+				//echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+				if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+					// when tasks are "sent for approval" they should be copied to the vt103_form_3625_copy table
+					$this->db->query("REPLACE INTO vt103_form_3625_copy SELECT * FROM `vt103_form_3625` WHERE visit_log_id = {$visit_log_id}");				
+				}
+
+				$this->load->helper('ajax');
+				if (isAjax()) {
+					echo "1";
+					exit;
+				}else{
+	        		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	        		$this->assignObject($visitlog);
+
+	        		$form3625 = $this->form3625mdl->get($visit_log_id);        		
+	        		$this->assignObject($form3625);
+
+
+	        		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+	      		}
+			}
+
+			$this->formRedirection($visit_log_id);
+		}
+
+
+		/*$additional_buttons = array();
+		$additional_buttons['Patient Signature'] = "capture_pt_3625_signature({$visit_log_id})";
+		$additional_buttons['Clinician Signature'] = "capture_clinician_3625_signature({$visit_log_id})";
+		$additional_buttons['Caregiver Signature'] = "capture_caregiver_signature({$visit_log_id})";
+		$this->tpl->assign('additional_buttons', $additional_buttons );*/
+
+
+		
+		$medicaidInsurance = $this->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+		$this->tpl->assign("medicaidInsurance", $medicaidInsurance);
+		
+		$this->tpl->assign("agency", $agency);
+
+		$requested_skilled_list = $this->disciplinemdl->getByIds(array(13, 14, 15, 16, 17, 18), FALSE, 'mayor_discipline');
+		$this->tpl->assign("requested_skilled_list", $requested_skilled_list);
+		
+		
+
+		// Visit Created By
+		$created_by_user = $this->usagymdl->getByUsAgyId($visitlog->visit_asigned_by);
+		$created_by_agency = $this->agencymdl->getByAgencyId($created_by_user->agency_id);
+		$this->tpl->assign("created_by_agency_type", $created_by_agency->agency_type);
+		$this->tpl->assign("created_by_agency_name", $created_by_agency->agency_name);
+
+		// Case Manager
+		$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+		// $cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, 3);
+		if (count($cm_approver)) {
+			$this->tpl->assign("cm_approver", $this->usagymdl->getByUsAgyId($cm_approver[0]->us_agy_id));
+		}
+
+		// $this->load->model('us1usercredentialsmdl');
+		// $credentials = $this->us1usercredentialsmdl->getById($visit_user->user_id, 2);
+		// if (count($credentials) > 0) {
+		// 	$this->tpl->assign("credential", $credentials[0]);
+		// }
+		
+		if ($visit_user->discipline_id) {
+			$discipline = $this->disciplinemdl->getById($visit_user->discipline_id);
+			$this->tpl->assign("user_discipline", $discipline->short_description);
+		}
+
+		$this->tpl->assign('service_month_year', strtoupper(date("M",strtotime($visitlog->visit_date_time))).'/'. date("Y",strtotime($visitlog->visit_date_time)));
+		// $this->tpl->assign('visit_month', strtoupper(date("M",strtotime($visitlog->visit_date_time))) );
+		// $this->tpl->assign('visit_day', date("d",strtotime($visitlog->visit_date_time)) );
+
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign("window", $window);
+		$this->tpl->assign_include("dynamic_form", "task/documents/form3625");
+		$this->setfbase($visit_log_id, $action);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function capture_pt_3625_signature($visit_log_id) {
+		$form3625 = $this->form3625mdl->get($visit_log_id);  
+		//echo FCPATH;
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		$this->tpl->assign("faction", 'capture_pt_3625_signature');	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form3625->pat_3625_signature)){
+				$this->tpl->assign("signature", $form3625->pat_3625_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form3625)) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'pat_3625_signature', $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'pat_3625_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Patient Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/form3625/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function capture_clinician_3625_signature($visit_log_id) {
+		$form3625 = $this->form3625mdl->get($visit_log_id);   
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		if($visitlog->visit_user_id != $this->getUsAgyId()){
+			exit('Only Clinician Signature Allowed');
+		}
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		$this->tpl->assign("faction", 'capture_clinician_3625_signature');	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form3625->clinician_3625_signature)){
+				$this->tpl->assign("signature", $form3625->clinician_3625_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form3625)) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "clinician_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->form3625mdl->updateFlex($visit_log_id, 'clinician_3625_signature', $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'clinician_3625_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Clinician Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/form3625/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}
+
+	function capture_caregiver_signature($visit_log_id) {
+		$form3625 = $this->form3625mdl->get($visit_log_id);   
+		/*$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+		$cm_us_agy_id = 0;
+		if (count($cm_approver)) {
+			$cm_us_agy_id = $cm_approver[0]->us_agy_id;			
+		}
+
+		if ($this->getUsAgyId() != $cm_us_agy_id) {
+			exit('Only Case Manager Signature Allowed');
+		}*/
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form3625->caregiver_signature)){
+				$this->tpl->assign("signature", $form3625->caregiver_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_caregiver_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form3625)) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "caregiver_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->form3625mdl->updateFlex($visit_log_id, 'caregiver_signature', $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'caregiver_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Caregiver Signature has been captured and saved successfully. ';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/form3625/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	/*function capture_supervisor_signature($visit_log_id) {
+		$aqvi = $this->aqvimdl->get($visit_log_id);   
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if (isset($aqvi->wsuperv_signature)) {
+				$this->tpl->assign("signature", $aqvi->wsuperv_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/supervisor_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($aqvi)) {
+					$this->aqvimdl->visit_log_id = $visit_log_id;
+					$this->aqvimdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "supervisor_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->aqvimdl->updateFlex($visit_log_id, 'wsuperv_signature', $signature_file_name);
+				$this->aqvimdl->updateFlex($visit_log_id, 'wsuperv_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Supervisor Signature has been captured and saved successfully. <button type="button" class="edit-sign button close" onclick="parent.location.href=\''.$config["index_url"].'task/form3625/index/'.$visit_log_id.'\'">Close</button>';
+			}
+		}	
+	}	
+*/
+	function validation_visit($visit_log_id){
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		
+		if ($visitlog->visit_discipline_id) {
+			$user_discipline = $this->disciplinemdl->getById($visitlog->visit_discipline_id);
+			$visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+		}
+
+		$rules = array();
+		$fields = array();
+
+		$rules['visit_date_time'] = 'required';
+		$fields['visit_date_time'] = 'Order Date';
+
+		if ($agency->F3625_req_sig ==1) {
+			$rules['clinician_3625_signature'] = 'required';
+			$fields['clinician_3625_signature'] = 'Clinician Signature of Form 3625';
+
+			$rules['pat_3625_signature'] = 'required';
+			$fields['pat_3625_signature'] = 'Patient Signature of Form 3625';
+		}
+
+		// Section F
+		$type_ids = array();
+		foreach ($this->visittypemdl->getByDisciplineId($visit_user->discipline_id) as $type_id => $type_name) {
+			$type_ids[] = $type_id;
+		}
+
+		$visits = array();
+		if ($this->getAgencyType() == 'C') {
+			// print_r($type_ids);exit();
+			$pat_contractor_id = $this->patientcontractormdl->getPatContractorId($visitlog->patient_id, $this->getAgencyId());
+			$patContractor = $this->patientcontractormdl->getById($pat_contractor_id);
+			$agency_contractor_id = $patContractor->agency_contractor_id;
+
+			// $visits = array();
+			$rate_errors = array();
+			$visit_timestamp = strtotime($visitlog->visit_date_time);
+			$start_date = date("Y",$visit_timestamp).'-'.date("m",$visit_timestamp).'-01';
+			$total_units = 0;
+			$total_amount = 0;
+			foreach($this->visitlogmdl->getVisitsForSectionF($visitlog, $visitlog->cms485_id, $type_ids, $start_date, date("Y-m-d",strtotime($visitlog->visit_date_time)) ) as $visit){
+				if(is_null($visit->visited_time_in) OR $visit->billable_YN != 1){      
+			      continue;
+			    }
+			    
+			    $units = 0;
+			    $visit_duration = 0;
+			    $visit_mount = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units, $visit_duration);
+
+			    $billing_visit_rate = 0;
+			    if ($units > 0 AND $visit->billable_YN == 1) {
+			    	$billing_visit_rate = $visit->co_final_rate;
+			    } elseif (!$visit->co_invoice_id) {
+				    /*if ($units > 0) {
+				    	$billing_visit_rate = $this->visitlogmdl->findCoRate($visit->visit_log_id);
+				    	if ($billing_visit_rate ===FALSE) {
+							$visit_type = $this->visittypemdl->getById($visit->visit_type_id);
+							$rate_errors[] = "No visit rate has been defined for the visit ".$visit_type->visit_description;
+						}
+				    }*/
+			    }
+
+			    
+				$tmp = array(
+					'day' => date("j",strtotime($visit->visit_date_time)),
+					'date' => date("Y-m-d",strtotime($visit->visit_date_time)),
+					'timein' => date("h:ia",strtotime($visit->visited_time_in)),
+					'timeout' => date("h:ia",strtotime($visit->visited_time_out)),
+					'duration' => $visit_duration,
+					'units' => $units,
+					'rate' => $billing_visit_rate,
+					'amount' => $visit_mount,
+					'id' => $visit->visit_log_id,
+					'type_id' => $visit->visit_type_id,
+					'visit_log_id' => $visit->visit_log_id,
+				);
+
+				$visits[$tmp['day']] = (object) $tmp;
+				$total_amount += $tmp['amount'];
+				$total_units += $tmp['units'];
+			}				
+			// End of Section F
+		}
+
+		if (sizeof($visits) == 0) {
+			$rules['vt103_comments'] = 'required';
+			$fields['vt103_comments'] = 'Comments';
+		}
+	
+
+	
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		$validation_success = 0;
+		$msg = 0;
+		if ($this->validation->run() == TRUE) {
+			$validation_success = 1;
+		} else {
+			$msg = $this->validation->get_error_msg();		
+		}
+
+		echo json_encode(array('validation_success'=>$validation_success, 'msg'=>$msg));
+		exit();
+	}
+
+	function pdf($visit_log_id, $output='D') {
+    	$this->load->helper('visit_pdf');
+    	form3625_pdf($visit_log_id, $output);
+    	
+    	return;
+		
+
+	}
+
+ }

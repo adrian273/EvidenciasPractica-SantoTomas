@@ -1,0 +1,66 @@
+<?
+
+ class ProfileGroupAppMdl extends Model {
+
+	var $profile_group_applica_id;
+	var $profile_group_id;
+	var $application_id;
+  	var $sequence;
+  	var $parent_id;
+  	var $permission_id;
+
+	function ProfileGroupAppMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getByProfileGroup ( $profile_group_id ) {
+	
+		$this->db->join('x_application', 'x_application.application_id =  x_profile_group_applica.application_id');
+		$this->db->where('profile_group_id', $profile_group_id);
+		$this->db->order_by('sequence');
+		
+		$query = $this->db->get('x_profile_group_applica');
+		return $query->result();
+	
+	}
+	
+	function getDisponibleByProfieGroup ( $profile_group_id ) {
+	
+		$this->db->where('application_id NOT IN (SELECT application_id FROM x_profile_group_applica WHERE profile_group_id = ' . $profile_group_id . ')');
+		$this->db->order_by('application_name');
+		
+		$query = $this->db->get('x_application');
+		return $query->result2('application_id', 'application_name');			
+	
+	}
+	
+	function insert ( $profile_group_id, $application_id, $sequence ) {
+		
+		$this->profile_group_id = $profile_group_id;
+		$this->application_id = $application_id;
+		$this->sequence = $sequence;
+		
+		$this->db->insert('x_profile_group_applica', $this);
+		
+	}
+	
+	function updateSequence ( $profile_group_applica_id, $sequence ) {
+		
+		$this->db->set('sequence', $sequence);
+		$this->db->where('profile_group_applica_id', $profile_group_applica_id);
+		
+		$this->db->update('x_profile_group_applica');
+		
+	}	
+	
+	function delete ( $profile_group_applica_id ) {
+	
+		$this->db->where('profile_group_applica_id', $profile_group_applica_id);
+		
+		$this->db->delete('x_profile_group_applica');
+		
+	}
+	
+ }

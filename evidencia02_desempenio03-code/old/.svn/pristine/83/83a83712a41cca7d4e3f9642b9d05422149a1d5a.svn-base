@@ -1,0 +1,399 @@
+<?
+
+ class Task extends MY_Controller {
+
+	function Task () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "printqueue2/task");
+    $this->load->model('printqueue2mdl');
+	}
+
+	function index () {
+	
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("noedit", true);
+		
+    $this->tpl->assign('docum_source_options', array(
+		                                //"" => 'All',
+		                                "DO" => 'Doctor Orders',
+		                                "VIS" => 'Clinical Notes',
+		                                "COM" => 'Communication Notes'
+                                    ));
+		                                
+		$this->tpl->assign('docum_source_id', '');
+    
+    $this->tpl->assign('additional_buttons', array('Print' => 'printSelected()','Remove'=>'removeSelected()'));
+    
+    
+    // LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+ 		//
+    // MODAL FILTER
+ 		// GET info para selects
+		$this->tpl->assign("status_list" , $this->mparams->get_pacient_status_list() );
+    //$this->tpl->assign('doc_type_list', $this->parametermdl->getByType(98));		
+		
+		$this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( null, false ) );
+    $this->tpl->assign("no_advance_filter" , true );
+    $this->tpl->assign_include("script_tpl", "visitlog/task_script");
+		$this->tpl->assign_include("filter_tpl", "printqueue2/actions");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid () {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+    $head->append($this->xml->Element("column", "width=3;type=ch", " "));		
+		$head->append($this->xml->Element("column", "width=10", "Date"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+    $head->append($this->xml->Element("column", "width=15", "Document Type"));
+		$head->append($this->xml->Element("column", "width=15", "Created by User"));
+		$head->append($this->xml->Element("column", "width=*", "Instructions"));
+		//$head->append($this->xml->Element("column", "width=10", "Task Type"));
+		//$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=10", "Print Status"));
+		$head->append($this->xml->Element("column", "width=7;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link;sort=na", "#cspan"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link;sort=na", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+
+		$document->append($head);
+		
+		foreach ($this->printqueue2mdl->get($this->getAgencyId(), $this->input->post('queue_status'), $this->input->post('docum_source')) as $prtqueue) {
+			
+			$cell = $this->xml->Element("row", "id=" . $prtqueue->print_queue_id);		
+      $cell->append($this->xml->Element("cell", null, "0"));      
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($prtqueue->creation_datetime))));      
+			$cell->append($this->xml->Element("cell", null, $prtqueue->patient_name));
+      $cell->append($this->xml->Element("cell", null, $prtqueue->tab_description));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->user_name));
+			//$cell->append($this->xml->Element("cell", null, $prtqueue->user_id));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->instructions));
+			//$cell->append($this->xml->Element("cell", null, $prtqueue->visit_description));
+			//$cell->append($this->xml->Element("cell", null, $prtqueue->patient_name));
+
+			$prtStatus = $prtqueue->print_status == "Pending Print" ? "Pending Print" : "Printed";			
+			$cell->append($this->xml->Element("cell", null, $prtStatus));
+			
+			//$cell->append($this->xml->Element("cell", null, "Edit Status^javascript:modalEdit(".$prtqueue->print_queue_id.")"));
+			$cell->append($this->xml->Element("cell", null, "Remove^javascript:deleteQueue(".$prtqueue->print_queue_id.")"));
+			$cell->append($this->xml->Element("cell", null, "Print^".$this->config->config['index_url']."printqueue2/task/pdf/".$prtqueue->print_queue_id));
+
+/* 			$cell->append($this->xml->Element("cell", null, '<![CDATA[<a href="'.$this->config->config['index_url'].'task/'.$prtqueue->visit_program.'/pdf/'.$prtqueue->doc_id.'">Print</a> | <a href="'.$this->config->config['index_url'].'administrator/prtqueue/delete/'.$prtqueue->prt_id.'">Delete</a>]]>')); */
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function modalEdit ( $prt_id, $val=null ) {
+		
+		$this->tpl->assign("entity_id", $prt_id);
+		$this->tpl->assign("faction", 'modalEdit');
+
+		$prtqueue = $this->printqueue2mdl->getById($prt_id);			
+
+		$this->tpl->assign('status_options', array(
+		                                "Pending Print" => 'PENDING PRINT',
+		                                "Printed" => 'PRINTED'));
+		                                
+		$this->tpl->assign('status_id', $prtqueue['print_status']);
+		
+				
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign("prtqueue", $prtqueue);		
+				
+			$this->tpl->assign_include("dynamic_tpl", "printqueue2/prtqueue_status_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->printqueue2mdl);
+			$this->printqueue2mdl->print_status = $this->input->post('print_status');
+			$this->printqueue2mdl->updatePrintStatus($prt_id);
+			
+			echo "<SCRIPT>parent.loadGrid();parent.cancelModal()</SCRIPT>";
+			
+		}
+	
+	}
+
+	function delete($prt_id){
+		
+		$document = $this->xml->Document();
+		$prtqueue = $this->printqueue2mdl->getById($prt_id);			
+		
+		//if ($prtqueue['print_status'] == 'Printed') {
+		if (true) {
+			
+			$this->printqueue2mdl->delete($prt_id);
+			$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+			
+		} else {
+			
+			$document->append($this->xml->Element('alert', null, "Document must be printed first!"));
+			return;
+			
+		}
+		
+	}
+
+  function remove_selected(){    
+		$document = $this->xml->Document();
+    if (!is_null($this->input->post('record_ids'))) {
+      //$this->load->library('Wick');
+      
+			//var_dump($this->input->post('record_ids'));exit;
+      $record_ids = $this->input->post('record_ids');
+      $recods = explode(",", $record_ids);
+      
+      $filenames = array();
+
+      foreach ($this->printqueue2mdl->getByIds($this->getAgencyId(), $recods) as $prtqueue) {
+        $this->printqueue2mdl->delete($prtqueue->print_queue_id);        
+      }
+      
+		}
+    $document->append($this->xml->Element('js', 'script=loadGrid()', null));    
+  }
+
+  
+  function pdfPage ( $__FONT, $data) {
+        $cero_x = 11;
+        $cero_y = 2;
+    		$this->fpdf->Open();
+    		$this->fpdf->AddPage();
+		
+        $this->fpdf->SetDrawColor(130, 100);
+        //$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->SetFont('Arial','B',13);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $data['agency_name']); // agency name
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 20 ),"Licensed and Certified Home Health Agency");
+        
+        $this->fpdf->Rect(8,25, 577, 760);
+        
+        //$this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetFont('Arial', 'B', 13);
+        $this->fpdf->Text(220, 38, "COMMUNICATION NOTE");
+        //$this->fpdf->Text(460, 38, "Order Date   " . standard_date(mysql_to_unix($doctor_order->order_date)));
+        
+        $this->fpdf->Line(8 , 42.5, 585, 42.5);
+    	
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']-1);
+        $address = $data['agency_address'].", ".$data['city'].", ".$data['state_name_short'].", ".$data['zip'];
+        $this->fpdf->Text(11, 800, $address);
+        $this->fpdf->Text(350, 800, "Phone: " . $data['agency_phone_cell']);
+        $this->fpdf->Text(470, 800, "Fax: " . $data['agency_fax']);
+        $this->fpdf->Text(230, 820, "HomeHealthSoft Inc.   2006 – ".date("Y")." ©");
+	}
+	
+	function pdf ( $note_id = 0, $filename = null ) {
+    // getting data    
+    $data = $this->printqueue2mdl->getById($note_id);
+    //print_r($data);exit;
+    
+    $this->load->model('usermessagemdl');
+    $data['msg_users'] = implode("; ", $this->usermessagemdl->getByMessageId($data['msg_id']));
+    
+		
+		$path_ticket = realpath("style/images/icon_enable_negro.gif");
+		
+        $__FONT['PDF']['SIZE'] = 12;
+        $__FONT['PDF']['FORM_MEDIUM'] = 11;
+        //$__FONT['PDF']['FORM_SMALL'] = 9;
+        $__FONT['PDF']['FORM_SMALL'] = 12;
+        $__FONT['PDF']['FORM_SMALL2'] = 10;
+        $__FONT['PDF']['FORM_SMALL3'] = 7.5;
+        $__FONT['PDF']['FORM_SMALL4'] = 10.5;
+        $__FONT['PDF']['FORM_arial8'] = 10.5;
+		
+		$this->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+
+    $this->fpdf = new fpdf;
+    
+		$this->pdfPage($__FONT, $data);
+      
+      // Patient Name
+      $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 55+30, "Patient Name: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 55+30, $data["patient_name"]);
+      
+    
+    	// from
+      $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 70+30+10, "From: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 70+30+10, $data['user_name']);
+	    
+    	// To
+      $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 85+30+20, "To: ");
+	    
+      $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+      $cero_y = 85+30+20;
+      if(strlen($data["msg_users"]) > 69){
+        
+        $newtextArr = explode("||", wordwrap($data["msg_users"], 69, "||"));
+        foreach($newtextArr as $userText){
+          $this->fpdf->Text(150, $cero_y, $userText);
+          
+          $cero_y += 15;
+        }
+        $cero_y -= 15;
+      }else{      
+        $this->fpdf->Text(150, $cero_y, $data["msg_users"]);
+      }
+      
+      $cero_y += 25; 
+      //$plus_y = $cero_y-(85+30+20); 
+      
+    	// order by
+      $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, $cero_y, "ESSENCE OF THIS COMMUNICATION: ");
+	    
+	    $eje_y = $cero_y+20;
+      $this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+    
+  		foreach (str_split($data["notes_descrip"], 73) as $substring) {
+  			
+  			//$this->fpdf->Text(150, $eje_y, $substring);
+  			$this->fpdf->Text(30, $eje_y, $substring);      
+        $this->fpdf->SetLineWidth( 0.5 );
+        $this->fpdf->Line(30, $eje_y+4, 554, $eje_y+4);
+          
+  			$eje_y += 15;
+  			
+  			if ($eje_y > 660) {
+  				$this->pdfPage($__FONT, $data);
+
+          $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+          $this->fpdf->Text(30, 55, "Order Description: ");
+
+  				$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+  				$eje_y = 55+30;
+  			}
+  			
+  		}
+  		
+		if ($eje_y >= 675) {
+			$this->pdfPage($__FONT, $data);
+		}
+		
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 700-20,  "Clinician Signature:");
+    $this->fpdf->Text(125, 700-20, "____________________________________________            Date: _____________");
+	    
+    $this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+    $this->fpdf->Text(130+15, 700-20, "ELECTRONICALLY SIGNED BY " . $data["user_name"]);
+    $this->fpdf->Text(500, 700-20, standard_date(mysql_to_unix($data["creation_datetime"])));	    	
+    
+    if($filename){
+      $this->fpdf->Output($filename,'F');
+      return $filename;
+    }else{
+      $this->fpdf->Output('note '.$note_id.'.pdf','D');
+    }
+  
+	}
+
+  function pdf_selected(){
+    if (!is_null($this->input->post('record_ids'))) {
+      //$this->load->library('Wick');
+      
+			//var_dump($this->input->post('record_ids'));exit;
+      $record_ids = $this->input->post('record_ids');
+      $recods = explode(",", $record_ids);
+      
+      $filenames = array();
+
+      foreach ($this->printqueue2mdl->getByIds($this->getAgencyId(), $recods) as $prtqueue) {
+        
+        /*if($prtqueue->visit_program=='aidepoc')
+        continue;
+        */
+        //echo $this->config->config['index_url']."task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id;exit;
+        
+        //$pdf = $this->wick->light("task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id);
+        
+        $method = 'pdf';
+        if(!method_exists($this,$method))
+        continue;
+        
+        
+        if(!isset($filenames[$prtqueue->print_queue_id])){
+          $filename = FCPATH;
+          $filename = str_replace("\\","/", $filename);
+          $filename = $filename.'tmp/'.time().'_'.$prtqueue->print_queue_id.'_pq2_note.pdf';
+          
+          $filenames[$prtqueue->print_queue_id] = $this->$method($prtqueue->print_queue_id, $filename);
+        }
+        //break;
+        //$this->config->config['index_url']."task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id;
+      }
+      
+      
+      /** 
+      * New Code support >= PHP 5.3.0
+      */
+      require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+      require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+      require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+      // and we can do stuff
+      $pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+      foreach($filenames as $name){
+        $pdf->addPDF($name, 'all');
+      }      
+      $pdf->merge('download', 'all.pdf');
+      // End of code for PHP >= 5.3.0
+            
+      foreach($filenames as $name){
+        @unlink($name);
+      } 
+           
+		}  
+  }
+  
+  function pdf2($id=0){
+    //var_dump(APPPATH);exit;
+    $data = $this->printqueue2mdl->getById($id);
+    
+    $this->load->model('usermessagemdl');
+    $data['msg_users'] = implode("; ", $this->usermessagemdl->getByMessageId($data['msg_id']));
+    $content = $this->load->view('printqueue2/print_note',$data,true);
+    //echo $content;exit;
+    
+    // convert in PDF
+    require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+    try
+    {
+        $html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+        //$html2pdf = new HTML2PDF('P', 'A4', 'en');
+//        $html2pdf->setModeDebug();
+        //$html2pdf->pdf->SetDisplayMode('fullpage');
+        $html2pdf->setDefaultFont('Arial');
+        $html2pdf->writeHTML($content);
+        $html2pdf->Output('note '.$id.'.pdf', 'D');        
+    }
+    catch(HTML2PDF_exception $e) {
+        echo $e;
+        exit;
+    }  
+  }
+	
+ }

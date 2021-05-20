@@ -1,0 +1,324 @@
+
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<input type="hidden" value="" name="visit_date_ini" id="visit_date_ini_print" >
+<input type="hidden" value="" name="visit_date_fin" id="visit_date_fin_print" >
+<input type="hidden" value="{$confirmed}" name="confirmed" >
+</form>
+
+<link href="{$base_url}style/dropmenu.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="{$base_url}style/grid/dhtmlxgrid_export.js?{$smarty.now}"></script>
+
+{literal}
+<style type="text/css">
+    @media only screen and (device-width: 768px) {
+      /* For general iPad layouts */
+      table {max-width: 768px; margin-right:auto;margin-left:0px;}
+    }
+    a.sample_attach, a.sample_attach:visited, div.sample_attach{
+    	width: 170px;
+    }
+</style>
+{/literal}
+
+
+<form method="POST" action="{$index_url}{$resource_path}" onsubmit="this.action='{$index_url}{$resource_path}/index/' + getValue('visit_date_ini') + '/' + getValue('visit_date_fin')" style="margin: 0;">
+	<input type="hidden" name="clear" id="clear_date_from_thru" value="0" >
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+		<tr> 
+			<td colspan="2" style="font-size: 10px;">
+				<b>Period From:</b>
+				<input type="text" id="visit_date_ini" name="visit_date_ini" value="{$visit_date_ini}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				&nbsp;&nbsp;&nbsp;
+				<b>Thru:</b>
+				<input type="text" id="visit_date_fin" name="visit_date_fin" value="{$visit_date_fin}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('visit_date_ini'), document.getElementById('visit_date_fin'));return false;" >
+				&nbsp;&nbsp;
+				
+				{if $visit_date_ini || $visit_date_fin}
+					[<a href="javascript: clearFromThru()">clear</a>]
+				{/if}
+
+				{if $cycleYears|@count gt 0}
+					<div style="display: inline-block; margin-right: 10px;">
+						<select id="cycle-year" onchange="getCycles(this.value)">
+							<option value="">Select Cycle Year</option>
+							{foreach from=$cycleYears key=label item=cycleYear}
+							<option value="{$cycleYear}">{$cycleYear}</option>
+							{/foreach}
+						</select>
+					</div>
+				{/if}
+				
+				<div style="display: inline-block;">
+					<div id="sample_attach_menu_parent" style="padding: 4px 6px; background-color: transparent; font-weight: bold; display: none;">&nbsp;Select Cycle <img align="bottom" src="{$image_url}drop_selector.gif"></div>
+					<div id="sample_attach_menu_child" style="z-index: 9999;">
+						{if $cycles|@count gt 0}
+							{foreach from=$cycles key=label item=cycle}
+								<a class="sample_attach" href="javascript: cycleSelected({$cycle->id})">{$cycle->from_date2} - {$cycle->to_date2}</a>
+							{/foreach}
+						{/if}
+					</div>
+				</div>
+				<div style="display: inline-block; width: 200px;">
+					
+				</div>
+			</td>			
+		</tr>
+		<tr>
+			<td style="font-size:10px;">
+				<p>
+					<input type="hidden" name="payment_date" id="payment_date" value="{$payment_date}">
+					<b>Payment Date: </b> <span id="payment_date_msg">{$payment_date}</span>
+					<b style="padding-left:52px;">Total Payments for period:</b> {$total_amount} 
+				</p>
+			</td>
+			
+				
+		
+		</tr>
+		<tr><td colspan="2" style="padding-top: 3px;">
+			<label><input type="radio" name="confirmed" value="1" {if $confirmed eq '1'}checked="checked"{/if}> Confirmed Visits Only</label>
+				
+			<label><input type="radio" name="confirmed" value="" {if $confirmed neq '1'}checked="checked"{/if}> All Visits</label>
+			<input type="submit" value="Update" id="submit-filter-form" >
+			
+		</td></tr>
+		{if $visit_check gt 0 }
+		<!-- <tr><td colspan="2" height="10"></td></tr> -->
+		<tr>
+			<td height="10">
+				<label type="text" name="msg_warning" ><center><font color="red">Warning: Pending Payroll Visits exist prior to this period!</font></center></label>				
+			</td>
+		</tr>
+		{/if}
+		<tr>
+			<td colspan="2">
+				<div id="toolbarObj" style="float: left"></div>
+			</td>
+		</tr>
+	</table>
+
+
+<script>
+	at_attach("sample_attach_menu_parent", "sample_attach_menu_child", "hover", "y", "pointer");
+	
+	
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		//webBar.addSeparator('sp1', 3);
+		//webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		/*case 'print':
+		  printSelected()
+		  break;	*/
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>
+
+
+<script language="JavaScript" type="text/javascript">
+    var dhxWins;
+		  
+	function editRegister ( id ) {literal}{{/literal}
+	
+		if (id > 0)
+			document.location = "{$index_url}{$resource_path}/detail/" + id + "/{if $entity_id}/{$entity_id}{/if}/";
+	  
+	{literal}}{/literal}
+ 
+    function createPayroll (  ) {literal}{{/literal} 
+    	if (grid.getCheckedRows(0)) {literal}{{/literal}
+    		var visit_date_ini = document.getElementById('visit_date_ini').value;
+    		var visit_date_fin = document.getElementById('visit_date_fin').value;
+    		var usagyids = grid.getCheckedRows(0);
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w1 = dhxWins.createWindow("w1", 10, 10, 300, 150);
+			w1.setText("Create Payroll Stub for selected Users");
+			w1.button("park").hide();
+			w1.button("minmax1").hide();
+			w1.denyResize(); // deny resizing
+			w1.denyMove(); 
+			dhxWins.window('w1').center();
+			dhxWins.window('w1').setModal(true);
+			w1.attachURL("{$index_url}payroll/generate/payrollstubforselected/" + usagyids + "/" + visit_date_ini + "/" + visit_date_fin);    	
+		{literal}}else{{/literal}   
+			alert('Please select a record.');
+    	{literal}}{/literal}
+    {literal}}{/literal}
+  
+    function confirmPayment (  ) {literal}{{/literal} 
+    	if (grid.getCheckedRows(0)) {literal}{{/literal}
+    		var visit_date_ini = document.getElementById('visit_date_ini').value;
+    		var visit_date_fin = document.getElementById('visit_date_fin').value;
+    		var usagyids = grid.getCheckedRows(0);
+
+    		if (navigator.userAgent.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i)) {literal}{{/literal}
+				location.href = "{$index_url}payroll/generate/confirmpaymentforselected/" + usagyids + "/0/" + visit_date_ini + "/" + visit_date_fin;
+				return;
+			{literal}}{/literal}	
+
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w1 = dhxWins.createWindow("w1", 10, 10, 400, 300);
+			w1.setText("Create Payroll Stub for selected Users");
+			w1.button("park").hide();
+			w1.button("minmax1").hide();
+			w1.denyResize(); // deny resizing
+			w1.denyMove(); 
+			dhxWins.window('w1').center();
+			dhxWins.window('w1').setModal(true);
+			w1.attachURL("{$index_url}payroll/generate/confirmpaymentforselected/" + usagyids + "/1/" + visit_date_ini + "/" + visit_date_fin);    	
+		{literal}}{/literal}   
+    {literal}}{/literal}
+  
+	function printSelected() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			document.getElementById('visit_date_ini_print').value = document.getElementById('visit_date_ini').value;
+			document.getElementById('visit_date_fin_print').value = document.getElementById('visit_date_fin').value;
+			gform.action='{$index_url}{$resource_path}/pdf';
+			gform.target='_blank';
+			gform.submit();	
+		{literal}}else{{/literal}   
+			alert('Please select a record.');
+    	{literal}}{/literal}
+	{literal}}{/literal}   	  
+
+	function printReCalculate() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			document.getElementById('visit_date_ini_print').value = document.getElementById('visit_date_ini').value;
+			document.getElementById('visit_date_fin_print').value = document.getElementById('visit_date_fin').value;
+			gform.action='{$index_url}{$resource_path}/pdf_recalculate';
+			gform.target='_blank';
+			gform.submit();	
+		{literal}}else{{/literal}   
+			alert('Please select a record.');
+    	{literal}}{/literal}
+	{literal}}{/literal}   	  
+
+	function selectCycle() {literal}{{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 400, 300);
+		w1.setText("Select Cycle");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+		w1.denyResize(); // deny resizing
+		w1.denyMove(); 
+		dhxWins.window('w1').center();
+		dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}payroll/cycles/selectCycle");    
+	{literal}}{/literal}   	  
+    
+    function getCycles(year) {literal}{{/literal}
+    	if (year == "") 
+    		return;
+
+    	$('#sample_attach_menu_child').html('<a class="sample_attach" href="javascript: void(0)">Loading ...</a>')
+    	var url = '{$index_url}payroll/cycles/cycleYear/'+year;
+        {literal}
+        $.ajax({
+            type: "GET",
+            // dataType: 'json',
+            url: url,
+            // data: params,
+            success: function(data){
+                // if (data) {
+                	$('#sample_attach_menu_child').html(data);
+                // }
+                $('#sample_attach_menu_parent').show();
+            },  
+            error: function (data, status, e)
+            {
+                alert('An error occured. check your internet connection');
+            }
+        });
+        {/literal}
+	{literal}}{/literal}   	  
+
+	function cycleSelected(id) {literal}{{/literal}
+		var url = '{$index_url}payroll/cycles/selectedCycle/'+id;
+        {literal}
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: url,
+            // data: params,
+            success: function(data){
+                if (data.error) {
+                	alert(data.error);
+                } else {
+					
+                	$('#visit_date_ini').val(data.from_date);
+                	$('#visit_date_fin').val(data.to_date);
+					$("#payment_date").val(data.payment_date);
+					$("#payment_date_msg").html($("#payment_date").val(data.payment_date));
+                	// dhxWins.window('w1').close();
+                	$('#submit-filter-form').trigger('click');
+                }
+            },  
+            error: function (data, status, e)
+            {
+                alert('An error occured. check your internet connection');
+            }
+        });
+        {/literal}
+	{literal}}{/literal}   	  
+    
+
+    function clearFromThru() {literal}{{/literal}
+    	$('#visit_date_ini').val('');
+    	$('#visit_date_fin').val('');
+    	$('#clear_date_from_thru').val('1');
+    	$('#submit-filter-form').trigger('click');
+    {literal}}{/literal}
+</script>
+  
+
+ 

@@ -1,0 +1,68 @@
+  
+ <input type="hidden" name="visited_time_in_hm" id="visited_time_in_hm" value="{$visited_time_in|truncate:5:"":true}" size="5" maxlength="5"  readonly="" /> 
+ <input type="hidden" name="visit_duration" id="visit_duration" value="{$visit_duration}" size="2" maxlength="2" onchange="update_visit_time_out(event);"/>
+ <input type="hidden" name="visited_time_out_hm" id="visited_time_out_hm" value="{$visited_time_out|truncate:5:"":true}" size="5" maxlength="5"  readonly="" />
+  
+  
+  <tr>
+    <td colspan="4" class="subtitle">
+			<table width="100%">
+			<tr>
+			<td>
+				<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Visit Date and Time
+			</td>	
+			<td style="text-align:right;">
+				{if $prev_visit_log_id != null}<a href="{$index_url}{$resource_path}/index/{$prev_visit_log_id}">Previous</a> {if $next_visit_log_id != ""}| <a href="{$index_url}{$resource_path}/index/{$next_visit_log_id}">Next</a>{/if}
+				{elseif $next_visit_log_id != null}<a href="{$index_url}{$resource_path}/index/{$next_visit_log_id}">Next</a>{/if}
+			</td>	
+			</tr>
+			</table>
+		</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+		<td colspan="2">		
+			<table width="100%">
+				<tr>			
+				<td class="ftitle">Visit Date</td>
+				<td>
+					<input type="text" id="visit_date_time" name="visit_date_time" value="{$visit_date_time}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('visit_date_time'), document.getElementById('fecha_help'));return false;" >
+				</td>
+				</tr>
+			</table>	
+		</td>
+		
+		<td colspan="2">		
+			<table width="100%">
+				<tr>			
+				<td class="ftitle" style="width:30%;" valign="top">Visit Performed by</td>
+				<td valign="top">
+					{$visit_user_id_name}
+				</td>
+				</tr>
+			</table>	
+		</td>
+		
+  </tr>
+	<tr>
+	<td colspan="2">
+		<table width="100%" border="0">
+			<tr>
+				<td class="ftitle" style="width:5%">Mileage </td>
+				<td style="width:1%; padding-left:8px;"><input type="text" name="mileage" value="{$mileage}" size="3" maxlength="3"></td>
+				<td align="left" style="width:15%;">Billable {html_radios options=$logic_list checked=$billable_YN name='billable_YN' id='billable_YN'}</td>				
+			</tr>
+		 </table>
+	</td>
+	<td colspan="2">
+		<table width="100%" border="0">
+			<tr>
+				<td class="ftitle">Visit Number / Status: <span style="margin-left:10px; padding:5px; line-height: 26px; background-color:{$visit_tab_status_color}">({$visit_log_number})&nbsp;/&nbsp;{$tab_description}</span></td>
+			</tr>
+		 </table>
+	</td>
+	</tr>	 

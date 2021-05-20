@@ -1,0 +1,31 @@
+<?php
+
+include ('admin_controller.php');
+
+ class Visitlog_base extends Admin_Controller {
+
+	function Visitlog_base () {
+		
+		parent::Admin_Controller();		
+		
+	}
+	
+	function index ( $agency_id=null ) {
+		
+		$this->tpl->assign("module_path", "administrator/visitlog_");
+		if (!is_null($agency_id)) $this->tpl->assign("agency_id", $agency_id);
+		
+		$this->tpl->assign("agency_name", $this->agencymdl->getByAgencyId((is_null($agency_id) ? $this->getAgencyId()  : $agency_id))->agency_name);
+		
+		$this->tpl->assign_include("dynamic_tpl", "administrator/visitlog/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function error () {
+		
+		echo "Not implemented";
+		
+	}
+
+ }

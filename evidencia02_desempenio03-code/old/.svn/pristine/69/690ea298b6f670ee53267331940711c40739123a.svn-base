@@ -1,0 +1,69 @@
+<?
+
+ class EpisodeMedication extends MY_Controller {
+
+	function EpisodeMedication () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/episodemedication");
+		
+	}
+	
+	function grid ( $cms485_id ) {
+		
+//		$eo_list = $this->parametermdl->getByType(19);
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*;sort=na", "Medication"));
+		$head->append($this->xml->Element("column", "width=15;sort=na",  "Dose"));
+		$head->append($this->xml->Element("column", "width=15;sort=na", "Frequency"));
+		$head->append($this->xml->Element("column", "width=15;align=center;sort=na", "Route"));
+		$head->append($this->xml->Element("column", "width=10;align=center;type=link", "Action"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->episodemedicationmdl->get($cms485_id) as $medication) {
+			
+			$cell = $this->xml->Element("row", "locked=true;id=" . $medication->cms_485_med_id);
+			$cell->append($this->xml->Element("cell", null, $medication->med_descrip));
+			$cell->append($this->xml->Element("cell", null, $medication->med_dose));
+			$cell->append($this->xml->Element("cell", null, $medication->med_frecuency));
+			$cell->append($this->xml->Element("cell", null, $medication->tab_description));
+			$cell->append($this->xml->Element("cell", null, "Delete^javascript:deleteEpisodeMedication(" . $medication->cms_485_med_id . ")"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function addAllMedications ( $patient_id, $cms485_id ) {
+		
+		foreach ($this->patientmedicationmdl->get($patient_id) as $med) {
+			
+			if (!count($this->episodemedicationmdl->getByPatientMedication($cms485_id, $med->med_id))) {
+
+				$this->episodemedicationmdl->med_id = $med->med_id;
+				$this->episodemedicationmdl->insert($cms485_id);
+				
+			}
+			
+		}
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=loadMGrid()"));
+		
+	}
+	
+	function delete ( $cms_485_med_id ) {
+		
+		$this->episodemedicationmdl->delete($cms_485_med_id);
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=loadMGrid()"));
+		
+	}
+	
+ }

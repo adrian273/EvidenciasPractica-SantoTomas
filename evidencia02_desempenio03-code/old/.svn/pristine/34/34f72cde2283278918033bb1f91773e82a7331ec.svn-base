@@ -1,0 +1,135 @@
+{*</form>*}
+<script>
+	{literal}
+	if (!window.jQuery.ui) {
+		{/literal}
+			document.write('<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />');
+			document.write('<script src="{$base_url}style/jquery-ui.1.7.2.min.js"><\/script>');
+		{literal}
+	}
+	{/literal}
+</script>
+{*<form id="gform" method="POST" action="{$index_url}{$resource_path}"></form>*}
+
+<table border="0" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td>
+    	Clinician: <b>{$visit_user->first_name} {$visit_user->last_name} {if $visit_user->legal_name neq ''}- {$visit_user->legal_name}{/if}</b>
+    </td>
+    <td>
+    	Period From: <b>{$visit_date_ini}</b>
+    	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		End: <b>{$visit_date_fin}</b>
+    </td>
+    <td>
+    	<div style='float: left'>Total Check Amount: </div><b><div style='float: left; width: 100px' id='totalDiv'>{$total_amount}</div></b>
+    </td>    
+  </tr>
+  <tr><td colspan="3" height="10">&nbsp;</td></tr>
+  <tr> 
+    <td colspan="3" valign="middle">
+		<input type="button" class="btn" value="Check All" onclick="batchChangeStatus(1)">
+		<input type="button" class="btn" value="Uncheck All" onclick="batchChangeStatus(0)"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<input type="text" name="keyword" id="keyword" placehoder='Search' onkeyup="loadGrid();">
+    </td>
+  </tr>
+</table>
+
+<script language="JavaScript" type="text/javascript">
+  
+  	var visit_date_ini = '{$visit_date_ini}';
+  	var visit_date_fin = '{$visit_date_fin}';
+  	var visit_user_id  = '{$visit_user->us_agy_id}';
+  
+    {literal}
+    
+
+    function changeConfirm ( visit_log_id, estatus ) {
+
+	  	url = index_url + 'payroll/generate/changeConfirm/' + visit_log_id + '/' + estatus;
+	    ajaxRequest.getRequest(url, [], [], function(data){
+			loadGrid();
+			ajax(index_url + 'payroll/generate/getTotal/' + visit_user_id + '/' + visit_date_ini + '/' + visit_date_fin, ajaxParseXML);
+	    });
+	  	  
+    }
+    
+    function batchChangeStatus ( estatus ) {
+
+	  	url = index_url + 'payroll/generate/batchChangeStatus/' + estatus + '/' + visit_user_id + '/' + visit_date_ini + '/' + visit_date_fin ;
+	    ajaxRequest.getRequest(url, [], [], function(data){
+			loadGrid();
+			ajax(index_url + 'payroll/generate/getTotal/' + visit_user_id + '/' + visit_date_ini + '/' + visit_date_fin, ajaxParseXML);
+	    });
+	  	  
+    }
+  	
+    {/literal}
+  
+    function modalEditForm ( visit_log_id ) {literal}{{/literal}
+ 
+     	dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 300);
+		w1.setText("Edit");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').center();
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}payroll/generate/editDetail/" + visit_log_id);
+    	
+    {literal}}{/literal}
+    
+	function editRegister ( id ) {literal}{{/literal}
+	
+		/*modalEditForm(id);*/
+	  
+	{literal}}{/literal}
+
+    function is_iPhone_or_iPod(){literal}{{/literal}
+     return navigator.platform.match(/i(Phone|Pod))/i)
+    {literal}}{/literal}
+    
+    function afterload () {literal}{{/literal}
+        if(is_iPhone_or_iPod)
+	    $('.hdrcell').eq(1).trigger('click');
+	{literal}}{/literal}
+	
+	{literal}
+	function confirmGeneratePayment(){
+		{/literal}
+		var visit_date_ini = '{$visit_date_ini}';
+		var visit_date_fin = '{$visit_date_fin}';
+		{literal}
+
+		var x = 'Please confirm to process payment';
+
+		if (visit_date_ini) {
+			x += ' for the period FROM: '+visit_date_ini;
+		}
+
+		if (visit_date_fin) {
+			x += ' THRU: '+visit_date_fin;
+		}
+
+		$('<div>' + x + '</div>').dialog({
+				title: "Confirmation to Generate Payment!",
+				resizable: true,
+				buttons: {								
+						"close": function() {
+								$(this).dialog("close");
+						},
+						"Confirm": function() {
+							{/literal}
+							location.href = '{$index_url}payroll/generate/generatePaymentUser/{$visit_user_id}/{$visit_date_ini}/{$visit_date_fin}';
+						}
+				}
+		});
+	}  
+</script>
+  
+
+ 

@@ -1,0 +1,51 @@
+<form id="gform" onsubmit="return false;">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  <tr id="document-1">
+    <td class="ftitle">Document 
+      {if $upload_document_name != '' }
+      <a href="{$base_url}datastore/aqvi/{$upload_document_name}" target="_blank">Click to Open</a><br>
+      {/if}
+    </td>
+    <td>
+      {if $upload_document_name != '' }
+      <a href="javascript://" onclick="removeScannedDocument({$visit_log_id}, 1)" style="color: red;">Click to Remove</a><br><br>
+      {else}
+      Not Exist
+      {/if}
+    </td>    
+  </tr>
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+      <input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w1').close()">
+    </td>
+  </tr>
+</table> 
+</form>
+
+<script type="text/javascript">
+  function removeScannedDocument(visit_log_id, doc_number) {literal}{{/literal}
+        if (confirm('Are you sure want to remove scanned document ?')) {literal}{{/literal}
+            var url = '{$index_url}task/aqvi/remove_document/{$visit_log_id}/'+doc_number;
+            var visit_url = '{$index_url}task/aqvi/index/{$visit_log_id}';
+            {literal}
+            $.ajax({
+                type: "GET",
+                dataType: 'json',
+                url: url,
+                // data: params,
+                success: function(data){
+                    if(data=='1'){
+                        parent.location.href=visit_url;
+                    } else {
+                        alert('document can\'t be removed!');
+                    }
+                },  
+                error: function (data, status, e)
+                {
+                    alert('An error occured. check your internet connection');
+                }
+            });
+            {/literal}    
+        {literal}}{/literal}
+    {literal}}{/literal}
+</script>

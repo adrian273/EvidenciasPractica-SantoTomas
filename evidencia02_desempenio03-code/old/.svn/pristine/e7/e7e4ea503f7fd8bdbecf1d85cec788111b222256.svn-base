@@ -1,0 +1,117 @@
+<input type="hidden" name="event_id" value="{$event_id}">
+<input type="hidden" name="visit_log_id" value="{$visit_log_id}">
+<table border="0" width="100%" cellpadding="0" cellspacing="6"> 
+		<tr>
+			<td class="ftitle">Event Type:</td>
+			<td>
+				{html_options options=$type_list selected=$tab106_event_type name='tab106_event_type'}
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle" nowrap valign="top">Event Description:</td>		
+			<td nowrap>
+				<textarea name="event_comment" rows="4" cols="40">{$event_comment}</textarea>
+			</td>
+		</tr>
+		{if $creator}
+		<tr>
+			<td class="ftitle">Visibility:</td>		
+			<td>
+				{$visibility_list[$visibility]}
+				<!--{html_radios options=$visibility_list selected=$visibility name='visibility' disabled="disabled"} -->
+			</td>
+		</tr>
+		{/if}
+		<tr>
+			<td class="ftitle"> Action Required </td>
+			<td> 
+				<label>
+					<input type="radio" name="action_required" class="action_required" {if $action_required eq 'NO' OR is_null($action_required)} checked="checked" {/if} value="NO"> No 
+				</label>
+				<label>
+					<input type="radio"  name="action_required" class="action_required" {if $action_required eq 'YES'} checked="checked" {/if} value="YES"> Yes
+				</label>
+			</td>
+		</tr>
+		<tr class="view_action_date">
+			<td class="ftitle">  Action Req Date </td>
+			<td > 
+				<input type="text" name="action_date" id="action_date" value="{$action_date|date_format}" 
+                                            onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+                                            <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('action_date'), document.getElementById('fecha_help'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">  Date Completed </td>
+			<td> 
+				<input type="text" name="action_date_complete" id="action_date_complete" value="{$action_date_complete|date_format}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)" onchange="event_status()"> *
+                <img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('action_date_complete'), document.getElementById('fecha_help'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td class="ftitle">  Status </td>
+			<td> 
+				<label>
+					<input type="radio" name="event_status" id="event_status_active" value="ACTIVE" {if $event_status eq 'ACTIVE'}checked="checked"{/if}> Active
+				</label>
+				<label>
+					<input type="radio" name="event_status" id="event_status_closed" value="CLOSED" {if $event_status eq 'CLOSED'}checked="checked"{/if}> Closed
+				</label>
+			</td>
+		</tr>
+		<tr height="35">
+			<td class="ftitle">Created by User:</td>
+			<td>
+				{$creator_name}
+			</td>
+		</tr>
+</table>
+
+<script>
+	{literal}
+		$(document).ready(function(){
+			event_status();
+			action_required();
+		});
+
+		$("#action_date_complete").change(function() {
+			event_status();
+		});
+
+		$(".action_required").change(function() {
+			action_required();
+		})
+		
+		function action_required() {
+			$('.action_required').each(function(){
+				if(this.checked) {
+					if(this.value == "NO") {
+						$(".view_action_date").hide();
+						$("#action_date").val('');
+					} else {
+						$(".view_action_date").show();
+						
+					}
+				}
+			})
+		}
+
+		
+
+	{/literal}
+	
+		function event_status () {literal} { {/literal}
+			{literal}
+				var action_date_complete = $("#action_date_complete");
+				if (action_date_complete.val() != "") {
+					$("#event_status_closed").attr({'checked': true, 'disabled': false});
+					$("#event_status_active").attr({'checked': false, 'disabled': true});
+				} else {
+					$("#event_status_closed").attr({'checked': false, 'disabled': true});
+					$("#event_status_active").attr({'checked': true, 'disabled': false});
+				}
+			{/literal}
+		{literal} } {/literal}
+
+	
+</script>

@@ -1,0 +1,90 @@
+</form>
+
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/send_credentials/{$us_agy_id}/{$record_ids}" onsubmit="return validateFormSubmit(this);">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+  <tr>    
+    <td height="10"><b>Select Agency:</b> </td>
+    <td height="10">
+      {html_options options=$agency_list selected=$agency_id name='agency_id' onchange=selectAgencyToSend(this.value) style="width:215px;"}
+    </td>
+  </tr> 
+  <tr id="agency_email_tr" {if !$email}style="display: none;"{/if}>
+      <td height="10" valign="top"><b>Agency Email:</b> <span class="msg_addtl_agy_e"></span> </td>
+      <td height="10"><input type="text" name="email" value="{$email}" id="agency_email" style="width: 215px" />
+      </td>
+  </tr>
+  <tr>
+      <td height="10"><b>Email a copy to Company:</b> </td>
+      <td height="10"><input type="checkbox" name="email_copy_company" value="1" checked="checked" />
+          {$company_email} </td>
+  </tr>
+  <tr>
+      <td height="10" valign="top"><b>Additional Emails:</b> </td>
+      <td height="10"><textarea name="additional_email" id="additional_email" rows="2" cols="25" style="width: 215px" placeholder="enter emails in comma separated">{$additional_email}</textarea>
+      </td>
+  </tr>  
+  <tr>
+      <td height="10" valign="top"><b>Notes:</b> </td>
+      <td height="10"><textarea name="notes" rows="3" cols="25" style="width: 215px"></textarea>
+      </td>
+  </tr>
+	<tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Send">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>
+
+
+<script type="text/javascript">
+  function selectAgencyToSend(agency_id) {literal}{{/literal}
+    {literal}
+    if (agency_id.trim() === "") {
+      $('#agency_email').val('');
+      $('#agency_email_tr').hide();
+      return;
+    }
+    {/literal}
+    var url = '{$index_url}{$resource_path}/get_agency_email/'+agency_id;
+    {literal}
+    $.ajax({
+      type: "GET",
+      dataType: 'json',
+      url: url,
+      // data: params,
+      success: function(data){
+        if (data.email != '') {
+          $('#agency_email').val(data.email);
+          $('#agency_email_tr').show();
+          $('#agency_email').css("border", "0");
+          $(".msg_addtl_agy_e").html("");
+        } else {
+          $('#agency_email').css("border", "1px solid red");
+          $(".msg_addtl_agy_e").html("Agency email not found!").css("color", "red");
+        } 
+      },  
+      error: function (data, status, e)
+      {
+      }
+    });
+    {/literal}
+  {literal} } {/literal}
+  function validateFormSubmit(frm) {literal}{{/literal}
+        var email = $("input[name=email]");
+        
+        if (email.val().trim() === "") {literal} { {/literal}
+            email.css("border", "1px solid red");
+            $(".msg_addtl_agy_e").html("Required").css("color", "red");
+            return false;
+        {literal} } {/literal}
+        return true;
+        
+    {literal}}{/literal}
+</script>

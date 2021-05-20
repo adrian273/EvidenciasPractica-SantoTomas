@@ -1,0 +1,208 @@
+<?php
+
+ class fixInvoices extends Controller {
+
+	function fixInvoices () {
+		parent::Controller();
+	}
+
+	function index_old(){
+		echo "<br><br><br><h5>DETECTING CORRUPTED INVOICES</h5>";
+		$query = $this->db->get('company_invoice');		
+		$result = $query->result();
+		foreach ($result as $key => $invoice) {
+			$this->db->where('invoice_id', $invoice->invoice_id);
+			$query = $this->db->get('invoice_payments');	
+			$no_payments = $query->num_rows();
+			if ($no_payments > 0){
+				// find sum of all payments
+				$this->db->select('SUM(payment_amount) as paid');
+				$this->db->where('invoice_id', $invoice->invoice_id);
+				$this->db->group_by('invoice_id');
+				$row = $this->db->get('invoice_payments')->row();	
+				
+				echo "invoice_id: {$invoice->invoice_id}, invoice no: {$invoice->invoice_no}, ";
+				if ($row->paid != $invoice->invoice_payment) {
+					echo "<font color='red'>CORRUPTED</font> 'inoice_payment' doesn't match with total of payments table!<br>";
+				} else {
+					echo "<font color='green'>IS OK!</font><br>";
+				}
+
+			}else {
+				if ( (float) $invoice->invoice_payment != 0.00) {
+					echo "invoice_id: {$invoice->invoice_id}, invoice no: {$invoice->invoice_no}, ";
+
+					echo "<font color='red'>CORRUPTED</font> 'inoice_payment' doesn't match with total of payments table!<br>";
+				} else {
+					echo "invoice_id: {$invoice->invoice_id},  invoice no: {$invoice->invoice_no}, <font color='green'>IS OK!</font><br>";
+				}
+			}
+		}
+	}
+
+	function index(){
+		echo "<br><br><br><h5>DETECTING CORRUPTED INVOICES</h5>";
+		$query = $this->db->get('company_invoice');		
+		$result = $query->result();
+		foreach ($result as $key => $invoice) {
+			$this->db->where('invoice_id', $invoice->invoice_id);
+			$query = $this->db->get('invoice_payments');	
+			$no_payments = $query->num_rows();
+			if ($no_payments > 0){
+				// find sum of all payments
+				$this->db->select('SUM(payment_amount) as paid');
+				$this->db->where('invoice_id', $invoice->invoice_id);
+				$this->db->group_by('invoice_id');
+				$row = $this->db->get('invoice_payments')->row();	
+				
+				echo "invoice_id: {$invoice->invoice_id}, invoice no: {$invoice->invoice_no}, ";
+				if ($invoice->invoice_no) {
+					if ($row->paid != $invoice->invoice_payment) {
+						echo "<font color='red'>CORRUPTED</font> 'inoice_payment' doesn't match with total of payments table!<br>";
+					} else {
+						echo "<font color='green'>IS OK!</font><br>";
+					}
+				} else {
+					// Credit Invoice
+					if ($row->paid != abs($invoice->invoice_payment)) {
+						echo "<font color='red'>CORRUPTED</font> 'inoice_payment' doesn't match with total of payments table!<br>";
+					} else {
+						echo "<font color='green'>IS OK!</font><br>";
+					}
+				}
+
+			}else {
+				if ( (float) $invoice->invoice_payment != 0.00) {
+					echo "invoice_id: {$invoice->invoice_id}, invoice no: {$invoice->invoice_no}, ";
+
+					echo "<font color='red'>CORRUPTED</font> 'inoice_payment' doesn't match with total of payments table!<br>";
+				} else {
+					echo "invoice_id: {$invoice->invoice_id},  invoice no: {$invoice->invoice_no}, <font color='green'>IS OK!</font><br>";
+				}
+			}
+		}
+	}
+
+	function credit () {
+		echo "<h5>CREDIT INVOICES</h5>";
+		$this->db->where("NULLIF(invoice_no, '') IS NULL");
+		$this->db->where("IFNULL(invoice_amount,0) = 0");
+		$query = $this->db->get('company_invoice');		
+		$result = $query->result();
+		foreach ($result as $key => $invoice) {
+			$this->db->where('invoice_id', $invoice->invoice_id);
+			$query = $this->db->get('invoice_payments');	
+			$no_payments = $query->num_rows();
+			if ($no_payments == 1){
+				$row = $query->row();
+				$this->db->where('invoice_payment_id', $row->invoice_payment_id);
+				$this->db->set('payment_amount', abs($row->payment_amount));
+				$this->db->set('credit_invoice', 1);
+				$this->db->update('invoice_payments');
+
+				echo "invoice_id: {$invoice->invoice_id}, ";
+				if (abs($row->payment_amount) != abs($invoice->invoice_payment)) {
+					$this->db->where('invoice_id', $invoice->invoice_id);
+					$this->db->set('invoice_payment', (float)((-1)*abs($row->payment_amount)));
+					$this->db->update('company_invoice');
+					echo "<b>inoice_payment</b> doesn't match with total of payments table!, ";
+				}
+
+				echo "FIXED Credit Invoice<br>";
+			}else if ($no_payments > 1){
+				// find sum of all payments
+				$this->db->select('SUM(payment_amount) as paid');
+				$this->db->where('invoice_id', $invoice->invoice_id);
+				$this->db->group_by('invoice_id');
+				$row = $this->db->get('invoice_payments')->row();	
+				
+				echo "invoice_id: {$invoice->invoice_id}, ";
+				if (abs($row->paid) != abs($invoice->invoice_payment)) {
+					$this->db->where('invoice_id', $invoice->invoice_id);
+					$this->db->set('invoice_payment', (float)((-1)*abs($row->paid)));
+					$this->db->update('company_invoice');
+					echo "<b>inoice_payment</b> doesn't match with total of payments table!, ";
+				}
+
+				// delete old records
+				$this->db->where('invoice_id', $invoice->invoice_id);	
+				$this->db->delete('invoice_payments'); 		
+
+				// insert a new and only one correct record
+				$this->db->insert('invoice_payments', array(
+						'invoice_id' => $invoice->invoice_id,
+						'payment_amount' => abs($row->paid),
+						'credit_invoice' => 1,
+						'payment_date' => $invoice->invoice_date
+					));
+
+				echo "FIXED Credit Invoice by DELETE and INSERT a correct record to payment as positive<br>";
+			} elseif ($no_payments == 0) {
+				$this->db->insert('invoice_payments', array(
+						'invoice_id' => $invoice->invoice_id,
+						'payment_amount' => abs($invoice->invoice_payment),
+						'credit_invoice' => 1,
+						'payment_date' => $invoice->invoice_date
+					));
+
+				echo "invoice_id: {$invoice->invoice_id}, FIXED Credit Invoice by INSERT credit payment as positve<br>";
+			}
+		}
+
+		
+		echo "<br><br>FINISHED!";
+	}
+
+	/*
+	function noncredit(){
+		echo "<br><br><br><h5>OTHER INVOICES</h5>";
+		$this->db->where("NULLIF(invoice_no, '') IS NOT NULL");
+		$query = $this->db->get('company_invoice');		
+		$result = $query->result();
+		foreach ($result as $key => $invoice) {
+			$this->db->where('invoice_id', $invoice->invoice_id);
+			$query = $this->db->get('invoice_payments');	
+			$no_payments = $query->num_rows();
+			if ($no_payments > 0){
+				// find sum of all payments
+				$this->db->select('SUM(payment_amount) as paid');
+				$this->db->where('invoice_id', $invoice->invoice_id);
+				$this->db->group_by('invoice_id');
+				$row = $this->db->get('invoice_payments')->row();	
+				
+				echo "invoice_id: {$invoice->invoice_id}, ";
+				if ($row->paid != $invoice->invoice_payment) {
+					$this->db->insert('invoice_payments', array(
+						'invoice_id' => $invoice->invoice_id,
+						'payment_amount' => ($invoice->invoice_payment - $row->paid),
+						'payment_date' => $invoice->invoice_date
+					));
+
+					echo "<b>inoice_payment</b> doesn't match with total of payments table!, ";
+					echo "FIXED this Invoice<br>";
+				} else {
+					echo "IS OK!<br>";
+				}
+
+			}else {
+				if ( (float) $invoice->invoice_payment != 0.00) {
+					echo "invoice_id: {$invoice->invoice_id}, ";
+
+					$this->db->insert('invoice_payments', array(
+							'invoice_id' => $invoice->invoice_id,
+							'payment_amount' => (float) $invoice->invoice_payment,
+							'payment_date' => $invoice->invoice_date
+						));
+
+					echo "<b>inoice_payment</b> doesn't match with total of payments table!, ";
+					echo "FIXED this Invoice<br>";
+				} else {
+					echo "invoice_id: {$invoice->invoice_id}, IS OK!<br>";
+				}
+			}
+		}
+
+		echo "<br><br>FINISHED!";
+	}
+	*/
+}

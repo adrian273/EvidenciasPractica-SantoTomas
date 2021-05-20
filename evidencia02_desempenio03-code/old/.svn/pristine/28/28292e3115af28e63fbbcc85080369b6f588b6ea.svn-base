@@ -1,0 +1,1489 @@
+<?php
+
+ class VisitForm extends MY_Controller {
+
+	function VisitForm () {
+		
+		parent::MY_Controller();
+
+		$this->tpl->assign('login_user_profile_id', $this->getUserProfileId());
+		
+	}
+	
+	function setfbase ( $visit_log_id, $action='task' ) {
+		
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+		$visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+		$patient = $this->patientmdl->getById($visit_log->patient_id);
+		$visitUser = $this->usagymdl->getByUsAgyId($visit_log->visit_user_id);
+		
+		$agencyContractorSettings = $this->agencycontractormdl->getAgencySettings($visitUser->agency_id, $patient->agency_id);
+	    $date2 = strtotime(date("Y-m-d")." ".$visit_log->visited_time_out);
+	    $date1 = strtotime(date("Y-m-d")." ".$visit_log->visited_time_in);
+	    
+
+	    if($visit_log->visit_status_id ==1 OR is_null($visit_log->visited_time_in) OR is_null($visit_log->visited_time_out)){      
+	      $date1 = strtotime($visit_log->visit_date_time);
+	      if (in_array($visit_log->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+	      	if (isset($agencyContractorSettings->contractor_default_duration) AND $agencyContractorSettings->contractor_default_duration > 0) {
+		      	// apply duration 60 for provides_alter_therapy=Y of the contractor
+		      	$date2 = strtotime($visit_log->visit_date_time)+($agencyContractorSettings->contractor_default_duration*60); 	      	
+	      	} else {
+		      	// apply duration 60 for provides_alter_therapy=Y of the contractor
+		      	$date2 = strtotime($visit_log->visit_date_time)+(60*60); 	      	
+	      	}
+	      } else {	      	
+	      	if (isset($agencyContractorSettings->contractor_default_duration) AND $agencyContractorSettings->contractor_default_duration > 0) {	
+
+	      		$date2 = strtotime($visit_log->visit_date_time)+($agencyContractorSettings->contractor_default_duration*60);
+	      	} else {
+	      		$date2 = strtotime($visit_log->visit_date_time)+(45*60);
+	      	}
+	      }
+	    }
+
+	    $maximum_duration = 60; // in minute
+	    if (in_array($visit_log->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+	      	if ($visit_log->visit_type_id == 117) {
+	      		$maximum_duration = 480;
+	      	} else {
+	      		$maximum_duration = 240;
+	      	}
+	    } else if (in_array($visit_log->visit_type_id, array(10, 12, 40, 42, 60, 62))) {
+	    	$maximum_duration = 300;
+	    }
+
+	    $this->tpl->assign('maximum_duration', $maximum_duration);
+	    
+	    $visit_duration = floor(($date2 - $date1)/60);
+	    
+	    if($visit_duration < 0){
+	    	if (!is_null($visit_log->visited_time_out)) {
+	    		$date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visit_log->visited_time_out);
+	        	$visit_duration = floor(($date2 - $date1)/60);
+	    	}
+	      //$visit_duration = 45;
+	      // $date2 = $date1+(45*60);
+	    }elseif($visit_duration==0){
+	      $visit_duration = '00';
+	    }
+	    
+	    $this->tpl->assign('visited_time_in', date("H:i", $date1) );
+	    $this->tpl->assign('visited_time_out', date("H:i", $date2) );     
+	    $this->tpl->assign('visit_duration', (string)$visit_duration );
+	    
+	    if(is_null($visit_log->billable_YN)){      
+	      if($visit_type->billable_yn == 'Y')
+	      $visit_log->billable_YN = 1;
+	      else
+	      $visit_log->billable_YN = 0;
+	      
+	      $this->tpl->assign('billable_YN', $visit_log->billable_YN );
+	    }
+	    
+		
+		$this->tpl->assign('visit_date_time', standard_date(mysql_to_unix($visit_log->visit_date_time), 'USA_DATE'));
+		$this->tpl->assign('visit_status_id', $visit_log->visit_status_id);
+		$this->tpl->assign('visit_user_id_name', $visit_log->first_name." ".$visit_log->last_name);
+		if ($this->session->userdata('task_return')) {
+			$this->tpl->assign('cancel_action', $this->session->userdata('task_return'));
+		}
+		
+    
+    // Allow the contractor to return (Reactivate) a visit note (PTEV, PTPN, OTEV, OTPN, STEV and STPN)
+    $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+    
+    if($this->getAgencyType() == 'C' && $visit_log->visit_status_id == 8 && $visit_log->visit_user_id == $this->getUsAgyId())  {    
+      $this->tpl->assign('reactive_enable', true);
+    }elseif($this->getAgencyType() == 'A' && $visit_log->visit_status_id == 3 && $visit_log->visit_user_id == $this->getUsAgyId()){
+      $this->tpl->assign('reactive_enable', true);    
+    }
+    
+    /*if($agency->agency_status == 'SA' AND $this->getUserProfileId() == 3 AND $visit_log->visit_status_id == 3) {
+      $this->tpl->assign('reactive_enable', true);
+    }
+    
+    if (($this->getAgencyType() == 'C' && $visit_log->visit_status_id == 8) || ($this->getAgencyType() != 'C' && $visit_log->visit_status_id == 3)) {
+			$this->tpl->assign('reactive_enable', true);
+		}*/
+		
+		if ($this->hasPermission(2)) {
+			$this->tpl->assign('return_from_approved', true);
+		}
+		
+		if ($visit_log->visit_user_id == $this->getUsAgyId()) {
+		      if ($visit_log->visit_status_id == 1 OR $visit_log->visit_status_id == 2 OR $visit_log->visit_type_id == 320) {
+			  	$this->tpl->assign('task_elimination_enable', true);
+			  } else if($visit_log->visit_status_id == 5) {
+			  	if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ){
+			  		$this->tpl->assign('task_elimination_enable', true);
+			  	}	
+			  }
+		} else if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) {
+		  if ($visit_log->visit_status_id == 1  OR $visit_log->visit_status_id == 2 OR $visit_log->visit_status_id == 5 OR $visit_log->visit_type_id == 320) {
+		    $this->tpl->assign('task_elimination_enable', true);
+		  }
+		}
+		
+		$this->tpl->assign('form_title', $visit_type->visit_description);
+		
+		// special PERMISSIONS for to edit visits. Which is not legal //
+		/*if ($this->hasPermission(18) && $visit_log->visit_user_id != $this->getUsAgyId() && $visit_log->visit_status_id != 3 && $visit_log->visit_status_id != 8) {
+			
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_cm_user");
+			return;
+			
+		}*/
+		$this->tpl->assign('logged_in_userid', $this->getUsAgyId());
+		// “User Comments” in PTEV and PTPN need only to be seen by the Contractor or Agency that created the user comment
+		
+		$loggedinUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+		if (in_array($visit_log->visit_type_id, array(10, 12))) {
+			if ($visitUser->agency_id == $loggedinUser->agency_id) {
+				$this->tpl->assign('show_user_comments', TRUE);
+				$this->tpl->assign('show_cm_comments', TRUE);
+			}
+		} else {
+			$this->tpl->assign('show_user_comments', TRUE);
+			$this->tpl->assign('show_cm_comments', TRUE);
+		}
+		$can_write_agency_cm_comments = FALSE;
+		if ($visitUser->agency_id != $loggedinUser->agency_id AND $this->getAgencyType()=='A' AND $visit_log->visit_status_id == 3) {
+			$can_write_agency_cm_comments = TRUE;
+		} else if($visitUser->agency_id == $loggedinUser->agency_id AND ($visit_log->visit_status_id == 3)){
+			$can_write_agency_cm_comments = true;
+		}
+		// var_dump($visitUser->agency_id);
+		// var_dump($loggedinUser->agency_id);
+		// var_dump($can_write_agency_cm_comments);
+			
+		$this->tpl->assign('can_write_agency_cm_comments', $can_write_agency_cm_comments);
+
+		if ( in_array($visit_log->visit_type_id, array(301, 303, 304, 305, 306, 307, 308, 309))) {
+			if ($visit_log->visit_user_id == $this->getUsAgyId() && $action == 'task') {			
+				$this->tpl->assign_include("dynamic_tpl", "task/documents/oasis_fbase");
+			} else {
+				$this->tpl->assign_include("dynamic_tpl", "task/documents/oasis_fbasecm");
+				$this->tpl->assign('can_approve', $this->canApproveVisit($visit_log_id));
+			}
+		}else if ( in_array($visit_log->visit_type_id, array(601))) {
+			if ($visit_log->visit_user_id == $this->getUsAgyId() && $action == 'task') {			
+				$this->tpl->assign_include("dynamic_tpl", "task/documents/oasis_fbase_dev");
+			} else {
+				$this->tpl->assign_include("dynamic_tpl", "task/documents/oasis_fbasecm_dev");
+				$this->tpl->assign('can_approve', $this->canApproveVisit($visit_log_id));
+			}
+		} else {
+			if ($visit_log->visit_user_id == $this->getUsAgyId() && $action == 'task') {			
+				$this->tpl->assign('can_save', true);
+				if ($visit_log->visit_type_id ==  116) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_muvi");
+				} else if ($visit_log->visit_type_id ==  10) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_ptev");
+				} else if ($visit_log->visit_type_id ==  12) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_ptpn");
+				} else if ($visit_log->visit_type_id ==  113) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_muvi");
+				}
+				else if ($visit_log->visit_type_id ==  115) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_muvi");
+				}
+				else if ($visit_log->visit_type_id ==  117) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_muvi");
+				}
+				else if ($visit_log->visit_type_id ==  101) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_muvi");
+				}
+				else {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase");
+				}
+			} else {
+				if ($visit_log->visit_type_id ==  116) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbasecm_muvi");
+				} 
+				else if ($visit_log->visit_type_id ==  117) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbasecm_muvi");
+				}
+				else if ($visit_log->visit_type_id ==  113) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbasecm_muvi");
+				}
+				else if ($visit_log->visit_type_id ==  115) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbasecm_muvi");
+				}
+				else if ($visit_log->visit_type_id ==  101) {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbasecm_muvi");
+				}
+				else {
+					$this->tpl->assign_include("dynamic_tpl", "task/documents/fbasecm");
+				}
+				$this->tpl->assign('can_approve', $this->canApproveVisit($visit_log_id));
+			}
+		}
+		
+	}
+
+	function setfbasearchive ( $visit_log_id, $action='task' ) {
+		
+		$visit_log = $this->visitlogmdl->getByIdArchive($visit_log_id);
+		$visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+		
+	    $date2 = strtotime($visit_log->visited_time_out);
+	    $date1 = strtotime($visit_log->visited_time_in);
+	    
+	    if(is_null($visit_log->visited_time_in)){      
+	      $date1 = strtotime($visit_log->visit_date_time);
+	      $date2 = strtotime($visit_log->visit_date_time)+(45*60);
+	    }
+	    
+	    $visit_duration = floor(($date2 - $date1)/60);
+	    
+	    if($visit_duration < 0){
+	      //$visit_duration = 45;
+	      // $date2 = $date1+(45*60);
+	    }elseif($visit_duration==0){
+	      $visit_duration = '00';
+	    }
+	    
+	    $this->tpl->assign('visited_time_in', date("H:i", $date1) );
+	    $this->tpl->assign('visited_time_out', date("H:i", $date2) );     
+	    $this->tpl->assign('visit_duration', (string)$visit_duration );
+	    
+	    if(is_null($visit_log->billable_YN)){      
+	      if($visit_type->billable_yn == 'Y')
+	      $visit_log->billable_YN = 1;
+	      else
+	      $visit_log->billable_YN = 0;
+	      
+	      $this->tpl->assign('billable_YN', $visit_log->billable_YN );
+	    }
+	    
+		
+		$this->tpl->assign('visit_date_time', standard_date(mysql_to_unix($visit_log->visit_date_time), 'USA_DATE'));
+		$this->tpl->assign('visit_status_id', $visit_log->visit_status_id);
+		$this->tpl->assign('visit_user_id_name', $visit_log->first_name." ".$visit_log->last_name);
+
+		if ($this->session->userdata('task_return')) {
+			$this->tpl->assign('cancel_action', $this->session->userdata('task_return'));
+		}
+		
+    
+    // Allow the contractor to return (Reactivate) a visit note (PTEV, PTPN, OTEV, OTPN, STEV and STPN)
+    $patient = $this->patientmdl->getById($visit_log->patient_id);
+    $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+    
+    /*if($this->getAgencyType() == 'C' && $visit_log->visit_status_id == 8 && $visit_log->visit_user_id == $this->getUsAgyId())  {    
+      $this->tpl->assign('reactive_enable', true);
+    }elseif($this->getAgencyType() == 'A' && $visit_log->visit_status_id == 3 && $visit_log->visit_user_id == $this->getUsAgyId()){
+      $this->tpl->assign('reactive_enable', true);    
+    }
+    */	
+	/*	if ($this->hasPermission(2)) {
+			$this->tpl->assign('return_from_approved', true);
+		}
+	*/	
+		$this->tpl->assign('form_title', $visit_type->visit_description);
+		
+		/*$this->tpl->assign('cancelbtn', true);
+		$this->tpl->assign('no_commit_form', true);*/
+		$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_archive");
+
+		/*if ($visit_log->visit_user_id == $this->getUsAgyId() && $action == 'task') {			
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase");		
+		} else {
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/fbasecm");		
+		}*/
+		
+	}
+
+
+	protected function updateFormEdition ( $visit_log_id ) {
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visit_log->locked == 1) {
+			return FALSE;
+		}
+
+		$this->assignPostData($this->visitlogmdl);
+		
+		
+	    $visited_time_in_hm = $this->input->post('visited_time_in_hm');
+	    if(!$visited_time_in_hm OR strpos($visited_time_in_hm,":")===false){
+	      $visited_time_in_hm = "00:00";
+	    }
+    
+	    list($visited_time_in_Hour, $visited_time_in_Minute) = explode(":",$visited_time_in_hm);
+	    
+	    $time_in_unix  = ((int) ($visited_time_in_Hour == 24 ? 0 : $visited_time_in_Hour));
+		//$time_in_unix  = ((int) ($this->input->post('visited_time_in_Hour') == 12 ? 0 : $this->input->post('visited_time_in_Hour')) + ($this->input->post('visited_time_in_Meridian') == 'am' ? 0 : 12));
+		
+	    $visited_time_out_hm = $this->input->post('visited_time_out_hm');
+	    
+	    if(!$visited_time_out_hm OR strpos($visited_time_out_hm,":")===false){
+	      $visited_time_out_hm = "00:00";
+	    }
+    
+    	list($visited_time_out_Hour, $visited_time_out_Minute) = explode(":",$visited_time_out_hm);
+    
+    	$time_out_unix = ((int) ($visited_time_out_Hour == 24 ? 0 : $visited_time_out_Hour));
+    	//$time_out_unix = ((int) ($this->input->post('visited_time_out_Hour') == 12 ? 0 : $this->input->post('visited_time_out_Hour')) + ($this->input->post('visited_time_out_Meridian') == 'am' ? 0 : 12));
+		
+		$time_in_unix   = $time_in_unix . ":" . $visited_time_in_Minute;
+		//$time_in_unix   = $time_in_unix . ":" . $this->input->post('visited_time_in_Minute');
+		
+    	$time_out_unix  = $time_out_unix . ":" . $visited_time_out_Minute;
+    	//$time_out_unix  = $time_out_unix . ":" . $this->input->post('visited_time_out_Minute');
+    	//echo $time_in_unix.":::".$time_out_unix;exit;
+    
+    	$visitlog = $visit_log;
+		$visit_type = $this->visittypemdl->getById($visitlog->visit_type_id);
+
+    	$visit_date = standard_date(human_to_unix($this->input->post('visit_date_time')), 'MYSQL_NOTIME');
+		// make sure the visit date is not outside the certification. 
+		// Visit types=101 and 104 - these can be created outside the certification period
+		$can_update_visit_date = FALSE;
+		$loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		// if (in_array($visitlog->visit_type_id, array(101,104))) {
+		// Now For alternative therapies, allow the creation of visits/tasks before the cms_485.start_date
+		// if ($loggedInAgency->provides_altern_therapy == 'Y') {
+		// 	$can_update_visit_date = TRUE;
+		// }else 
+		if(strtotime($visit_date) >= strtotime($visit_log->episode_start_date) 
+				AND strtotime($visit_date) <= strtotime($visit_log->episode_end_date)){
+			$can_update_visit_date = TRUE;
+		}else {
+			$this->tpl->assign("error_string",  "WARNING - Visit date ".date("m-d-Y", strtotime($visit_date))." is not in the certification period!");
+		}
+
+		$validate_visit_overwrite = FALSE;
+
+		if ($can_update_visit_date) {
+			$this->visitlogmdl->visited_time_in = $time_in_unix;
+			$this->visitlogmdl->visited_time_out = $time_out_unix;
+			$this->visitlogmdl->visit_date_time = $visit_date . " " . $this->visitlogmdl->visited_time_in;
+			$this->visitlogmdl->visited_date = $visit_date;
+			
+
+			$schedule_conflicted = FALSE;
+
+			if (strtotime($this->visitlogmdl->visit_date_time) != strtotime($visit_log->visit_date_time)) {
+				// schedule time changed, so need to validate schedule confilct
+				$validate_visit_overwrite = TRUE;
+			}
+
+			if ($visit_log->billable_YN != 1) {
+				// do not validate schedule overlap issue for non billable 
+				$validate_visit_overwrite = FALSE;
+			}
+
+			// check shcedule overlapping patient level
+			
+			if ($validate_visit_overwrite AND !$schedule_conflicted AND !$this->validateUpdateVisitTime($visit_log_id, $this->visitlogmdl->visit_date_time, null, null, $this->visitlogmdl->visit_duration)) {
+            	$schedule_conflicted = TRUE;
+            	$schedule_conflicted_msg = "WARNING - Conflict with this patient's other Visit scheduled at: ".date("h:i a", strtotime($this->visitlogmdl->visit_date_time));
+            	$this->tpl->assign("schedule_conflicted",  true);
+            	$this->tpl->assign("schedule_conflicted_msg",  $schedule_conflicted_msg);
+
+            	$this->tpl->assign("conflicted_visited_time_in",  $this->visitlogmdl->visited_time_in);
+            	$this->tpl->assign("conflicted_visited_time_out",  $this->visitlogmdl->visited_time_out);
+            	$this->tpl->assign("conflicted_visit_date_time",  $this->visitlogmdl->visit_date_time);
+            	$this->tpl->assign("conflicted_visited_date",  $this->visitlogmdl->visited_date);
+            	$this->tpl->assign("conflicted_mileage",  $this->visitlogmdl->mileage);
+
+            	// $this->tpl->assign("error_string",  $schedule_conflicted_msg);
+            }
+            
+            // check schedule overlapping user level
+            if ($validate_visit_overwrite AND !$schedule_conflicted AND !$this->validateNewVisitTimeForUser($visitlog->visit_user_id, $this->visitlogmdl->visit_date_time, null, 45, $visit_log_id)) {
+            	
+
+            	// shceduled time overlapping
+                $conflict_visit_log_id = $this->getOverlappingConflictedVisitId($visitlog->visit_user_id, $this->visitlogmdl->visit_date_time, null, 45, $visit_log_id);
+                if ($conflict_visit_log_id) {
+                	$conflicted_visitlog = $this->visitlogmdl->getById($conflict_visit_log_id);
+                	if (isset($conflicted_visitlog->patient_id)) {
+                		$schedule_conflicted = TRUE;
+                		
+                		$conflicted_patient = $this->patientmdl->getById($conflicted_visitlog->patient_id); 
+                		$conflicted_agency = $this->agencymdl->getByAgencyId($conflicted_patient->agency_id); 
+
+		            	$schedule_conflicted_msg = "WARNING - Conflict with Clinician's other Visit scheduled for Patient '". $conflicted_patient->first_name. " ". $conflicted_patient->last_name. "' (Agency: ".$conflicted_agency->agency_name.") at: ".date("h:i a", strtotime($this->visitlogmdl->visit_date_time));
+		            	$this->tpl->assign("schedule_conflicted",  true);
+		            	$this->tpl->assign("schedule_conflicted_msg",  $schedule_conflicted_msg);
+
+		            	$this->tpl->assign("conflicted_visited_time_in",  $this->visitlogmdl->visited_time_in);
+		            	$this->tpl->assign("conflicted_visited_time_out",  $this->visitlogmdl->visited_time_out);
+		            	$this->tpl->assign("conflicted_visit_date_time",  $this->visitlogmdl->visit_date_time);
+		            	$this->tpl->assign("conflicted_visited_date",  $this->visitlogmdl->visited_date);
+		            	$this->tpl->assign("conflicted_mileage",  $this->visitlogmdl->mileage);
+
+		            	// $this->tpl->assign("error_string",  $schedule_conflicted_msg);
+                	}
+                }
+            }
+            
+		
+
+			if ($schedule_conflicted) {
+				$this->visitlogmdl->visited_time_in = $visit_log->visited_time_in;
+				$this->visitlogmdl->visited_time_out = $visit_log->visited_time_out;
+				$this->visitlogmdl->visit_date_time = $visit_log->visit_date_time;
+				$this->visitlogmdl->visited_date = $visit_log->visited_date;
+				$this->visitlogmdl->mileage = $visit_log->mileage;
+			}else{
+				$this->visitlogmdl->updateVisited($visit_log_id);
+			}
+		}
+
+		
+		// $this->visitlogmdl->updateStatus($visit_log_id, $this->input->post('visit_status_id'));
+		$this->visitlogmdl->updateUserComments($visit_log_id, $this->input->post('user_comments'));
+		
+		$this->tpl->assign("visited_time_in",  $visitlog->visited_time_in);
+		$this->tpl->assign("visited_time_out", $visitlog->visited_time_out);
+		
+		// assigning user approver
+		if ($this->input->post('visit_status_id') == 3) {
+			$visitlog = $this->visitlogmdl->getById($visit_log_id);
+			$patient = $this->patientmdl->getById($visitlog->patient_id);
+			$ppr_id = $this->teammdl->getPPRId($visitlog->patient_id,$visitlog->visit_user_id);
+
+			if (!$visitlog->visited_date) {
+		        $visitlog->visited_date = $visit_log->visited_date = date("Y-m-d", strtotime($visitlog->visit_date_time));
+		        $this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visited_date);
+		    }
+
+			$this->load->model('payrollratebyuserpatientvisittypemdl');
+			$payroll_visit_rate = $this->payrollratebyuserpatientvisittypemdl->getRate($ppr_id,  $visitlog->visit_type_id, $visitlog->visited_date);
+			if (!$payroll_visit_rate) {
+				$this->load->model('payrollratebyuservisittypemdl');
+				$payroll_visit_rate = $this->payrollratebyuservisittypemdl->getRate($visitlog->visit_user_id,  $visitlog->visit_type_id, $visitlog->visited_date);
+								
+			}
+			if (!$payroll_visit_rate) {
+				$this->load->model('payrollratebydisciplinemdl');
+				$payroll_visit_rate = $this->payrollratebydisciplinemdl->getRate($this->getAgencyId(),  $visitlog->visit_type_id, $visitlog->visited_date);	
+				
+			}
+			
+			
+			if (in_array($visit_type->visit_program, array('form8606A','quartsumm','form3625','dorder', 'aavi'))) {
+				$payroll_visit_rate = 0.00;
+			}else if (!$payroll_visit_rate) {
+				if ($visit_type->visit_program == "msvt") {
+					$payroll_visit_rate = 0.00;
+				}
+			}
+
+			if ($payroll_visit_rate !==FALSE) {
+				$payroll_visit_amount = $payroll_visit_rate;
+
+				// Calculate payroll visit amount for special therapy
+				if (in_array($visitlog->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+					$date2 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_out);
+					$date1 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_in);
+					$visit_duration = floor(($date2 - $date1)/60);
+					if ($visit_duration < 0) {
+						$date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visitlog->visited_time_out);
+                		$visit_duration = floor(($date2 - $date1)/60);
+					}
+
+					$this->load->model('spvisitunitmdl');
+					$units = $this->spvisitunitmdl->get('PAYROLL', $visit_duration);
+
+					if ($units > 0){
+						$payroll_visit_amount = round($payroll_visit_rate*$units, 2);  
+						$payroll_visit_amount = number_format($payroll_visit_amount, 2);   
+						
+						if (substr($payroll_visit_amount, -3) == '.99') {
+			            	$payroll_visit_amount += 0.01;
+			          	} else if (substr($payroll_visit_amount, -3) == '.98') {
+			            	$payroll_visit_amount += 0.02;
+			          	}       
+					} else {
+						$payroll_visit_amount = 0;
+					}
+
+					// $payroll_visit_amount = round($payroll_visit_rate * ($visit_duration/60), 2);
+				} else if($patient->gov_program == 'Waiver') {
+					// When patient gov program is 'Waiver' it definately from contractor with LOB = 2 (Long term care)
+					// So we need to find units using gov program CLASS because this will act as CLASS program
+					$date2 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_out);
+					$date1 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_in);
+					$visit_duration = floor(($date2 - $date1)/60);
+					if ($visit_duration < 0) {
+						$date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visitlog->visited_time_out);
+                		$visit_duration = floor(($date2 - $date1)/60);
+					}
+
+					$this->load->model('spvisitunitmdl');
+					$units = $this->spvisitunitmdl->get('CLASS', $visit_duration);
+
+					if ($units > 0){
+						$payroll_visit_amount = round($payroll_visit_rate*$units, 2);  
+						$payroll_visit_amount = number_format($payroll_visit_amount, 2);   
+						
+						if (substr($payroll_visit_amount, -3) == '.99') {
+			            	$payroll_visit_amount += 0.01;
+			          	} else if (substr($payroll_visit_amount, -3) == '.98') {
+			            	$payroll_visit_amount += 0.02;
+			          	}       
+					} else {
+						$payroll_visit_amount = 0;
+					}					
+				}
+				
+				$this->visitlogmdl->updateStatus($visit_log_id, $this->input->post('visit_status_id'));
+				$us_agy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+				
+				if (in_array($visit_type->visit_program, array('form8606A', 'quartsumm', 'form3625','dorder', 'aavi'))) {
+					$us_agy->payroll_mileage_rate = 0;
+					$this->visitlogmdl->updateFlex($visit_log_id, 'billable_YN', 0);
+				}
+
+				$this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_approve_date', $visitlog->visit_date_time);
+				$this->visitlogmdl->updateRates($visit_log_id, $payroll_visit_amount, $us_agy->payroll_mileage_rate);
+				
+				// echo '$visitlog->approver_type_id='.$visitlog->approver_type_id.'<br>';
+				$visit_type_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, $visitlog->approver_type_id);
+				$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+				
+				// echo "visit_type_approver={$visit_type_approver[0]->us_agy_id},";
+				// echo "cm_approver={$cm_approver[0]->us_agy_id},<br>";
+				if (count($visit_type_approver) && $visit_type_approver[0]->agency_id == $this->getAgencyId()) { // assigning to visit type approver
+					
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+					$user_approver = $visit_type_approver[0]->us_agy_id;
+					// echo "1. user_approver={$user_approver}<br>";
+				} else if (count($cm_approver) && !count($visit_type_approver) && $cm_approver[0]->agency_id == $this->getAgencyId()) { // assigning to CM approver
+					
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $cm_approver[0]->us_agy_id);
+					$user_approver = $cm_approver[0]->us_agy_id;
+					// echo "2. user_approver={$user_approver}<br>";
+					
+				} else {
+					
+					$agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+					$this->visitlogmdl->updateUserApprover($visit_log_id, ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver));
+					$user_approver = ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver);
+					// echo ($visitlog->approver_type_id == 1 ? '$agency_settings->sn_approver' : '$agency_settings->pt_approver').'='.$user_approver.'<br>';
+					// echo "3. user_approver={$user_approver}<br>";
+					
+				}
+
+				if ($this->getAgencyType() == 'C') {
+					$this->visitlogmdl->updateStatus($visit_log_id, 8);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'superv_user_id', $user_approver);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'superv_approval_date', $visitlog->sent_to_approve_date);
+				}
+				
+				if ($this->getAgencyType() == 'A') {
+					$this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_user_id', $user_approver);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_date', $visitlog->sent_to_approve_date);
+				}
+
+				// An internal (and personal) email have to be sent to the “Approver” from agency
+				if ($visit_type->visit_program == "dorder") {
+					// send internal email
+					$subject = "** Doctor Order for Patient {$patient->first_name} {$patient->last_name} has been created **";
+					$msg_text = "A Doctor Order for patient {$patient->first_name} {$patient->last_name}  has been sent to you for your review and submission to physician.";
+					$msg_imp = 0; // message importance "normal";
+					$user_to = $user_approver;
+
+					$this->messagemdl->msg_subject	= $subject;
+					$this->messagemdl->msg_text		= "\n".$msg_text;
+					$this->messagemdl->user_from = $this->getUsAgyId();
+					$msg_id = $this->messagemdl->insert();
+					$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+					// send to personal email if user have this settings ON
+					$usAgyInfo = $this->usagymdl->getByUsAgyId($user_to);
+					$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+					if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+						$this->load->library('email');
+						$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+						$this->email->to($userToInfo->user_email);
+						$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+						$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            		// $this->email->set_mailtype("html"); 
+
+						$this->email->message($body);      
+						$this->email->send();
+						//$this->email->print_debugger();
+						$this->email->clear(TRUE);
+					}
+				}
+
+			}else{
+				exit("Payroll visit rate not found.");
+				// $this->tpl->assign('error_string', "Payroll visit rate not found.");  
+			}
+			
+		}else{
+			$this->visitlogmdl->updateStatus($visit_log_id, $this->input->post('visit_status_id'));
+		}
+			// send to print queue list
+
+		if ($this->input->post('visit_status_id') == 4) {
+			if ($this->getAgencyType() == 'C') {
+				$patient = $this->patientmdl->getById($visitlog->patient_id);
+				$visit_type_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, $visitlog->approver_type_id);
+				$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, 3);
+				$user_approver = 0;
+				if (count($visit_type_approver)) { // assigning to visit type approver
+					
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+					$user_approver = $visit_type_approver[0]->us_agy_id;
+				} else if (count($cm_approver) && !count($visit_type_approver)) { // assigning to CM approver
+					
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $cm_approver[0]->us_agy_id);
+					$user_approver = $cm_approver[0]->us_agy_id;
+					
+				} else {
+					
+					$agency_settings = $this->agencysettingsmdl->get($patient->agency_id);
+					$this->visitlogmdl->updateUserApprover($visit_log_id, ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver));
+					$user_approver = ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver);
+					
+				}
+				$this->visitlogmdl->updateStatus($visit_log_id, 3);
+			
+				// An internal (and personal) email have to be sent to the “Approver” from the contractor. 
+				if ($visit_type->visit_program == "dorder") {
+					$UserFromInfo = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+					$userAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+					// send internal email
+					$subject = "HomeHealthSoft  ** Doctor Order for Patient {$patient->first_name} {$patient->last_name} has been created **";
+					$msg_text = "Please find doctor order for patient {$patient->first_name} {$patient->last_name} attached for your review and submission to physician.<br>You may also display, print and keep track of \"sent to physician status\" here: https://www.homehealthsoft.com/webapp";
+					$msg_text .=" <br><br>Created by: {$UserFromInfo->first_name} {$UserFromInfo->last_name}                {$userAgency->agency_name}";
+					$msg_text .=" <br><br>Don't hesitate to contact us at support@homehealthsoft.com if you have any questions or concerns in how to use the application.";
+					
+					$msg_imp = 0; // message importance "normal";
+					$user_to = $user_approver;
+
+					$this->messagemdl->msg_subject	= $subject;
+					$this->messagemdl->msg_text		= "\n".$msg_text;
+					$this->messagemdl->user_from = $this->getUsAgyId();
+					$msg_id = $this->messagemdl->insert();
+					$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+					// send to personal email if user have this settings ON
+					$usAgyInfo = $this->usagymdl->getByUsAgyId($user_to);
+					$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+					if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+						$this->load->library('email');
+						$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+						$this->email->to($userToInfo->user_email);
+						$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+						$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            		// $this->email->set_mailtype("html"); 
+
+						$this->email->message($body);      
+						$this->email->send();
+						//$this->email->print_debugger();
+						$this->email->clear(TRUE);
+					}
+
+				}
+			} else {
+				// After Approved need to send internal message to case Manager
+				$patient = $this->patientmdl->getById($visitlog->patient_id);
+				$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, 3);
+				if (count($cm_approver)) {
+					$UserFromInfo = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+					$userAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+					// send internal email
+					$subject = "A doctor order has been created for Pt: {$patient->first_name} {$patient->last_name}";
+					$msg_text = "Please display, print or access this doctor order here: https://www.homehealthsoft.com/webapp \n\nCreated by: {$UserFromInfo->first_name} {$UserFromInfo->last_name}                {$userAgency->agency_name}";
+					$msg_imp = 0; // message importance "normal";
+					$user_to = $cm_approver[0]->us_agy_id;
+					$usagyToInfo = $this->usagymdl->getByUsAgyId($user_to);
+
+					$this->messagemdl->msg_subject	= $subject;
+					$this->messagemdl->msg_text		= "\n".$msg_text;
+					$this->messagemdl->user_from = $this->getUsAgyId();
+					$msg_id = $this->messagemdl->insert();
+					$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+					$userToInfo = $this->usermdl->getById($usagyToInfo->user_id);				
+					if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+						$this->load->library('email');
+						$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+						$this->email->to($userToInfo->user_email);
+						$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+						$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            		// $this->email->set_mailtype("html"); 
+
+						$this->email->message($body);      
+						$this->email->send();
+						//$this->email->print_debugger();
+						$this->email->clear(TRUE);
+					}
+				}
+			}
+
+			$this->visitlogmdl->updateFlex($visit_log_id, 'approve_date', standard_date(now(), 'MYSQL')); // setting approve date      
+			if ($visit_type->visit_program == "dorder") {
+				$this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 1);				
+			}else{
+				$this->visitlogmdl->updateConfirm($visit_log_id, 1);
+			}
+      
+			$this->add2printqueue($visit_log_id); // sending task to print queue
+			
+		}	
+
+		// When a PTEV (assessment type=Discharge) has been approved (status=3or4)
+		if ($this->input->post('visit_status_id') == 4 ) {		
+			if ($visit_type->visit_program == "ptev"){
+				$this->load->model('ptevmdl');
+				$PTEV = $this->ptevmdl->get($visit_log_id);
+				// when assessment type discharge, 
+				if (isset($PTEV->tab_32_assess_type) AND $PTEV->tab_32_assess_type==5) {
+					// change the Contractor Patient Status to "Discharged"
+					$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);	
+					$this->load->model('patientcontractormdl');
+					$contractor = $this->patientcontractormdl->get($visitlog->patient_id, $visit_user->agency_id);
+					if (isset($contractor[0])) {
+						$contractor = $contractor[0];
+						$this->patientcontractormdl->updateFlex($contractor->pat_contractor_id, 'company_patient_status', 3);
+					}
+
+					 // in the Team, change all the users from this contractor (same contractor as the visit-user) to “Inactive”
+					$this->load->model('teammdl');
+					$this->teammdl->inactiveForAllUsersOfContractor($visitlog->patient_id, $visit_user->agency_id, $visit_user->discipline_id);
+				}
+			}
+		}		
+    
+	    // change billable status
+	    if ($this->input->post('billable_YN') == '1' OR $this->input->post('billable_YN') == '0') {
+	      $this->visitlogmdl->updateFlex($visit_log_id, 'billable_YN', $this->input->post('billable_YN'));
+        }
+
+        // We need to reset approval dates when stev/stpn return
+        if ($this->input->post('visit_status_id') == 5) {
+   			if ($visit_type->visit_program == "stev" OR $visit_type->visit_program == "stpn") {
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_approve_date', null);
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'approve_date', null);
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'superv_approval_date', null);
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_date', null);
+   			}
+
+   			// Send internal email to visit-user
+   			$notification_subject = "A Visit has been Returned";
+          	$returned_by = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+          	$config =& get_config();
+          	$visit_url = $config["index_url"] . "task/task/edit/".$visit_log_id;
+            $msg_text = @$returned_by->complete_name . " has returned a visit. <br>Patient name: " . $patient->first_name . " " . $patient->last_name . ". <br>Visit Date/Time: " . standard_date(mysql_to_unix($visitlog->visit_date_time), 'USA_DATE_TIME')."<br>Visit: <a href='".$visit_url."'>".$visitlog->visit_description."</a>";
+			
+			//$users_profile = $this->usagymdl->getUsersProfile($visit_user->agency_id, 3);
+            
+            $this->messagemdl->user_from = $this->getUsAgyId();
+            $this->messagemdl->msg_subject = $notification_subject;
+            $this->messagemdl->msg_text = $msg_text;
+            $this->messagemdl->insert();
+            
+            $this->usermessagemdl->insert($this->messagemdl->msg_id, $visitlog->visit_user_id, 0);
+
+            //Send email to visit-user email address
+
+            $usAgyInfo = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+			$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+			if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+				$this->load->library('email');
+				$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+				$this->email->to($userToInfo->user_email);
+				$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+				$body = $this->messagemdl->msg_text;
+				$this->email->message($body);      
+				$this->email->send();
+				//$this->email->print_debugger();
+				$this->email->clear(TRUE);
+            }
+   		}
+	   	
+	   	$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	   	$this->app->updateEpisodeVisitNumber($visitlog->cms485_id);
+
+	   	return TRUE;
+	}
+	
+	function confirm_shcedule_overlap($visit_log_id) {
+		if ($this->input->post('confirm_conflict_overlap') == 1) {
+			$this->visitlogmdl->visited_time_in = $this->input->post('visited_time_in');
+			$this->visitlogmdl->visited_time_out = $this->input->post('visited_time_out');
+			$this->visitlogmdl->visit_date_time = $this->input->post('visit_date_time');
+			$this->visitlogmdl->visited_date = $this->input->post('visited_date');
+			$this->visitlogmdl->mileage = $this->input->post('mileage');
+			$this->visitlogmdl->updateVisited($visit_log_id);
+
+			echo json_encode(array('success'=>1));
+			exit();
+		} else {
+			// set URL Params into GET
+	    	parse_str($_SERVER['QUERY_STRING'], $_GET); 
+			$conflict_msg = $this->input->get('msg', TRUE);
+			$conflicted_visited_time_in = $this->input->get('conflicted_visited_time_in', TRUE);
+			$conflicted_visited_time_out = $this->input->get('conflicted_visited_time_out', TRUE);
+			$conflicted_visit_date_time = $this->input->get('conflicted_visit_date_time', TRUE);
+			$conflicted_visited_date = $this->input->get('conflicted_visited_date', TRUE);
+			$conflicted_mileage = $this->input->get('conflicted_mileage', TRUE);
+			
+			$referrer = $_SERVER['HTTP_REFERER'];
+			if (strpos($referrer, "?") === FALSE) {
+				$referrer = $referrer.'?t='.time();
+			} else {
+				$referrer = $referrer.'&'.time();
+			}
+
+			$this->tpl->assign('referrer', $referrer);
+			$this->tpl->assign('visit_log_id', $visit_log_id);
+			$this->tpl->assign('conflict_msg', $conflict_msg);
+			$this->tpl->assign('conflicted_visited_time_in', $conflicted_visited_time_in);
+			$this->tpl->assign('conflicted_visited_time_out', $conflicted_visited_time_out);
+			$this->tpl->assign('conflicted_visit_date_time', $conflicted_visit_date_time);
+			$this->tpl->assign('conflicted_visited_date', $conflicted_visited_date);
+			$this->tpl->assign('conflicted_mileage', $conflicted_mileage);
+			
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/confirm_schedule_overlap");
+	      	$this->tpl->view("parts/ibase", $this->lang->language);
+		}
+	}
+
+	function add2printqueue ( $visit_log_id ) {
+			
+			/* Send to print queue */
+			$this->visitprintqueuemdl->user_id						= $this->getUsAgyId();
+			$this->visitprintqueuemdl->visit_log_id					= $visit_log_id;
+			$this->visitprintqueuemdl->prt_visit_print_queue_status	= "PE";
+			$this->visitprintqueuemdl->creation_datetime			= standard_date(now(), 'MYSQL');	
+			$this->visitprintqueuemdl->insert();
+	
+	}
+	
+	function formRedirection ( $visit_log_id ) {
+		
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+		
+		if ($visit_log->visit_status_id <= 2) {
+			$this->tpl->assign("task_form_updated", true);
+			return;
+		}
+		
+		if ($this->session->userdata('task_return')) {
+			header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+			exit();
+		}
+		
+		if ($visit_log->visit_user_id == $this->getUsAgyId()) {
+			header("Location: " . $this->config->config["index_url"] . "task/task");
+		} else {
+			header("Location: " . $this->config->config["index_url"] . "task/approval");
+		}
+		
+		exit();
+		
+	}
+	
+	function getPatientInfo ( $visit_log_id ) {
+		
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id);
+		
+		$this->tpl->assign('patient', $patient);
+		return $patient;
+	}
+	
+	function getPatientInfoArchive ( $visit_log_id ) {
+		
+		$visitlog = $this->visitlogmdl->getByIdArchive($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id);
+		
+		$this->tpl->assign('patient', $patient);
+		
+	}
+
+	function changeStatus ( $visit_log_id ) {
+		$config =& get_config();
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$visit_type = $this->visittypemdl->getById($visitlog->visit_type_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id);
+		
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		$company_settings = $this->agencysettingsmdl->get($visit_user->agency_id);		
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		// SUpervisor Co-sign feature for PTPN
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 12) {
+			$this->load->model('ptpnmdl');
+			$ptpn = $this->ptpnmdl->get($visit_log_id);
+			if (isset($ptpn->ther_supervisor) AND $ptpn->ther_supervisor) {
+				if (isset($company_settings->override_ptpn_sup_co_sign) AND $company_settings->override_ptpn_sup_co_sign == 1) {
+					// when "Override Superv ELECTRONIC Co-sign"is ON. ** this action will override the ELEC text even if the Supervisor Therapist doesn't actually sign.
+					if ($ptpn->supervisor_signed != 1) {
+						$this->ptpnmdl->updateFlex($visit_log_id, 'supervisor_signed', 1); 
+					}
+				} else if (isset($company_settings->ptpn_req_co_sign) AND $company_settings->ptpn_req_co_sign == 1) {
+					if ($ptpn->supervisor_signed != 1) {
+						$cosigner = $this->usagymdl->getByUsAgyId($ptpn->ther_supervisor);
+					
+						$this->tpl->assign('popupmessage', "This note can't be approved until Co-Signature by ".$cosigner->first_name." ".$cosigner->last_name." has been performed" );
+						$this->tpl->assign('continue_url', $config["index_url"] . "task/ptpn/index/".$visit_log_id."/approval" );
+						$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+				      	$this->tpl->assign('popuptitle', "Warning" );                
+				      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+				  		$this->tpl->view("parts/ibase", $this->lang->language);      
+						return false;
+					}
+				}
+			}
+		}
+
+		// SUpervisor Co-sign feature for OTPN
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 42) {
+			$this->load->model('otpnmdl');
+			$otpn = $this->otpnmdl->get($visit_log_id);
+			if (isset($otpn->ther_supervisor) AND $otpn->ther_supervisor) {
+				if (isset($company_settings->override_ptpn_sup_co_sign) AND $company_settings->override_ptpn_sup_co_sign == 1) {
+					// when "Override Superv ELECTRONIC Co-sign"is ON. ** this action will override the ELEC text even if the Supervisor Therapist doesn't actually sign.
+					if ($otpn->supervisor_signed != 1) {
+						$this->otpnmdl->updateFlex($visit_log_id, 'supervisor_signed', 1); 
+					}
+				} else if (isset($company_settings->ptpn_req_co_sign) AND $company_settings->ptpn_req_co_sign == 1) {
+					if ($otpn->supervisor_signed != 1) {
+						$cosigner = $this->usagymdl->getByUsAgyId($otpn->ther_supervisor);
+					
+						$this->tpl->assign('popupmessage', "This note can't be approved until Co-Signature by ".$cosigner->first_name." ".$cosigner->last_name." has been performed" );
+						$this->tpl->assign('continue_url', $config["index_url"] . "task/otpn/index/".$visit_log_id."/approval" );
+						$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+				      	$this->tpl->assign('popuptitle', "Warning" );                
+				      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+				  		$this->tpl->view("parts/ibase", $this->lang->language);      
+						return false;
+					}
+				}
+			}
+		}
+
+		// SUpervisor Co-sign feature for STPN
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 62) {
+			$this->load->model('stpnmdl');
+			$stpn = $this->stpnmdl->get($visit_log_id);
+			if (isset($stpn->ther_supervisor) AND $stpn->ther_supervisor) {
+				if (isset($company_settings->override_ptpn_sup_co_sign) AND $company_settings->override_ptpn_sup_co_sign == 1) {
+					// when "Override Superv ELECTRONIC Co-sign"is ON. ** this action will override the ELEC text even if the Supervisor Therapist doesn't actually sign.
+					if ($stpn->supervisor_signed != 1) {
+						$this->stpnmdl->updateFlex($visit_log_id, 'supervisor_signed', 1); 
+					}
+				} else if (isset($company_settings->ptpn_req_co_sign) AND $company_settings->ptpn_req_co_sign == 1) {
+					if ($stpn->supervisor_signed != 1) {
+						$cosigner = $this->usagymdl->getByUsAgyId($stpn->ther_supervisor);
+					
+						$this->tpl->assign('popupmessage', "This note can't be approved until Co-Signature by ".$cosigner->first_name." ".$cosigner->last_name." has been performed" );
+						$this->tpl->assign('continue_url', $config["index_url"] . "task/stpn/index/".$visit_log_id."/approval" );
+						$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+				      	$this->tpl->assign('popuptitle', "Warning" );                
+				      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+				  		$this->tpl->view("parts/ibase", $this->lang->language);      
+						return false;
+					}
+				}
+			}
+		}
+	
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 116) {
+			if ($patient->gov_program == 'Y-Waiver') {
+				$this->load->model('muvimdl');
+				$muvi = $this->muvimdl->get($visitlog->visit_log_id);
+				if (empty($muvi)) {
+					$muvi = $this->muvimdl->getEmpty();
+				}
+
+				if ($agency->superv_sign_require ==  1 AND !$muvi->wsuperv_signature) {
+					$this->tpl->assign('popupmessage', "This note can't be approved until Supervisor Signed" );
+					$this->tpl->assign('continue_url', $config["index_url"] . "task/muvi/index/".$visit_log_id."/approval" );
+					$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+			      	$this->tpl->assign('popuptitle', "Warning" );                
+			      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+			  		$this->tpl->view("parts/ibase", $this->lang->language);      
+					return false;
+				}
+			}
+		}
+
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 115) {
+			if ($patient->gov_program == 'Y-Waiver') {
+				$this->load->model('mavimdl');
+				$mavi = $this->mavimdl->get($visitlog->visit_log_id);
+				if (empty($mavi)) {
+					$mavi = $this->mavimdl->getEmpty();
+				}
+
+				if ($agency->superv_sign_require ==  1 AND !$mavi->wsuperv_signature) {
+					$this->tpl->assign('popupmessage', "This note can't be approved until Supervisor Signed" );
+					$this->tpl->assign('continue_url', $config["index_url"] . "task/mavi/index/".$visit_log_id."/approval" );
+					$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+			      	$this->tpl->assign('popuptitle', "Warning" );                
+			      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+			  		$this->tpl->view("parts/ibase", $this->lang->language);      
+					return false;
+				}
+			}
+		}
+
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 117) {
+			if ($patient->gov_program == 'Y-Waiver') {
+				$this->load->model('revimdl');
+				$revi = $this->revimdl->get($visitlog->visit_log_id);
+				if (empty($revi)) {
+					$revi = $this->revimdl->getEmpty();
+				}
+
+				if ($agency->superv_sign_require ==  1 AND !$revi->wsuperv_signature) {
+					$this->tpl->assign('popupmessage', "This note can't be approved until Supervisor Signed" );
+					$this->tpl->assign('continue_url', $config["index_url"] . "task/revi/index/".$visit_log_id."/approval" );
+					$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+			      	$this->tpl->assign('popuptitle', "Warning" );                
+			      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+			  		$this->tpl->view("parts/ibase", $this->lang->language);      
+					return false;
+				}
+			}
+		}
+
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 113) {
+			if ($patient->gov_program == 'Y-Waiver') {
+				$this->load->model('aqvimdl');
+				$aqvi = $this->aqvimdl->get($visitlog->visit_log_id);
+				if (empty($aqvi)) {
+					$aqvi = $this->aqvimdl->getEmpty();
+				}
+
+				if ($agency->superv_sign_require ==  1 AND !$aqvi->wsuperv_signature) {
+					$this->tpl->assign('popupmessage', "This note can't be approved until Supervisor Signed" );
+					$this->tpl->assign('continue_url', $config["index_url"] . "task/aqvi/index/".$visit_log_id."/approval" );
+					$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+			      	$this->tpl->assign('popuptitle', "Warning" );                
+			      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+			  		$this->tpl->view("parts/ibase", $this->lang->language);      
+					return false;
+				}
+			}
+		}
+
+		if ($this->input->post('visit_status_id') == 4 AND $visitlog->visit_type_id == 119) {
+			if ($patient->gov_program == 'Y-Waiver') {
+				$this->load->model('artvimdl');
+				$artvi = $this->artvimdl->get($visitlog->visit_log_id);
+				if (empty($artvi)) {
+					$artvi = $this->artvimdl->getEmpty();
+				}
+
+				if ($agency->superv_sign_require ==  1 AND !$artvi->wsuperv_signature) {
+					$this->tpl->assign('popupmessage', "This note can't be approved until Supervisor Signed" );
+					$this->tpl->assign('continue_url', $config["index_url"] . "task/artvi/index/".$visit_log_id."/approval" );
+					$this->tpl->assign('cancel_action', 'location.href=\''.$config["index_url"].'task/approval\''); 
+
+			      	$this->tpl->assign('popuptitle', "Warning" );                
+			      	$this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+			  		$this->tpl->view("parts/ibase", $this->lang->language);      
+					return false;
+				}
+			}
+		}
+
+		$this->assignPostData($this->visitlogmdl);
+		$this->visitlogmdl->updateComments($visit_log_id, $this->input->post('comments'));
+		$this->visitlogmdl->updateFlex($visit_log_id, 'agency_cm_comments', $this->input->post('agency_cm_comments'));
+		
+		$this->visitlogmdl->updateStatus($visit_log_id, $this->input->post('visit_status_id'));
+		
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		
+		if ($this->getAgencyType() == 'C' && $this->input->post('visit_status_id') == 4) {
+			
+			$visit_type_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, $visitlog->approver_type_id);
+			$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, 3);
+			$user_approver = 0;
+			if (count($visit_type_approver)) { // assigning to visit type approver
+				
+				$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+				$user_approver = $visit_type_approver[0]->us_agy_id;
+				
+			} else if (count($cm_approver) && !count($visit_type_approver)) { // assigning to CM approver
+				
+				$this->visitlogmdl->updateUserApprover($visit_log_id, $cm_approver[0]->us_agy_id);
+				$user_approver = $cm_approver[0]->us_agy_id;
+				
+			} else {
+				
+				$agency_settings = $this->agencysettingsmdl->get($patient->agency_id);
+				$this->visitlogmdl->updateUserApprover($visit_log_id, ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver));
+				$user_approver = ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver);
+				
+			}
+			
+			$this->visitlogmdl->updateStatus($visit_log_id, 3);
+
+			// An internal (and personal) email have to be sent to the “Approver”. 
+			if ($visit_type->visit_program == "dorder") {
+				// send internal email
+				$subject = "You have a Doctor Order for Approval";
+				$msg_text = "A Doctor Order for patient {$patient->first_name} {$patient->last_name}  has been sent to you for your Approval";
+				$msg_imp = 0; // message importance "normal";
+				$user_to = $user_approver;
+
+				$this->messagemdl->msg_subject	= $subject;
+				$this->messagemdl->msg_text		= "\n".$msg_text;
+				$this->messagemdl->user_from = $this->getUsAgyId();
+				$msg_id = $this->messagemdl->insert();
+				$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+				// send to personal email if user have this settings ON
+				$usAgyInfo = $this->usagymdl->getByUsAgyId($user_to);
+				$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+				if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+					$this->load->library('email');
+					$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+					$this->email->to($userToInfo->user_email);
+					$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+					$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            		// $this->email->set_mailtype("html"); 
+
+					$this->email->message($body);      
+					$this->email->send();
+					//$this->email->print_debugger();
+					$this->email->clear(TRUE);
+				}
+			}
+		}
+		
+		// approving visit
+		if ($this->input->post('visit_status_id') == 4) {
+			
+			$this->visitlogmdl->updateFlex($visit_log_id, 'approve_date', standard_date(now(), 'MYSQL')); // setting approve date
+      		if ($visit_type->visit_program == "dorder") {
+				$this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 1);			
+			}else{
+				$this->visitlogmdl->updateConfirm($visit_log_id, 1);      			
+			}
+			$this->add2printqueue($visit_log_id);
+		}
+
+		// When a PTEV (assessment type=Discharge) has been approved (status=3or4)
+		if ($this->input->post('visit_status_id') == 4 ) {		
+			if (in_array($visitlog->visit_type_id, array(10, 40, 60))) {
+				$modelClass = $visit_type->visit_program.'mdl';
+				$this->load->model($modelClass);
+				$VISIT = $this->$modelClass->get($visit_log_id);
+
+				$evalDischarged = false;
+
+				switch ($visitlog->visit_type_id) {
+					case 10:
+					case 60:
+					if (isset($VISIT->tab_32_assess_type) AND $VISIT->tab_32_assess_type==5) {
+						$evalDischarged = true;
+					}
+					break;
+
+					case 40:
+					if (isset($VISIT->tab_92_assess_type) AND $VISIT->tab_92_assess_type==5) {
+						$evalDischarged = true;
+					}
+					break;
+				}
+
+				if ($evalDischarged) {
+					$visits = $this->visitlogmdl->getNext($visitlog->visit_date_time, $visitlog->cms485_id, array(10,12,40,42,60,62));
+					if (count($visits) == 0) {						
+	                  	// No more visits found after this visit. SO we can safely discharge patient now
+	                  	// change the Contractor Patient Status to "Discharged"
+						$this->load->model('patientcontractormdl');
+						$contractor = $this->patientcontractormdl->get($visitlog->patient_id, $visit_user->agency_id);
+						if (isset($contractor[0])) {
+							$contractor = $contractor[0];
+							$this->patientcontractormdl->updateFlex($contractor->pat_contractor_id, 'company_patient_status', 3);
+						}	                   	
+					} else {
+						// exit(count($visits)." visits has been found next");
+					}
+
+					// in the Team, change all the users from this contractor (same contractor as the visit-user) to “Inactive”
+					$this->load->model('teammdl');
+					$this->teammdl->inactiveForAllUsersOfContractor($visitlog->patient_id, $visit_user->agency_id, $visit_user->discipline_id);
+				}
+			}
+		}
+		
+
+		// We need to reset approval dates when stev/stpn return
+        if ($this->input->post('visit_status_id') == 5) {
+   			if ($visit_type->visit_program == "stev" OR $visit_type->visit_program == "stpn") {
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_approve_date', null);
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'approve_date', null);
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'superv_approval_date', null);
+   				$this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_date', null);
+				 }
+				 $loggedinUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+				 if($visit_user->agency_id !== $loggedinUser->agency_id) {
+					$users_profile = $this->usagymdl->getUsersProfile($visit_user->agency_id, 3);
+					// Send internal email to visit-user
+					$notification_subject = "A Visit has been Returned";
+						 $returned_by = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+						 $config =& get_config();
+						 $visit_url = $config["index_url"] . "task/task/edit/".$visit_log_id;
+						 $msg_text = @$returned_by->complete_name . " has returned a visit. <br>Patient name: " . $patient->first_name . " " . $patient->last_name . ". <br>Visit Date/Time: " . standard_date(mysql_to_unix($visitlog->visit_date_time), 'USA_DATE_TIME')."<br>Visit: <a href='".$visit_url."'>".$visitlog->visit_description."</a>". "<br>";
+					 
+						 
+						 $this->messagemdl->user_from = $this->getUsAgyId();
+						 $this->messagemdl->msg_subject = $notification_subject;
+						 $this->messagemdl->msg_text = $msg_text;
+						 $this->messagemdl->insert();
+						 $usAgyInfo = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+						 $userToInfo = $this->usermdl->getById($usAgyInfo->user_id);	
+						 
+						 $this->load->library('email');
+						 
+						 
+						 foreach ($users_profile as $up) {
+							 $this->usermessagemdl->insert($this->messagemdl->msg_id, $up->us_agy_id, 0);
+							 if ($up->internal_email_to_mailbox == 1 AND $this->validation->valid_email($up->email)) {
+									 /*if ($usAgyInfo->user_id == $up->user_id) {
+										 $this->email->tkadersone2731
+										 o("$userToInfo->user_email");
+									 }*/
+									$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+									$this->email->to("$up->email");
+									$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+									$body = $this->messagemdl->msg_text;
+									$this->email->message($body);      
+									$this->email->send();
+									//$this->email->print_debugger();
+									$this->email->clear(TRUE);
+							 }
+						 }
+				 }
+   		}
+		if ($this->session->userdata('task_return')) {
+			redirect($this->session->userdata('task_return'));
+		} else {
+			redirect('task/approval');
+		}
+		
+	}
+	
+	function returnFromApproved ( $visit_log_id ) {
+		
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+		$us_agy = $this->usagymdl->getByUsAgyId($visit_log->visit_asigned_by);
+		$agency = $this->agencymdl->getByAgencyId($us_agy->agency_id);
+		
+		if ($agency->agency_type == 'A') { // agency
+			
+			$this->visitlogmdl->updateStatus($visit_log_id, 3);
+			
+		} else if ($agency->agency_type == 'C') { // contractor
+			
+			$this->visitlogmdl->updateStatus($visit_log_id, 8);
+			
+		}
+		
+		if ($this->session->userdata('task_return')) {
+			redirect($this->session->userdata('task_return'));
+		} else {
+			redirect('task/task');
+		}
+		
+	}
+
+	function submitForApproval($visit_log_id){
+		// if ($this->input->post('visit_status_id') == 3) {
+			$visitlog = $this->visitlogmdl->getById($visit_log_id);
+			$visit_type = $this->visittypemdl->getById($visitlog->visit_type_id);
+
+			$patient = $this->patientmdl->getById($visitlog->patient_id);
+			$ppr_id = $this->teammdl->getPPRId($visitlog->patient_id,$visitlog->visit_user_id);
+			$this->load->model('payrollratebyuserpatientvisittypemdl');
+			$payroll_visit_rate = $this->payrollratebyuserpatientvisittypemdl->getRate($ppr_id,  $visitlog->visit_type_id, $visitlog->visit_date_time);
+			if (!$payroll_visit_rate) {
+				$this->load->model('payrollratebyuservisittypemdl');
+				$payroll_visit_rate = $this->payrollratebyuservisittypemdl->getRate($visitlog->visit_user_id,  $visitlog->visit_type_id, $visitlog->visit_date_time);
+								
+			}
+			if (!$payroll_visit_rate) {
+				$this->load->model('payrollratebydisciplinemdl');
+				$payroll_visit_rate = $this->payrollratebydisciplinemdl->getRate($this->getAgencyId(),  $visitlog->visit_type_id, $visitlog->visit_date_time);	
+			}
+			
+			
+			if (in_array($visit_type->visit_program, array('form8606A','quartsumm','form3625','dorder', 'aavi'))) {
+				$payroll_visit_rate = 0.00;
+			}else if (!$payroll_visit_rate) {
+				if ($visit_type->visit_program == "msvt") {
+					$payroll_visit_rate = 0.00;
+				}
+			}
+
+			if ($payroll_visit_rate !==FALSE) {
+				$payroll_visit_amount = $payroll_visit_rate;
+
+				// Calculate payroll visit amount for special therapy
+				if (in_array($visitlog->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+					$date2 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_out);
+					$date1 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_in);
+					$visit_duration = floor(($date2 - $date1)/60);
+					if ($visit_duration < 0) {
+						$date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visitlog->visited_time_out);
+                		$visit_duration = floor(($date2 - $date1)/60);
+					}
+
+					$this->load->model('spvisitunitmdl');
+					$units = $this->spvisitunitmdl->get('PAYROLL', $visit_duration);
+
+					if ($units > 0){
+						$payroll_visit_amount = round($payroll_visit_rate*$units, 2);          
+						$payroll_visit_amount = number_format($payroll_visit_amount, 2);   
+						
+						if (substr($payroll_visit_amount, -3) == '.99') {
+			            	$payroll_visit_amount += 0.01;
+			          	} else if (substr($payroll_visit_amount, -3) == '.98') {
+			            	$payroll_visit_amount += 0.02;
+			          	}   
+					} else {
+						$payroll_visit_amount = 0;
+					}
+					
+					// $payroll_visit_amount = round($payroll_visit_rate * ($visit_duration/60), 2);
+				} else if($patient->gov_program == 'Waiver') {
+					// When patient gov program is 'Waiver' it definately from contractor with LOB = 2 (Long term care)
+					// So we need to find units using gov program CLASS because this will act as CLASS program
+					$date2 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_out);
+					$date1 = strtotime(date("Y-m-d")." ".$visitlog->visited_time_in);
+					$visit_duration = floor(($date2 - $date1)/60);
+					if ($visit_duration < 0) {
+						$date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visitlog->visited_time_out);
+                		$visit_duration = floor(($date2 - $date1)/60);
+					}
+
+					$this->load->model('spvisitunitmdl');
+					$units = $this->spvisitunitmdl->get('CLASS', $visit_duration);
+
+					if ($units > 0){
+						$payroll_visit_amount = round($payroll_visit_rate*$units, 2);  
+						$payroll_visit_amount = number_format($payroll_visit_amount, 2);   
+						
+						if (substr($payroll_visit_amount, -3) == '.99') {
+			            	$payroll_visit_amount += 0.01;
+			          	} else if (substr($payroll_visit_amount, -3) == '.98') {
+			            	$payroll_visit_amount += 0.02;
+			          	}       
+					} else {
+						$payroll_visit_amount = 0;
+					}					
+				}
+
+				$this->visitlogmdl->updateStatus($visit_log_id, 3);
+				$us_agy = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+				
+				if (in_array($visit_type->visit_program, array('form8606A', 'quartsumm', 'form3625','dorder', 'aavi'))) {
+					$us_agy->payroll_mileage_rate = 0;
+					$this->visitlogmdl->updateFlex($visit_log_id, 'billable_YN', 0);
+				}
+
+				$this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_approve_date', $visitlog->visit_date_time);
+				$this->visitlogmdl->updateRates($visit_log_id, $payroll_visit_amount, $us_agy->payroll_mileage_rate);
+				
+				// echo '$visitlog->approver_type_id='.$visitlog->approver_type_id.'<br>';
+				$visit_type_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, $visitlog->approver_type_id);
+				$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+				
+				// echo "visit_type_approver={$visit_type_approver[0]->us_agy_id},";
+				// echo "cm_approver={$cm_approver[0]->us_agy_id},<br>";
+				if (count($visit_type_approver) && $visit_type_approver[0]->agency_id == $this->getAgencyId()) { // assigning to visit type approver
+					
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+					$user_approver = $visit_type_approver[0]->us_agy_id;
+					// echo "1. user_approver={$user_approver}<br>";
+				} else if (count($cm_approver) && !count($visit_type_approver) && $cm_approver[0]->agency_id == $this->getAgencyId()) { // assigning to CM approver
+					
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $cm_approver[0]->us_agy_id);
+					$user_approver = $cm_approver[0]->us_agy_id;
+					// echo "2. user_approver={$user_approver}<br>";
+					
+				} else {
+					
+					$agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+					$this->visitlogmdl->updateUserApprover($visit_log_id, ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver));
+					$user_approver = ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver);
+					// echo ($visitlog->approver_type_id == 1 ? '$agency_settings->sn_approver' : '$agency_settings->pt_approver').'='.$user_approver.'<br>';
+					// echo "3. user_approver={$user_approver}<br>";
+					
+				}
+
+				if ($this->getAgencyType() == 'C') {
+					$this->visitlogmdl->updateStatus($visit_log_id, 8);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'superv_user_id', $user_approver);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'superv_approval_date', $visitlog->sent_to_approve_date);
+				}
+				
+				if ($this->getAgencyType() == 'A') {
+					$this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_user_id', $user_approver);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'agency_approv_date', $visitlog->sent_to_approve_date);
+				}
+
+				// An internal (and personal) email have to be sent to the “Approver” from agency
+				if ($visit_type->visit_program == "dorder") {
+					// send internal email
+					$subject = "** Doctor Order for Patient {$patient->first_name} {$patient->last_name} has been created **";
+					$msg_text = "A Doctor Order for patient {$patient->first_name} {$patient->last_name}  has been sent to you for your review and submission to physician.";
+					$msg_imp = 0; // message importance "normal";
+					$user_to = $user_approver;
+
+					$this->messagemdl->msg_subject	= $subject;
+					$this->messagemdl->msg_text		= "\n".$msg_text;
+					$this->messagemdl->user_from = $this->getUsAgyId();
+					$msg_id = $this->messagemdl->insert();
+					$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+					// send to personal email if user have this settings ON
+					$usAgyInfo = $this->usagymdl->getByUsAgyId($user_to);
+					$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);				
+					if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+						$this->load->library('email');
+						$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+						$this->email->to($userToInfo->user_email);
+						$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+						$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            		// $this->email->set_mailtype("html"); 
+
+						$this->email->message($body);      
+						$this->email->send();
+						//$this->email->print_debugger();
+						$this->email->clear(TRUE);
+					}
+				}
+				return true;
+			}else{
+				return false;
+				// $this->tpl->assign('error_string', "Payroll visit rate not found.");  
+			}
+			
+		// }
+	}
+	
+ }

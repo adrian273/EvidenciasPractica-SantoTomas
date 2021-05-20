@@ -1,0 +1,155 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="agency_id" value="{$entity_id}">
+  <input type="hidden" name="internal_email_to_mailbox" value="1">
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Personal Information</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Email</td>
+    <td>
+    	<input type="text" name="user_email" value="{$user_email}"> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Confirm Email</td>
+    <td>
+    	<input type="text" name="email_confirm" value="{$email_confirm}"> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">User First Name</td>
+    <td>
+    	<input type="text" name="first_name" value="{$first_name}"> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">User Last Name</td>
+    <td>
+      <input type="text" name="last_name" value="{$last_name}"> *
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Address (address, city, zipcode)</td>
+    <td>
+    	<input type="text" class="js-input-field" placeholder="Address" id="address" name="address" value="{$user->address}" />
+      <input type="text" class="js-input-field" placeholder="City" id="city" name="city" value="{$user->city}" /> <br />
+      {html_options options=$state_list selected=$user->state_id name='state_id' class='js-input-field'}
+      <input type="text" class="js-input-field" placeholder="Zipcode" id="v" name="zip_code" value="{$user->zip_code}" />
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Profesional Information</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <!--
+  <tr> 
+    <td class="ftitle">Type Employee</td>
+    <td>{html_options options=$type_employee_list selected=$tab_006_employee_type name='tab_006_employee_type'}</td>
+  </tr>
+  -->
+  <tr> 
+    <td class="ftitle">Discipline</td>
+    <td>
+			{if $profile_id==6}
+    	<input type="hidden" id="discipline_id" name="discipline_id" value="9">
+			Physian
+			{else}
+			{html_options options=$discipline_list selected=$discipline_id name='discipline_id' onchange='upinVisibility(this.value)'} *
+			{/if}
+			</td>
+  </tr>
+  <tbody id="upin_td" style="display: none">
+	  <tr>
+	    <td class="ftitle">NPI</td>
+	    <td>
+	    	<input type="text" id="upin" name="npi" value="{$npi}">
+	    </td>
+	  </tr>
+	  <tr>
+	    <td class="ftitle">Upin</td>
+	    <td>
+	    	<input type="text" id="upin" name="upin" value="{$upin}">
+	    </td>
+	  </tr>
+  </tbody>
+  
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Electronic Signature</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr> 
+    <td class="ftitle">User set-up for Electronic Signature</td>
+    <td>{html_radios options=$logic_list selected=$electronic_sign_setup name='electronic_sign_setup' id='electronic_sign_setup'} *</td>
+  </tr>
+  
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Agency Profile</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr> 
+    <td class="ftitle">Profile</td>
+    <td>
+      {if $profile_only}
+        {$profile_list[$profile_only]}
+        <input type="hidden" name="profile_id" id="profile_id" value="{$profile_only}">
+      {else}
+        {html_options options=$profile_list selected=$profile_id name='profile_id' id='profile_id'} *
+      {/if}
+    </td>
+  </tr>
+  <tr> 
+    <td class="ftitle"></td>
+    <td>
+      <label><input type="radio" {if $contractor_or_employee neq 'C'}checked="checked"{/if} value="E" name="contractor_or_employee">Employee</label>
+      <label><input type="radio" {if $contractor_or_employee eq 'C'}checked="checked"{/if} value="C" name="contractor_or_employee">Contractor</label> *
+      <br>
+      <span class="stip">"Payroll Stubs will be created for this user" when Employee is selected and "Invoices will be created for this user" when Contractor is selected.</span>   
+    </td>
+  </tr>
+  <tr>    
+      <td class="ftitle"><b>Default Payment Type</b></td>
+      <td>
+        {html_options options=$payment_type_list selected=$default_payment_type name='default_payment_type'}
+      </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Invitation</td>
+  </tr> 
+  <tr>
+    <td colspan="2" height="10"></td>
+  </tr> 
+  <tr> 
+    <td class="ftitle">Send Invitation Now ?</td>
+    <td>{html_radios options=$logic_list selected=$send_invitation_now name='send_invitation_now' id='send_invitation_now'} *</td>
+  </tr>
+  
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	function upinVisibility ( discipline_id ) {literal}{{/literal}
+
+		if (discipline_id == 9)  {literal}{{/literal}
+			switchDisplay2('upin_td', '');
+			setValue('profile_id', 4);
+			setCheckedValue('electronic_sign_setup',0);
+		{literal}}{/literal} else {literal}{{/literal}
+		 	switchDisplay2('upin_td', 'none');setValue('upin', '');
+		 	setCheckedValue('electronic_sign_setup',1);
+		{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+	upinVisibility({$discipline_id});
+	
+</script>

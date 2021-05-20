@@ -1,0 +1,57 @@
+<?
+
+ class PtEvInitialMdl extends Model {
+
+	var $initial_ptev_id;
+	var $visit_log_id;
+	var $prev_p1_fun_sts_tab048_bed_mob;
+	var $prev_p1_fun_sts_tab048_trans_wc_bed;
+  var $prev_p1_fun_sts_tab048_trans_tub_show;
+	var $prev_p1_fun_sts_tab048_supine_tosit;  
+	var $prev_p1_fun_sts_tab048_sittostand;	
+	var $prev_p1_fun_sts_gait_feet;
+	var $prev_p1_fun_sts_tab048_gait_ft;
+  var $prev_p1_fun_sts_tab078_gait_dev_typ;  
+	var $prev_weig_bear_rle;
+	var $prev_weig_bear_lle;
+	var $prev_p1_fun_sts_tab090_weig_bear_12345;
+	var $prev_p1_fun_sts_weig_bear_sts_other_weight;
+	var $prev_p1_fun_sts_tab027_weig_bear_sts_other_weight;
+	var $prev_p1_fun_sts_tab048_stairs;
+	var $prev_p1_fun_sts_tab048_stepscurb;
+	var $prev_p1_fun_sts_tab048_toileting;
+	var $prev_p1_fun_sts_tab048_wheelcha;
+	var $prev_p1_fun_sts_tab048_Other;
+	
+  function PtEvInitialMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $visit_log_id ) {
+	
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$query = $this->db->get('vt_pt_evaluation_initial');
+		return $query->row();
+	
+	}
+
+	function insert () {
+	
+		$this->db->insert('vt_pt_evaluation_initial', $this);
+	
+	}
+	
+	function update ( $visit_log_id ) {
+	
+		unset($this->initial_ptev_id);
+
+		$this->db->where('visit_log_id', $visit_log_id);
+	
+		$this->db->update('vt_pt_evaluation_initial', $this);
+	
+	}
+	
+ }

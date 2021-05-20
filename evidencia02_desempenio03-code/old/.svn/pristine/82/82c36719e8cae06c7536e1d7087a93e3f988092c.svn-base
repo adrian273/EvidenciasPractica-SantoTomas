@@ -1,0 +1,145 @@
+<?
+
+class DoctorOrder extends MY_Controller {
+
+	var $rules = array("order_date"				=> "required",
+						"order_description"		=> "required",
+						"doctor_office_id"		=> "required");
+
+	function DoctorOrder() {
+	
+		parent::MY_Controller();
+		
+		$this->tpl->assign("resource_path", "patient/doctororder");
+		$this->tpl->assign('tab_page', true);
+
+	}
+
+	function index ( $patient_id ) {
+
+		$this->tpl->assign("entity_id", $patient_id);
+//		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign(array("add_sufix" => "Doctor Order"));
+		$this->tpl->assign("resource_edit", 'view');
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+	function grid ( $patient_id ) {
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+
+		$head->append($this->xml->Element("column", "width=10;align=center", "Order Date"));
+		$head->append($this->xml->Element("column", "width=*", "Order Type"));
+		$head->append($this->xml->Element("column", "width=*", "Ordered By"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Physician"));
+		$head->append($this->xml->Element("column", "width=*", "Status"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Status Date"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($data = $this->docdoctorordermdl->getByPatient($patient_id) as $order) {
+
+			$patient   = $this->patientmdl->getById($order->patient_id);
+			$doctor_office = $this->agencymdl->getByAgencyId($order->doctor_office_id);
+			$order_by  = $this->usagymdl->getByUsAgyId($order->order_by_user_id);
+
+			$cell = $this->xml->Element("row", "id=" . $order->doc_doctor_order_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->order_date))));
+			$cell->append($this->xml->Element("cell", null, $order->doc_doctor_order_type_description));
+			$cell->append($this->xml->Element("cell", null, @$order_by->first_name . " " . @$order_by->last_name));
+			$cell->append($this->xml->Element("cell", null, $patient->first_name . " " . $patient->last_name));
+			$cell->append($this->xml->Element("cell", null, @$doctor_office->agency_name));
+			$cell->append($this->xml->Element("cell", null, $order->tab_description));
+			if ($order->tab_023_order_status == 2) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->sent_date))));
+			} else if ($order->tab_023_order_status == 3) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->signed_date))));
+			} else if ($order->tab_023_order_status == 4) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->rejected_date))));
+			}
+			$document->append($cell);
+		}
+
+	}
+
+	function setDoctorOrderStatus () {
+		
+		$this->doctorordermdl->tab_023_order_status = 1;
+		
+		if (!is_null($this->doctorordermdl->sent_date)) {
+			$this->doctorordermdl->tab_023_order_status = 2;
+		}
+		
+		if (!is_null($this->doctorordermdl->signed_date)) {
+			$this->doctorordermdl->tab_023_order_status = 3;
+		}
+		
+		if (!is_null($this->doctorordermdl->received_date)) {
+			$this->doctorordermdl->tab_023_order_status = 4;
+		}
+		
+	}
+
+	function view ( $patient_id, $doc_doctor_order_id ) {
+		
+		$doctor_order = $this->docdoctorordermdl->getById($doc_doctor_order_id);
+		
+		$this->session->set_userdata('doctororder_return', "patient/doctororder/index/" . $doctor_order->patient_id);
+		
+		redirect('doctororder/front/edit/' . $doc_doctor_order_id);
+		
+	}
+	
+	function add ( $patient_id ) {
+		
+		$this->tpl->assign("faction", "add/" . $patient_id);
+		$this->tpl->assign("default_date", date('Y-m-d'));
+		$this->tpl->assign('cancel_action', 'patient/doctororder/index/' . $patient_id);
+		$this->tpl->assign('tab_094_list_options', $this->parametermdl->getByType(94));
+		
+		if (!$this->input->post('tab_094_expected_time_sign')) $this->tpl->assign("tab_094_expected_time_sign", 4);
+		
+		$this->tpl->assign('patient_list', $this->getPatients(null, null, false));
+		$this->tpl->assign('doctor_office_list',  $this->patientdoctorofficemdl->get($patient_id, false));
+		$this->tpl->assign('order_type_list', $this->docdoctorordertypemdl->getAdd());
+
+		$this->assignObject($this->patientmdl->getById($patient_id));
+		
+		if ($this->input->post('doc_doctor_order_type_id') == 4) {
+			$this->rules['tab_094_expected_time_sign'] = "required";
+		}
+		
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Doctor Order");
+			$this->tpl->assign_include("dynamic_tpl", "patient/doctor_order/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/doctor_order/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->assignPostData($this->docdoctorordermdl);
+			$this->assignPostData($this->doctorordermdl);
+			
+			$this->docdoctorordermdl->order_by_user_id = $this->getUsAgyId();
+			//$this->docdoctorordermdl->insert($patient_id, 2);
+			$this->docdoctorordermdl->insert($patient_id, 1);
+			
+			$this->doctorordermdl->insert($this->docdoctorordermdl->doc_doctor_order_id);
+			
+			redirect('patient/doctororder/index/' . $patient_id);
+
+		}
+		
+	}
+
+}

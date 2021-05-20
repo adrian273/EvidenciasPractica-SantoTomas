@@ -1,0 +1,837 @@
+
+<style>
+        .container {
+            width: 100%;
+        }
+
+        h2,h5.header-title {
+          text-align: center;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        td {
+            text-align: left;
+            padding: 2px;
+            font-size: 13px;
+        }
+
+        th {
+            background-color: white;
+            color: black;
+            text-align: left;
+            
+            border:none;
+            text-transform: uppercase;
+            font-size: 13px; 
+        }
+
+        .striped tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr.border_bottom td {
+            border-top:1pt solid black;
+            padding-bottom: 10px;
+        }
+
+        tr.header-info td {
+            font-size: 13px;
+           
+        }
+
+        .communication_section {
+            border: none;
+        }
+
+        img {
+            display: block;
+            margin:auto;
+        }   
+</style>
+
+<?php
+    set_time_limit(500);
+    function img_ch() {
+        return "<img src='./style/images/icon_enable_negro.gif' height='12' />";
+    }
+
+    function template($number) {
+        $check1 = "";
+        $check2 = "";
+        $check3 = "";
+        $check4 = "";
+        $check5 = "";
+        //$img_ch = "<p></p><img src='./style/images/icon_enable.png' height='12' /></p>";
+        $img_ch = "<b>x</b>";
+        //$img_ch = "<input type='checkbox' name='checkbox' checked='checked'>";
+        /*switch ($number) {
+          case 1:
+            $check1 = img_ch();
+          break; 
+          case 2:
+            $check2 = img_ch();
+          break;
+          case 3:
+            $check3 = img_ch();
+          break;
+          case 4:
+            $check4 = img_ch();
+          break;
+          case 5:
+            $check5 = img_ch();
+          break;
+          default:
+          break;
+        }*/
+        if ($number == 1) {
+          $check1 = $img_ch;
+        }
+        else if ($number == 2) {
+          $check2 = $img_ch;
+        }
+        else if ($number == 3) {
+          $check3 = $img_ch;
+        }
+        else if ($number == 4) {
+          $check4 = $img_ch;
+        }
+        else if ($number == 5) {
+          $check5 = $img_ch;
+        }
+        $temp = "
+          <td>$check1</td>
+          <td>$check2</td>
+          <td>$check3</td>
+          <td>$check4</td>
+          <td>$check5</td>
+        ";
+        return $temp;
+    }
+?>
+
+<div class="container" style="font-family:Arial;">
+    <h2><?php 
+          if($agency->print_agency_or_contractor_on_notes == 'agency' || $agency->print_agency_or_contractor_on_notes == 'both') {    
+            echo ($agency->agency_name); // agency name
+          } else if($agency->print_agency_or_contractor_on_notes == 'contractor') {
+            echo ($visit_contractor_name); // contractor name
+          }
+          ?></h2>
+    <h2>Annual Assessment</h2>
+    <table>
+        <tr class="border_bottom header-info">
+            <td>
+                <b>Client:</b>  <?php echo $patient->first_name . " " . $patient->last_name;?> <br>
+                <b>DOB:</b>  <?php echo ($patient->date_birth AND $patient->date_birth != '0000-00-00') ? date('m/d/Y', strtotime($patient->date_birth)) : ''; ?> <br>
+                <b>Goals Valid Through:</b> <?php echo date('m/d/Y', strtotime($goals_valid_through_date)); ?> <br>
+                <b>Session day(s) and time(s): </b> <?php echo date('l ; h:ia', strtotime($visit_date_time)); ?>
+            </td>
+            <td>
+                <b>Date of Assessment:</b><?php echo date('m/d/Y', strtotime($visit_date_time)); ?> <br>
+                <b>Service Coordinator:</b><?php echo $service_co_ordinator; ?> <br>
+                <b>Therapist:</b>
+                      <?php 
+                      $agency_company_name = "";
+                      if ($agency->print_agency_or_contractor_on_notes == "contractor") {
+                          $agency_company_name = " <br>- ".$visit_contractor_name;
+                      }
+                      echo $first_name . " " . $last_name . $agency_company_name;
+                      ?>
+                <br>
+                <b>PASA:</b>
+                <?php echo $pasa; ?>
+                <br>
+            </td>
+        </tr>
+       <tr>
+            <td colspan="2">
+                <b>Diagnosis:</b>
+            </td>
+            <td></td>
+       </tr>
+       <tr>
+            <td colspan="2">
+                <?php echo nl2br($diagnoses); ?>
+            </td>
+            <td></td>
+       </tr>
+       <tr>
+            <td colspan="2"><b>Client Profile:</b></td>
+            <td></td>
+        </tr>
+      <tr>
+        <td colspan="2">
+            <?php echo nl2br($client_profile); ?>
+        </td>
+        <td></td>
+      </tr>
+    </table>
+    <table class="communication_section striped" style="padding-top:20px;">
+        <thead>
+            <tr>
+                <th>Communication:</th>
+                <th>Always</th>
+                <th>Frequent</th>
+                <th>Occasionally</th>
+                <th>None</th>
+                <th>N/A</th>
+            </tr>
+        </thead>
+        <tbody class="body_section">
+            <tr>
+              <td>Initiates conversations</td>
+              <?= template($tab_113_comm_init_conv) ?>
+            </tr>
+            <tr>
+              <td>Use of single words</td>
+              <?= template($tab_113_comm_use_single_words) ?>
+            </tr>
+            <tr>
+              <td>Use of short phrases</td>
+              <?= template($tab_113_comm_use_short_phrases) ?>
+            </tr>
+            <tr>
+              <td>Use of full sentences</td>
+              <?= template($tab_113_comm_use_full_sentences) ?>
+            </tr>
+            <tr>
+              <td>Use of AAC</td>
+              <?= template($tab_113_comm_use_aac) ?>
+            </tr>
+            <tr>
+              <td>Use of ASL</td>
+              <?= template($tab_113_comm_use_asl) ?>
+            </tr>
+            <tr>
+              <td>Appropriate intonation</td>
+              <?= template($tab_113_comm_appr_into) ?>
+            </tr>
+            <tr>
+              <td>Appropriate vocal volume</td>
+              <?= template($tab_113_comm_appr_vocal_vol) ?>
+            </tr>
+            <tr>
+              <td>Intelligible speech</td>
+              <?= template($tab_113_comm_intell_speech) ?>
+            </tr>
+            <tr>
+              <td>Appropriate rate of speech</td>
+              <?= template($tab_113_comm_appr_rate_speech) ?>
+            </tr>
+            <tr>
+              <td>Oral motor coordination difficulty</td>
+              <?= template($tab_113_comm_oral_motor_coord_diff) ?>
+            </tr>
+            <tr>
+              <td>Articulation of speech difficulty</td>
+              <?= template($tab_113_comm_articu_speech_diff) ?>
+            </tr>
+            <tr>
+              <td>Use of expressive language</td>
+              <?= template($tab_113_comm_use_expr_lang) ?>
+            </tr>
+            <tr>
+              <td>Appropriate response / accuracy of receptive language skills</td>
+              <?= template($tab_113_comm_appr_res_or_accur_recept_lang) ?>
+            </tr>
+            <tr>
+              <td>Exaggerated language</td>
+              <?= template($tab_113_comm_exagg_lang) ?>
+            </tr>
+            <tr>
+              <td>Repetitive or echolalic speech</td>
+              <?= template($tab_113_comm_repet_echo_speech) ?>
+            </tr>
+            <tr>
+              <td>Purposeful body language/gestures</td>
+              <?= template($tab_113_comm_purpos_body_lang) ?>
+          </tr>
+        </tbody>
+    </table>
+    <table>
+        <tr>
+            <td colspan="2"><b>Comments:</b></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td colspan="2" style="padding-bottom: 10px;">
+              <?php echo nl2br($comm_comments); ?>
+            </td>
+            <td></td>
+        </tr>
+    </table>
+    <table class="striped">
+          <thead>
+                <tr>
+                  <th>Cognition</th>
+                  <th>High</th>
+                  <th>moderate</th>
+                  <th>low</th>
+                  <th>none</th>
+                  <th>n/a</th>
+                </tr>
+          </thead>
+          <tbody>
+                <tr>
+                  <td>Awareness of surroundings</td>
+                  <?= template($tab_114_cogn_awar_surr) ?>
+                </tr>
+                <tr>
+                  <td>Sustained / focused attention</td>
+                  <?= template($tab_114_cogn_sust_foc_att) ?>
+                </tr>
+                <tr>
+                  <td>Selective attention</td>
+                  <?= template($tab_114_cogn_selec_att) ?>
+                </tr>
+                <tr>
+                  <td>Divided attention</td>
+                  <?= template($tab_114_cogn_div_att) ?>
+                </tr>
+                <tr>
+                  <td>Alternating attention</td>
+                  <?= template($tab_114_cogn_alt_att) ?>
+                </tr>
+                <tr>
+                  <td>Decision making</td>
+                  <?= template($tab_114_cogn_decision_making) ?>
+                </tr>
+                <tr>
+                  <td>Reasoning/problem solving</td>
+                  <?= template($tab_114_cogn_reas_prob_solv) ?>
+                </tr>
+                <tr>
+                  <td>Memory/recall</td>
+                  <?= template($tab_114_cogn_memory_recall) ?>
+                </tr>
+                <tr>
+                  <td>Proprioception</td>
+                  <?= template($tab_114_cogn_proprioception) ?>
+                </tr>
+                <tr>
+                  <td>Visual tracking</td>
+                  <?= template($tab_114_cogn_visual_tracking) ?>
+                </tr>
+                <tr>
+                  <td>Auditory discrimination</td>
+                  <?= template($tab_114_cogn_auditory_discri) ?>
+                </tr>
+                <tr>
+                  <td>Ability to sequence (items, actions, etc.)</td>
+                  <?= template($tab_114_cogn_ability_seq) ?>
+                </tr>
+                <tr>
+                  <td>Ability to follow simple directives</td>
+                  <?= template($tab_114_cogn_ability_foll_simp_dir) ?>
+                </tr>
+                <tr>
+                  <td>Ability to follow complex directives</td>
+                  <?= template($tab_114_cogn_ability_foll_compl_dir) ?>
+                </tr>
+          </tbody>
+    </table>
+    <table>
+        <thead>
+            <tr>
+              <th><b>Comments</b></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><?php echo nl2br($cogn_comments); ?></td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="striped">
+        <thead>
+                <tr>
+                      <th><b>Motor:</b></th>
+                      <th><b>Typical</b></th>
+                      <th>Functional</th>
+                      <th>Limited</th>
+                      <th>Requires <br> Assistence/Low</th>
+                      <th>None</th>
+                </tr>
+        </thead>
+        <tbody>
+                <tr>
+                    <td>Independent ambulation</td>
+                    <?= template($tab_115_motor_inde_ambu) ?>
+                </tr>
+                <tr>
+                    <td>Gross motor coordination</td>
+                    <?= template($tab_115_motor_gross_cordin) ?>
+                </tr>
+                <tr>
+                    <td>Gross motor strength</td>
+                    <?= template($tab_115_motor_gross_strength) ?>
+                </tr>
+                <tr>
+                    <td>Gross motor balance</td>
+                    <?= template($tab_115_motor_gross_balance) ?>
+                </tr>
+                <tr>
+                    <td>Obstacle/advanced navigation</td>
+                    <?= template($tab_115_motor_obst_nav) ?>
+                </tr>
+                <tr>
+                    <td>Fine motor strength (grasp)</td>
+                    <?= template($tab_115_motor_fine_coord) ?>
+                </tr>
+                <tr>
+                    <td>Fine motor strength (digits)</td>
+                    <?= template($tab_115_motor_fine_strength_grasp) ?>
+                </tr>
+                <tr>
+                    <td>Core strength</td>
+                    <?= template($tab_115_motor_fine_strength_digits) ?>
+                </tr>
+                <tr>
+                    <td>Muscle tone (specify in comments)</td>
+                    <?= template($tab_115_motor_muscle_tone) ?>
+                </tr>
+                <tr>
+                    <td>Bilateral coordination</td>
+                    <?= template($tab_115_motor_bilateral_coord) ?>
+                </tr>
+                <tr>
+                    <td>Eye-hand coordination</td>
+                    <?= template($tab_115_motor_eye_hand_coord) ?>
+                </tr>
+                <tr>
+                    <td>Use of left extremity (upper)</td>
+                    <?= template($tab_115_motor_use_left_extr_upp) ?>
+                </tr>
+                <tr>
+                    <td>Use of right extremity (upper)</td>
+                    <?= template($tab_115_motor_use_right_extr_upp) ?>
+                </tr>
+                <tr>
+                    <td>Use of left extremity (lower)</td>
+                    <?= template($tab_115_motor_use_left_extr_low) ?>
+                </tr>
+                <tr>
+                    <td>Use of right extremity (lower)</td>
+                    <?= template($tab_115_motor_use_right_extr_low) ?>
+                </tr>
+                <tr>
+                    <td>Crosses midline (lower extremities)</td>
+                    <?= template($tab_115_motor_cross_midl_low) ?>
+                </tr>
+                <tr>
+                    <td>Crosses midline (upper extremities)</td>
+                    <?= template($tab_115_motor_cross_midl_upp) ?>
+                </tr>
+                <tr>
+                    <td>Range of motion (lower extremity)</td>
+                    <?= template($tab_115_motor_range_motion_low) ?>
+                </tr>
+                <tr>
+                    <td>Range of motion (upper extremity)</td>
+                    <?= template($tab_115_motor_range_motion_upp) ?>
+                </tr>
+                <tr>
+                <td>Overall physical activity level</td>
+                <?= template($tab_115_motor_overall_phys_act_level) ?>
+                </tr>
+        </tbody>
+   </table>
+   <table>
+          <thead>
+              <tr>
+                  <th><b>Comments:</b></th>
+              </tr>
+          </thead>
+          <tbody>
+                <tr>
+                      <td><?php echo nl2br($motor_comments); ?></td>
+                </tr>
+          </tbody>
+   </table>
+   <table class="striped" style="padding-top:10px;">
+          <thead>
+                  <tr>
+                      <th>Sensory Integration/ Processing: PART I</th>
+                      <th>Hypersensitive</th>
+                      <th>Sensitive</th>
+                      <th>Typical</th>
+                      <th>Hyposensitive</th>
+                      <th>N/A or Not Observable</th>
+                  </tr>
+          </thead>
+          <tbody>
+               <tr>
+                    <td>Vision</td>
+                    <?= template($tab_116_senso_1_vision) ?>
+               </tr>
+                <tr>
+                    <td>Auditory</td>
+                    <?= template($tab_116_senso_1_auditory) ?>
+                </tr>
+              <tr>
+                    <td>Tactile</td>
+                    <?= template($tab_116_senso_1_tectile) ?>
+              </tr>
+              <tr>
+                    <td>Vestibular</td>
+                    <?= template($tab_116_senso_1_vestibular) ?>
+              </tr>
+              <tr>
+                    <td>Olfactory</td>
+                    <?= template($tab_116_senso_1_olfactory) ?>
+              </tr>
+          </tbody>
+   </table>
+   <table class="striped">
+        <thead>
+                      <tr>
+                          <th><b> PART II:</b></th>
+                          <th><b>Always</b></th>
+                          <th><b>Frequent</b></th>
+                          <th><b>Occasionally</b></th>
+                          <th><b>Rarely</b></th>
+                          <th><b>N/A or Not Observable</b></th>
+                      </tr>
+        </thead>
+        <tbody>
+                      <tr>
+                          <td>Self-stimulation behaviors</td>
+                          <?= template($tab_117_senso_2_self_stim_behav) ?>
+                      </tr>
+                      <tr>
+                          <td>Use of adaptive equipment <br>
+                              <small>(headphones, oral stim, glasses, etc)</small>
+                          </td>
+                          <?= template($tab_117_senso_2_use_adapt_equip) ?>
+                      </tr>
+                      <tr>
+                          <td>Independently requests sensory input</td>
+                          <?= template($tab_117_senso_2_ind_req_input) ?>
+                      </tr>
+                      <tr>
+                          <td>Independently requests regulation of <br>external sensory factors</td>
+                          <?= template($tab_117_senso_2_ind_req_reg_ext_fac) ?>
+                      </tr>
+                      <tr>
+                          <td>Responds to passive sensory input/ regulation</td>
+                          <?= template($tab_117_senso_2_resp_pas_inp) ?>
+                      </tr>
+        </tbody>
+   </table>
+   <table>
+                      <thead>
+                            <tr>
+                                <th><b>Comments:</b></th>
+                            </tr>
+                      </thead>
+                      <tbody>
+                            <tr>
+                                <td><?php echo nl2br($senso_comments); ?></td>
+                            </tr>
+                      </tbody>
+   </table>
+   <table class="striped" style="padding-top:20px;">
+                      <thead>
+                          <tr>
+                              <th><b>Social/Emotional/Behavioral PART I:</b></th>
+                              <th><b>High</b></th>
+                              <th><b>Moderate</b></th>
+                              <th><b>Low</b></th>
+                              <th><b>None</b></th>
+                              <th><b>N/A</b></th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          <tr>
+                              <td>Self-expression</td>
+                              <?= template($tab_118_social_behav_1_self_expr) ?>
+                          </tr>
+                          <tr>
+                              <td>Self-regulation</td>
+                              <?= template($tab_118_social_behav_1_self_regul) ?>
+                          </tr>
+                          <tr>
+                              <td>Use of coping skills</td>
+                              <?= template($tab_118_social_behav_1_use_cop_skill) ?>
+                          </tr>
+                          <tr>
+                              <td>Self-esteem/confidence</td>
+                              <?= template($tab_118_social_behav_1_self_esteem) ?>
+                          </tr>
+                          <tr>
+                              <td>Ability to identify emotions (self)</td>
+                              <?= template($tab_118_social_behav_1_iden_emot_self) ?>
+                          </tr>
+                          <tr>
+                              <td>Ability to identify emotions (others)</td>
+                              <?= template($tab_118_social_behav_1_iden_emot_oth) ?>
+                          </tr>
+                          <tr>
+                              <td>Appropriate range of affect</td>
+                              <?= template($tab_118_social_behav_1_appr_rang_eff) ?>
+                          </tr>
+                          <tr>
+                               <td>Appropriate emotional responses</td>
+                               <?= template($tab_118_social_behav_1_appr_emot_resp) ?>
+                          </tr>
+                          <tr>
+                              <td>Eye contact when speaking</td>
+                              <?= template($tab_118_social_behav_1_eye_cont_speak) ?>
+                          </tr>
+                          <tr>
+                              <td>Engagement/participation</td>
+                              <?= template($tab_118_social_behav_1_engage_partic) ?>
+                          </tr>
+                          <tr>
+                              <td>Ability to share items/tasks</td>
+                              <?= template($tab_118_social_behav_1_abil_share_item) ?>
+                          </tr>
+                          <tr>
+                              <td>Share appropriate information with others</td>
+                              <?= template($tab_118_social_behav_1_share_appr_inf_oth) ?>
+                          </tr>
+                          <tr>
+                              <td>Joint play/attention</td>
+                              <?= template($tab_118_social_behav_1_joint_play_atten) ?>
+                          </tr>
+                          <tr>
+                              <td>Turn taking</td>
+                              <?= template($tab_118_social_behav_1_turn_taking) ?>
+                          </tr>
+                          <tr>
+                              <td>Compliance for preferred tasks</td>
+                              <?= template($tab_118_social_behav_1_compli_pref_tasks) ?>
+                          </tr>
+                          <tr>
+                              <td>Compliance for non-preferred tasks</td>
+                              <?= template($tab_118_social_behav_1_compli_non_pref_tasks) ?>
+                          </tr>
+                          <tr>
+                              <td>Use of social greetings</td>
+                              <?= template($tab_118_social_behav_1_use_social_greet) ?>
+                          </tr>
+                          <tr>
+                              <td>Respond to questions</td>
+                              <?= template($tab_118_social_behav_1_respo_to_quest) ?>
+                          </tr>
+                          <tr>
+                              <td>Ask questions</td>
+                              <?= template($tab_118_social_behav_1_ask_quest) ?>
+                          </tr>
+                          <tr>
+                              <td>Ability to anticipate or identify social cues</td>
+                              <?= template($tab_118_social_behav_1_abil_antic) ?>
+                          </tr>
+                      </tbody>
+   </table>
+   <table class="striped" style="padding-top:10px;">
+                      <thead>
+                          <tr>
+                              <th><b>PART II- Observable Affect/Behaviors:</b></th>
+                              <th><b>Frequent</b></th>
+                              <th><b>Occasionally</b></th>
+                              <th><b>Rarely</b></th>
+                              <th><b>None Observed</b></th>
+                              <th><b>N/A</b></th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          <tr>
+                              <td>Health/safe engagement</td>
+                              <?= template($tab_119_obser_behav_2_health_safe_engag) ?>
+                          </tr>
+                          <tr>
+                              <td>Satisfaction/content</td>
+                              <?= template($tab_119_obser_behav_2_satis_cont) ?>
+                          </tr>
+                          <tr>
+                              <td>Neutral/ambivalence</td>
+                              <?= template($tab_119_obser_behav_2_neutr_amb) ?>
+                          </tr>
+                          <tr>
+                              <td>Anxiety/fear</td>
+                              <?= template($tab_119_obser_behav_2_anxiety_fear) ?>
+                          </tr>
+                          <tr>
+                              <td>Depression</td>
+                              <?= template($tab_119_obser_behav_2_depression) ?>
+                          </tr>
+                          <tr>
+                              <td>Sadness</td>
+                              <?= template($tab_119_obser_behav_2_sadness) ?>
+                          </tr>
+                          <tr>
+                              <td>Frustration</td>
+                              <?= template($tab_119_obser_behav_2_frustration) ?>
+                          </tr>
+                          <tr>
+                              <td>Anger</td>
+                              <?= template($tab_119_obser_behav_2_anger) ?>
+                          </tr>
+                          <tr>
+                              <td>Aggression</td>
+                              <?= template($tab_119_obser_behav_2_aggression) ?>
+                          </tr>
+                          <tr>
+                             <td>Identifiable escalation</td>
+                             <?= template($tab_119_obser_behav_2_ident_esc) ?>
+                          </tr>
+                          <tr>
+                              <td>Dysregulation/lability</td>
+                              <?= template($tab_119_obser_behav_2_dysr_lability) ?>
+                          </tr>
+                      </tbody>
+   </table>
+   <table>
+                      <thead>
+                        <tr>
+                            <th><b>Comments:</b></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                            <td><?php echo nl2br($social_obs_behav_comments); ?> </td>
+                        </tr>
+                      </tbody>
+   </table>
+   <table>
+                      <thead>
+                        <tr>
+                            <th><b>Treatment Recommendations:</b></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                            <td> <?php echo nl2br($treatment_recomm); ?> </td>
+                        </tr>
+                      </tbody>
+   </table>
+   <table class="striped" style="padding-top:20px;">
+                      <thead>
+                        <tr>
+                            <th><b>Goals and Objectives:</b></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                      <tr>
+                            <td style="width: 20%;">Goal 1:</td>
+                            <td style="width: 80%;">
+                              <?php echo nl2br($goal1); ?>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="width: 20%;">Objective 1:</td>
+                            <td style="width: 80%; padding-bottom: 10px;">
+                              <?php echo nl2br($objective1); ?>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="width: 20%;">Goal 2:</td>
+                            <td style="width: 80%;">
+                              <?php echo nl2br($goal2); ?>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="width: 20%;">Objective 2:</td>
+                            <td  style="width: 80%; padding-bottom: 10px;">
+                              <?php echo nl2br($objective2); ?>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="width: 20%;">Goal 3:</td>
+                            <td  style="width: 80%;">
+                              <?php echo nl2br($goal3); ?>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="width: 20%;">Objective 3:</td>
+                            <td style="width: 80%; padding-bottom: 10px;">
+                              <?php echo nl2br($objective3); ?>
+                            </td>
+                          </tr>
+                      </tbody>
+   </table>
+   <table>
+                      <thead>
+                        <tr>
+                            <th><b>Treatment Plan:</b></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                            <td> <?php echo nl2br($treatment_plan); ?> </td>
+                        </tr>
+                      </tbody>
+   </table>
+   <table class="tbl" border="0" align="left">
+            <tr>
+              <td style="width: 70%;">
+                <table style="width: 100%" border="0" align="left">
+                <tr>
+                  <td><b>Therapist: </b>
+                  <?php if (isset($clinician_signature) AND $clinician_signature != "") { ?>
+                  <u>&nbsp;&nbsp;&nbsp;ELECTRONICALLY SIGNED BY:<? echo $first_name . " " . $last_name . $agency_company_name; ?>&nbsp;&nbsp;&nbsp;</u>
+                  <? } else { echo "__________________________" ; }?>
+                  </td>
+                  <td> <b>Date:</b> &nbsp; 
+                <?php
+                if (isset($clinician_signature) AND $clinician_signature != "") {
+                  echo '<span style="padding: 5px 20px; border-bottom: 1px solid #000;">'.standard_date(mysql_to_unix($visit_date_time)) . '</span>';
+                } else {
+                  
+                  echo '_______________';
+                }
+                ?></td>
+                </tr>
+                <tr>
+                <!--<td>
+                    <?php
+                    /*if (isset($clinician_signature) AND $clinician_signature != "") {
+                      $path =  FCPATH."upload/signatures/".$clinician_signature;
+                      $type = pathinfo($path, PATHINFO_EXTENSION);
+                      $data = file_get_contents($path);
+                      $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+                      // echo $type;
+                      echo '<img src="'.$base64.'" alt="" align="left" width="150" style="padding: 5px 20px; border-bottom: 1px solid #000;">';
+                    } else {
+                      echo '____________________________________________';
+                    }*/
+                    //echo $first_name . " " . $last_name . $agency_company_name;
+                    ?>
+                  </td>
+                </tr>
+                </table>
+              </td> -->
+              <!--<td style="width: 30%;">
+                <b>Date:</b> &nbsp; 
+                <?php /*
+                if (isset($clinician_signature) AND $clinician_signature != "") {
+                  echo '<span style="padding: 5px 20px; border-bottom: 1px solid #000;">'.standard_date(mysql_to_unix($visit_date_time)) . '</span>';
+                } else {
+                  
+                  echo '_______________';
+                }*/
+                ?>
+              </td> -->
+            </tr>
+          </table>
+</div>
+<script type="text/php">
+if ( isset($pdf) ) { 
+    $pdf->page_script('
+        if ($PAGE_COUNT > 1) {
+            $font = $fontMetrics->get_font("Arial, Helvetica, sans-serif", "normal");
+            $size = 12;
+            $pageText = "Page " . $PAGE_NUM . " of " . $PAGE_COUNT;
+            $y = 760;
+            $x = 520;
+            $pdf->text($x, $y, $pageText, $font, $size);
+        } 
+    ');
+}
+</script>

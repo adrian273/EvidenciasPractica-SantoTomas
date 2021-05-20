@@ -1,0 +1,149 @@
+  <link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.8/base/jquery-ui.css" type="text/css" />
+  <script src="{$base_url}style/jquery-ui.1.8.min.js" type="text/javascript"></script>
+
+<input type="hidden" value="" name="record_ids" id="record_ids">
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+    <tr height="35"> 
+      <td>
+
+        <table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+          <tr>
+            <td nowrap>
+              <input type="text" name="keyword" id="keyword" onkeyup="loadGrid();">
+              <input type="submit" value="Search">
+            </td>
+            <td align="left" width="70%">
+              {* <label><input type="radio" name="status" {if $status eq ''} checked="checked" {/if} value="" onclick="loadGrid();" /> Both</label> *}
+              <label><input type="radio" name="status" value="1" onclick="loadGrid();" checked="checked" /> Active</label>
+              <label><input type="radio" name="status" value="0" onclick="loadGrid();" /> Inactive</label>
+            </td>
+            <td width="30%"></td>
+            <td align="right">
+             {html_options first_option='All Profiles' options=$profile_list name='profile_id' onchange='loadGrid()'}
+            </td>
+          </tr>
+        </table> 
+
+      </td>
+  </tr> 
+  <tr><td>
+  <div id="toolbarObj" style="float: left"></div>
+  </td></tr>
+</table> 
+
+<script>
+{literal}
+// $(document).ready(function() {
+
+//     $("input#keyword").autocomplete({
+
+//     source: {/literal}{$name_source_obj}{literal}
+
+//     });
+
+//   });
+{/literal}
+
+  function checkall() {literal}{{/literal}
+    rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+  {literal}}{/literal}
+
+  function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+  {literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+  webBar.addButton("none", 2, "None");
+  webBar.addSeparator('sp1', 3);
+  webBar.addButton("print", 4, "Print");
+  webBar.addButton("printAgenda", 5, "Print Agenda");
+    
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+    switch (eid)
+    {literal}{{/literal}
+    case 'all':
+      checkall()
+      break;
+    case 'none':
+      uncheckall()
+      break;    
+    case 'print':
+      printSelected()
+      break;  
+    case 'printAgenda':
+      printAgenda()
+      break;  
+    {literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>
+
+
+<script language="JavaScript" type="text/javascript">
+
+    var dhxWins;
+    
+  function printSelected() {literal}{{/literal}
+    if (grid.getCheckedRows(0)) {literal}{{/literal}
+      setValue('record_ids', grid.getCheckedRows(0));
+      gform.action='{$index_url}{$resource_path}/print_users';
+      gform.target='_blank';
+      gform.submit();
+    {literal}}{/literal}   
+  {literal}}{/literal}    
+
+  function printAgenda(){literal}{{/literal}
+    if (grid.getCheckedRows(0)) {literal}{{/literal}
+      var selected = grid.getCheckedRows(0);
+      dhxWins = new dhtmlXWindows();
+      dhxWins.enableAutoViewport(false);
+      dhxWins.attachViewportTo("vp_container");
+      dhxWins.setImagePath("{$base_url}style/window/imgs/");
+      
+      var w1 = dhxWins.createWindow("w1", 10, 10, 750, 500);
+      w1.setText("Print Agenda for Selected Users");
+      w1.button("park").hide();
+      w1.button("minmax1").hide();
+      w1.denyResize(); // deny resizing
+      w1.denyMove(); 
+      dhxWins.window('w1').setModal(true);
+      dhxWins.window('w1').center();
+      w1.attachURL("{$index_url}/calendar/print_users_agenda/"+selected+"/{$year}/{$month}/{$day}/{$visit_type_id}/");
+      
+      dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+          
+          w1.hide();
+          w1.setModal(false);
+          
+      {literal}}{/literal});
+
+    {literal}}{/literal}   
+  {literal}}{/literal}
+
+  function cancelModal() {literal}{{/literal}
+    dhxWins.window('w1').close();    
+  {literal}}{/literal}
+
+    
+</script>
+  

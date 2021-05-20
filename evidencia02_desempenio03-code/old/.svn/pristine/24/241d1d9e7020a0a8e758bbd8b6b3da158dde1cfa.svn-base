@@ -1,0 +1,126 @@
+<?php
+
+class Fetch_geo_code extends MY_Controller {
+
+    
+	function Fetch_geo_code () {
+      parent::MY_Controller();
+    
+      $this->tpl->assign("resource_path", "script/fetch_geo_code");
+      $this->load->config('constants');  
+	}
+
+	function user () {		
+		set_time_limit(0);
+
+		$users = $this->usermdl->get_null_lat_lng();
+		// echo "<pre>"; print_r($users); exit();
+		ob_implicit_flush(true);
+
+		$c = 0;
+		foreach ($users as $user) {
+			if (!$user->address) {
+				echo '<font color=\'red\'>user id: '.$user->user_id.'Address not available</font><br>';
+				continue;
+			}
+
+			// Fetching Geocode			
+			$address = $user->address;
+
+			if ($user->city) {
+				$address .= ','.$user->city;
+			}
+
+			if ($user->state_name_long) {
+				$address .= ','.$user->state_name_long;
+			}
+
+			if ($user->zip_code) {
+				$address .= ','.$user->zip_code;
+			}
+
+			if ($address) {
+				$this->load->helper('general');
+				extract(get_lat_long($address));
+
+				if ($latitude AND $longitude) {
+		        	$c++;
+		        	$this->usermdl->updateGeocode($user->user_id, $latitude, $longitude);
+		        	echo $c.'. user id: '.$user->user_id.', lat:'.$latitude.', long:'.$longitude.'<br>';
+		        } else {
+		        	// var_dump($latitude);
+		        	// var_dump($longitude);
+		        	echo "<font color='red'>User id: ".$user->user_id.", GeoCode Not Found! Please correct user's address.</font><br>";
+		        	if ($user->user_id == 4) {
+		        		echo $address."<br>";
+		        	}
+		        }
+		        
+		        // wait for 0.5 seconds
+				usleep(100000);
+		        
+			} 
+		}
+
+		// ob_start();
+
+		echo 'FINISHED';		
+		
+	}
+
+	function patient () {		
+		set_time_limit(0);
+
+		$patients = $this->patientmdl->get_null_lat_lng();
+		// echo "<pre>"; print_r($patients); exit();
+		ob_implicit_flush(true);
+
+		$c = 0;
+		foreach ($patients as $patient) {
+			if (!$patient->address) {
+				// echo 'patient id: '.$patient->patient_id.'Address not available<br>';
+				continue;
+			}
+
+			// Fetching Geocode			
+			$address = $patient->address;
+
+			if ($patient->city) {
+				$address .= ','.$patient->city;
+			}
+
+			if ($patient->state_name_long) {
+				$address .= ','.$patient->state_name_long;
+			}
+
+			if ($patient->zip1) {
+				$address .= ','.$patient->zip1;
+			}
+
+			if ($address) {
+				$this->load->helper('general');
+				extract(get_lat_long($address));
+
+				if ($latitude AND $longitude) {
+		        	$c++;
+		        	$this->patientmdl->updateGeocode($patient->patient_id, $latitude, $longitude);
+		        	echo $c.'. Patient id: '.$patient->patient_id.', lat:'.$latitude.', long:'.$longitude.'<br>';
+		        } else {
+		        	// var_dump($latitude);
+		        	// var_dump($longitude);
+		        	echo "<font color='red'>Patient id: ".$patient->patient_id.", GeoCode Not Found! Please correct patient's address.</font><br>";
+		        }
+		        
+		        // wait for 0.5 seconds
+				usleep(100000);
+		        
+			} 
+		}
+
+		// ob_start();
+
+		echo 'FINISHED';		
+		
+	}
+
+}

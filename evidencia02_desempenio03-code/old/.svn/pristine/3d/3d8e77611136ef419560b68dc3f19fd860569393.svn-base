@@ -1,0 +1,104 @@
+<?
+
+class Pending extends MY_Controller {
+
+	function Pending () {
+	
+		parent::MY_Controller();
+		
+		$this->tpl->assign("resource_path", "mydoctororders/pending");
+		
+	}
+
+	function index () {
+
+		$this->tpl->assign('doctor_order_status_list', $this->parametermdl->getByType(23));
+		
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("no_grid_buttons", true);
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+	function grid () {
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=img;align=center", ""));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Order Date"));
+		$head->append($this->xml->Element("column", "width=*", "Order Type"));
+		$head->append($this->xml->Element("column", "width=*", "Ordered By"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Physician"));
+		$head->append($this->xml->Element("column", "width=*", "Status"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Status Date"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach ($this->docdoctorordermdl->getByPhysician($this->getUsAgyId(), array(2)) as $order) {
+
+			$patient   		= $this->patientmdl->getById($order->patient_id);
+			$physician 		= $this->usagymdl->getByUsAgyId($order->physician_id);
+			$order_by  		= $this->usagymdl->getByUsAgyId($order->order_by_user_id);
+			$expected_sign 	= $this->parametermdl->get(94, $order->tab_094_expected_time_sign);
+
+			$cell = $this->xml->Element("row", "id=" . $order->doc_doctor_order_id);
+			if ($order->tab_023_order_status == 2 && $order->tab_094_expected_time_sign != NULL) {
+				
+				$expected_unix = strtotime($expected_sign->tab_description, mysql_to_unix($order->sent_date));
+				$sent_unix	   = mysql_to_unix($order->sent_date);
+				$now_unix 	   = now();
+				
+				$factor = ($now_unix - $sent_unix) / ($expected_unix - $sent_unix);
+				
+				if ($factor >= 0.5) {
+					$icon = $this->config->config["base_url"] . "style/images/bullet_ball_yellow.png";
+				}
+				
+				if ($factor > 1) {
+					$icon = $this->config->config["base_url"] . "style/images/bullet_ball_red.png";
+				}
+				
+				if ($factor < 0.5) {
+					$icon = $this->config->config["base_url"] . "style/images/bullet_ball_green.png";
+				}				
+				
+				$cell->append($this->xml->Element("cell", null, $icon));
+			} else {
+				$cell->append($this->xml->Element("cell", null, $this->config->config["base_url"] . "style/images/no_img.gif"));
+			}
+			
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->order_date))));
+			$cell->append($this->xml->Element("cell", null, $order->doc_doctor_order_type_description));
+			$cell->append($this->xml->Element("cell", null, @$order_by->first_name . " " . @$order_by->last_name));
+			$cell->append($this->xml->Element("cell", null, $patient->first_name . " " . $patient->last_name));
+			$cell->append($this->xml->Element("cell", null, @$physician->first_name . " " . @$physician->last_name));
+			$cell->append($this->xml->Element("cell", null, $order->tab_description));
+			if ($order->tab_023_order_status == 2) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->sent_date))));
+			} else if ($order->tab_023_order_status == 3) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->signed_date))));
+			} else if ($order->tab_023_order_status == 4) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->rejected_date))));
+			}
+			$document->append($cell);
+		}
+
+	}
+	
+	
+	function edit ( $doc_doctor_order_id ) {
+		
+		$doctor_order = $this->docdoctorordermdl->getById($doc_doctor_order_id);
+		
+		$this->session->set_userdata('doctororder_return', "mydoctororders/pending");
+		
+		redirect('doctororder/front/edit/' . $doc_doctor_order_id);
+		
+	}
+
+}

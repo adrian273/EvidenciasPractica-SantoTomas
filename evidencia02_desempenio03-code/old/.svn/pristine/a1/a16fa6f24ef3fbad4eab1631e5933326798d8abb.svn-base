@@ -1,0 +1,400 @@
+<?php	
+
+class AllComnotes extends MY_Controller {
+
+	function AllComnotes () {
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "mail/allcomnotes");
+		$this->tpl->assign("resource_edit", "read");
+	}
+
+	function index ($message_sent=0) {
+		if ($message_sent == 1) {
+			$this->tpl->assign("gmessage", "Communication Note Successfully Created");
+		} 
+		$this->tpl->assign("no_grid_buttons", true);
+		//$this->tpl->assign("noedit", true);  
+		$this->tpl->assign("resource_edit", "read_note");
+		/*
+		$this->tpl->assign(array("list_title" => "Communication Notes", "add_sufix" => "Communication"));
+		if($message_sent)$this->tpl->assign('gmessage',     'Communication Note Sent!');
+		$this->tpl->assign_include("filter_tpl", "mail/comnotes/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);*/
+		
+		//$this->tpl->assign(array("list_title" => "Communication Notes", "add_sufix" => "Communication"));
+		//$this->tpl->assign('additional_buttons', array('Create Communication' => 'window.location.href=\''.$this->config->site_url().'/mail/compose/index/comnotes\'','Print'=>'printSelected()'));
+		$this->tpl->assign('additional_buttons', array (
+		'Create Communication' => 'window.location.href=\'' . $this->config->site_url() . '/mail/compose/index/allcomnotes\''));
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		$this->tpl->assign("back_path", 'allcomnotes');
+		//
+		// MODAL FILTER
+		// GET info para selects
+		$this->tpl->assign("status_list" , $this->mparams->get_pacient_status_list() );
+		$this->tpl->assign("visit_type_list" , $this->mparams->get_visit_type_list( true ) );
+		$this->tpl->assign("visit_status_list" , $this->mparams->get_visit_status_list( false ) );
+		// $this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( null, false ) ); // this line has a problem. If uncomment this line page redirect to load login page automatically. Use following line instead.
+		// $this->tpl->assign("clinician_list" , $this->usagymdl->getCliniciansByAgency($this->getAgencyId()) );
+		
+		//$this->tpl->assign_include("script_tpl", "visitlog/task_script");
+		
+		$user_id = $this->getUserId();  //agency_id
+		if (!is_null($user_id)) $this->tpl->assign("user_id", $user_id);
+		
+		//10 10a-a=3-u=42-p=["41","59","42"]
+		/*$agency_id = "3";
+		$keyword = "a";
+		$user_id = "42";
+		$patient_ids = array(); 
+		$patients = $this->getPatients();
+		$patient_ids = array();          
+		foreach($patients as $patient){            
+			$patient_ids[] = $patient->patient_id;
+		} 
+		$data = $this->messagemdl->getPat_note($agency_id, $keyword, $user_id = "", $patient_ids);  
+		echo "<pre>"; print_r($data); echo "</pre>";*/
+
+		$backdate = strtotime('-60 day');
+    	$this->tpl->assign('backdate', $backdate);
+    	
+		$this->tpl->assign_include("filter_tpl", "mail/comnotes/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid () {
+		$AgencyType = $this->getAgencyType();		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=ch", " "));
+		$head->append($this->xml->Element("column", "width=8", "Date"));
+		$head->append($this->xml->Element("column", "width=15;align=left", "Patient Name"));
+		if($AgencyType=='C'){
+			$head->append($this->xml->Element("column", "width=15;align=left", "Agency Name"));
+		}
+		
+		$head->append($this->xml->Element("column", "width=*", "Comm Note Subject"));
+		$head->append($this->xml->Element("column", "width=15", "Created by User"));
+		
+		$head->append($this->xml->Element("column", "width=6", "Actions"));
+		// $head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		$user_id = $this->getUserId();
+		$agency_id = $this->getAgencyId();
+		$flag = "all"; //$this->input->post('userID');
+		
+		// $pa= 5; 
+		
+		$patient_ids = array(); 
+
+		if($this->getAgencyType() == 'C' && $this->getUserProfileId() == 3){
+	      if ( $this->getUserDiscipline()) {
+	  			$data = $this->patientcontractormdl->getActivatedByContractorId($this->getAgencyId(), $this->getUserDiscipline());
+	  		} else {
+	  			$data = $this->patientcontractormdl->getByContractorId($this->getAgencyId());
+	  		}
+	      foreach($data as $patient){
+	      	$patient_ids[] = $patient->patient_id;	        
+	      }
+	    }else{
+	      	if($this->getUserDiscipline()) {
+	  			$data = $this->getPatients($this->input->post('keyword'), $this->input->post('tab_013_status'), true, $this->getUserDiscipline());
+	  		} else {
+	  			$data = $this->getPatients();
+	  		}
+	  		foreach($data as $patient){
+		      	$patient_ids[] = $patient->patient_id;	        
+	      	}	      
+	    }
+
+		if($keyword = $this->input->post('keyword')){
+			//$here = $keyword . "-a=" . $agency_id . "-u=" . $user_id . "-p=" . json_encode($patient_ids); 
+			$data = $this->messagemdl->getComNotes($agency_id, $keyword, $user_id = "", $patient_ids);     
+		} else {
+			$data = $this->messagemdl->getComNotes($agency_id, $keyword = "", $user_id = "", $patient_ids); 
+		}  
+		
+		foreach($data as $comm_note) {
+			/*if ($comm_note->msg_id==4) {
+			print_r($comm_note);
+			}*/
+			$cell = $this->xml->Element("row", "id=" . $comm_note->msg_id);
+			$cell->append($this->xml->Element("cell", null, "0"));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($comm_note->msg_date))));
+			//patient/patient/treatmentarea/41
+			//$cell->append($this->xml->Element("cell", null, $comm_note->patient_name));     
+
+			$cell->append($this->xml->Element("cell", null, '<![CDATA[<a href="'.$this->config->config['base_url']."index.php/mail/read/msg/".$comm_note->msg_id.'/allcomnotes">' . $comm_note->patient_name . '</a>]]>'));     
+			            
+			if($AgencyType=='C'){              
+				$cell->append($this->xml->Element("cell", null, @$comm_note->agency_name));
+			}
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($comm_note->msg_subject)));
+			$cell->append($this->xml->Element("cell", null, $comm_note->user_name)); 
+			
+			// $cell->append($this->xml->Element("cell", null, '<![CDATA[<a href="'.$this->config->config['index_url']."mail/comnotes/pdf/".$comm_note->msg_id.'">Print</a>]]>'));  
+			
+
+			$cdata = '<![CDATA[';
+			if ($comm_note->msg_attachment != "") {
+				$attachments = explode("||", $comm_note->msg_attachment);
+				foreach ($attachments as $key=>$file) {
+				  $cdata .= '<a href="'.$this->config->config['base_url']."datastore/attachment/".$file.'" target="_blank">file '.($key+1).'</a> &nbsp; ';
+				}
+			}
+
+			$cdata .= ']]>';
+
+			$cell->append($this->xml->Element("cell", null, $cdata));
+			
+			
+			/*if ($this->getUsAgyId() == $comm_note->user_from || $this->getUserProfileId() == 1) {
+				// $cell->append($this->xml->Element("cell", null, "Delete^javascript:delete_note(" . $comm_note->patient_id. ", ".$comm_note->msg_id .")"));
+				// $cell->append($this->xml->Element("cell", null, " Edit Date^javascript:edit_com_note(" . $comm_note->patient_id. ", ".$comm_note->msg_id .")"));
+			}*/
+			$document->append($cell);
+		}             
+		
+	}
+	
+	/*function edit_com_note( $patient_id, $note_id ) {
+		$this->load->model('patientnotemdl');
+		$note = $this->patientnotemdl->getById($note_id);
+		
+		if (is_null($note) OR empty($note) ){
+			echo "Note not found";exit;
+		} 
+		
+		$this->tpl->assign("patient_id", $patient_id);
+		$this->tpl->assign("note_id", $note_id);
+		
+		$rules = array (
+		'communication_date' 	=> 'required'
+		);
+		
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+			if(!is_null($note->communication_date))
+				$this->tpl->assign('communication_date', $note->communication_date );      
+			else
+				$this->tpl->assign('communication_date', $note->creation_date_time );
+			
+			$this->tpl->assign_include("dynamic_tpl", "mail/comnotes/edit_com_note_form");
+			//$this->tpl->assign_include("dynamic_tpl", "task/edit_timein");			
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		
+		} else {
+			$communication_date = standard_date(human_to_unix($this->input->post('communication_date')), 'MYSQL_NOTIME');
+			
+			$this->db->where('note_id', $note_id);
+			$this->db->set('communication_date', $communication_date);
+			$this->db->update('pat_note');      
+			echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";
+			
+		}
+	}*/
+  
+	
+	/*function delete ( $patient_id, $note_id ) {
+		$this->load->model('patientnotemdl');
+		$note = $this->patientnotemdl->getById($note_id);
+		$document = $this->xml->Document();
+		
+		if ($this->getUsAgyId() == $note->creation_user || $this->getUserProfileId() == 1) {
+			$this->patientnotemdl->delete($note_id);
+			//$this->tpl->assign('gmessage', "Note " . $this->lang->line('grl_del_msg'));
+			$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+		}else{
+			$document->append($this->xml->Element('alert', null, "You are not authorize to delete this!"));
+		}					
+	}*/
+
+	function add () {
+		
+		$this->tpl->assign("us_agy_list",  $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false));
+		$this->tpl->assign("patient_list", $this->getPatients(null, null, null, false));
+
+		$this->tpl->assign("back_path", 'allcomnotes');
+
+		$this->tpl->assign_include("dynamic_tpl", "mail/comnotes/compose_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+		
+	function read ( $message_id ) {
+	
+		$this->tpl->assign("back_path", 'allcomnotes');
+		
+		$message 	= $this->messagemdl->get($message_id);
+		$recipients = $this->usermessagemdl->getByMessageId($message_id);
+		
+		if (array_key_exists($this->getUsAgyId(), $recipients) || $message->user_from == $this->getUsAgyId()) {
+		
+			$this->usermessagemdl->setMsgRead($message_id, $this->getUsAgyId());
+			
+			$this->assignObject($message);
+			$this->tpl->assign("msg_users", implode("; ", $this->usermessagemdl->getByMessageId($message_id)));
+			
+			if (!is_null($message->patient_id)) {
+				$this->tpl->assign("patient", $this->patientmdl->getById($message->patient_id));
+			}
+			
+			$this->tpl->assign_include("dynamic_tpl", "mail/comnotes/read_msg");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		
+		} else {
+		
+			$this->tpl->assign_include("dynamic_tpl", "mail/wrong_message");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		
+		}
+	
+	}
+    
+  
+	/*
+	** @added by: Ksa
+	** @updated by: Shareful
+	** @uses: being used to display the detail of communication note
+	*/
+	function read_note ( $message_id ) {
+		$this->session->set_userdata('task_return', "mail/allcomnotes/index");
+		redirect("mail/read/msg/{$message_id}/allcomnotes");
+		
+		/*$this->load->model('messagemdl');
+		$this->load->model('usermessagemdl');
+		$this->tpl->assign("back_path", 'allcomnotes');
+		
+		$patnote 	=  $this->messagemdl->getPatnoteByID($message_id); 
+		//echo "<pre>"; print_r($patnote); echo "</pre>";
+		$users_to_array = $this->messagemdl->getUserListByMsgId($patnote['msg_id']);
+		//echo "<pre>"; print_r($users); echo "</pre>";
+		$this->assignObject($patnote);
+		$this->assignObject($users_to_array);
+		$this->tpl->assign('users_to_array', $users_to_array);
+		$this->tpl->assign_include("dynamic_tpl", "mail/read_note");
+		$this->tpl->view("parts/ibase", $this->lang->language);*/
+		
+	}
+  
+	function pdfSelected(){
+		if (!is_null($this->input->post('record_ids'))) {
+			//$this->load->library('Wick');
+			
+			//var_dump($this->input->post('record_ids'));exit;
+			$record_ids = $this->input->post('record_ids');
+			$recods = explode(",", $record_ids);
+			
+			$filenames = array();
+			
+			foreach ($recods as $note_id) {
+			
+				if(!isset($filenames[$note_id])){
+					$filenames[$note_id] = $this->pdf($note_id, "F");
+				}
+			}
+			
+			/**
+			* Old code for PHP < 5.3.0
+			*/
+			/*$this->load->library('fpdf');
+			require_once(APPPATH.'third_party/PDFMerger/PDFMerger.php');          
+			$pdf = new PDFMerger;
+			// exit("hello");
+			foreach($filenames as $name){
+				$pdf->addPDF($name, 'all');
+			}      
+			//print_r($filenames);
+
+			$pdf->merge('download', 'all.pdf');*/
+			
+			/** 
+			* New Code support >= PHP 5.3.0
+			*/
+			require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+			require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+			require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+			// and we can do stuff
+			$pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+			foreach($filenames as $name){
+				$pdf->addPDF($name, 'all');
+			}  
+			$pdf->merge('download', 'all.pdf');
+			// End of code for PHP >= 5.3.0
+
+			// Clean temporary pdf files		
+			foreach($filenames as $name){
+				@unlink($name);
+			}		
+		}
+	}
+
+  	function pdf ( $msg_id = 0, $output="D" ) {
+		$this->load->helper('visit_pdf');
+	    comm_note_pdf($msg_id,'D');
+	    
+	    return;		
+	}
+
+    
+	function pdf2($note_id = 0){
+	
+		$data = $this->messagemdl->getPatnoteByID($note_id);
+		$this->load->model('usermessagemdl');
+		$data['msg_users'] = implode("; ", $this->usermessagemdl->getByMessageId($data['msg_id']));
+		$content = $this->load->view('mail/comnotes/print_note',$data,true);
+		
+		
+		// convert in PDF
+		require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+		try
+		{
+			$html2pdf = new HTML2PDF('P','A3','en', true, 'UTF-8', array(15, 5, 15, 5));
+			$html2pdf->setDefaultFont('Arial');
+			$html2pdf->writeHTML($content);
+			$html2pdf->Output('note '.$note_id.'.pdf', 'D');        
+		}
+		catch(HTML2PDF_exception $e) {
+		echo $e;
+		exit;
+	}  
+	}
+
+	function xml_entities($text, $charset = 'UTF-8'){
+		// First we encode html characters that are also invalid in xml
+		$text = htmlentities($text, ENT_COMPAT, $charset, false);
+		
+		// Note: &apos; is useless in UTF-8 or in UTF-16
+		$arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+		
+		// Building the regex string to exclude all strings with xml special char
+		$arr_xml_special_char_regex = "(?";
+		foreach($arr_xml_special_char as $key => $value){
+			$arr_xml_special_char_regex .= "(?!$value)";
+		}
+		$arr_xml_special_char_regex .= ")";
+		
+		// Scan the array for &something_not_xml; syntax
+		$pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+		
+		// Replace the &something_not_xml; with &amp;something_not_xml;
+		$replacement = '&amp;${1}';
+		return preg_replace($pattern, $replacement, $text);
+	}
+  
+	function edit($msg_id) {
+		$config = & get_config();
+		echo "ksa";
+		exit;
+		//header("Location: " . $config['index_url'] . "comnotes/read/" . $msg_id);
+	}
+
+}

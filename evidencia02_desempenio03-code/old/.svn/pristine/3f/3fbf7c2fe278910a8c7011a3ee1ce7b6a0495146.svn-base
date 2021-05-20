@@ -1,0 +1,1698 @@
+<?
+
+class Task extends MY_Controller {
+
+	function Task () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/task");
+		$this->tpl->assign(array("tab_page" => true));
+
+		$this->loggedinUser = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+		
+	}
+
+	function popup( $patient_id, $cms_485 ) {
+
+	/**
+	#  Get visit open settings. Will it open in new window or not.
+	*/          
+    $user_id = $this->session->userdata('user_id');
+    $user_info = $this->usermdl->getById($user_id);    
+    $this->tpl->assign('open_new_window', $user_info->open_new_window);
+    
+    $this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+    $this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+
+    $this->tpl->assign('resource_edit', 'opendocument');
+    $this->tpl->assign(array("no_grid_buttons" => true, "noedit" => true));
+
+    $this->tpl->assign("entity_id",  $cms_485);
+
+    $this->tpl->assign(array("date_filter" => standard_date(mktime(0, 0, 0, date("m")  , date("d")-7, date("Y")), 'VIS_LIST')));
+    $this->tpl->assign_include("filter_tpl", "patient/task/gfilter");
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    $this->tpl->view("parts/ibase");
+
+}	
+
+function index ( $patient_id, $cms_485 ) {
+	$this->tpl->assign("tab_page", true);
+	$this->tpl->assign("cms485_id", $cms_485);
+	$this->tpl->assign("patient_id", $patient_id);
+	$this->tpl->assign_include("dynamic_tpl", "patient/task/tbase");
+	$this->tpl->view("parts/ibase", $this->lang->language);
+}
+
+function visit_log ( $patient_id, $cms_485 ) {
+	//echo $cms_485;
+	/**
+	#  Get visit open settings. Will it open in new window or not.
+	*/          
+    $user_id = $this->session->userdata('user_id');
+    $user_info = $this->usermdl->getById($user_id);    
+    $this->tpl->assign('open_new_window', $user_info->open_new_window);
+    
+    $this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+    $this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+
+    $this->tpl->assign('resource_edit', 'opendocument');
+    $this->tpl->assign(
+    	array(
+    		"no_grid_buttons" => true,
+    		"paginate" => 'false',
+    	)
+    );
+
+    $this->tpl->assign("entity_id",  $cms_485);
+	$this->tpl->assign("patient_id",  $patient_id);
+
+    $this->tpl->assign(array("date_filter" => standard_date(mktime(0, 0, 0, date("m")  , date("d")-7, date("Y")), 'VIS_LIST')));
+	
+	$this->tpl->assign('additional_buttons', array(
+		'Print Visits/Tasks' => 'printVisits()', 
+		'Print Patient\'s Signature Sheet' => 'printSign()',
+		'Email Visits/Tasks'=>'email_visits_confirm()', 
+	));
+	
+	// $patient = $this->patientmdl->getById($patient_id);   
+	// $loggedInAgency = $this->agencymdl->getByAgencyId($patient->agency_id);
+	$loggedInAgency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+	if ($this->getAgencyType() == 'C' AND $loggedInAgency->provides_altern_therapy == "Y") {
+	// if ($loggedInAgency->provides_altern_therapy == "Y") {
+		$this->tpl->assign("therapy_type",  'S');
+	}
+	$agency_settings = $this->agencysettingsmdl->get($this->getAgencyId());
+	$this->tpl->assign("agency_settings",  $agency_settings);
+	
+    $this->tpl->assign_include("filter_tpl", "patient/task/gfilter");
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    $this->tpl->view("parts/ibase");
+
+}	
+
+
+function grid ( $cms_485 ) {
+
+	$assesment_types_list = $this->parametermdl->getByType(32);
+	$this->xml->root_name = "rows";
+	$document = $this->xml->Document();
+
+	$head = $this->xml->Element("head");
+	$head->append($this->xml->Element("column", "width=3;type=ch", " "));
+	$head->append($this->xml->Element("column", "width=10;type=link", "Date"));
+	$head->append($this->xml->Element("column", "width=20",  "Visit/Task Name"));
+	$head->append($this->xml->Element("column", "width=10",  "Send Date"));
+	$head->append($this->xml->Element("column", "width=3",  "R"));
+	$head->append($this->xml->Element("column", "width=6;align=center",  "Pt Sign"));
+	$head->append($this->xml->Element("column", "width=*",  "Status"));
+	$head->append($this->xml->Element("column", "width=*",  "User"));
+	$head->append($this->xml->Element("column", "width=6;align=center",  "Time In"));
+	$head->append($this->xml->Element("column", "width=6;align=center",  "Time Out"));
+	$head->append($this->xml->Element("column", "width=6;align=center",  "Duration"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "User Approver"));
+	$head->append($this->xml->Element("column", "width=*;align=center;type=link",  "Action"));
+	$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+	$document->append($head);
+
+
+	$map_visit_type_ids_array = array(
+		'ALL' => null, 
+		'AQ' => 113, 
+		'BE' => 114, 
+		'MA' => 115, 
+		'MU' => 116, 
+		'RE' => 117, 
+		'HBR' => 118, 
+		'ART' => 119, 
+		'SN' => 22, 
+		'PT' => array(10, 12), 
+		'OT' => array(40, 42), 
+		'ST' => array(60, 62), 
+		'MV' => array(320), 
+		'DO' => array(200, 201), 
+		'EV' => array(400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410), 
+		'CN' => array(350)
+	);
+	$visit_type_id = null;
+	if($this->input->post('visit_type') != "") {
+		if(isset($map_visit_type_ids_array[$this->input->post('visit_type')])) {
+			$visit_type_id = $map_visit_type_ids_array[$this->input->post('visit_type')];
+		}
+	}
+	
+	$gdata = $this->visitlogmdl->getByEpsodeId($cms_485, $visit_type_id, $this->input->post('visit_status_id'));
+
+	if (count($gdata)) {
+		$this->load->helper('general');
+		$to_count = 1;
+		foreach ($gdata as $visit) {
+			if ($visit->visit_type_id == 400) {
+				$this->load->model('vteventsmdl');
+				$event = $this->vteventsmdl->get($visit->visit_log_id); 
+				if ($event->visibility == 'private' AND $this->loggedinUser->agency_id != $event->agency_id) {
+					continue;
+				}
+			}
+
+			$visit_task_name = "";
+			if ($visit->visit_log_number) {
+				if($visit->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($visit->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$visit_task_name = "(" . $visit->visit_log_number . ") " . $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type];
+						//$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type]));
+					}else{
+						$visit_task_name = "(" . $visit->visit_log_number . ") " . $visit->visit_description;
+						//$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description));
+					}
+				}else{
+					$visit_task_name = "(" . $visit->visit_log_number . ") " . $visit->visit_description;	
+					//$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description));
+				}
+
+			} else {
+				if($visit->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($visit->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$visit_task_name = $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type];
+						//$cell->append($this->xml->Element("cell", null, $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type]));
+					}else{
+						$visit_task_name = $visit->visit_description;					
+						//$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+					}
+				}else{
+					$visit_task_name = $visit->visit_description;
+					//$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+				}          
+			}
+			$user_approver_name = "";
+			if (($visit->visit_status_id == 3 || $visit->visit_status_id == 8) AND ($visit->user_approver!="")) {  
+				$user_approver = $this->usagymdl->getByUsAgyId($visit->user_approver);
+				$user_approver_name = @$user_approver->first_name . " " . @$user_approver->last_name;
+				//$cell->append($this->xml->Element("cell", null, @$user_approver->first_name . " " . @$user_approver->last_name));
+			}
+			
+		
+			if($this->input->post('keyword') != ""){
+				if (stripos(standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST'), $this->input->post('keyword')) === FALSE
+					AND stripos($visit_task_name, $this->input->post('keyword')) === FALSE
+					AND stripos($visit->tab_description, $this->input->post('keyword')) === FALSE 
+					AND stripos($visit->first_name . " " . $visit->last_name, $this->input->post('keyword')) === FALSE  
+					AND stripos(standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_in), 'USA_TIME_C'), $this->input->post('keyword')) === FALSE  
+					AND stripos(standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_out), 'USA_TIME_C'), $this->input->post('keyword')) === FALSE 
+					AND stripos($visit->visit_duration, $this->input->post('keyword')) === FALSE  
+					AND stripos($user_approver_name, $this->input->post('keyword')) === FALSE 
+				)
+				{
+
+					continue;					
+				}
+			}
+
+			if ($visit->visit_status_id == 6) {
+				$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+			} else {
+				$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+			}
+			$cell->append($this->xml->Element("userdata", 'name=date_diff', (mysql_to_unix(standard_date(mysql_to_unix($visit->visit_date_time), 'MYSQL_NOTIME')) - mysql_to_unix(date('Y-m-d')))));
+			$cell->append($this->xml->Element("userdata", 'name=visit_type_id', $visit->visit_type_id));
+			
+			$cell->append($this->xml->Element("cell", null, "0"));
+
+			if($visit->visit_status_id==1){
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')."^javascript:edit_schedule(" . $visit->visit_log_id . ")" ));
+			}else{
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')));				  
+			}
+	
+			$visit_type = $this->visittypemdl->getById($visit->visit_type_id);
+			$visit_program_info = array();
+			if ($visit_type->visit_program != "") {
+				if(file_exists(APPPATH."models/".strtolower($visit_type->visit_program)."mdl.php")){
+					$modelclass = strtolower($visit_type->visit_program).'mdl';
+					$this->load->model($modelclass);
+					$visit_program_info = $this->$modelclass->get($visit->visit_log_id);
+				}
+			}
+
+			/*$visitNameCellStr = '<![CDATA[';
+			if($visit->visit_type_id == 104) {
+			    $month = date("m",strtotime($visit->visit_date_time));
+			    $type_quar_rpt = "";
+			    switch ($month) {
+                    case "01":
+                    case "02":
+                    case "03":
+                        $type_quar_rpt = "Q1";
+                        break;
+                    case "04":
+                    case "05":
+                    case "06":
+                        $type_quar_rpt = "Q2";
+                        break;
+                    case "07":
+                    case "08":
+                    case "09":
+                        $type_quar_rpt = "Q3";
+                        break;
+                    case "10":
+                    case "11":
+                    case "12":
+                        $type_quar_rpt = "Q4";
+                        break;
+                    default:
+                        break;
+                }
+
+                $visitNameCellStr .= $visit_task_name." ".$type_quar_rpt;
+            }else {
+                $visitNameCellStr .= $visit_task_name;
+            }
+
+			$visitNameCellStr .= ']]>';  */
+			
+			
+			$qstr = calculate_q_text($visit);
+			
+			$visitNameCellStr = $visit_task_name . $qstr;
+			$cell->append($this->xml->Element("cell", null, $visitNameCellStr));
+
+
+			if (is_null($visit->sent_to_agency_date) OR $visit->sent_to_agency_date == '0000-00-00 00:00:00') {
+				$cell->append($this->xml->Element("cell", null, null));
+			} else {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->sent_to_agency_date), 'USA_DATE')));	
+			}
+			
+			
+			if($visit->sent_email_log_count > 0) {
+				$show_email_str = '<![CDATA[';
+				$show_email_str.= '<a title="Recipients" href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; show_emails(' . $visit->visit_log_id . ')"> R </a>';
+				$show_email_str .= ']]>';
+			} else { 
+				$show_email_str = '';
+			}
+			$cell->append($this->xml->Element("cell", null, $show_email_str));
+
+			$commentsCellStr = '<![CDATA[';
+			// display only for billable visits
+			if($visit->signature != "") {
+		        $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; capture_signature(\'' . $visit->visit_log_id . '\')"><img src="'.$this->config->config["base_url"].'style/images/drop-yes.gif" width="16" border="0" /></a>';
+		    } else if(in_array($visit->visit_type_id, array(10, 12, 40, 42, 60, 62, 22, 116, 113, 114, 115, 117)) AND $visit->visit_status_id != 1 AND $visit->billable_YN==1) {
+		        // add the edit icon for a popup to capture the signature         
+		        if($visit->signature == "") {
+		          $not_signed = "<span style='color: red; background: yellow; '>&nbsp;&nbsp;!&nbsp;&nbsp;</span>";
+		          $commentsCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true; capture_signature(\'' . $visit->visit_log_id . '\')"> '.$not_signed.' </a>';
+		        }       
+		    }
+
+			if ( (isset($visit_program_info->upload_document_name) AND $visit_program_info->upload_document_name != '')
+				OR (isset($visit_program_info->upload_document_name2) AND $visit_program_info->upload_document_name2 != '')
+			) {
+				$scanned_copy = "<span title='Scanned Copy' style='color: red; background: yellow; '>&nbsp;&nbsp;U&nbsp;&nbsp;</span>";
+				$commentsCellStr.= '<a title="Scanned Copy" href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true;  Tip(\'Scanned Copy\', OFFSETY, 18);"> '.$scanned_copy.' </a>';
+			}
+
+			if ( isset($visit_program_info->upload_covid_document) AND $visit_program_info->upload_covid_document != ''
+			) {
+				$scanned_copy = "&nbsp;<span title='Covid-19 pdf attachment' style='color: red; background: yellow; '>&nbsp;&nbsp;C&nbsp;&nbsp;</span>";
+				$commentsCellStr.= '<a title="Scanned Copy" href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true;  Tip(\'Covid-19 pdf attachment\', OFFSETY, 18);"> '.$scanned_copy.' </a>';
+			}
+		
+
+			$commentsCellStr .= ']]>';  			
+			$cell->append($this->xml->Element("cell", null, $commentsCellStr));
+			
+			
+			$cell->append($this->xml->Element("cell", null, $visit->tab_description));
+			$cell->append($this->xml->Element("cell", null, $visit->first_name . " " . $visit->last_name));
+			$cell->append($this->xml->Element("cell", null, ($visit->visited_time_in == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_in), 'USA_TIME_C')));
+			$cell->append($this->xml->Element("cell", null, ($visit->visited_time_out == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_out), 'USA_TIME_C')));
+			$cell->append($this->xml->Element("cell", null, substr($visit->visit_duration, 0, 5)));
+			$cell->append($this->xml->Element("cell", null, $user_approver_name));
+
+			$canDoMissedVisit = false;
+			if ($visit->visit_user_id == $this->getUsAgyId()) {
+				if ($visit->visit_status_id == 1 OR $visit->visit_status_id == 2) {
+					$canDoMissedVisit = true;
+				}
+			} else if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) {
+		      if ($visit->visit_status_id == 1) {
+				$canDoMissedVisit = true;
+		      }
+		    }
+
+		    $canReturn = false;
+		    if (($visit->visit_status_id == 3 OR $visit->visit_status_id == 4) AND $this->getAgencyType()=='C') {
+		    	$canReturn = true;
+		    }
+
+			// if($visit->visit_status_id == 1 && $this->getUserId() == $visit->visit_user_id) {
+			if ($canDoMissedVisit) {
+				$cell->append($this->xml->Element("cell", null, "Missed Visit^javascript:confirmMissedVisit(" . $visit->visit_log_id . ")"));
+			} else if ($canReturn) {
+				if ($visit->payroll_status == 'P' OR $visit->co_invoice_id > 0)
+				$cell->append($this->xml->Element("cell", null, "Return^javascript:confirmReturnVisit(" . $visit->visit_log_id . ", 1)"));
+				else
+				$cell->append($this->xml->Element("cell", null, "Return^javascript:confirmReturnVisit(" . $visit->visit_log_id . ", 0)"));
+			} else {
+				$cell->append($this->xml->Element("cell", null, null));
+			}
+
+			
+			// $cell->append($this->xml->Element("cell", null, $missed_visit));
+			
+			
+			$document->append($cell);
+		}
+		
+	} else {
+
+		$cell = $this->xml->Element("row");
+		$cell->append($this->xml->Element("cell", null, "No data to display"));
+//			$document->append($cell);
+
+	}
+
+}
+	
+
+function capture_signature($visit_log_id) {
+	//echo FCPATH;
+	$rules = array (
+		'signature' 	=> 'required'
+	);		
+	$this->validation->set_rules($rules);
+	$this->tpl->assign("visit_log_id", $visit_log_id);	
+	
+	if ($this->validation->run() == FALSE) {
+		// get the image name based on the visit_log_id
+		$visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+		//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+		$this->tpl->assign("visit_log_array", $visit_log_array);	
+		$this->tpl->assign_include("dynamic_tpl", "task/capture_signature");
+		$this->tpl->view("task/ibase", $this->lang->language);	
+	} else {
+		if (!is_null($this->input->post('signature'))) {
+			$signature = $this->input->post('signature');
+			$temp_array = explode(",", $signature);
+			$encoded_image = $temp_array[1];
+			$decoded_image = base64_decode($encoded_image);
+			$signature_file_name = "signature_" . $visit_log_id . ".jpg";
+			$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+			
+			file_put_contents($upload_path . $signature_file_name, $decoded_image);
+			$this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+			echo "Signature has been captured and saved successfully.";
+		}
+	}
+
+}
+
+function utilities( $patient_id, $cms_485 ) {
+
+    /**
+          #  Get visit open settings. Will it open in new window or not.
+          */          
+    $user_id = $this->session->userdata('user_id');
+    $user_info = $this->usermdl->getById($user_id);    
+    $this->tpl->assign('open_new_window', $user_info->open_new_window);
+    
+    $this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+    $this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+
+    $this->tpl->assign('resource_edit', 'opencopy');
+    $this->tpl->assign('resource_grid', 'utilities_grid');
+
+    
+    $this->tpl->assign(array("no_grid_buttons" => true));
+
+    $this->tpl->assign("entity_id",  $cms_485);
+
+    $this->tpl->assign(array("date_filter" => standard_date(mktime(0, 0, 0, date("m")  , date("d")-7, date("Y")), 'VIS_LIST')));
+    $this->tpl->assign_include("filter_tpl", "patient/task/utility_gfilter");
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    $this->tpl->view("parts/ibase");
+}
+
+function utilities_grid ( $cms_485 ) {
+	$assesment_types_list = $this->parametermdl->getByType(32);
+	$this->xml->root_name = "rows";
+	$document = $this->xml->Document();
+
+	$head = $this->xml->Element("head");
+	$head->append($this->xml->Element("column", "width=10;type=link", "Date"));
+	$head->append($this->xml->Element("column", "width=20",  "Visit/Task Name"));
+	$head->append($this->xml->Element("column", "width=*",  "Status"));
+	$head->append($this->xml->Element("column", "width=*",  "User"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "Time In"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "Time Out"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "Duration"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "User Approver"));
+	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));
+	$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+	$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+	$document->append($head);
+
+	$gdata = $this->visitlogmdl->getByEpsodeIdArchive($cms_485, $this->input->post('visit_type_id'), $this->input->post('visit_status_id'), null, $this->input->post('keyword'));
+		// $gdata = $this->visitlogmdl->getByEpsodeId($cms_485, $this->input->post('visit_type_id'), $this->input->post('visit_status_id'), null, $this->input->post('keyword'));
+	if (count($gdata)) {
+		
+		$to_count = 1;
+		foreach ($gdata as $visit) {
+
+			if ($visit->visit_status_id == 6) {
+				$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+			} else {
+				$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+			}
+
+			if($visit->visit_status_id==1){
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')."^javascript:edit_schedule(" . $visit->visit_log_id . ")" ));
+			}else{
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')));				  
+			}
+
+			if ($visit->visit_log_number) {
+				if($visit->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($visit->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type]));
+					}else{
+						$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description));
+					}
+				}else{
+					$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description));
+				}
+
+			} else {
+				if($visit->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($visit->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$cell->append($this->xml->Element("cell", null, $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type]));
+					}else{
+						$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+					}
+				}else{
+					$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+				}          
+			}
+
+			$cell->append($this->xml->Element("cell", null, $visit->tab_description));
+			$cell->append($this->xml->Element("cell", null, $visit->first_name . " " . $visit->last_name));
+			$cell->append($this->xml->Element("cell", null, ($visit->visited_time_in == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_in), 'USA_TIME_C')));
+			$cell->append($this->xml->Element("cell", null, ($visit->visited_time_out == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_out), 'USA_TIME_C')));
+			$cell->append($this->xml->Element("cell", null, $visit->visit_duration));
+			if ($visit->visit_status_id == 3 || $visit->visit_status_id == 8) { 
+				$user_approver = $this->usagymdl->getByUsAgyId($visit->user_approver);
+				$cell->append($this->xml->Element("cell", null, @$user_approver->first_name . " " . @$user_approver->last_name));
+			}else{
+				$cell->append($this->xml->Element("cell", null, ""));
+			}
+
+			$cell->append($this->xml->Element("cell", null, "Restore^javascript:restore(" . $visit->visit_log_id.")"));
+			$cell->append($this->xml->Element("cell", null, "Move^javascript:movevisit(" . $visit->visit_log_id.")"));
+
+			$document->append($cell);
+
+		}
+		
+	} else {
+
+		$cell = $this->xml->Element("row");
+		$cell->append($this->xml->Element("cell", null, "No data to display"));
+//			$document->append($cell);
+
+	}
+
+}
+
+function move_visit($visit_log_id, $soc_id=null){
+	$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	if (is_null($visitlog) ){
+		echo "Visit not found";exit;
+	} 
+
+	$this->tpl->assign("visit_log_id", $visit_log_id);
+
+	$rules = array (
+              //'soc_id' 	=> 'required',
+		'cms485_id' 	=> 'required'
+		);
+
+	$this->validation->set_rules($rules);
+
+	if ($this->validation->run() == FALSE) {
+		$this->tpl->assign('visitlog', $visitlog);      
+		$visit_type = $this->visittypemdl->getById($visitlog->visit_type_id);
+      //$visit_type->visit_description      
+		$this->tpl->assign('visit_type', $visit_type);
+
+		$patient = $this->patientmdl->getById($visitlog->patient_id);
+		$episode = $this->episodemdl->getById($visitlog->cms485_id);
+		$this->tpl->assign('soc_list', $this->socmdl->getByPatient($visitlog->patient_id));
+		if(is_null($soc_id)){
+			$this->tpl->assign('episode_list', $this->episodemdl->getBySocId($episode->soc_id));      
+			$this->tpl->assign('soc_id', $episode->soc_id);
+		}else{
+			$this->tpl->assign('episode_list', $this->episodemdl->getBySocId($soc_id));      
+			$this->tpl->assign('soc_id', $soc_id);      
+		}
+		$this->tpl->assign('cms485_id', $visitlog->cms485_id);
+
+		$this->tpl->assign_include("dynamic_tpl", "patient/task/move_visit");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	} else {
+		$this->visitlogmdl->updateFlex($visit_log_id, 'cms485_id', $this->input->post('cms485_id') );
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+      $this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+
+      echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";
+
+  }
+
+}
+
+function restore_utility($visit_log_id){
+	$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	if (!empty($visitlog)) {
+		if ($visitlog->payroll_status == 'P' OR $visitlog->co_invoice_id > 0) {
+			$document = $this->xml->Document();
+	      	$document->append($this->xml->Element("js", "script=restored(2)"));
+	      	return;
+		}
+	}
+
+	$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vis_visit_log_tmp LIKE vis_visit_log");
+    //$this->db->simple_query("TRUNCATE TABLE vis_visit_log_tmp");
+	$this->db->simple_query("REPLACE INTO vis_visit_log_tmp SELECT * FROM `vis_visit_log_copy` WHERE visit_log_id = {$visit_log_id}");
+
+	if($this->db->simple_query("REPLACE INTO `vis_visit_log` SELECT * FROM `vis_visit_log_tmp` WHERE visit_log_id = {$visit_log_id}")){ 
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_pt_evaluation_tmp LIKE vt_pt_evaluation");
+      //$this->db->simple_query("TRUNCATE TABLE vt_pt_evaluation_tmp");
+		$this->db->simple_query("REPLACE INTO vt_pt_evaluation_tmp SELECT * FROM `vt_pt_evaluation_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_pt_evaluation` SELECT * FROM `vt_pt_evaluation_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt12_pt_progress_note_tmp LIKE vt12_pt_progress_note");
+      //$this->db->simple_query("TRUNCATE TABLE vt12_pt_progress_note_tmp");
+		$this->db->simple_query("REPLACE INTO vt12_pt_progress_note_tmp SELECT * FROM `vt12_pt_progress_note_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt12_pt_progress_note` SELECT * FROM `vt12_pt_progress_note_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_ot_evaluation_tmp LIKE vt_ot_evaluation");
+      //$this->db->simple_query("TRUNCATE TABLE vt_ot_evaluation_tmp");
+		$this->db->simple_query("REPLACE INTO vt_ot_evaluation_tmp SELECT * FROM `vt_ot_evaluation_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_ot_evaluation` SELECT * FROM `vt_ot_evaluation_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_ot_progress_note_tmp LIKE vt_ot_progress_note");
+      //$this->db->simple_query("TRUNCATE TABLE vt_ot_progress_note_tmp");
+		$this->db->simple_query("REPLACE INTO vt_ot_progress_note_tmp SELECT * FROM `vt_ot_progress_note_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_ot_progress_note` SELECT * FROM `vt_ot_progress_note_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_st_evaluation_tmp LIKE vt_st_evaluation");
+      //$this->db->simple_query("TRUNCATE TABLE vt_st_evaluation_tmp");
+		$this->db->simple_query("REPLACE INTO vt_st_evaluation_tmp SELECT * FROM `vt_st_evaluation_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_st_evaluation` SELECT * FROM `vt_st_evaluation_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_st_progress_note_tmp LIKE vt_st_progress_note");
+      //$this->db->simple_query("TRUNCATE TABLE vt_st_progress_note_tmp");
+		$this->db->simple_query("REPLACE INTO vt_st_progress_note_tmp SELECT * FROM `vt_st_progress_note_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_st_progress_note` SELECT * FROM `vt_st_progress_note_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+      $this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+      
+      $document = $this->xml->Document();
+      $document->append($this->xml->Element("js", "script=restored(1)"));
+  	}else{
+  		$document = $this->xml->Document();
+  		$document->append($this->xml->Element("js", "script=restored(0)"));
+  	}
+
+}	
+
+
+function saved( $patient_id, $cms_485 ) {
+
+    /**
+          #  Get visit open settings. Will it open in new window or not.
+          */          
+    $user_id = $this->session->userdata('user_id');
+    $user_info = $this->usermdl->getById($user_id);    
+    $this->tpl->assign('open_new_window', $user_info->open_new_window);
+    
+    $this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+    $this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+
+    $this->tpl->assign('resource_edit', 'opencopy');
+    $this->tpl->assign('resource_grid', 'saved_grid');
+
+    
+    $this->tpl->assign(array("no_grid_buttons" => true));
+
+    $this->tpl->assign("entity_id",  $cms_485);
+
+    $this->tpl->assign(array("date_filter" => standard_date(mktime(0, 0, 0, date("m")  , date("d")-7, date("Y")), 'VIS_LIST')));
+    $this->tpl->assign_include("filter_tpl", "patient/task/gfilter");
+    $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+    $this->tpl->view("parts/ibase");
+}
+
+
+function saved_grid ( $cms_485 ) {
+	$assesment_types_list = $this->parametermdl->getByType(32);
+	$this->xml->root_name = "rows";
+	$document = $this->xml->Document();
+
+	$head = $this->xml->Element("head");
+	$head->append($this->xml->Element("column", "width=10;type=link", "Date"));
+	$head->append($this->xml->Element("column", "width=20",  "Visit/Task Name"));
+	$head->append($this->xml->Element("column", "width=*",  "Status"));
+	$head->append($this->xml->Element("column", "width=*",  "User"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "Time In"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "Time Out"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "Duration"));
+	$head->append($this->xml->Element("column", "width=*;align=center",  "User Approver"));
+	$head->append($this->xml->Element("column", "width=8;align=center;type=link", "Actions"));
+	$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+	$document->append($head);
+
+	$gdata = $this->visitlogmdl->getByEpsodeId($cms_485, $this->input->post('visit_type_id'), $this->input->post('visit_status_id'), null, $this->input->post('keyword'));
+
+	if (count($gdata)) {
+		
+		$to_count = 1;
+		foreach ($gdata as $visit) {
+
+			if ($visit->visit_status_id == 6) {
+				$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+			} else {
+				$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+			}
+
+			if($visit->visit_status_id==1){
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')."^javascript:edit_schedule(" . $visit->visit_log_id . ")" ));
+			}else{
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')));				  
+			}
+
+			if ($visit->visit_log_number) {
+				if($visit->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($visit->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type]));
+					}else{
+						$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description));
+					}
+				}else{
+					$cell->append($this->xml->Element("cell", null, "(" . $visit->visit_log_number . ") " . $visit->visit_description));
+				}
+
+			} else {
+				if($visit->visit_program=='ptev'){
+					$this->load->model('ptevmdl');
+					$ptev = $this->ptevmdl->get($visit->visit_log_id);
+					if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+						$cell->append($this->xml->Element("cell", null, $visit->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type]));
+					}else{
+						$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+					}
+				}else{
+					$cell->append($this->xml->Element("cell", null, $visit->visit_description));
+				}          
+			}
+
+			$cell->append($this->xml->Element("cell", null, $visit->tab_description));
+			$cell->append($this->xml->Element("cell", null, $visit->first_name . " " . $visit->last_name));
+			$cell->append($this->xml->Element("cell", null, ($visit->visited_time_in == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_in), 'USA_TIME_C')));
+			$cell->append($this->xml->Element("cell", null, ($visit->visited_time_out == NULL) ? "" : standard_date(mysql_to_unix(date('Y-m-d')  . " " . $visit->visited_time_out), 'USA_TIME_C')));
+			$cell->append($this->xml->Element("cell", null, $visit->visit_duration));
+			if ($visit->visit_status_id == 3 || $visit->visit_status_id == 8) { 
+				$user_approver = $this->usagymdl->getByUsAgyId($visit->user_approver);
+				$cell->append($this->xml->Element("cell", null, @$user_approver->first_name . " " . @$user_approver->last_name));
+			}else{
+				$cell->append($this->xml->Element("cell", null, ""));
+			}
+
+			$cell->append($this->xml->Element("cell", null, "Restore^javascript:restore(" . $visit->visit_log_id.")"));
+
+			$document->append($cell);
+
+		}
+		
+	} else {
+
+		$cell = $this->xml->Element("row");
+		$cell->append($this->xml->Element("cell", null, "No data to display"));
+//			$document->append($cell);
+
+	}
+
+}
+
+/*function restore($visit_log_id){
+	$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vis_visit_log_tmp LIKE vis_visit_log");
+    //$this->db->simple_query("TRUNCATE TABLE vis_visit_log_tmp");
+	$this->db->simple_query("REPLACE INTO vis_visit_log_tmp SELECT * FROM `vis_visit_log_copy` WHERE visit_log_id = {$visit_log_id}");
+
+	if($this->db->simple_query("REPLACE INTO `vis_visit_log` SELECT * FROM `vis_visit_log_tmp` WHERE visit_log_id = {$visit_log_id}")){ 
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_pt_evaluation_tmp LIKE vt_pt_evaluation");
+      //$this->db->simple_query("TRUNCATE TABLE vt_pt_evaluation_tmp");
+		$this->db->simple_query("REPLACE INTO vt_pt_evaluation_tmp SELECT * FROM `vt_pt_evaluation_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_pt_evaluation` SELECT * FROM `vt_pt_evaluation_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt12_pt_progress_note_tmp LIKE vt12_pt_progress_note");
+      //$this->db->simple_query("TRUNCATE TABLE vt12_pt_progress_note_tmp");
+		$this->db->simple_query("REPLACE INTO vt12_pt_progress_note_tmp SELECT * FROM `vt12_pt_progress_note_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt12_pt_progress_note` SELECT * FROM `vt12_pt_progress_note_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_ot_evaluation_tmp LIKE vt_ot_evaluation");
+      //$this->db->simple_query("TRUNCATE TABLE vt_ot_evaluation_tmp");
+		$this->db->simple_query("REPLACE INTO vt_ot_evaluation_tmp SELECT * FROM `vt_ot_evaluation_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_ot_evaluation` SELECT * FROM `vt_ot_evaluation_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_ot_progress_note_tmp LIKE vt_ot_progress_note");
+      //$this->db->simple_query("TRUNCATE TABLE vt_ot_progress_note_tmp");
+		$this->db->simple_query("REPLACE INTO vt_ot_progress_note_tmp SELECT * FROM `vt_ot_progress_note_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_ot_progress_note` SELECT * FROM `vt_ot_progress_note_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_st_evaluation_tmp LIKE vt_st_evaluation");
+      //$this->db->simple_query("TRUNCATE TABLE vt_st_evaluation_tmp");
+		$this->db->simple_query("REPLACE INTO vt_st_evaluation_tmp SELECT * FROM `vt_st_evaluation_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_st_evaluation` SELECT * FROM `vt_st_evaluation_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+		$this->db->simple_query("CREATE TEMPORARY TABLE IF NOT EXISTS vt_st_progress_note_tmp LIKE vt_st_progress_note");
+      //$this->db->simple_query("TRUNCATE TABLE vt_st_progress_note_tmp");
+		$this->db->simple_query("REPLACE INTO vt_st_progress_note_tmp SELECT * FROM `vt_st_progress_note_copy` WHERE visit_log_id = {$visit_log_id}");
+		$this->db->simple_query("REPLACE INTO `vt_st_progress_note` SELECT * FROM `vt_st_progress_note_tmp` WHERE visit_log_id = {$visit_log_id}");
+
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=restored(1)"));
+	}else{
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=restored(0)"));
+	}
+
+}	*/
+
+function missed ( $cms485_id, $visit_log_id ) {
+	$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	$canDoMissedVisit = false;
+    if ($visitlog->visit_user_id == $this->getUsAgyId()) {
+      if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2) {
+        $canDoMissedVisit = true;
+      }
+    } else if (   $this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 ) {
+      if ($visitlog->visit_status_id == 1) {
+        $canDoMissedVisit = true;
+      }
+    }
+    
+    if (!$canDoMissedVisit) {
+      exit("You can't make this a Missed Visit!");
+    }
+
+	$visittype = $this->visittypemdl->getById(320);
+
+	$this->visitlogmdl->updateComments($visit_log_id, $this->input->post('comments'));
+	$this->visitlogmdl->updateStatus($visit_log_id, 6);
+	$this->visitlogmdl->updateFlex($visit_log_id, 'visit_type_id', 320);
+	$this->visitlogmdl->updateFlex($visit_log_id, 'billable_YN', ($visittype->billable_yn == 'Y' ? 1 : 0));
+	$this->visitlogmdl->updateFlex($visit_log_id, 'visited_time_in', '00:00:00' );
+	$this->visitlogmdl->updateFlex($visit_log_id, 'visited_time_out', '00:00:00' );
+
+	$this->app->updateEpisodeVisitNumber($visitlog->cms485_id); // reordering visit number
+
+    $previousEvs = array();
+    switch ($visitlog->visit_program) {
+      ## need to copy 4 fields only from PT EV
+      case 'ptev':
+      case 'ptpn':
+        $this->load->model('ptevmdl');
+        $previousEvs = $this->ptevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id);
+        $visit_type_mdl = $visitlog->visit_program.'mdl';
+        $this->load->model($visit_type_mdl);
+        if (count($previousEvs)) {
+          $previousEv = $previousEvs[count($previousEvs) - 1];
+          $need_to_import = array('primary_diag','secondary_diag','primary_diag_date','secondary_diag_date');          
+          
+          $visit_program = $this->$visit_type_mdl->get($visit_log_id);
+          if (count($visit_program)) {
+            foreach ($visit_program as $k => $v) {              
+                $this->$visit_type_mdl-> $k = $v;
+            }
+            foreach($previousEv as $k=>$v){
+              if(in_array($k,$need_to_import) AND property_exists($this->ptevmdl, $k))
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            $this->$visit_type_mdl->visit_log_id   = $visit_log_id;
+            $this->$visit_type_mdl->update($visit_log_id);
+          } else {
+            foreach($previousEv as $k=>$v){
+              if(in_array($k,$need_to_import) AND property_exists($this->ptevmdl, $k))
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            $this->$visit_type_mdl->visit_log_id   = $visit_log_id;
+            $this->$visit_type_mdl->insert($visit_log_id);
+          }
+        }
+
+        break;
+
+      ## need to copy 4 fields only from OT EV
+      case 'otev':
+      case 'otpn':
+        $this->load->model('otevmdl');
+        $previousEvs = $this->otevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id);
+        $visit_type_mdl = $visitlog->visit_program.'mdl';
+        $this->load->model($visit_type_mdl);
+        if (count($previousEvs)) {
+          $previousEv = $previousEvs[count($previousEvs) - 1];
+          $need_to_import = array('primary_diag','secondary_diag','primary_diag_date','secondary_diag_date');          
+          
+          $visit_program = $this->$visit_type_mdl->get($visit_log_id);
+          if (count($visit_program)) {
+            foreach($visit_program as $k=>$v){              
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            foreach($previousEv as $k=>$v){
+              if(in_array($k,$need_to_import) AND property_exists($this->otevmdl, $k))
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            $this->$visit_type_mdl->visit_log_id   = $visit_log_id;
+            $this->$visit_type_mdl->update($visit_log_id);
+          } else {
+            foreach($previousEv as $k=>$v){
+              if(in_array($k,$need_to_import) AND property_exists($this->otevmdl, $k))
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            $this->$visit_type_mdl->visit_log_id   = $visit_log_id;
+            $this->$visit_type_mdl->insert($visit_log_id);
+          }
+        }        
+        break;
+
+      ## need to copy 4 fields only from ST EV
+      case 'stev':
+      case 'stpn':
+        $this->load->model('stevmdl');
+        $previousEvs = $this->otevmdl->getPrevious(null, @$visitlog->visit_date_time, @$visitlog->cms485_id);
+        $visit_type_mdl = $visitlog->visit_program.'mdl';
+        $this->load->model($visit_type_mdl);
+        if (count($previousEvs)) {
+          $previousEv = $previousEvs[count($previousEvs) - 1];
+          $need_to_import = array('primary_diag','secondary_diag','primary_diag_date','secondary_diag_date');          
+          
+          $visit_program = $this->$visit_type_mdl->get($visit_log_id);
+          if (count($visit_program)) {
+            foreach($visit_program as $k=>$v){              
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            foreach($previousEv as $k=>$v){
+              if(in_array($k,$need_to_import) AND property_exists($this->stevmdl, $k))
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            $this->$visit_type_mdl->visit_log_id   = $visit_log_id;
+            $this->$visit_type_mdl->update($visit_log_id);
+          } else {
+            foreach($previousEv as $k=>$v){
+              if(in_array($k,$need_to_import) AND property_exists($this->stevmdl, $k))
+              $this->$visit_type_mdl->$k   = $v;
+            }
+            $this->$visit_type_mdl->visit_log_id   = $visit_log_id;
+            $this->$visit_type_mdl->insert($visit_log_id);
+          }
+        }        
+        break;
+      default:
+        # code...
+        break;
+    }
+
+	// $this->edit ($visit_log_id);			
+	$this->opendocument ($cms485_id , $visit_log_id);			
+}
+
+function opendocument ( $cms485_id, $visit_log_id, $window='self'   ) {
+	$config =& get_config();
+	
+	$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	
+	$this->session->set_userdata('task_return', "patient/task/visit_log/" . $visitlog->patient_id . "/" . $cms485_id);
+	
+	if($window=='nw'){      
+		header("Location: " . $config["index_url"] . "task/task/edit/" . $visit_log_id."/nw");
+	}
+	else{
+		header("Location: " . $config["index_url"] . "task/task/edit/" . $visit_log_id);
+	}
+	
+}
+
+function opencopy ( $cms485_id, $visit_log_id, $window='self'   ) {
+
+	$config =& get_config();
+
+	$visitlog = $this->visitlogmdl->getByIdArchive($visit_log_id);
+
+	$this->session->set_userdata('task_return', "patient/task/utilities/" . $visitlog->patient_id . "/" . $cms485_id);
+	
+	if($window=='nw'){      
+		header("Location: " . $config["index_url"] . "task/task/edit_archive_note/" . $visit_log_id."/nw");
+	}
+	else{
+		header("Location: " . $config["index_url"] . "task/task/edit_archive_note/" . $visit_log_id);
+	}
+}
+
+function reassignApprover ( $visit_log_ids ) {
+
+	foreach (explode(",", $visit_log_ids) as $visit_log_id) {
+
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visit_log->visit_status_id == 3) {
+
+			$visit_type_approver = $this->teammdl->get($visit_log->patient_id, null, null, null, null, $visit_log->approver_type_id);
+
+				if (count($visit_type_approver)) { // assigning to visit type approver
+					
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+					
+				} else { // assigning to CM approver
+					
+					$cm_approver = $this->teammdl->get($visit_log->patient_id, null, null, null, null, 3);
+					$this->visitlogmdl->updateUserApprover($visit_log_id, $cm_approver[0]->us_agy_id);
+					
+				}
+				
+			}
+
+		}
+		
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->Element("js", "script=loadGrid()"));
+		
+	}
+	
+	function returnVisit($visit_log_id){
+		$document = $this->xml->Document();
+		
+		/*$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		if (!empty($visitlog)) {
+			if ($visitlog->payroll_status == 'P' OR $visitlog->co_invoice_id > 0) {
+				$document->append($this->xml->Element("js", "script=alert('Warning: Visit Note can\'t be returned - Payroll and/or Billing has already been processed for this note.')"));
+		      	return;
+			}
+		}else {
+			$document->append($this->xml->Element("js", "script=alert('Visit Note not found!')"));
+			return;
+		}*/
+
+		$archive = $this->visitlogmdl->getByIdArchive($visit_log_id);
+		if (!empty($archive)) {
+			$this->visitlogmdl->updateUserApprover($visit_log_id, $archive->user_approver);
+		}		
+		$this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 8);
+		
+		$document->append($this->xml->Element("js", "script=alert('Visit Note successfully returned')"));
+		$document->append($this->xml->Element("js", "script=loadGrid()"));
+	}
+
+	function email_visits($patient_id, $record_ids = null){
+		if (is_null($record_ids)) {
+			exit('At least one Task/Visit must be selected');
+		}
+
+		$this->tpl->assign("patient_id", $patient_id);
+		$this->tpl->assign("record_ids", $record_ids);
+
+		$rules = array (
+          'email' 	=> 'callback_validate_email_duplicate'
+        );
+	    $fields = array(
+	        'email' => 'Email'
+	    );
+
+	    $this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		$patient = $this->patientmdl->getById($patient_id);
+		$patient_agency_id = $patient->agency_id;
+		if ($this->validation->run() == FALSE) {					
+			if ($patient->gov_program == 'PRIVATE') {
+				if (isset($patient->caregiver_email) AND $patient->caregiver_email != "") {
+					$this->tpl->assign("email_to", $patient->caregiver_email);
+				} else {
+					$this->tpl->assign('error_string', 'Caregiver Email not Found for patient '.$patient->first_name.' '.$patient->last_name);
+				}
+			} else {
+				$email_to = "";
+				$team = $this->teammdl->get($patient_id, null, null, $patient->agency_id, null, 3);
+				if (count($team) > 0) {
+					$case_manager = $team[0];
+					$email_to = $case_manager->user_email;
+				}
+
+				$agency_info = $this->agencymdl->getByAgencyId($patient->agency_id);   
+				
+				if (!$email_to) {   
+					$email_to = $agency_info->agency_email;
+				}
+	      		$this->tpl->assign("email_to", $email_to);
+			}
+			$this->tpl->assign('noedit', true);
+            // $this->tpl->assign("entity_id", $agency_info->agency_id);
+            $this->tpl->assign("entity_id", $patient_agency_id);
+			$this->tpl->assign("paginate", 0);
+      		//$this->tpl->assign("send_date", date('Y-md'));
+			$this->tpl->assign("resource_grid", "contractor_contacts_grid");
+			
+			$agency_contract_detail = $this->agencycontractormdl->getAgencyContractorById($this->getAgencyId(), $patient_agency_id);
+			$this->tpl->assign("agency_contract_detail", $agency_contract_detail);
+
+			$company_info = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			$this->tpl->assign("company_email", $company_info->agency_email);
+			
+	      	$this->tpl->assign_include("dynamic_tpl", "patient/task/email_visits");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+	    }else{
+		
+			//echo "<pre>"; print_r($_POST); echo "</pre>"; exit;
+	    	$records = explode(",", $record_ids);
+	    	global $GL_VISIT;
+
+	    	$filenames = array();
+	    	
+	    	global $UPLOADED_VISITS;
+	    	$UPLOADED_VISITS = array();
+	    	$UPLOADED_COVID_PDFS = array();
+
+			$this->load->helper('visit_pdf');
+			foreach ($records as $visit_log_id) {
+			
+				$visit_log = $this->visitlogmdl->getById($visit_log_id);
+				$visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+				
+				if ($visit_type->visit_program == null) {
+					continue;
+				}
+				$method = $visit_type->visit_program.'_pdf';
+				
+				if(!function_exists($method)){          
+					continue;
+				}
+				$send_date = date('Y-m-d');
+				$sent_date = standard_date(human_to_unix($send_date), 'MYSQL_NOTIME');
+				$this->visitlogmdl->updateSentTo($visit_log_id, $sent_date);
+				
+				$this->load->model($visit_type->visit_program.'mdl');
+				
+				if(!isset($filenames[$visit_log_id])){
+					$visit_pdf = $method($visit_log_id);
+
+					if (in_array($visit_log->visit_type_id, array(10, 12, 40, 42, 60, 62))) {
+						if ( isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "" ) {
+							// when uploaded found document no need to print electronic version
+			        	}else{
+							$filenames[] = $visit_pdf;
+			        	}
+					} else {
+						if ( (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") 
+							OR  (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") ) {
+							// when uploaded found document no need to print electronic version
+			        	}else{
+							$filenames[] = $visit_pdf;
+			        	}
+					}
+
+
+				}
+
+				// Add uploaded scanned document if have any
+	            $FCPATH = FCPATH;
+	            $FCPATH = str_replace("\\","/", $FCPATH);
+	            
+
+	            // upload_document_name 1
+	            if (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") {
+	              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name)) {
+	                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name, PATHINFO_EXTENSION);
+	                if ($ext == 'pdf') {
+	                  // $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+	                  $UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+	                }
+	              }
+	            }
+	            
+	            // upload_document_name 2
+	            if (in_array($visit_log->visit_type_id, array(10, 12, 40, 42, 60, 62))) {
+	            	if (!$visit_log->signature AND isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+	            		if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+			                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+			                if ($ext == 'pdf') {
+			                  // $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+			                  $UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+			                }
+			            }
+	            	}
+	            } else if (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+	              	if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+	                	$ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+	                	if ($ext == 'pdf') {
+	                  		// $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+	                  		$UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+	                	}
+	              	}
+	            }
+
+	            // upload_covid_document 1
+	            if (isset($GL_VISIT->upload_covid_document) AND $GL_VISIT->upload_covid_document != "") {
+	              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document)) {
+	                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document, PATHINFO_EXTENSION);
+	                if ($ext == 'pdf') {
+	                  // $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document;
+	                  // $UPLOADED_COVID_PDFS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document;
+	                  $UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document;
+	                }
+	              }
+	            }
+			}
+
+			$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			$contractor_info = $this->usermdl->getById($this->session->userdata('user_id'));    
+			$patient = $this->patientmdl->getById($patient_id);
+
+			$email_str = $this->input->post('email');
+			$email_str_array = explode(",", $email_str);
+			if(!empty($email_str_array)) {
+				foreach($email_str_array as $k => $v) {
+					$to_emails[] = trim($v);
+				}
+			}
+			
+			if ($this->input->post('email_copy_company') == 1) {
+            	$to_emails[] = $company->agency_email;
+            }
+
+	    	// Send to contractor contacts which are selected
+	    	$this->load->model("contractorcontactsmdl");	
+
+            if ($this->input->post('contact_ids') != "") {
+            	$contact_ids = explode(",", $this->input->post('contact_ids'));
+				
+				$contacts = $this->contractorcontactsmdl->getByIds($contact_ids);
+				foreach ($contacts as $contact) {
+					$to_emails[] = $contact->email;
+				}
+            }
+			
+			
+			$this->load->library('email');
+			$this->email->from('noreply@homehealthsoft.com', $company->agency_name);
+			$this->email->to($to_emails);			
+			
+			$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->input->post('special_notes');
+			// $this->email->set_mailtype("html"); 
+			$this->email->message($body);      
+			$subject = "Patient: ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." - Documents from ".$company->agency_name." - ".$contractor_info->first_name." ".$contractor_info->last_name;
+
+			if ($this->input->post('send_in_bulks') == 1) {
+	        	/** 
+				 * New Code support >= PHP 5.3.0
+				 */
+				require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+				require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+				require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');      
+	            //  When 'send_in_bulks' is ON, Email all Electronic visits selected in one PDF
+	            // Merge Electronic visits only and attach this single merged file
+	            $pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+	            try {
+		            foreach($filenames as $name){
+		              $pdf->addPDF($name, 'all');
+		            }      
+
+		            $filepath = FCPATH;
+		            $filepath = str_replace("\\","/", $filepath);
+		            $filepath = $filepath."tmp/Patient_".cut_firstchar_uc($patient->first_name)."_".$patient->last_name."_Documents_".time().".pdf";
+		            $pdf->merge('file', $filepath);
+		            $this->email->attach($filepath);
+		            $filenames[] = $filepath;
+	            } catch (Exception $e) {
+	            	echo "<font color='red'>Visit Pdfs can't merged into single pdf. To avoid this error skip bulk sending.</font>";
+	            	
+	            	foreach($filenames as $note){
+						if (strpos($note, 'datastore') == FALSE) {
+							@unlink($note);
+						}
+					}
+	            	exit();
+	            }
+          	} else {
+	            foreach($filenames as $note){            
+					$this->email->attach($note);
+				}
+          	}
+
+          	// Attach $UPLOADED_VISITS if have any
+          	foreach($UPLOADED_VISITS as $note){            
+              $this->email->attach($note);
+            }
+
+            unset($UPLOADED_VISITS);
+
+
+			$this->email->subject($subject);
+			$this->email->send();
+			// echo $this->email->print_debugger();
+			$this->email->clear(true);
+			
+			// save data to the sent_email_instances and sent_email_instance_details tables
+			$this->load->model('sentemailinstancemdl');
+			$this->sentemailinstancemdl->insert();
+			$instance_id = $this->sentemailinstancemdl->id;
+			
+			$this->load->model('sentemailinstancedetailmdl');
+			$insert_array = array();
+			foreach($records as $vi => $vk) {
+				foreach($to_emails as $ei => $ek) {
+					 $insert_array[] = array('sent_email_instance_id' => $instance_id, 'source_id' => $vk, 'email' => $ek, 'source_name' => 'VLOG');
+				}		
+			}
+			if(!empty($insert_array)) {
+				$this->sentemailinstancedetailmdl->insert_batch($insert_array);
+			}
+			
+
+			foreach($filenames as $note){
+				if (strpos($note, 'datastore') == FALSE) {
+					@unlink($note);
+				}
+			}
+			unset($filenames);
+			echo "Email has been sent";
+	    }
+	}
+
+	function pdf($patient_id=null){
+		if (!is_null($this->input->post('record_ids'))) {
+			$print_elec_notes = 1;
+			$print_uploaded_docs = 1;
+
+			global $pt_3625_visits;
+		    global $last_3625_visit_log_id;
+		    global $print_notes;
+		    global $GL_VISIT;
+		    
+		    global $ELEC_VISITS;
+		    global $UPLOADED_VISITS;
+		    global $F3625_VISITS;
+		    global $VISITS_TO_UNLINK;
+
+		    $ELEC_VISITS = array();
+		    $UPLOADED_VISITS = array();
+		    $F3625_VISITS = array();
+		    $VISITS_TO_UNLINK = array();
+		    $print_notes = 1;
+
+		    $filenames = array();    
+		    $this->load->helper('visit_pdf');
+
+			$record_ids = $this->input->post('record_ids');
+			$records = explode(",", $record_ids);
+
+			foreach ($records as $visit_log_id) {
+				$visit_log = $this->visitlogmdl->getById($visit_log_id);
+				$visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+				
+				if ($visit_type->visit_program == null) {
+					continue;
+				}
+				$method = $visit_type->visit_program.'_pdf';
+				
+				if(!function_exists($method)){          
+					continue;
+				}
+
+				$this->load->model(strtolower($visit_type->visit_program).'mdl');
+		      	$visit_pdf = $method($visit_log_id);
+		      	$VISITS_TO_UNLINK[] = $visit_pdf;
+		      	if ($visit_pdf) {
+			        if ($print_elec_notes) {
+
+			        	if (in_array($visit_log->visit_type_id, array(10, 12, 40, 42, 60, 62))) {
+			        		if ( isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "" ) {
+			        			// do not print electronic form
+				        	} else {
+				            	$filenames[] = $visit_pdf;
+				        	}
+			        	} else {
+				        	if ( (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") OR  (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") ) {
+			        			// do not print electronic form
+				        	} else {
+				            	$filenames[] = $visit_pdf;
+				        	}
+			        	} 
+			            $ELEC_VISITS[] = $visit_pdf;
+			        }
+		     	}
+
+		     	if ($print_uploaded_docs) {
+		            // Add uploaded scanned document if have any
+		            $FCPATH = FCPATH;
+		            $FCPATH = str_replace("\\","/", $FCPATH);
+		            // upload_document_name 1
+		            if (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") {
+		              	if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name)) {
+		                	$ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name, PATHINFO_EXTENSION);
+			                if ($ext == 'pdf') {
+			                  	// $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+			                  	$UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+			                }
+		              	}
+		            }
+		            
+		            // upload_document_name 2
+		            if (in_array($visit_log->visit_type_id, array(10, 12, 40, 42, 60, 62))) {
+		            	if (!$visit_log->signature AND isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+		            		if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+			                	$ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+				                if ($ext == 'pdf') {
+				                  	// $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+				                  	$UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+				                }
+			              	}
+		            	}
+		            } else if (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+		              	if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+		                	$ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+			                if ($ext == 'pdf') {
+			                  	// $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+			                  	$UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+			                }
+		              	}
+		            }
+
+		            // upload_covid_document 1
+		            if (isset($GL_VISIT->upload_covid_document) AND $GL_VISIT->upload_covid_document != "") {
+		              	if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document)) {
+		                	$ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document, PATHINFO_EXTENSION);
+			                if ($ext == 'pdf') {
+			                  	// $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document;
+			                  	$UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_covid_document;
+			                }
+		              	}
+		            }
+		      	}
+			}
+			
+			if ($last_3625_visit_log_id) {
+	          $form3625_pdf_file_name = form3625_pdf($last_3625_visit_log_id, "F");
+	          $VISITS_TO_UNLINK[] = $form3625_pdf_file_name;
+	          if ($print_elec_notes) {
+	            // $filenames[] = $form3625_pdf_file_name;
+	            $F3625_VISITS[] = $form3625_pdf_file_name;
+	            // $ELEC_VISITS[] = $form3625_pdf_file_name;
+	          }
+
+	          if ($print_uploaded_docs) {
+	            $visit_log = $this->visitlogmdl->getById($last_3625_visit_log_id);
+	            $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+	            // Add uploaded scanned document if have any
+	            $FCPATH = FCPATH;
+	            $FCPATH = str_replace("\\","/", $FCPATH);
+	            // upload_document_name 1
+	            if (isset($GL_VISIT->upload_document_name) AND $GL_VISIT->upload_document_name != "") {
+	              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name)) {
+	                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name, PATHINFO_EXTENSION);
+	                if ($ext == 'pdf') {
+	                  // $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+	                  $UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name;
+	                } else {
+	                  $invalid_formats[] = $ext;
+	                }
+	              }
+	            }
+
+	            // upload_document_name 2
+	            if (isset($GL_VISIT->upload_document_name2) AND $GL_VISIT->upload_document_name2 != "") {
+	              if (file_exists($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2)) {
+	                $ext = pathinfo($FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2, PATHINFO_EXTENSION);
+	                if ($ext == 'pdf') {
+	                  // $filenames[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+	                  $UPLOADED_VISITS[] = $FCPATH.'/datastore/'.strtolower($visit_type->visit_program).'/'.$GL_VISIT->upload_document_name2;
+	                } else {
+	                  $invalid_formats[] = $ext;
+	                }
+	              }
+	            }
+	          }
+
+	        }
+			
+			unset($pt_3625_visits);
+		    unset($last_3625_visit_log_id);
+		    unset($print_notes);
+		    unset($GL_VISIT);
+
+		    if (empty($filenames) AND !$print_elec_notes AND $print_uploaded_docs) {
+		      exit("Uploaded Docs not available");
+		    }
+		    $pdf_name = "Notes";
+
+			if ($patient_id) {
+				$patient = $this->patientmdl->getById($patient_id);
+				$pdf_name = strtoupper(substr($patient->first_name, 0, 1)).' '.$patient->last_name.' - Documents';
+				$pdf_name = str_replace(" ", "_", $pdf_name);
+			}
+			
+			/** 
+			* New Code support >= PHP 5.3.0
+			*/
+			require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+			require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+			require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+			// and we can do stuff
+			$pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+			try {
+				// echo "<pre>";print_r($UPLOADED_VISITS); echo "</pre>";exit();
+				
+				$electronic_file_name = null;
+				// 3625 first
+				foreach($F3625_VISITS as $name){
+      				// echo "1.a. attached 3625 file: ".$name."<br>";
+					$pdf->addPDF($name, 'all');
+				}
+
+				if (count($filenames) > 0) {
+					foreach($filenames as $name){
+						$pdf->addPDF($name, 'all');
+					}
+
+					if (count($UPLOADED_VISITS) > 0) {
+						// $electronic_file_name = sys_get_temp_dir().'/'.$pdf_name.'.pdf';
+						$electronic_file_name = FCPATH.'tmp/'.$pdf_name.'.pdf';
+			      		$pdf->merge('file', $electronic_file_name);
+			      	}  else {
+						$pdf->merge('download', $pdf_name.'.pdf');
+			      	}   
+				}
+		      	
+				// End of code for PHP >= 5.3.0
+				foreach($VISITS_TO_UNLINK as $name){
+					if (strpos($name, 'datastore') == FALSE) {
+					  @unlink($name);
+					}
+				} 
+
+				if (count($UPLOADED_VISITS) > 0) {
+					$zip = new ZipArchive;
+					$archive_file_name = $pdf_name.'.zip';
+					
+					// $zip_file = sys_get_temp_dir().'/'.$archive_file_name;
+					$zip_file = FCPATH.'tmp/'.$archive_file_name;
+					
+					if (file_exists($zip_file)) {
+						@unlink($zip_file);
+					}
+
+
+					if ($zip->open($zip_file, (ZipArchive::CREATE | ZipArchive::OVERWRITE)) === TRUE)
+					{
+						if ($electronic_file_name != "") {
+							// Add electronic merged file to the zip
+						    $zip->addFile($electronic_file_name, basename($electronic_file_name));
+						}
+
+					    foreach($UPLOADED_VISITS as $name){
+					    	$name = str_replace("//", "/", $name);
+					    	// echo $name."<br>";
+					    	// Add files to the zip file inside demo_folder
+						    $zip->addFile($name, 'uploaded_documents/'.basename($name));
+					    }
+
+					    // All files are added, so close the zip file.
+					    $zip->close();
+
+					    header("Pragma: public");
+				        header("Expires: 0");
+				        header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+				        header("Cache-Control: private",false);
+				        header("Content-Type: application/zip");
+						header("Content-Disposition: attachment; filename=$archive_file_name");
+		                header("Content-Transfer-Encoding: binary");
+						header("Content-length: " . filesize($zip_file));
+
+						readfile("$zip_file");
+
+						@unlink($electronic_file_name);
+						@unlink($zip_file);
+					} else {
+						exit('Failed to zip files.');
+					}
+				}
+
+				// unset global vars
+				unset($VISITS_TO_UNLINK);
+				unset($UPLOADED_VISITS);
+				unset($F3625_VISITS);
+				unset($ELEC_VISITS);
+			} catch (Exception $e) {
+				// End of code for PHP >= 5.3.0
+				foreach($VISITS_TO_UNLINK as $name){
+					if (strpos($name, 'datastore') == FALSE) {
+					  @unlink($name);
+					}
+				} 
+				// unset global vars
+				unset($VISITS_TO_UNLINK);
+				unset($UPLOADED_VISITS);
+				unset($F3625_VISITS);
+				unset($ELEC_VISITS);
+
+				echo "<font color='red'>Visit Pdfs can't merged into single pdf due to invalid encoded Scanned Copy / Uploaded Docs of visit.</font>";
+				exit();
+			}
+
+		}
+	}
+	
+	
+	function pdf_sign($patient_id, $cms_485){
+		if (!is_null($this->input->post('record_ids'))) {
+			$record_ids = $this->input->post('record_ids');
+			$records = explode(",", $record_ids);
+			
+			$this->load->helper(array('dompdf', 'file'));
+			// page info here, db calls, etc. 
+			$episode = $this->episodemdl->getById($cms_485);
+			$patient = $this->patientmdl->getById($patient_id);
+			$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+			//echo "<pre>"; print_r($episode); echo "</pre>";
+			//echo "<pre>"; print_r($patient); echo "</pre>"; exit;
+			//echo "<pre>"; print_r($agency); echo "</pre>";
+			
+			$visits = $this->visitlogmdl->getByEpsodeId($cms_485, null, null, null, null, null, null, null, null, "no", $records);
+			//echo "<pre>"; print_r($gdata); echo "</pre>";
+			$data = array('patient' => $patient, "agency" => $agency, "visits" => $visits, "episode" => $episode, "base_url" => $this->config->config["base_url"]);   
+			//ob_start();
+			$html = $this->load->view('patient/task/pdf', $data, true);
+			echo $html; exit();
+			$file_name = "PT: " . $patient->last_name . " " . $patient->first_name . " - Signature Sheet";
+			pdf_create($html, $file_name, true);
+			//or
+			//$data = pdf_create($html, '', false);
+			//write_file('name', $data);
+			//if you want to write it to disk and/or send it as an attachment    
+		}
+	}
+	
+	
+	function show_emails($source_id = null) {
+		if (is_null($source_id)) {
+			exit('No record found in the request');
+		}
+		$this->load->model('sentemailinstancedetailmdl');
+		$sent_emails_array = $this->sentemailinstancedetailmdl->get_group_emails_by_sent_date($source_id, 'VLOG');
+		//echo "<pre>"; print_r($sent_emails_array); echo "</pre>";
+		$this->tpl->assign('sent_emails_array', $sent_emails_array);
+		
+		$this->tpl->assign_include("dynamic_tpl", "useragency/nonbillable_visitlog/show_emails");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function contractor_contacts_grid($agency_id) {
+ 	    $this->load->model("contractorcontactsmdl");
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+        $contractor_id = $this->getAgencyId();
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=*", "Dept/Role Descrip"));
+        $head->append($this->xml->Element("column", "width=*", "Email"));
+        $head->append($this->xml->Element("column", "width=*", "Phone"));
+        $head->append($this->xml->Element("column", "width=*", "Ext"));
+
+        //$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+        $data = $this->contractorcontactsmdl->getContractorContacts($contractor_id, $agency_id);
+        foreach ($data as $d) {
+            $cell = $this->xml->Element("row", "id=" . $d->contact_id );
+            if( $d->make_default == 0 ) {
+                $cell->append($this->xml->Element("cell", null, "0"));
+            } else {
+                $cell->append($this->xml->Element("cell", null, "1"));
+            }
+            $cell->append($this->xml->Element("cell", null, $d->tab_description));
+            $cell->append($this->xml->Element("cell", null, $d->email));
+            $cell->append($this->xml->Element("cell", null, $d->phone));
+            $cell->append($this->xml->Element("cell", null, $d->phone_ext));
+
+
+
+            $document->append($cell);
+        }
+	}
+	
+	public function validate_email_duplicate() {
+		$to_emails = array();
+		if ($this->input->post('contact_ids') != "") {
+			$contact_ids = explode(",", $this->input->post('contact_ids'));
+			$this->load->model("contractorcontactsmdl");	
+	
+			$contacts = $this->contractorcontactsmdl->getByIds($contact_ids);
+			foreach ($contacts as $contact) {
+			  $to_emails[] = $contact->email;
+			}
+		  }
+		  if ($this->input->post('email_copy_company') == 1) {
+			$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			$to_emails[] = $company->agency_email;
+		  }
+		  if (in_array($this->input->post('email'), $to_emails)) {
+			$this->validation->set_message('validate_email_duplicate', "Error: Duplicated Emails");
+			return false;
+		  }
+			  
+	  }
+}

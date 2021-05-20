@@ -1,0 +1,768 @@
+<?php
+ include('visitform.php');
+
+  class Quartsumm extends VisitForm {
+
+	function Quartsumm () {
+		
+		parent::VisitForm();
+
+		$this->load->model('quartsummmdl');
+		$this->load->model('usagypermissionmdl');
+
+		$this->tpl->assign("resource_path", "task/quartsumm");
+
+		// validate before submit for approval
+		$this->tpl->assign("validatationVisit", true);
+
+		$this->tpl->assign(array("tab_page" => true));		
+	}
+
+	function index($visit_log_id, $action = 'task', $window = 'self') {
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		// echo "<pre>";print_r($visitlog);exit();
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		if ($visitlog->visit_discipline_id) {
+			$user_discipline = $this->disciplinemdl->getById($visitlog->visit_discipline_id);
+        	$visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+		}
+		
+
+		$this->tpl->assign("visit_user", $visit_user);
+
+		// if ($visit_user->discipline_id) {
+		// 	$discipline = $this->disciplinemdl->getById($visit_user->discipline_id);
+		// 	$this->tpl->assign("user_discipline", $discipline->short_description);
+		// 	$this->tpl->assign("user_mayor_discipline", $discipline->mayor_discipline);
+		// }
+		
+		$prev_visit_log_id = null;
+		$next_visit_log_id = null;
+
+		if (!count($this->quartsummmdl->get($visit_log_id)) OR $visitlog->visit_status_id == 1) {
+			$quartsumms = $this->quartsummmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, FALSE, $visit_user->discipline_id);
+			if (count($quartsumms) == 0) {
+				$quartsumms = $this->quartsummmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE, $visit_user->discipline_id);
+			}
+
+			if (count($quartsumms)) {
+				$quartsumm = $quartsumms[count($quartsumms) - 1];
+
+				$prev_visit_log_id = $quartsumm->visit_log_id;
+
+				$not_to_import = array (
+					'visit_log_id',
+					'vt104_id',
+					'pt_signature',
+					'pt_signed_date',
+					'clinician_signature',
+					'clinician_signed_date',
+					'dsa_signature',
+					'dsa_signed_date',
+					'upload_document_name',
+				);
+				foreach ($quartsumm as $k => $v) {
+					if (!in_array($k, $not_to_import) AND property_exists($this->quartsummmdl, $k))
+						$this->quartsummmdl-> $k = $v;
+				}
+				if (count($this->quartsummmdl->get($visit_log_id))) {
+					$this->quartsummmdl->visit_log_id = $visit_log_id;
+					$this->quartsummmdl->update($visit_log_id);
+				} else {
+					$this->quartsummmdl->visit_log_id = $visit_log_id;
+					$this->quartsummmdl->insert($visit_log_id);
+				}
+			} else if ($visitlog->visit_status_id == 1) {
+                // remove if data imported previously since it is status schedule
+                if (count($this->quartsummmdl->get($visit_log_id))) {
+                    $this->quartsummmdl->delete($visit_log_id);
+                }
+            }
+		} else {
+			$quartsumms = $this->quartsummmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, FALSE, $visit_user->discipline_id);
+			if (count($quartsumms)) {
+				$quartsumm = $quartsumms[count($quartsumms) - 1];
+				$prev_visit_log_id = $quartsumm->visit_log_id;
+			}
+		}
+		$quartsumms = $this->quartsummmdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id, $visit_user->discipline_id);
+		if (count($quartsumms)) {
+			$quartsumm = $quartsumms[0];
+			$next_visit_log_id = $quartsumm->visit_log_id;
+		}
+		//echo $prev_visit_log_id."::".$next_visit_log_id;exit;
+		//$this->tpl->assign("form", 'ptpn');  
+		$this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+		$this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+		$this->assignObject($visitlog);
+		
+
+		$quartsumm = $this->quartsummmdl->get($visit_log_id);
+		if (empty($quartsumm)) {
+	        $quartsumm = $this->quartsummmdl->getEmpty();
+	    }
+		$this->assignObject($quartsumm);
+
+    	$rules = array ('visit_date_time'  		=> 'required'
+						);
+    	$fields = array ('visit_date_time'  	=> 'Order Date'
+						);
+
+    	$rules['diagnosis'] = 'required';
+    	$fields['diagnosis'] = 'Diagnosis';
+
+    	$rules['quarter_year'] = 'required';
+    	$fields['quarter_year'] = 'Review Period (Quarter/Year)';
+
+    	$rules['initial_annual_eval'] = 'required';
+    	$fields['initial_annual_eval'] = 'Initial/annual evaluation';
+
+    	$rules['frequency_duration'] = 'required';
+    	$fields['frequency_duration'] = 'Frequency AND Duration of visits';
+
+    	$rules['coord_text'] = 'required';
+    	$fields['coord_text'] = 'Coordination of Care';
+
+    	$rules['base_line1'] = 'required';
+    	$fields['base_line1'] = '#1 Baseline Data';
+
+    	$rules['goals1'] = 'required';
+    	$fields['goals1'] = '#1 Goal';
+
+    	$rules['objectives1'] = 'required';
+    	$fields['objectives1'] = '#1 Measurable Objectives';
+
+    	$rules['base_line2'] = 'required';
+    	$fields['base_line2'] = '#2 Baseline Data';
+
+    	$rules['goals2'] = 'required';
+    	$fields['goals2'] = '#2 Goal';
+
+    	$rules['objectives2'] = 'required';
+    	$fields['objectives2'] = '#2 Measurable Objectives';
+
+    	$rules['base_line3'] = 'required';
+    	$fields['base_line3'] = '#3 Baseline Data';
+
+    	$rules['goals3'] = 'required';
+    	$fields['goals3'] = '#3 Goal';
+
+    	$rules['objectives3'] = 'required';
+    	$fields['objectives3'] = '#3 Measurable Objectives';
+
+    	$rules['client_participation'] = 'required';
+    	$fields['client_participation'] = 'Client Participation';
+
+    	$rules['missed_visits_nbr'] = 'required';
+    	$fields['missed_visits_nbr'] = '# of missed Visit';
+
+    	$rules['missed_visits_reason'] = 'required';
+    	$fields['missed_visits_reason'] = 'Reason(s) for Missed Visit(s)';
+
+    	$rules['treatment_goal1'] = 'required';
+    	$fields['treatment_goal1'] = 'Treatment provided for Goal #1';
+		
+		$rules['current_prog_goal1'] = 'required';
+    	$fields['current_prog_goal1'] = 'Current Progress Goal #1';
+
+    	if ($this->input->post('met_unmet_revised1') ==  3) {
+    		$rules['spec_revision1'] = 'required';
+	    	$fields['spec_revision1'] = 'Specify Revision #1';
+    	}
+
+    	$rules['treatment_goal2'] = 'required';
+    	$fields['treatment_goal2'] = 'Treatment provided for Goal #2';
+		
+		$rules['current_prog_goal2'] = 'required';
+    	$fields['current_prog_goal2'] = 'Current Progress Goal #2';
+
+    	if ($this->input->post('met_unmet_revised2') ==  3) {
+    		$rules['spec_revision2'] = 'required';
+	    	$fields['spec_revision2'] = 'Specify Revision #2';
+    	}
+
+    	$rules['treatment_goal3'] = 'required';
+    	$fields['treatment_goal3'] = 'Treatment provided for Goal #3';
+		
+		$rules['current_prog_goal3'] = 'required';
+    	$fields['current_prog_goal3'] = 'Current Progress Goal #3';
+
+    	if ($this->input->post('met_unmet_revised3') ==  3) {
+    		$rules['spec_revision3'] = 'required';
+	    	$fields['spec_revision3'] = 'Specify Revision #3';
+    	}
+
+		if ($this->input->post('visit_status_id') == 3) {
+			// $rules['signature'] = 'required';
+			// $fields['signature'] = 'Patient Signature';
+
+			$rules['clinician_signature'] = 'required';
+			$fields['clinician_signature'] = 'Therapist Signature';
+		}
+		
+		if (!$quartsumm->upload_document_name) {
+			if ($this->input->post('visit_status_id') == 3) {
+				$this->validation->set_rules($rules);
+				$this->validation->set_fields($fields);
+			}
+		}
+		
+
+		
+		if ($this->validation->run() == TRUE) {
+			if($this->updateFormEdition($visit_log_id)){
+				$this->assignPostData($this->quartsummmdl);
+
+				$quartsumm = $this->quartsummmdl->get($visit_log_id);
+				if (count($quartsumm)) {
+					$this->quartsummmdl->update($visit_log_id);
+				} else {
+					$this->quartsummmdl->insert($visit_log_id);
+				}
+
+				// echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+				if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+					// when tasks are "sent for approval" they should be copied to the vt101_form_8606a_copy table
+					$this->db->query("REPLACE INTO vt104_form_332b_quar_copy SELECT * FROM `vt104_form_332b_quar` WHERE visit_log_id = {$visit_log_id}");
+				}
+
+				$this->load->helper('ajax');
+				if (isAjax()) {
+					echo "1";
+					exit;
+				}else{
+	        		$quartsumm = $this->quartsummmdl->get($visit_log_id);        		
+	        		$this->assignObject($quartsumm);
+
+	        		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	        		$this->assignObject($visitlog);
+	      		}
+			}
+
+			$this->formRedirection($visit_log_id);
+		}
+
+		$medicaidInsurance = $this->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+		$this->tpl->assign("medicaidInsurance", $medicaidInsurance);
+		
+		$patient = $this->getPatientInfo($visit_log_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$this->tpl->assign("agency", $agency);
+		if ($visitlog->visit_status_id == 1) {
+			$this->tpl->assign("diagnosis", $patient->diagnosis);
+		}
+
+		// $month = date("n",strtotime($visitlog->visit_date_time));
+		// $year = date("Y",strtotime($visitlog->visit_date_time));
+		// // $quarter = (($month-1)/3)+1;
+		// if ($month<=3) {
+		// 	$quarter = 'First QR';
+		// }
+		// else if ($month>3 AND $month<=6) {
+		// 	$quarter = 'Second QR';
+		// }
+		// else if ($month>6 AND $month<=9) {
+		// 	$quarter = 'Third QR';
+		// }
+		// else{
+		// 	$quarter = 'Fourth QR';
+		// }
+
+		$additional_buttons = array();
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				if ($quartsumm->upload_document_name) {
+					$additional_buttons['Change Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+					$additional_buttons['Remove Document'] = 'removeScannedDocument('.$visit_log_id.')';
+				} else {
+					$additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+				}
+			}
+		}
+
+		$this->tpl->assign('additional_buttons', $additional_buttons);
+
+		$can_sign_as_dsa = FALSE;
+		if ($this->usagypermissionmdl->isCaseManager($this->getUsAgyId())) {
+			$can_sign_as_dsa = TRUE;
+		}
+		$this->tpl->assign("can_sign_as_dsa", $can_sign_as_dsa);
+
+		// $this->tpl->assign("quarter_year", $quarter.'/'.$year);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign("window", $window);
+		$this->tpl->assign_include("dynamic_form", "task/documents/quartsumm");
+		$this->setfbase($visit_log_id, $action);
+
+		// For user with profile=Company or Agency Manager, for notes w/scanned documents, 
+		// we need to also display button "Save" in addition to "Submit for approval"
+		if ($quartsumm->upload_document_name 
+			AND $visitlog->visit_user_id != $this->getUsAgyId()
+			AND ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2) 
+			AND ($this->getUserProfileId() == 1 OR $this->getUserProfileId() == 3)) {
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase");
+		}
+
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function capture_pt_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$quartsumm = $this->quartsummmdl->get($visit_log_id);  
+		//echo FCPATH;
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($visitlog->signature)){
+				$this->tpl->assign("signature", $visitlog->signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($quartsumm)) {
+					$this->quartsummmdl->visit_log_id = $visit_log_id;
+					$this->quartsummmdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+				// $this->quartsummmdl->updateFlex($visit_log_id, 'pt_signature', $signature_file_name);
+				// $this->quartsummmdl->updateFlex($visit_log_id, 'pt_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/quartsumm/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function capture_clinician_signature($visit_log_id) {
+		$quartsumm = $this->quartsummmdl->get($visit_log_id);   
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		if($visitlog->visit_user_id != $this->getUsAgyId()){
+			exit('Only Clinician Signature Allowed');
+		}
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			$visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($quartsumm->clinician_signature)){
+				$this->tpl->assign("signature", $quartsumm->clinician_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($quartsumm)) {
+					$this->quartsummmdl->visit_log_id = $visit_log_id;
+					$this->quartsummmdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "clinician_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->quartsummmdl->updateFlex($visit_log_id, 'clinician_signature', $signature_file_name);
+				$this->quartsummmdl->updateFlex($visit_log_id, 'clinician_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Clinician Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/quartsumm/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}
+	
+	function capture_dsa_signature($visit_log_id) {
+		$can_sign_as_dsa = FALSE;
+		if ($this->usagypermissionmdl->isCaseManager($this->getUsAgyId())) {
+			$can_sign_as_dsa = TRUE;
+		}
+		
+		if (!$can_sign_as_dsa) {
+			exit('You are not authorized for DSA Representative Signature.');
+		}
+
+		$quartsumm = $this->quartsummmdl->get($visit_log_id);   
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		/*if($visitlog->visit_user_id != $this->getUsAgyId()){
+			exit('Only DSA Representative Signature Allowed');
+		}*/
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			$visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($quartsumm->dsa_signature)){
+				$this->tpl->assign("signature", $quartsumm->dsa_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_dsa_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($quartsumm)) {
+					$this->quartsummmdl->visit_log_id = $visit_log_id;
+					$this->quartsummmdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "dsa_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->quartsummmdl->updateFlex($visit_log_id, 'dsa_signature', $signature_file_name);
+				$this->quartsummmdl->updateFlex($visit_log_id, 'dsa_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/quartsumm/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}
+
+	/*function capture_cm_signature($visit_log_id) {
+		$quartsumm = $this->quartsummmdl->get($visit_log_id);   
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+		$cm_us_agy_id = 0;
+		if (count($cm_approver)) {
+			$cm_us_agy_id = $cm_approver[0]->us_agy_id;			
+		}
+
+		if ($this->getUsAgyId() != $cm_us_agy_id) {
+			exit('Only Case Manager Signature Allowed');
+		}
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($quartsumm->cm_signature)){
+				$this->tpl->assign("signature", $quartsumm->cm_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_cm_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($quartsumm)) {
+					$this->quartsummmdl->visit_log_id = $visit_log_id;
+					$this->quartsummmdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "cm_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->quartsummmdl->updateFlex($visit_log_id, 'cm_signature', $signature_file_name);
+				$this->quartsummmdl->updateFlex($visit_log_id, 'cm_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully. <button type="button" class="edit-sign button close" onclick="parent.location.href=\''.$config["index_url"].'task/quartsumm/index/'.$visit_log_id.'\'">Close</button>';
+			}
+		}	
+	}	*/
+
+	function validation_visit($visit_log_id){
+		$rules = array ('visit_date_time'  		=> 'required'
+						);
+    	$fields = array ('visit_date_time'  	=> 'Order Date'
+						);
+
+    	$rules['diagnosis'] = 'required';
+    	$fields['diagnosis'] = 'Diagnosis';
+
+    	$rules['quarter_year'] = 'required';
+    	$fields['quarter_year'] = 'Review Period (Quarter/Year)';
+
+    	$rules['initial_annual_eval'] = 'required';
+    	$fields['initial_annual_eval'] = 'Initial/annual evaluation';
+
+    	$rules['frequency_duration'] = 'required';
+    	$fields['frequency_duration'] = 'Frequency AND Duration of visits';
+
+    	$rules['coord_text'] = 'required';
+    	$fields['coord_text'] = 'Coordination of Care';
+
+    	$rules['base_line1'] = 'required';
+    	$fields['base_line1'] = '#1 Baseline Data';
+
+    	$rules['goals1'] = 'required';
+    	$fields['goals1'] = '#1 Goal';
+
+    	$rules['objectives1'] = 'required';
+    	$fields['objectives1'] = '#1 Measurable Objectives';
+
+    	$rules['base_line2'] = 'required';
+    	$fields['base_line2'] = '#2 Baseline Data';
+
+    	$rules['goals2'] = 'required';
+    	$fields['goals2'] = '#2 Goal';
+
+    	$rules['objectives2'] = 'required';
+    	$fields['objectives2'] = '#2 Measurable Objectives';
+
+    	$rules['base_line3'] = 'required';
+    	$fields['base_line3'] = '#3 Baseline Data';
+
+    	$rules['goals3'] = 'required';
+    	$fields['goals3'] = '#3 Goal';
+
+    	$rules['objectives3'] = 'required';
+    	$fields['objectives3'] = '#3 Measurable Objectives';
+
+    	$rules['client_participation'] = 'required';
+    	$fields['client_participation'] = 'Client Participation';
+
+    	$rules['missed_visits_nbr'] = 'required';
+    	$fields['missed_visits_nbr'] = '# of missed Visit';
+
+    	$rules['missed_visits_reason'] = 'required';
+    	$fields['missed_visits_reason'] = 'Reason(s) for Missed Visit(s)';
+
+    	$rules['treatment_goal1'] = 'required';
+    	$fields['treatment_goal1'] = 'Treatment provided for Goal #1';
+		
+		$rules['current_prog_goal1'] = 'required';
+    	$fields['current_prog_goal1'] = 'Current Progress Goal #1';
+
+    	if ($this->input->post('met_unmet_revised1') ==  3) {
+    		$rules['spec_revision1'] = 'required';
+	    	$fields['spec_revision1'] = 'Specify Revision #1';
+    	}
+
+    	$rules['treatment_goal2'] = 'required';
+    	$fields['treatment_goal2'] = 'Treatment provided for Goal #2';
+		
+		$rules['current_prog_goal2'] = 'required';
+    	$fields['current_prog_goal2'] = 'Current Progress Goal #2';
+
+    	if ($this->input->post('met_unmet_revised2') ==  3) {
+    		$rules['spec_revision2'] = 'required';
+	    	$fields['spec_revision2'] = 'Specify Revision #2';
+    	}
+
+    	$rules['treatment_goal3'] = 'required';
+    	$fields['treatment_goal3'] = 'Treatment provided for Goal #3';
+		
+		$rules['current_prog_goal3'] = 'required';
+    	$fields['current_prog_goal3'] = 'Current Progress Goal #3';
+
+    	if ($this->input->post('met_unmet_revised3') ==  3) {
+    		$rules['spec_revision3'] = 'required';
+	    	$fields['spec_revision3'] = 'Specify Revision #3';
+    	}
+
+		// $rules['signature'] = 'required';
+		// $fields['signature'] = 'Patient Signature';
+
+		$rules['clinician_signature'] = 'required';
+		$fields['clinician_signature'] = 'Therapist Signature';
+	
+		$quartsumm = $this->quartsummmdl->get($visit_log_id);
+		if (empty($quartsumm)) {
+	        $quartsumm = $this->quartsummmdl->getEmpty();
+	    }
+
+		if (!$quartsumm->upload_document_name) {
+			$this->validation->set_rules($rules);
+			$this->validation->set_fields($fields);
+		}
+		
+		$validation_success = 0;
+		$msg = 0;
+		if ($this->validation->run() == TRUE) {
+			$validation_success = 1;
+		} else {
+			$msg = $this->validation->get_error_msg();		
+		}
+
+		echo json_encode(array('validation_success'=>$validation_success, 'msg'=>$msg));
+		exit();
+	}
+
+	function upload_document($visit_log_id){
+		$can_upload = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_upload = true;
+			}
+		}
+
+		if (!$can_upload) {
+			exit('Can\'t Upload!');
+		}
+
+		if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+			$config =& get_config();
+
+			// Save form 
+			$fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+			$fname = str_replace(" ","_",$fname);
+			$fname = str_replace("%","_",$fname);
+			$fname = str_replace("#","",$fname);
+			$fname = str_replace("&","",$fname);
+			$fname = str_replace(":","-",$fname);
+			// $fname = microtime()."_".$fname;
+			if(move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/datastore/quartsumm/'.$fname)) {
+					$quartsumm = $this->quartsummmdl->get($visit_log_id);
+
+					if (empty($quartsumm)) {
+				        $this->quartsummmdl->visit_log_id = $visit_log_id;
+				        $this->quartsummmdl->upload_document_name = $fname;
+						$this->quartsummmdl->insert($visit_log_id);
+				    } else {
+						@unlink(FCPATH.'/datastore/quartsumm/'.$quartsumm->upload_document_name);
+						$this->quartsummmdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+				    }
+
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+				    
+					echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/quartsumm/index/".$visit_log_id."';</SCRIPT>";
+
+					/*if($this->submitForApproval($visit_log_id)){
+						$this->quartsummmdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+
+						$config =& get_config();
+
+						// Submitted for approval. check is co-signer assigned. If assigned then need to send notification to co-signer.
+						$quartsumm = $this->quartsummmdl->get($visit_log_id);
+						if ($quartsumm->ther_supervisor) {
+							$this->messagemdl->user_from = $this->getUsAgyId();
+							$this->messagemdl->msg_type = 'email';
+							$this->messagemdl->msg_subject = 'You have a note to sign';
+							$this->messagemdl->msg_text = 'A quartsumm note is waiting for your sign before approval. <a href="javascript://" onclick="window.location.href=\''.$config["index_url"].'task/task/edit/'.$visit_log_id.'\';">Click here</a> to open the note.';
+							$msg_id = $this->messagemdl->insert();
+
+							$this->usermessagemdl->insert($msg_id, $this->quartsummmdl->ther_supervisor, 0);
+						}
+					
+
+						echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/quartsumm/index/".$visit_log_id."';</SCRIPT>";
+					} else {
+						@unlink(FCPATH.'/datastore/quartsumm/'.$fname);
+						// echo "<SCRIPT>alert('Payroll visit rate not found');parent.dhxWins.window('w1').close();</SCRIPT>";
+					}*/
+			}else{
+				exit("Document Upload Failed!");
+			}
+		} else {	
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0) {
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please select Document";
+				$this->tpl->assign("error_string", $error_string);
+			}
+			$this->tpl->assign("visit_log_id", $visit_log_id);
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/upload_quartsumm_document");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		}
+	}
+
+	function remove_document($visit_log_id){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+
+		$quartsumm = $this->quartsummmdl->get($visit_log_id);
+		if (isset($quartsumm->upload_document_name)) {
+			@unlink(FCPATH.'/datastore/quartsumm/'.$quartsumm->upload_document_name);
+			$this->quartsummmdl->updateFlex($visit_log_id, 'upload_document_name', null);
+		}	
+
+		echo "1";exit();
+
+	}
+
+	function pdf($visit_log_id, $output='D') {
+    	$this->load->helper('quartsumm_pdf');
+    	quartsumm_pdf($visit_log_id, $output);
+    	
+    	return;
+		
+
+	}
+
+ }

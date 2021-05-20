@@ -1,0 +1,1680 @@
+<?php
+
+include('visitform.php');
+
+class Revi extends VisitForm {
+
+	function Revi () {
+		
+		parent::VisitForm();
+
+		$this->load->model('revimdl');
+		$this->load->model('form3625mdl');
+
+		$this->tpl->assign("resource_path", "task/revi");
+		$this->tpl->assign("visit_type_name", "revi");
+		$this->tpl->assign("this_visit_name", "Recreational Visit");
+
+		// validate before submit for approval
+		$this->tpl->assign("validatationVisit", true);
+		
+		$this->tpl->assign(array("tab_page" => true));		
+	}
+
+	/**
+	 * revi form for CLASS patient
+	 */
+	private function revi_class($visit_log_id, $action = 'task', $window = 'self') {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+		$prev_visit_log_id = null;
+		$next_visit_log_id = null;
+
+		$enable_visit = false;
+		$form_title = 'Recreational Visit and Form 3625';
+		
+		// if (isset($agency->F3625_req_visit) AND $agency->F3625_req_visit == 1) {
+			// Always open visits now
+			$enable_visit = true;
+			$this->tpl->assign("enable_visit", $enable_visit);
+		// }
+		
+		$form3625 = $this->form3625mdl->get($visit_log_id);
+		// F3625 part
+		// import data from previous for 3625
+		if (!count($form3625) OR $visitlog->visit_status_id == 1) {
+			$prevform3625s = $this->form3625mdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($prevform3625s) == 0) {
+				$prevform3625s = $this->form3625mdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE);
+			}
+
+			if (count($prevform3625s)) {
+				$prevform3625 = $prevform3625s[count($prevform3625s) - 1];
+
+				$not_to_import = array (
+					'visit_log_id',
+					'vt103_id',					
+					'comments',					
+					'vt103_comments',					
+					'clinician_3625_signature',					
+					'clinician_3625_signed_date',					
+					'pat_3625_signature',					
+					'pat_3625_signed_date',					
+					'caregiver_signature',					
+					'caregiver_signed_date',					
+				);
+				foreach ($prevform3625 as $k => $v) {
+					if (property_exists($this->form3625mdl, $k)){
+						if (!in_array($k, $not_to_import)) {
+							$this->form3625mdl-> $k = $v;
+						} else if(isset($form3625->$k)){
+							$this->form3625mdl-> $k = $form3625->$k;
+						}
+					}
+				}
+				if (count($form3625)) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->update($visit_log_id);
+				} else {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+			}
+		}
+
+		if (empty($form3625)) {
+			$form3625 = $this->form3625mdl->getEmpty();
+		}
+		$this->assignObject($form3625);	
+
+		$visit_type = $this->visittypemdl->getById($visitlog->visit_type_id);
+		$visit_type_discipline = $this->disciplinemdl->getById($visit_type->discipline_id);
+		$this->tpl->assign("visit_type_discipline", $visit_type_discipline);
+
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		if ($visitlog->visit_discipline_id) {
+			$user_discipline = $this->disciplinemdl->getById($visitlog->visit_discipline_id);
+			$visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+		}
+		$this->tpl->assign("visit_user", $visit_user);
+		
+		
+		$medicaidInsurance = $this->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+		$this->tpl->assign("medicaidInsurance", $medicaidInsurance);
+		
+		$this->tpl->assign("agency", $agency);
+
+		$requested_skilled_list = $this->disciplinemdl->getByIds(array(13, 14, 15, 16, 17, 18), FALSE, 'mayor_discipline');
+		$this->tpl->assign("requested_skilled_list", $requested_skilled_list);
+				
+		// Visit Created By
+		$created_by_user = $this->usagymdl->getByUsAgyId($visitlog->visit_asigned_by);
+		$created_by_agency = $this->agencymdl->getByAgencyId($created_by_user->agency_id);
+		$this->tpl->assign("created_by_agency_type", $created_by_agency->agency_type);
+		$this->tpl->assign("created_by_agency_name", $created_by_agency->agency_name);
+
+		// Case Manager
+		$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+		if (count($cm_approver)) {
+			$this->tpl->assign("cm_approver", $this->usagymdl->getByUsAgyId($cm_approver[0]->us_agy_id));
+		}
+
+		// $this->load->model('us1usercredentialsmdl');
+		// $credentials = $this->us1usercredentialsmdl->getById($visit_user->user_id, 2);
+		// if (count($credentials) > 0) {
+		// 	$this->tpl->assign("credential", $credentials[0]);
+		// }
+		
+		if ($visit_user->discipline_id) {
+			$discipline = $this->disciplinemdl->getById($visit_user->discipline_id);
+			$this->tpl->assign("user_discipline", $discipline->short_description);
+		}
+
+		$this->tpl->assign('service_month_year', strtoupper(date("M",strtotime($visitlog->visit_date_time))).'/'. date("Y",strtotime($visitlog->visit_date_time)));
+		
+		// $this->tpl->assign('visit_month', date("F",strtotime($visitlog->visit_date_time)) );
+		// $this->tpl->assign('visit_day', date("d",strtotime($visitlog->visit_date_time)) );
+
+		// Section F
+		$type_ids = array();
+		foreach ($this->visittypemdl->getByDisciplineId($visit_user->discipline_id) as $type_id => $type_name) {
+			$type_ids[] = $type_id;
+		}
+
+		$visits = array();
+		$section_f_visits = $visits;
+		$section_f_first_visit = null;
+		// if ($this->getAgencyType() == 'C') {
+			// print_r($type_ids);exit();
+			$pat_contractor_id = null;
+			if ($this->getAgencyType() == 'C') {
+				$pat_contractor_id = $this->patientcontractormdl->getPatContractorId($visitlog->patient_id, $this->getAgencyId());
+			} elseif ($this->getAgencyType() == 'A') {
+				$pat_contractor_id = $this->patientcontractormdl->getPatContractorIdByAgency($visitlog->patient_id, $this->getAgencyId());
+			}
+
+			$patContractor = $this->patientcontractormdl->getById($pat_contractor_id);
+			$agency_contractor_id = $patContractor->agency_contractor_id;
+
+			// $visits = array();
+			$rate_errors = array();
+			$visit_timestamp = strtotime($visitlog->visit_date_time);
+			$start_date = date("Y",$visit_timestamp).'-'.date("m",$visit_timestamp).'-01';
+			$total_units = 0;
+			$total_amount = 0;
+			foreach($this->visitlogmdl->getVisitsForSectionF($visitlog, $visitlog->cms485_id, $type_ids, $start_date, date("Y-m-d",strtotime($visitlog->visit_date_time)) ) as $visit){
+				if(is_null($visit->visited_time_in) OR $visit->billable_YN != 1){      
+			      continue;
+			    }
+			    
+			    $units = 0;
+			    $visit_duration = 0;
+			    $visit_mount = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units, $visit_duration);
+
+			    $billing_visit_rate = 0;
+			    if ($units > 0 AND $visit->billable_YN == 1) {
+			    	$billing_visit_rate = $visit->co_final_rate;
+			    } elseif (!$visit->co_invoice_id) {
+				    /*if ($units > 0) {
+				    	$billing_visit_rate = $this->visitlogmdl->findCoRate($visit->visit_log_id);
+				    	if ($billing_visit_rate ===FALSE) {
+							$visit_type = $this->visittypemdl->getById($visit->visit_type_id);
+							$rate_errors[] = "No visit rate has been defined for the visit ".$visit_type->visit_description;
+						}
+				    }*/
+			    }
+
+			    
+				$tmp = array(
+					'day' => date("j",strtotime($visit->visit_date_time)),
+					'date' => date("Y-m-d",strtotime($visit->visit_date_time)),
+					'timein' => date("h:ia",strtotime($visit->visited_time_in)),
+					'timeout' => date("h:ia",strtotime($visit->visited_time_out)),
+					'duration' => $visit_duration,
+					'units' => $units,
+					'rate' => $billing_visit_rate,
+					'amount' => $visit_mount,
+					'id' => $visit->visit_log_id,
+					'type_id' => $visit->visit_type_id,
+					'visit_log_id' => $visit->visit_log_id,
+				);
+
+				if (is_null($section_f_first_visit)) {
+					$section_f_first_visit = $visit;
+				}
+
+				$visits[$tmp['day']] = (object) $tmp;
+				$total_amount += $tmp['amount'];
+				$total_units += $tmp['units'];
+			}
+			$total_amount = round($total_amount, 2);
+			// echo "<pre>"; print_r($visits); echo "</pre>";
+			// exit();
+			$section_f_visits = $visits;
+			if ($this->getAgencyType() == 'C') {
+				$this->tpl->assign("section_f", true);
+				$this->tpl->assign("section_f_visits", $visits);
+				$this->tpl->assign("section_f_rate_errors", implode("<br>", $rate_errors));
+				$this->tpl->assign("section_f_total_amount", $total_amount);
+				$this->tpl->assign("section_f_total_units", $total_units);
+			}
+			// End of Section F
+		// }
+
+		if ($section_f_first_visit) {
+			$visit_type = $this->visittypemdl->getById($section_f_first_visit->visit_type_id);
+			$visit_type_discipline = $this->disciplinemdl->getById($visit_type->discipline_id);
+			$this->tpl->assign("visit_type_discipline", $visit_type_discipline);
+		}
+
+		if ($visitlog->visit_status_id == 1) {
+			// Load deafult values from agency settings for particual discipline
+			$this->load->model('agencysettingmdl');
+			$agency_settings=$this->agencysettingmdl->getByAgencyDisciplineId($patient->agency_id, $visit_type->discipline_id);
+			if (!empty($agency_settings)) {
+				$form3625->serv_code_box15 = $agency_settings->F3625_box15;
+				$form3625->bill_code_box16 = $agency_settings->F3625_box16;
+				$form3625->requis_feee_box17 = $agency_settings->F3625_box17;
+				$form3625->requis_fee_serv_code_box18 = $agency_settings->F3625_box18;
+				$form3625->requis_fee_bill_code_box19 = $agency_settings->F3625_box19;
+				
+				$this->tpl->assign('serv_code_box15', $agency_settings->F3625_box15);
+				$this->tpl->assign('bill_code_box16', $agency_settings->F3625_box16);
+				$this->tpl->assign('requis_feee_box17', $agency_settings->F3625_box17);
+				$this->tpl->assign('requis_fee_serv_code_box18', $agency_settings->F3625_box18);
+				$this->tpl->assign('requis_fee_bill_code_box19', $agency_settings->F3625_box19);
+			}
+		}
+
+		$rules = array ('visit_date_time'  		=> 'required',
+						);
+    	$fields = array ('visit_date_time'  	=> 'Order Date',
+						);
+		
+    	if ($agency->F3625_req_sig ==1) {
+			$rules['clinician_3625_signature'] = 'required';
+			$fields['clinician_3625_signature'] = 'Clinician Signature of Form 3625';
+
+			$rules['pat_3625_signature'] = 'required';
+			$fields['pat_3625_signature'] = 'Patient Signature of Form 3625';
+		}
+
+		if (sizeof($visits) == 0) {
+			$rules['vt103_comments'] = 'required';
+			$fields['vt103_comments'] = 'Comments';
+		}
+
+		// $this->validation->set_rules($rules);
+		// $this->validation->set_fields($fields);
+
+
+
+
+
+
+
+
+
+
+
+
+		// AQVI part
+		$prev_visit_log_id = null;
+		$next_visit_log_id = null;
+		$revi = $this->revimdl->get($visit_log_id);
+		if (!count($revi) OR $visitlog->visit_status_id == 1) {
+			$prevRevis = $this->revimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($prevRevis) == 0) {
+				$prevRevis = $this->revimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE);
+			}
+
+			if (count($prevRevis)) {
+				$prevRevi = $prevRevis[count($prevRevis) - 1];
+
+				$prev_visit_log_id = $prevRevi->visit_log_id;
+
+				$not_to_import = array (
+					'visit_log_id',
+					'vt117_id',					
+					'pt_signature',					
+					'pt_signed_date',					
+					'clinician_signature',					
+					'clinician_signed_date',					
+					'wsuperv_signature',					
+					'wsuperv_signed_date',					
+					'upload_document_name',					
+					'upload_document_name2',		
+					'upload_covid_document',		
+				);
+				foreach ($prevRevi as $k => $v) {
+					if ($enable_visit) {
+						if (property_exists($this->revimdl, $k)) {
+							if (!in_array($k, $not_to_import))
+								$this->revimdl-> $k = $v;
+							else if(isset($revi->$k))
+								$this->revimdl->$k = $revi->$k;
+						}
+					} else {
+						// create visit with null values
+						if (!in_array($k, $not_to_import) AND property_exists($this->revimdl, $k))
+							$this->revimdl-> $k = NULL;
+					}
+				}
+				if (count($revi)) {
+					$this->revimdl->visit_log_id = $visit_log_id;
+					$this->revimdl->gov_program = $patient->gov_program;
+					$this->revimdl->update($visit_log_id);
+				} else {
+					$this->revimdl->visit_log_id = $visit_log_id;
+					$this->revimdl->gov_program = $patient->gov_program;
+					$this->revimdl->insert($visit_log_id);
+				}
+			}
+		} else {
+			$prevRevis = $this->revimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($prevRevis)) {
+				$prevRevi = $prevRevis[count($prevRevis) - 1];
+				$prev_visit_log_id = $prevRevi->visit_log_id;
+			}
+		}
+		$nextRevis = $this->revimdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+		if (count($nextRevis)) {
+			$nextRevi = $nextRevis[0];
+			$next_visit_log_id = $nextRevi->visit_log_id;
+		}
+		//echo $prev_visit_log_id."::".$next_visit_log_id;exit;
+		//$this->tpl->assign("form", 'ptpn');  
+		$this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+		$this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+		$revi = $this->revimdl->get($visit_log_id);
+		if (empty($revi)) {
+			$revi = $this->revimdl->getEmpty();
+			$revi->visit_log_id = $visit_log_id;
+		}
+		// if($visitlog->signature != "") {
+		// 	$revi->pt_signature = $visitlog->signature;
+		// }
+		$this->assignObject($revi);
+		$this->assignObject($visitlog);	
+		
+		$gov_program = $patient->gov_program;
+		$this->tpl->assign("gov_program", $patient->gov_program);
+		if (!isset($revi->gov_program) ) {
+		}else if (isset($revi->gov_program)) {
+			$revi->gov_program = $patient->gov_program;
+		}
+
+		$gov_program_list = array(
+			'PRIVATE' => 'PRIVATE',
+			'PRIVATE Agency' => 'PRIVATE Agency',
+			'CLASS' => 'CLASS',
+			'Y-Waiver' => 'Y-Waiver',
+		);
+		$this->tpl->assign('gov_program_list', $gov_program_list);
+
+		if ($enable_visit) {
+			if ($gov_program == 'PRIVATE' OR $gov_program == 'PRIVATE Agency' OR $gov_program == 'CLASS') {
+	    		$rules['activity'] = 'required';
+	    		$fields['activity'] = 'Activity';
+
+	    		$rules['affect'] = 'required';
+	    		$fields['affect'] = 'Affect';
+
+	    		$rules['goals'] = 'required';
+	    		$fields['goals'] = 'Goals';
+
+	    		$rules['treat_provided'] = 'required';
+	    		$fields['treat_provided'] = 'Treatment Provided';
+
+	    		$rules['client_response'] = 'required';
+	    		$fields['client_response'] = 'Client Response';
+	    	} else if ($gov_program == 'Y-Waiver') {
+	    		$rules['wlocation_therapy'] = 'required';
+	    		$fields['wlocation_therapy'] = 'Location Therapy';
+
+	    		$rules['wpersons_present'] = 'required';
+	    		$fields['wpersons_present'] = 'Persons Present';
+
+	    		$rules['wactivity_descrip'] = 'required';
+	    		$fields['wactivity_descrip'] = 'Activity/Description of Contact';
+	    		
+	    		$rules['wspecific_skills'] = 'required';
+	    		$fields['wspecific_skills'] = 'Specific Skills';
+
+	    		$rules['wclient_response'] = 'required';
+	    		$fields['wclient_response'] = 'Client\'s response';
+
+	    		$rules['wsummary_activities'] = 'required';
+	    		$fields['wsummary_activities'] = 'Summary of activities';
+
+	    		$rules['wspecific_interven'] = 'required';
+	    		$fields['wspecific_interven'] = 'Specific interventions used';
+
+	    		$rules['wgoals_objectives'] = 'required';
+	    		$fields['wgoals_objectives'] = 'Goals/objectives addressed';
+	    		
+	    		$rules['wprogress_lack_progress'] = 'required';
+	    		$fields['wprogress_lack_progress'] = 'Progress or Lack of progress';
+
+	    		$rules['wgoal_focus'] = 'required';
+	    		$fields['wgoal_focus'] = 'Goal focus/plan for next session';
+
+	    		// $rules['wsuperv_signature'] = 'required';
+	    		// $fields['wsuperv_signature'] = 'Supervisor Signature';
+
+	    	}
+	    	$rules['signature'] = 'required';
+			$fields['signature'] = 'Patient Signature of Recreational visit';
+
+			$rules['clinician_signature'] = 'required';
+			$fields['clinician_signature'] = 'Clinician Signature of Recreational Visit';
+		}
+
+
+		$rules['visit_duration'] = 'required|callback_checkvisitduration';
+		$fields['visit_duration'] = 'Visit Duration';
+
+
+		if (!$revi->upload_document_name AND !$revi->upload_document_name2) {
+			if ($this->input->post('visit_status_id') == 3) {
+				$this->validation->set_rules($rules);
+				$this->validation->set_fields($fields);
+			}
+		}
+
+
+		// SAVE data
+		if ($this->validation->run() == TRUE) {
+			if($this->updateFormEdition($visit_log_id)){
+				// AQVI part
+				if ($enable_visit) {
+					$this->assignPostData($this->revimdl);
+					$this->revimdl->gov_program = $patient->gov_program;
+					
+
+					$revi = $this->revimdl->get($visit_log_id);
+					if (count($revi)) {
+						//$this->revimdl->vt117_id = $revi->vt117_id; 
+						$this->revimdl->update($visit_log_id);
+					} else {
+						$this->revimdl->insert($visit_log_id);
+					}
+
+				}
+				if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+					// when tasks are "sent for approval" they should be copied to the vt117_recreational_visit_copy table
+					$this->db->query("REPLACE INTO vt117_recreational_visit_copy SELECT * FROM `vt117_recreational_visit` WHERE visit_log_id = {$visit_log_id}");
+				}
+
+				// F3625 part
+				$this->assignPostData($this->form3625mdl);
+
+				$form3625 = $this->form3625mdl->get($visit_log_id);
+				if (count($form3625)) {
+					$this->form3625mdl->update($visit_log_id);
+				} else {
+					$this->form3625mdl->insert($visit_log_id);
+				}
+
+				$this->agencymdl->updateFlex($patient->agency_id, 'F3625_contract_no', $this->input->post('F3625_contract_no'));
+
+				if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+					// when tasks are "sent for approval" they should be copied to the vt103_form_3625_copy table
+					$this->db->query("REPLACE INTO vt103_form_3625_copy SELECT * FROM `vt103_form_3625` WHERE visit_log_id = {$visit_log_id}");
+				}
+			
+
+				$this->load->helper('ajax');
+				if (isAjax()) {
+					echo "1";
+					exit;
+				}else{
+	        		$revi = $this->revimdl->get($visit_log_id);        		
+	        		if (empty($revi)) {
+						$revi = $this->revimdl->getEmpty();
+						$revi->visit_log_id = $visit_log_id;
+					}
+	        		$this->assignObject($revi);
+
+					$form3625 = $this->form3625mdl->get($visit_log_id);        		
+					if (empty($form3625)) {
+						$form3625 = $this->form3625mdl->getEmpty();
+						$form3625->visit_log_id = $visit_log_id;
+					}				
+	        		$this->assignObject($form3625);
+
+	        		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+	        		$this->tpl->assign("agency", $agency);
+	        	
+	        		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	        		$this->assignObject($visitlog);
+	      		}
+			}
+
+
+			$this->formRedirection($visit_log_id);
+		}
+
+		$additional_buttons = array();
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				if ($revi->upload_document_name OR $revi->upload_document_name2) {
+					$additional_buttons['Change Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+					$additional_buttons['Remove Document'] = 'removeScannedDocument('.$visit_log_id.')';
+				} else {
+					$additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+				}
+
+				if ($revi->upload_covid_document) {
+					$additional_buttons['Change Covid Document'] = 'uploadCovidDocument('.$visit_log_id.')';
+					// $additional_buttons['Remove Covid Document'] = 'removeCovidDocument('.$visit_log_id.')';
+				} else {
+					$additional_buttons['Upload Covid Screening Document'] = 'uploadCovidDocument('.$visit_log_id.')';
+				}
+			}
+
+		}
+		$this->tpl->assign('additional_buttons', $additional_buttons );
+
+		// Render form
+		$this->getPatientInfo($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);		
+		// $this->tpl->assign("patient", $patient);
+		$this->tpl->assign("window", $window);
+		$this->tpl->assign_include("dynamic_form", "task/documents/revi_class");
+		$this->setfbase($visit_log_id, $action);
+		$this->tpl->assign("form_title", $form_title);
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	
+	/**
+	 * revi form for not CLASS patient
+	 */
+	function index($visit_log_id, $action = 'task', $window = 'self') {
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		if ($patient->gov_program == 'CLASS' ) {
+			return $this->revi_class($visit_log_id, $action, $window);
+		}
+
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+		$prev_visit_log_id = null;
+		$next_visit_log_id = null;
+		$revi = $this->revimdl->get($visit_log_id);
+		if (!count($revi) OR $visitlog->visit_status_id == 1) {
+			$prevRevis = $this->revimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($prevRevis) == 0) {
+				$prevRevis = $this->revimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE);
+			}
+
+			if (count($prevRevis)) {
+				$prevRevi = $prevRevis[count($prevRevis) - 1];
+
+				$prev_visit_log_id = $prevRevi->visit_log_id;
+
+				$not_to_import = array (
+					'visit_log_id',
+					'vt117_id',					
+					'pt_signature',					
+					'pt_signed_date',					
+					'clinician_signature',					
+					'clinician_signed_date',					
+					'wsuperv_signature',					
+					'wsuperv_signed_date',					
+					'upload_document_name',					
+					'upload_document_name2',	
+					'upload_covid_document',					
+				);
+				foreach ($prevRevi as $k => $v) {
+					if (property_exists($this->revimdl, $k)) {
+						if (!in_array($k, $not_to_import))
+							$this->revimdl-> $k = $v;
+						else if(isset($revi->$k))
+							$this->revimdl->$k = $revi->$k;
+					}					
+				}
+				if (count($revi)) {
+					$this->revimdl->visit_log_id = $visit_log_id;
+					$this->revimdl->gov_program = $patient->gov_program;
+					$this->revimdl->update($visit_log_id);
+				} else {
+					$this->revimdl->visit_log_id = $visit_log_id;
+					$this->revimdl->gov_program = $patient->gov_program;
+					$this->revimdl->insert($visit_log_id);
+				}
+			}
+		} else {
+			$prevRevis = $this->revimdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($prevRevis)) {
+				$prevRevi = $prevRevis[count($prevRevis) - 1];
+				$prev_visit_log_id = $prevRevi->visit_log_id;
+			}
+		}
+		$nextRevis = $this->revimdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+		if (count($nextRevis)) {
+			$nextRevi = $nextRevis[0];
+			$next_visit_log_id = $nextRevi->visit_log_id;
+		}
+		//echo $prev_visit_log_id."::".$next_visit_log_id;exit;
+		//$this->tpl->assign("form", 'ptpn');  
+		$this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+		$this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+		$this->assignObject($visitlog);
+		$revi = $this->revimdl->get($visit_log_id);
+		if (empty($revi)) {
+			$revi = $this->revimdl->getEmpty();
+			$revi->visit_log_id = $visit_log_id;
+		}
+		// if($visitlog->signature != "") {
+		// 	$revi->pt_signature = $visitlog->signature;
+		// }
+		$this->assignObject($revi);
+
+		$gov_program = $patient->gov_program;
+		$this->tpl->assign("gov_program", $patient->gov_program);
+		if (!isset($revi->gov_program) ) {
+		}else if (isset($revi->gov_program)) {
+			$revi->gov_program = $patient->gov_program;
+			$gov_program = $revi->gov_program;
+		}
+
+		$rules = array ('visit_date_time'  		=> 'required',
+						);
+    	$fields = array ('visit_date_time'  	=> 'Visit Date',
+						);
+    	if ($gov_program == 'PRIVATE' OR $gov_program == 'PRIVATE Agency' OR $gov_program == 'CLASS') {
+    		$rules['activity'] = 'required';
+    		$fields['activity'] = 'Activity';
+
+    		$rules['affect'] = 'required';
+    		$fields['affect'] = 'Affect';
+
+    		$rules['goals'] = 'required';
+    		$fields['goals'] = 'Goals';
+
+    		$rules['treat_provided'] = 'required';
+    		$fields['treat_provided'] = 'Treatment Provided';
+
+    		$rules['client_response'] = 'required';
+    		$fields['client_response'] = 'Client Response';
+    	} else if ($gov_program == 'Y-Waiver') {
+    		$rules['wlocation_therapy'] = 'required';
+    		$fields['wlocation_therapy'] = 'Location Therapy';
+
+    		$rules['wpersons_present'] = 'required';
+    		$fields['wpersons_present'] = 'Persons Present';
+
+    		$rules['wactivity_descrip'] = 'required';
+    		$fields['wactivity_descrip'] = 'Activity/Description of Contact';
+    		
+    		$rules['wspecific_skills'] = 'required';
+    		$fields['wspecific_skills'] = 'Specific Skills';
+
+    		$rules['wclient_response'] = 'required';
+    		$fields['wclient_response'] = 'Client\'s response';
+
+    		$rules['wsummary_activities'] = 'required';
+    		$fields['wsummary_activities'] = 'Summary of activities';
+
+    		$rules['wspecific_interven'] = 'required';
+    		$fields['wspecific_interven'] = 'Specific interventions used';
+
+    		$rules['wgoals_objectives'] = 'required';
+    		$fields['wgoals_objectives'] = 'Goals/objectives addressed';
+    		
+    		$rules['wprogress_lack_progress'] = 'required';
+    		$fields['wprogress_lack_progress'] = 'Progress or Lack of progress';
+
+    		$rules['wgoal_focus'] = 'required';
+    		$fields['wgoal_focus'] = 'Goal focus/plan for next session';
+
+    		if ($agency->superv_sign_require ==  1 AND $this->input->post('visit_status_id') == 4) {
+    			$rules['wsuperv_signature'] = 'required';
+	    		$fields['wsuperv_signature'] = 'Supervisor Signature';
+    		}
+    	}
+		
+		$rules['signature'] = 'required';
+		$fields['signature'] = 'Patient Signature';
+
+		$rules['clinician_signature'] = 'required';
+		$fields['clinician_signature'] = 'Clinician Signature';
+
+		$rules['visit_duration'] = 'required|callback_checkvisitduration';
+		$fields['visit_duration'] = 'Visit Duration';
+
+		if (!$revi->upload_document_name AND !$revi->upload_document_name2) {
+			if ($this->input->post('visit_status_id') == 3) {
+				$this->validation->set_rules($rules);
+				$this->validation->set_fields($fields);
+			}
+		}
+
+    	
+		if ($this->validation->run() == TRUE) {
+			if($this->updateFormEdition($visit_log_id)){
+				$this->assignPostData($this->revimdl);
+				$this->revimdl->gov_program = $patient->gov_program;
+				
+
+				$revi = $this->revimdl->get($visit_log_id);
+				if (count($revi)) {
+					//$this->revimdl->vt117_id = $revi->vt117_id; 
+					$this->revimdl->update($visit_log_id);
+				} else {
+					$this->revimdl->insert($visit_log_id);
+				}
+
+				//echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+				if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+					// when tasks are "sent for approval" they should be copied to the vt117_recreational_visit_copy table
+					$this->db->query("REPLACE INTO vt117_recreational_visit_copy SELECT * FROM `vt117_recreational_visit` WHERE visit_log_id = {$visit_log_id}");
+				}
+
+
+				$this->load->helper('ajax');
+				if (isAjax()) {
+					echo "1";
+					exit;
+				}else{
+					$revi = $this->revimdl->get($visit_log_id);        		
+	        		if (empty($revi)) {
+						$revi = $this->revimdl->getEmpty();
+						$revi->visit_log_id = $visit_log_id;
+					}
+	        		$this->assignObject($revi);
+
+	        		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	        		$this->assignObject($visitlog);
+	      		}
+			}
+
+			$this->formRedirection($visit_log_id);
+		}
+
+		/*$this->tpl->assign('ther_name_list', $this->teammdl->getAll($visitlog->patient_id, array (
+			6,
+			7
+		)));
+		$this->tpl->assign('ther_supervisor_list', $this->teammdl->getAll($visitlog->patient_id, array (
+			6
+		)));*/
+
+		$gov_program_list = array(
+			'PRIVATE' => 'PRIVATE',
+			'PRIVATE Agency' => 'PRIVATE Agency',
+			'CLASS' => 'CLASS',
+			'Y-Waiver' => 'Y-Waiver',
+		);
+		$this->tpl->assign('gov_program_list', $gov_program_list);
+
+		$additional_buttons = array();
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				if ($revi->upload_document_name OR $revi->upload_document_name2) {
+					$additional_buttons['Change Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+					$additional_buttons['Remove Document'] = 'removeScannedDocument('.$visit_log_id.')';
+				} else {
+					$additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+				}
+
+				if ($revi->upload_covid_document) {
+					$additional_buttons['Change Covid Document'] = 'uploadCovidDocument('.$visit_log_id.')';
+					// $additional_buttons['Remove Covid Document'] = 'removeCovidDocument('.$visit_log_id.')';
+				} else {
+					$additional_buttons['Upload Covid Screening Document'] = 'uploadCovidDocument('.$visit_log_id.')';
+				}
+			}
+		}
+
+		if ($gov_program == 'Y-Waiver'){
+			if (($this->getAgencyType() == 'A' AND $visitlog->visit_status_id == 3) OR ($this->getAgencyType() == 'C' AND $visitlog->visit_status_id == 8)) {
+				if ($this->hasPermissionHeader(5)) {
+					$this->tpl->assign('can_sign_supervisor', true );
+					$additional_buttons['Supervisor Signature'] = "capture_supervisor_signature(".$visit_log_id.")";
+				}
+			}
+		}
+
+		if ($revi->wsuperv_signature AND $revi->wsuperv_signed_by) {
+			$supervisor_signed_by = $this->usagymdl->getByUsAgyId($revi->wsuperv_signed_by);
+			$this->tpl->assign('wsuperv_signed_by_name', $supervisor_signed_by->first_name." ".$supervisor_signed_by->last_name);
+		}
+		/*
+		$additional_buttons['Patient Signature'] = "capture_signature({$visit_log_id})";		
+		$additional_buttons['Clinician Signature'] = "capture_clinician_signature({$visit_log_id})";
+		if (isset($revi->gov_program) AND $revi->gov_program == 'Y-Waiver') {
+			$additional_buttons['Supervisor Signature'] = "capture_supervisor_signature({$visit_log_id})";
+		}
+		*/
+		$this->tpl->assign('additional_buttons', $additional_buttons );
+
+		$this->getPatientInfo($visit_log_id);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		// $this->tpl->assign("patient", $patient);
+		$this->tpl->assign("window", $window);
+		$this->tpl->assign_include("dynamic_form", "task/documents/revi");
+		$this->setfbase($visit_log_id, $action);
+
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function capture_pt_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		
+		$revi = $this->revimdl->get($visit_log_id);   
+
+		//echo FCPATH;
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if (isset($visitlog->signature)) {
+				$this->tpl->assign("signature", $visitlog->signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($revi)) {
+					$this->revimdl->visit_log_id = $visit_log_id;
+					$this->revimdl->gov_program = $patient->gov_program;
+					$this->revimdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+				// $this->revimdl->updateFlex($visit_log_id, 'pt_signature', $signature_file_name);
+				// $this->revimdl->updateFlex($visit_log_id, 'pt_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/revi/index/'.$visit_log_id.'?r='.time().'#anchor_pt_signature\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function capture_pt_3625_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		
+		if ($patient->gov_program != 'CLASS' ) {
+			exit('This patient gov programm is not CLASS!');
+		}
+		$form3625 = $this->form3625mdl->get($visit_log_id);  
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		$this->tpl->assign("faction", 'capture_pt_3625_signature');	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form3625->pat_3625_signature)){
+				$this->tpl->assign("signature", $form3625->pat_3625_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form3625)) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "pt_signature_3625_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				// $this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'pat_3625_signature', $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'pat_3625_signed_date', standard_date(now(), 'MYSQL'));
+				
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/revi/index/'.$visit_log_id.'?r='.time().'#anchor_pat_3625_signature\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function capture_clinician_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+
+		$revi = $this->revimdl->get($visit_log_id);   
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if (isset($revi->clinician_signature)) {
+				$this->tpl->assign("signature", $revi->clinician_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($revi)) {
+					$this->revimdl->visit_log_id = $visit_log_id;
+					$this->revimdl->gov_program = $patient->gov_program;
+					$this->revimdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "clinician_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->revimdl->updateFlex($visit_log_id, 'clinician_signature', $signature_file_name);
+				$this->revimdl->updateFlex($visit_log_id, 'clinician_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/revi/index/'.$visit_log_id.'?r='.time().'#anchor_clinician_signature\';
+					}, 2000);
+				</script>';
+				
+			}
+		}	
+	}	
+
+	function capture_clinician_3625_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($patient->gov_program != 'CLASS' ) {
+			exit('This patient gov programm is not CLASS!');
+		}
+		
+		if($visitlog->visit_user_id != $this->getUsAgyId()){
+			exit('Only Clinician Signature Allowed');
+		}
+
+		$form3625 = $this->form3625mdl->get($visit_log_id); 
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		$this->tpl->assign("faction", 'capture_clinician_3625_signature');	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form3625->clinician_3625_signature)){
+				$this->tpl->assign("signature", $form3625->clinician_3625_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form3625)) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "clinician_signature_3625_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->form3625mdl->updateFlex($visit_log_id, 'clinician_3625_signature', $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'clinician_3625_signed_date', standard_date(now(), 'MYSQL'));
+				
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/revi/index/'.$visit_log_id.'?r='.time().'#anchor_clinician_3625_signature\';
+					}, 2000);
+				</script>';
+				
+			}
+		}	
+	}	
+
+	function capture_supervisor_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		$revi = $this->revimdl->get($visit_log_id);   
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if (isset($revi->wsuperv_signature)) {
+				$this->tpl->assign("signature", $revi->wsuperv_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/supervisor_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($revi)) {
+					$this->revimdl->visit_log_id = $visit_log_id;
+					$this->revimdl->gov_program = $patient->gov_program;
+					$this->revimdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);				
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "supervisor_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->revimdl->updateFlex($visit_log_id, 'wsuperv_signature', $signature_file_name);
+				$this->revimdl->updateFlex($visit_log_id, 'wsuperv_signed_date', standard_date(now(), 'MYSQL'));
+				$this->revimdl->updateFlex($visit_log_id, 'wsuperv_signed_by', $this->getUsAgyId());
+
+				$config =& get_config();
+
+				echo 'Supervisor Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/revi/index/'.$visit_log_id.'?r='.time().'#anchor_wsuperv_signature\';
+					}, 2000);
+				</script>';
+				
+			}
+		}	
+	}	
+
+	function capture_caregiver_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		$form3625 = $this->form3625mdl->get($visit_log_id);   
+		/*$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+		$cm_us_agy_id = 0;
+		if (count($cm_approver)) {
+			$cm_us_agy_id = $cm_approver[0]->us_agy_id;			
+		}
+
+		if ($this->getUsAgyId() != $cm_us_agy_id) {
+			exit('Only Case Manager Signature Allowed');
+		}*/
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form3625->caregiver_signature)){
+				$this->tpl->assign("signature", $form3625->caregiver_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_caregiver_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form3625)) {
+					$this->form3625mdl->visit_log_id = $visit_log_id;
+					$this->form3625mdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "caregiver_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->form3625mdl->updateFlex($visit_log_id, 'caregiver_signature', $signature_file_name);
+				$this->form3625mdl->updateFlex($visit_log_id, 'caregiver_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Caregiver Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/revi/index/'.$visit_log_id.'?r='.time().'#anchor_caregiver_signature\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function validation_visit($visit_log_id){
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+
+		if ($visitlog->visit_discipline_id) {
+			$user_discipline = $this->disciplinemdl->getById($visitlog->visit_discipline_id);
+			$visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+		}
+		
+		$enable_visit = false;
+		// if (isset($agency->F3625_req_visit) AND $agency->F3625_req_visit == 1) {
+			// always enabled visit now
+			$enable_visit = true;
+		// }
+
+		$rules = array();
+		$fields = array();
+
+		$rules['visit_date_time'] = 'required';
+		$fields['visit_date_time'] = 'Order Date';
+
+		// validation for 3625
+		if ($patient->gov_program == 'CLASS' ) {
+			if ($agency->F3625_req_sig ==1) {
+				$rules['clinician_3625_signature'] = 'required';
+				$fields['clinician_3625_signature'] = 'Clinician Signature of Form 3625';
+
+				$rules['pat_3625_signature'] = 'required';
+				$fields['pat_3625_signature'] = 'Patient Signature of Form 3625';
+			}
+
+			// Section F
+			$type_ids = array();
+			foreach ($this->visittypemdl->getByDisciplineId($visit_user->discipline_id) as $type_id => $type_name) {
+				$type_ids[] = $type_id;
+			}
+
+			$visits = array();
+			if ($this->getAgencyType() == 'C') {
+				// print_r($type_ids);exit();
+				$pat_contractor_id = $this->patientcontractormdl->getPatContractorId($visitlog->patient_id, $this->getAgencyId());
+				$patContractor = $this->patientcontractormdl->getById($pat_contractor_id);
+				$agency_contractor_id = $patContractor->agency_contractor_id;
+
+				// $visits = array();
+				$rate_errors = array();
+				$visit_timestamp = strtotime($visitlog->visit_date_time);
+				$start_date = date("Y",$visit_timestamp).'-'.date("m",$visit_timestamp).'-01';
+				$total_units = 0;
+				$total_amount = 0;
+				foreach($this->visitlogmdl->getVisitsForSectionF($visitlog, $visitlog->cms485_id, $type_ids, $start_date, date("Y-m-d",strtotime($visitlog->visit_date_time)) ) as $visit){
+					if(is_null($visit->visited_time_in) OR $visit->billable_YN != 1){      
+				      continue;
+				    }
+				    
+				    $units = 0;
+				    $visit_duration = 0;
+				    $visit_mount = $this->visitlogmdl->getSingleVisitBillAmount($visit, $units, $visit_duration);
+
+				    $billing_visit_rate = 0;
+				    if ($units > 0 AND $visit->billable_YN == 1) {
+				    	$billing_visit_rate = $visit->co_final_rate;
+				    }
+
+				    
+					$tmp = array(
+						'day' => date("j",strtotime($visit->visit_date_time)),
+						'date' => date("Y-m-d",strtotime($visit->visit_date_time)),
+						'timein' => date("h:ia",strtotime($visit->visited_time_in)),
+						'timeout' => date("h:ia",strtotime($visit->visited_time_out)),
+						'duration' => $visit_duration,
+						'units' => $units,
+						'rate' => $billing_visit_rate,
+						'amount' => $visit_mount,
+						'id' => $visit->visit_log_id,
+						'type_id' => $visit->visit_type_id,
+						'visit_log_id' => $visit->visit_log_id,
+					);
+
+					$visits[$tmp['day']] = (object) $tmp;
+					$total_amount += $tmp['amount'];
+					$total_units += $tmp['units'];
+				}				
+				// End of Section F
+			}
+
+			if (sizeof($visits) == 0) {
+				$rules['vt103_comments'] = 'required';
+				$fields['vt103_comments'] = 'Comments';
+			}
+		}
+		$gov_program = $patient->gov_program;
+
+
+		// Validation for revi
+		if ($enable_visit) {
+			if ($gov_program == 'PRIVATE' OR $gov_program == 'PRIVATE Agency' OR $gov_program == 'CLASS') {
+	    		$rules['activity'] = 'required';
+	    		$fields['activity'] = 'Activity';
+
+	    		$rules['affect'] = 'required';
+	    		$fields['affect'] = 'Affect';
+
+	    		$rules['goals'] = 'required';
+	    		$fields['goals'] = 'Goals';
+
+	    		$rules['treat_provided'] = 'required';
+	    		$fields['treat_provided'] = 'Treatment Provided';
+
+	    		$rules['client_response'] = 'required';
+	    		$fields['client_response'] = 'Client Response';
+	    	} else if ($gov_program == 'Y-Waiver') {
+	    		$rules['wlocation_therapy'] = 'required';
+	    		$fields['wlocation_therapy'] = 'Location Therapy';
+
+	    		$rules['wpersons_present'] = 'required';
+	    		$fields['wpersons_present'] = 'Persons Present';
+
+	    		$rules['wactivity_descrip'] = 'required';
+	    		$fields['wactivity_descrip'] = 'Activity/Description of Contact';
+	    		
+	    		$rules['wspecific_skills'] = 'required';
+	    		$fields['wspecific_skills'] = 'Specific Skills';
+
+	    		$rules['wclient_response'] = 'required';
+	    		$fields['wclient_response'] = 'Client\'s response';
+
+	    		$rules['wsummary_activities'] = 'required';
+	    		$fields['wsummary_activities'] = 'Summary of activities';
+
+	    		$rules['wspecific_interven'] = 'required';
+	    		$fields['wspecific_interven'] = 'Specific interventions used';
+
+	    		$rules['wgoals_objectives'] = 'required';
+	    		$fields['wgoals_objectives'] = 'Goals/objectives addressed';
+	    		
+	    		$rules['wprogress_lack_progress'] = 'required';
+	    		$fields['wprogress_lack_progress'] = 'Progress or Lack of progress';
+
+	    		$rules['wgoal_focus'] = 'required';
+	    		$fields['wgoal_focus'] = 'Goal focus/plan for next session';
+
+	    		// $rules['wsuperv_signature'] = 'required';
+	    		// $fields['wsuperv_signature'] = 'Supervisor Signature';
+
+	    	}
+
+	    	$rules['signature'] = 'required';
+			$fields['signature'] = 'Patient Signature of Recreational visit';
+
+			$rules['clinician_signature'] = 'required';
+			$fields['clinician_signature'] = 'Clinician Signature of Recreational Visit';
+		}
+
+		$rules['visit_duration'] = 'required|callback_checkvisitduration';
+		$fields['visit_duration'] = 'Visit Duration';
+		
+		$revi = $this->revimdl->get($visit_log_id);
+		if (empty($revi)) {
+			$revi = $this->revimdl->getEmpty();
+			$revi->visit_log_id = $visit_log_id;
+		}
+		// if($visitlog->signature != "") {
+		// 	$revi->pt_signature = $visitlog->signature;
+		// }
+		if (!$revi->upload_document_name AND !$revi->upload_document_name2) {
+			$this->validation->set_rules($rules);
+			$this->validation->set_fields($fields);
+		}
+
+		$validation_success = 0;
+		$msg = 0;
+		if ($this->validation->run() == TRUE) {
+			$validation_success = 1;
+		} else {
+			$msg = $this->validation->get_error_msg();		
+		}
+
+		echo json_encode(array('validation_success'=>$validation_success, 'msg'=>$msg));
+		exit();
+	}
+	
+	function checkvisitduration($duration){
+		if ($duration > 480) {
+			$this->validation->set_message('checkvisitduration', "Invalid visit duration field.");
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+	}
+
+	function pdf($visit_log_id, $output='D') {
+    	$this->load->helper('visit_pdf');
+    	
+    	revi_pdf($visit_log_id, $output);
+    	
+    	return;
+		
+
+	}
+
+	function upload_document($visit_log_id){
+		$can_upload = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_upload = true;
+			}
+		}
+
+		if (!$can_upload) {
+			exit('Can\'t Upload!');
+		}
+
+		if ((isset($_FILES['document']) AND $_FILES['document']['error']==0) OR (isset($_FILES['document2']) AND $_FILES['document2']['error']==0)) {
+			$config =& get_config();
+
+			// Save form 
+			$fname = "";
+			$fname2 = "";
+			if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+				$fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+				$fname = str_replace(" ","_",$fname);
+				$fname = str_replace("%","_",$fname);
+				$fname = str_replace("#","",$fname);
+				$fname = str_replace("&","",$fname);
+				$fname = str_replace(":","-",$fname);
+				if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/datastore/revi/'.$fname)) {
+					$fname = "";
+				}
+			}
+
+			if (isset($_FILES['document2']) AND $_FILES['document2']['error']==0) {
+				$fname2 = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document2']['name'], PATHINFO_EXTENSION);
+				$fname2 = str_replace(" ","_",$fname2);
+				$fname2 = str_replace("%","_",$fname2);
+				$fname2 = str_replace("#","",$fname2);
+				$fname2 = str_replace("&","",$fname2);
+				$fname2 = str_replace(":","-",$fname2);
+				if (!move_uploaded_file($_FILES['document2']['tmp_name'], FCPATH.'/datastore/revi/'.$fname2)) {
+					$fname2 = "";
+				}
+			}
+			// $fname = microtime()."_".$fname;
+			if($fname OR $fname2) {
+					$revi = $this->revimdl->get($visit_log_id);
+
+					if (empty($revi)) {
+						// $patient = $this->patientmdl->getById($visitlog->patient_id);	
+						// $user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+						// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+						
+						$revi = $this->revimdl->getEmpty();
+
+						$this->assignPostData($this->revimdl, $revi);
+				        $this->revimdl->visit_log_id = $visit_log_id;
+				        $this->revimdl->upload_document_name = $fname;
+				        $this->revimdl->upload_document_name2 = $fname2;
+
+						$this->revimdl->insert($visit_log_id);
+				    } else {
+				    	if ($fname) {
+				    		@unlink(FCPATH.'/datastore/revi/'.$revi->upload_document_name);
+							$this->revimdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+				    	}
+				    	if ($fname2) {
+				    		@unlink(FCPATH.'/datastore/revi/'.$revi->upload_document_name2);
+							$this->revimdl->updateFlex($visit_log_id, 'upload_document_name2', $fname2);
+				    	}
+				    }
+
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+				    
+					echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/revi/index/".$visit_log_id."';</SCRIPT>";
+
+					/*if($this->submitForApproval($visit_log_id)){
+						$this->revimdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+
+						$config =& get_config();
+
+						// Submitted for approval. check is co-signer assigned. If assigned then need to send notification to co-signer.
+						$revi = $this->revimdl->get($visit_log_id);
+						if ($revi->ther_supervisor) {
+							$this->messagemdl->user_from = $this->getUsAgyId();
+							$this->messagemdl->msg_type = 'email';
+							$this->messagemdl->msg_subject = 'You have a note to sign';
+							$this->messagemdl->msg_text = 'A revi note is waiting for your sign before approval. <a href="javascript://" onclick="window.location.href=\''.$config["index_url"].'task/task/edit/'.$visit_log_id.'\';">Click here</a> to open the note.';
+							$msg_id = $this->messagemdl->insert();
+
+							$this->usermessagemdl->insert($msg_id, $this->revimdl->ther_supervisor, 0);
+						}
+					
+
+						echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/revi/index/".$visit_log_id."';</SCRIPT>";
+					} else {
+						@unlink(FCPATH.'/datastore/revi/'.$fname);
+						// echo "<SCRIPT>alert('Payroll visit rate not found');parent.dhxWins.window('w1').close();</SCRIPT>";
+					}*/
+			}else{
+				exit("Document Upload Failed!");
+			}
+		} else {	
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 AND isset($_FILES['document2']['error']) AND $_FILES['document2']['error'] != 0) {
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please select Document";
+				$this->tpl->assign("error_string", $error_string);
+			}
+			$revi = $this->revimdl->get($visit_log_id);
+			$this->assignObject($revi);
+			if ($patient->gov_program == 'CLASS' ) {
+				$this->tpl->assign_include("dynamic_tpl", "task/documents/upload_revi_document_class");
+			} else {
+				$this->tpl->assign_include("dynamic_tpl", "task/documents/upload_revi_document");
+			}
+
+		
+			$this->tpl->assign("gov_program", $patient->gov_program);
+			$this->tpl->assign("visit_log_id", $visit_log_id);
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		}
+	}
+
+	function pre_remove_document($visit_log_id){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+
+		$revi = $this->revimdl->get($visit_log_id);
+		$this->assignObject($revi);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		if ($patient->gov_program == 'CLASS' ) {
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/remove_revi_document_class");
+		} else {
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/remove_revi_document");
+		}
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function remove_document($visit_log_id, $doc_number){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+		$revi = $this->revimdl->get($visit_log_id);
+		
+		switch ($doc_number) {
+			case '1':
+				if (isset($revi->upload_document_name)) {
+					@unlink(FCPATH.'/datastore/revi/'.$revi->upload_document_name);
+					$this->revimdl->updateFlex($visit_log_id, 'upload_document_name', null);
+				}
+				break;
+			case '2':
+				if (isset($revi->upload_document_name2)) {
+					@unlink(FCPATH.'/datastore/revi/'.$revi->upload_document_name2);
+					$this->revimdl->updateFlex($visit_log_id, 'upload_document_name2', null);
+				}
+				break;
+			default:
+				exit('Document Not found.');
+				break;
+		}
+		
+		echo "1";exit();
+
+	}
+
+	function upload_covid_document($visit_log_id){
+		$can_upload = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_upload = true;
+			}
+		}
+
+		if (!$can_upload) {
+			exit('Can\'t Upload!');
+		}
+
+		if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+			$config =& get_config();
+
+			// Save form 
+			$fname = "";
+			
+			if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+				$fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+				$fname = str_replace(" ","_",$fname);
+				$fname = str_replace("%","_",$fname);
+				$fname = str_replace("#","",$fname);
+				$fname = str_replace("&","",$fname);
+				$fname = str_replace(":","-",$fname);
+				if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/datastore/revi/'.$fname)) {
+					$fname = "";
+				}
+			}
+
+			// $fname = microtime()."_".$fname;
+			if($fname) {
+					$revi = $this->revimdl->get($visit_log_id);
+
+					if (empty($revi)) {
+						// $patient = $this->patientmdl->getById($visitlog->patient_id);	
+						// $user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+						// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+						
+						$revi = $this->revimdl->getEmpty();
+
+						$this->assignPostData($this->revimdl, $revi);
+				        $this->revimdl->visit_log_id = $visit_log_id;
+				        $this->revimdl->upload_covid_document = $fname;
+				        
+						$this->revimdl->insert($visit_log_id);
+				    } else {
+				    	if ($fname) {
+				    		@unlink(FCPATH.'/datastore/revi/'.$revi->upload_covid_document);
+							$this->revimdl->updateFlex($visit_log_id, 'upload_covid_document', $fname);
+				    	}
+				    }
+
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+				    
+					echo "<center>Covid Screening Document has been uploaded.</center><SCRIPT>alert('Covid Screening Document has been uploaded');parent.location.href='".$config["index_url"]."task/revi/index/".$visit_log_id."';</SCRIPT>";
+			}else{
+				exit("Document Upload Failed!");
+			}
+		} else {	
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0) {
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please select Document";
+				$this->tpl->assign("error_string", $error_string);
+			}
+			$revi = $this->revimdl->get($visit_log_id);
+			$this->assignObject($revi);
+			
+			// $this->tpl->assign_include("dynamic_tpl", "task/documents/upload_revi_document");
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/upload_visit_covid_document");
+			
+
+		
+			$this->tpl->assign("gov_program", $patient->gov_program);
+			$this->tpl->assign("visit_log_id", $visit_log_id);
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		}
+	}
+
+	function remove_covid_document($visit_log_id){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+		$revi = $this->revimdl->get($visit_log_id);
+				
+		if (isset($revi->upload_covid_document)) {
+			@unlink(FCPATH.'/datastore/revi/'.$revi->upload_covid_document);
+			$this->revimdl->updateFlex($visit_log_id, 'upload_covid_document', null);
+		}
+
+
+		
+		echo "1";exit();
+
+	}
+ }

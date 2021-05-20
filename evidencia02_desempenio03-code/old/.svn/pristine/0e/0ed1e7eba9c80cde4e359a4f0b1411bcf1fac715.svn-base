@@ -1,0 +1,65 @@
+<?
+
+ class DOrderMdl extends Model {
+
+	var $doctor_order_id;
+	var $visit_log_id;  	
+	var $do_date;
+	var $do_description;
+	var $do_contractor_notes;
+	var $do_agency_notes;
+	var $do_doctor_notes;
+	var $order_type_id;
+	
+	function DOrderMdl () {
+		parent::Model();		
+	}
+
+	function get ( $visit_log_id ) {	
+		$this->db->where('visit_log_id', $visit_log_id);	
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order_2.order_type_id = doc_doctor_order_type.doc_doctor_order_type_id');
+		$query = $this->db->get('doc_doctor_order_2');
+		return $query->row();	
+	}
+
+	function insert ($visit_log_id) {
+		$this->visit_log_id = $visit_log_id;
+		$this->db->insert('doc_doctor_order_2', $this);	
+	}
+	
+	function update ( $visit_log_id ) {
+		unset($this->doctor_order_id);	
+		$this->db->where('visit_log_id', $visit_log_id);	
+		$this->db->update('doc_doctor_order_2', $this);
+	}
+	
+	function getPrevious ( $user_id, $previous_date, $episode_id ) {		
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = doc_doctor_order_2.visit_log_id');		
+		$this->db->where('visit_user_id', $user_id);
+		$this->db->where('visit_date_time <', $previous_date);
+		$this->db->where('cms485_id', $episode_id);		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('doc_doctor_order_2');
+		return $query->result();		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new DOrderMdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->doctor_order_id	    = $object1->doctor_order_id;
+		$object->visit_log_id 		= $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('doc_doctor_order_2', $object);		
+	}
+	function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+		$this->db->where($where, $visit_log_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('doc_doctor_order_2');
+	}
+ }

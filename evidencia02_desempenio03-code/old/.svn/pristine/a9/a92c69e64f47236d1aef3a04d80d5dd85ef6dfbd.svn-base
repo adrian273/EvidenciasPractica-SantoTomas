@@ -1,0 +1,109 @@
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center">
+ <form id="gform" method="POST" action="{$index_url}patient/doctororder/editOrder">
+ <input type="hidden" id="fecha_help">
+    <tr>
+    <td valign="top" nowrap class="title" colspan="2">
+    	<img src="{$base_url}style/images/button_arrow_right.png" style="vertical-align: bottom"> View Doctor Order
+    </td>
+  </tr>
+    <tr>
+    <td height="10" colspan="2"></td>
+
+  </tr>
+  <tr>
+    <td valign="bottom">
+  		<input type="submit" class="btn" value="Save">
+      	<input type="button" class="btn" value="Cancel" onclick="document.location = '{$index_url}patient/doctororder/index/{$cms485_id}/{$patient_id}'">
+    </td>
+    <td valign="bottom" align="right"><input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister({$record_id})"></td>
+  </tr>
+
+  <tr>
+    <td height="10" colspan="2"></td>
+  </tr>
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+    <tr>
+    <td height="100%" valign="top" colspan="2">
+    <!-- -->
+
+<table width="50%" cellpadding=0 celspacing=1 border=0>
+	<tr>
+		<td class="ftitle" width="">Order Date</td>
+		<td><input type="hidden" name="doctor_order_id" value="{$order->doctor_order_id}">
+		<input type="text" name="order_date" id="order_date" value="{$order_date}" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('order_date'), document.getElementById('fecha_help'));return false;" >
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle" width="" valign="top">Order Description</td>
+		<td><textarea name="order_description" style="width:50%;" wrap="off" rows="6">{$order->order_description}</textarea></td>
+	</tr>
+	<tr>
+		<td class="ftitle">Physician</td>
+		<td>
+		<select name="physician_id" style="width:150">
+		<option value=0></option>
+		{html_options values=$physician_ids output=$physician_nms selected=$order->physician_id}
+		</select>
+
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle" >Status</td>
+		<td>{html_options options=$status_list selected=$order->tab_023_order_status name='tab_023_order_status'}</td>
+	</tr>
+	<tr>
+		<td class="ftitle">Date</td>
+		<td>{$order_status_date}</td>
+	</tr>
+	<tr>
+		<td class="ftitle">Ordered By</td>
+		<td>{$user}</td>
+	</tr>
+</table>
+
+<br>
+<table width="50%" cellpadding=0 cellspacing=1 border=0>
+<tr class="ftitle">
+<td width="25%" align="left">Order Status Date</td>
+<td align="center">Status</td>
+</tr>
+{foreach  item=hist_st from=$history_status}
+	<tr>
+	<td align="left">{$hist_st->status_date}</td>
+	<td align="center">{$hist_st->tab_description}</td>
+	</tr>
+{/foreach}
+</table>
+<br>
+<!-- -->
+
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2"></td>
+
+  </tr>
+  <tr>
+    <td valign="bottom">
+  		<input type="submit" class="btn" value="Save">
+      	<input type="button" class="btn" value="Cancel" onclick="document.location = '{$index_url}patient/doctororder/index/{$cms485_id}/{$patient_id}'">
+    </td>
+    <td valign="bottom" align="right"><input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister({$record_id})"></td>
+  </tr>
+
+  </form>
+</table>
+<script language="JavaScript" type="text/javascript">
+
+	function deleteRegister ( record_id ) {literal}{{/literal}
+
+		if (confirm('Are you sure to delete this record?')) document.location = "{$index_url}{$resource_path}/delete{if $entity_id}/{$entity_id}{/if}/" + record_id;
+
+	{literal}}{/literal}
+
+</script>

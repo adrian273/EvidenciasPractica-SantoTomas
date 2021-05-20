@@ -1,0 +1,76 @@
+<?
+
+ class UsAgyPermissionMdl extends Model {
+
+	var $us_agy_permission_id;
+	var $us_agy_id;
+	var $permission_id;
+
+	function UsAgyPermissionMdl () {
+
+		parent::Model();
+		
+	}
+
+	function getByUsAgyId ( $us_agy_id, $permission_id=null, $normal_result=true ) {
+
+		$this->db->where('us_agy_id', $us_agy_id);
+		
+		if (!is_null($permission_id)) {
+
+			if (is_array($permission_id)) {
+				$this->db->where_in("permission_id", $permission_id);
+			} else {
+				$this->db->where("permission_id", $permission_id);
+			}
+
+		}
+
+		$query = $this->db->get('us_agy_permission');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('us_agy_permission_id', 'permission_id');
+	
+	}
+
+	function isCaseManager($us_agy_id) {
+		$this->db->where('us_agy_id', $us_agy_id);
+		$this->db->where("permission_id", 18);
+		
+		$query = $this->db->get('us_agy_permission');
+		if ($query->num_rows() > 0) {
+			return TRUE;
+		} else {
+			return FALSE;
+		}
+	}
+
+	function getPermissionHeadersByUsAgyId ( $us_agy_id, $normal_result = true ) {
+		$this->db->join('per_permission', 'per_permission.permission_id=us_agy_permission.permission_id');
+		$this->db->where('us_agy_id', $us_agy_id);
+		$query = $this->db->get('us_agy_permission');
+
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('permission_id', 'permission_header_id');
+	}
+	
+	function insert ( $us_agy_id, $permission_id ) {
+		
+		$this->db->set('us_agy_id', $us_agy_id);
+		$this->db->set('permission_id', $permission_id);
+		
+		$this->db->insert('us_agy_permission');
+		
+	}
+	
+	function deleteByUsAgyId ( $us_agy_id ) {
+		
+		$this->db->where('us_agy_id', $us_agy_id);
+		$this->db->delete('us_agy_permission');
+		
+	}
+	
+ }

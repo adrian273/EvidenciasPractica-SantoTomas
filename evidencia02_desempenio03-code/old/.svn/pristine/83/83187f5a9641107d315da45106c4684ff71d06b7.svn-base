@@ -1,0 +1,28 @@
+<?
+
+ class VisitUnitMdl extends Model {
+
+	var $unit_id; 	 	
+	var $unit_from;
+	var $unit_to;
+	var $unit_value;
+
+	function VisitUnitMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $unit=null ) {
+	
+		if (!is_null($unit)) {
+			$this->db->where('unit_from <=', $unit);
+			$this->db->where("unit_to >=", $unit);
+		}
+		
+		$query = $this->db->get('visit_units');
+		return $query->row();
+
+	}
+	
+ }

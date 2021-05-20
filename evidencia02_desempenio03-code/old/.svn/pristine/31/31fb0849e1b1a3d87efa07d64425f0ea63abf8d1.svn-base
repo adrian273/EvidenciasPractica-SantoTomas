@@ -1,0 +1,485 @@
+<?
+
+ class Account extends MY_Controller {
+
+	var $user_id;
+
+	function Account () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "account");
+		
+		$this->user_id = $this->session->userdata('user_id');
+	//	$this->output->enable_profiler();
+		
+	}
+
+	function index ($active_tab="b1") {
+		$this->tpl->assign('active_tab', $active_tab);
+		$this->tpl->assign_include("dynamic_tpl", "account/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+	function profile () {
+		
+		$this->tpl->assign('faction', 'profile');
+		
+		$user = $this->usermdl->getById($this->user_id); 
+		$this->assignObject($user);
+		
+		$rules = array ('user_nick'		=> 'callback__verify_nickname', //'required|callback__verify_nickname',
+						'first_name'  	=> 'required',
+						'last_name'  	=> 'required',
+						'phone_cell' 	=> 'valid_phone',
+						'phone_home'	=> 'valid_phone');
+						
+		$this->validation->set_rules($rules);
+		$phone_qualifiers = array("cell" => "Cell", "home" => "Home", "other" => "Other");
+		if ($this->validation->run() == TRUE) {
+			$fetch_geocode = false;
+
+			// fetching old address
+			$old_address = $user->address;
+			if ($user->city) {
+				$old_address .= ','.$user->city;
+			}
+
+			if ($user->state_name_long) {
+				$old_address .= ','.$user->state_name_long;
+			}
+
+			if ($user->zip_code) {
+				$old_address .= ','.$user->zip_code;
+			}
+
+			$this->assignPostData($this->usermdl);
+			$this->usermdl->update($this->user_id);
+			$this->usermdl->updateUserEmail($this->user_id,$this->input->post('__user_email'));
+
+			// fetching new address
+			$user = $this->usermdl->getById($this->user_id); 
+			$new_address = $user->address;
+
+			if ($user->city) {
+				$new_address .= ','.$user->city;
+			}
+
+			if ($user->state_name_long) {
+				$new_address .= ','.$user->state_name_long;
+			}
+
+			if ($user->zip_code) {
+				$new_address .= ','.$user->zip_code;
+			}
+
+			if ($old_address != $new_address) {
+				$fetch_geocode = true;
+			}
+
+			$fetch_geocode = true;
+
+			if ($fetch_geocode) {
+				if (!$new_address) {
+					# reset lat lng because address is empty now
+					$this->usermdl->updateGeocode($this->user_id, null, null);
+				} else {
+					$this->load->helper('general');
+					extract(get_lat_long($new_address));
+					
+					if ($latitude AND $longitude) {
+			        	$this->usermdl->updateGeocode($this->user_id, $latitude, $longitude);
+			        }
+				}
+			}
+			
+			$this->assignObject($user);
+			
+			$this->tpl->assign("success_string", "User Profile successfully updated!");
+			
+		}
+		
+		$default_internal_email_inbox_filter_options = array('' => 'All Emails', 1 => 'Important', 2 => 'High Priority', 3 => 'General / System Emails');
+		$this->tpl->assign('other_lang_list', $this->parametermdl->getByType(10));
+		$this->tpl->assign('home_app_list', $this->applicationmdl->getHomeApps());
+		$this->tpl->assign('default_internal_email_inbox_filter_options', $default_internal_email_inbox_filter_options);
+		$this->tpl->assign('delivery_types_list', $this->parametermdl->getByType(105));
+		$this->tpl->assign('phone_qualifiers', $phone_qualifiers);
+		// $this->tpl->assign("form_title", "My Profile");
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "account/profile_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);	
+	}
+	
+	function useremailchange () {
+		
+		$document = $this->xml->Document();
+		
+		// check email format
+		if ($this->user_id != 0 && $this->validation->valid_email($this->input->post('__user_email')) == FALSE || $this->input->post('__user_email') == '') {
+			$document->append($this->xml->Element('alert', null, "Invalid email!"));
+			return;
+		}
+		
+		// check email exitence
+		$user = $this->usermdl->getByEmail($this->input->post('__user_email'));
+		if (count($user) && $user->user_id && $this->user_id) {
+			$document->append($this->xml->Element('alert', null, "Email already registered to another user!"));
+			return;
+		}
+		
+		$this->usermdl->updateUserEmail($this->user_id, $this->input->post('__user_email'));
+		
+		$document->append($this->xml->Element('js', 'script=userEmailInputHide()', null));
+		$document->append($this->xml->Element('inner', 'id=user_email_text;cdata=' . $this->input->post('__user_email'), null));
+		$document->append($this->xml->Element('setvalue', 'id=__user_email;value=' . $this->input->post('__user_email'), null));
+		
+	}
+	
+	function passwordchange () {
+		
+		$this->tpl->assign('first_time_login', $this->session->userdata('first_time_login'));
+
+		$this->tpl->assign('faction', 'passwordchange');
+		
+		$rules = array ('old_pass'  	=> 'required|callback_oldpass');
+		$fields = array ('old_pass'  	=> 'Current Login Password');
+						
+		if ($this->input->post('new_pass') != "" OR $this->input->post('cf_new_pass') != "") {
+			$rules['new_pass'] = 'required|alpha_numeric|min_length[6]';
+			$fields['new_pass'] = 'New Login Password';
+			
+			$rules['cf_new_pass'] = 'required|matches[new_pass]';
+			$fields['cf_new_pass'] = 'Confirm New Login Password';
+		}
+		
+		if ($this->input->post('e_new_pass') != "" OR $this->input->post('e_cf_new_pass') != "") {
+			$rules['e_new_pass'] = 'required|alpha_numeric|min_length[6]';
+			$fields['e_new_pass'] = 'New Electronic Signature';
+			
+			$rules['e_cf_new_pass'] = 'required|matches[e_new_pass]';
+			$fields['e_cf_new_pass'] = 'Confirm Electronic Signature';
+		}
+
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == TRUE) {
+			$success_string = "";
+			if ($this->input->post('new_pass') != "") {
+				$this->usermdl->updatePassword($this->user_id, $this->input->post('new_pass'));
+				$success_string .= "Password successfully updated!";
+			}
+
+			if ($this->input->post('e_new_pass') != "") {
+				$this->usermdl->updateEPassword($this->user_id, $this->input->post('e_new_pass'));
+				if ($success_string != "") {
+					$success_string .= "<br>";
+				}
+				$success_string .= "Electronic Signature successfully updated!";
+			}
+
+			$this->tpl->assign("success_string", $success_string);
+
+			if ($this->session->userdata('first_time_login')) {	
+				$this->session->set_userdata('first_time_login', false);
+			}
+		}
+		
+		$this->tpl->assign("form_title", "Change Password");
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "account/password_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	function oldpass ( $oldpass ) {
+		
+		$user = $this->usermdl->checkOldPassword($this->user_id, $oldpass);
+		if (count($user) && $user->user_id == $this->user_id) {
+			return TRUE;
+		} else {
+			$this->validation->set_message('oldpass', "Your old password was incorrectly typed.");
+			return FALSE;
+		}
+		
+	}
+	
+	function epasswordchange () {
+		redirect("/account/passwordchange");
+		
+		$this->tpl->assign('faction', 'epasswordchange');
+		
+		$rules = array ('old_pass'  	=> 'required|callback_oldpass',
+						'new_pass'  	=> 'required|alpha_numeric|min_length[6]',
+						'cf_new_pass' 	=> 'required|matches[new_pass]');
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == TRUE) {
+		
+			$this->usermdl->updateEPassword($this->user_id, $this->input->post('new_pass'));
+			if ($this->session->userdata('first_time_login')) {	
+				$this->session->set_userdata('first_time_login', false);
+				$this->tpl->assign("success_string", "Electronic Signature successfully updated!");
+			} else {
+				$this->tpl->assign("success_string", "Password successfully updated!");
+			}
+			
+		}
+		if ($this->session->userdata('first_time_login')) {
+			$this->tpl->assign("form_title", "Change Electronic Signature");
+		} else {
+			$this->tpl->assign("form_title", "Change Electronic Password");
+		}
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "account/epassword_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function _verify_nickname(){
+		$user = $this->usermdl->getById($this->getUserId());
+		if ($user->user_nick == $this->input->post('user_nick')):
+			$is_in_use = false;
+		else:
+			$nicks = $this->usermdl->getByNickName($this->input->post('user_nick'));
+			$is_in_use = count($nicks)?true:false;
+		endif;
+		if ($is_in_use) {
+			$this->validation->set_message('_verify_nickname', "The user nickname is already in use, please choose another one.");
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+	
+	}
+
+	function credentials(){
+		$this->load->model('us1usercredentialsmdl');		
+		$this->load->model('agencycredentialtypemdl');
+
+		$userUsAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+
+		// $this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+		$this->tpl->assign('type_list', $this->agencycredentialtypemdl->getList($userUsAgy->agency_id, true));
+		
+
+		$this->tpl->assign("resource_path", "account");
+		//$this->tpl->assign('noedit', true);
+		// $this->tpl->assign('no_grid_buttons', true);
+		$this->tpl->assign("add_sufix", "Credential");
+		// if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function grid ( ) {
+		$this->load->model('us1usercredentialsmdl');	
+		$this->load->model('agencycredentialtypemdl');
+
+		$userUsAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+
+		$credentials = $this->us1usercredentialsmdl->getById($this->user_id, null, null, $userUsAgy->agency_id);
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=7;align=center", "Alert"));
+		$head->append($this->xml->Element("column", "width=15", "Credential Type"));
+		$head->append($this->xml->Element("column", "width=15", "Credential Id"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Expiration Date"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Days Left"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Status"));
+		$head->append($this->xml->Element("column", "width=10;align=center",  "Attachment"));
+		$head->append($this->xml->Element("column", "width=*", "Notes"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($credentials as $credential) {
+			$cell = $this->xml->Element("row", "id=" . $credential->user_credential_id);
+			if($this->__needto_alert($credential)){
+				//$cell->append($this->xml->Element("cell", "title=alert..", $this->config->config["base_url"] . "style/images/exclamation.gif"));
+				//$cell->append($this->xml->Element("cell", null, base_url().'style/images/exclamation.gif'));
+
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<img src="'.base_url().'style/images/exclamation.gif" />')));
+			}
+			else
+				$cell->append($this->xml->Element("cell", null, ''));
+      
+			$days_left = $this->__daysLeft($credential->expiration_date);
+			if($days_left < 0)
+				$days_left = 0;
+      
+			$cell->append($this->xml->Element("cell", null, $credential->tab_description));
+			$cell->append($this->xml->Element("cell", null, $credential->credential_id));
+			$cell->append($this->xml->Element("cell", null, (!is_null($credential->expiration_date)) ? standard_date(mysql_to_unix($credential->expiration_date)) : null));
+      		$cell->append($this->xml->Element("cell", null, $days_left));
+      
+      		$cell->append($this->xml->Element("cell", null, $credential->status));
+
+			if($credential->attachment_id > 0 AND $credential->attachment!=""){
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<a href="'.base_url().'datastore/credential/'.$credential->attachment.'" target="_blank" title="View credential">View credential</a>')));
+			}else{
+				$cell->append($this->xml->Element("cell", null, ''));
+			}
+			
+			if($credential->notes!="")
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars('<img src="'.base_url().'style/images/icon_note.jpg" title="'.$credential->notes.'" alt="'.$credential->notes.'" />')));
+			else
+				$cell->append($this->xml->Element("cell", null, ''));
+
+			$document->append($cell);
+			
+		}
+	}
+
+	function add ( ) {
+		$this->load->model('us1usercredentialsmdl');		
+		$this->tpl->assign('faction', 'add');
+		$this->tpl->assign('resource_index', 'credentials');
+		$rules = array('tab_086_credential_type'		=> 'trim|required',
+						'credential_id'  				=> 'trim|required|alpha_numeric',
+					);
+
+		$fields = array('tab_086_credential_type'		=> 'Credential Type',
+						'credential_id'  				=> 'Credential Id',
+					);
+
+		if ($this->input->post('verify_expiration') == 'yes') {
+			$rules['alert_days'] = 'trim|required|numeric';
+			$fields['alert_days'] = 'Alert Days';
+			
+			$rules['expiration_date'] = 'required';
+			$fields['expiration_date'] = 'Expiration Date';
+		}
+						
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "account/credential_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->us1usercredentialsmdl);
+			$this->us1usercredentialsmdl->status = 'Active';
+			$user_credential_id = $this->us1usercredentialsmdl->insert();
+			if($_FILES['attachment']['error']==0){
+				$fname = time().'_'.basename($_FILES['attachment']['name']);
+				$fname = str_replace(" ","_",$fname);
+				$fname = str_replace("%","_",$fname);
+				$fname = str_replace("#","",$fname);
+				$fname = str_replace("'","",$fname);
+				$fname = str_replace('"',"",$fname);
+				$attachment = $fname;
+				if(move_uploaded_file($_FILES['attachment']['tmp_name'], FCPATH.'/datastore/credential/'.$fname)) {
+				  $this->us1usercredentialsmdl->update_attachment($user_credential_id, $attachment);
+				}
+			}
+			$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_add_msg'));
+			$this->credentials();
+		}
+	}
+	function edit ( $user_credential_id ) {	
+		$this->load->model('us1usercredentialsmdl');	
+		$this->tpl->assign('record_id', $user_credential_id);
+		$this->tpl->assign('faction', 'edit');
+		// print_r($this->us1usercredentialsmdl->getByCredentialId($user_credential_id));
+		$credential = $this->us1usercredentialsmdl->getByCredentialId($user_credential_id);
+		$this->assignObject($this->us1usercredentialsmdl->getByCredentialId($user_credential_id));
+		
+		$this->tpl->assign('resource_index', 'credentials');
+		$rules = array('tab_086_credential_type'		=> 'trim|required',
+						'credential_id'  				=> 'trim|required|alpha_numeric',
+					);
+
+		$fields = array('tab_086_credential_type'		=> 'Credential Type',
+						'credential_id'  				=> 'Credential Id',
+					);
+
+		if ($this->input->post('verify_expiration') == 'yes') {
+			$rules['alert_days'] = 'trim|required|numeric';
+			$fields['alert_days'] = 'Alert Days';
+
+			$rules['expiration_date'] = 'required';
+			$fields['expiration_date'] = 'Expiration Date';
+		}
+						
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign('type_list', $this->parametermdl->getByType(86, 'tab_description'));
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "account/credential_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			if($_FILES['attachment']['error']==0 AND $_FILES['attachment']['size'] <= 3145728){
+		        $fname = time().'_'.basename($_FILES['attachment']['name']);
+		        $fname = str_replace(" ","_",$fname);
+		        $fname = str_replace("%","_",$fname);
+		        $fname = str_replace("#","",$fname);
+		        $fname = str_replace("'","",$fname);
+				$fname = str_replace('"',"",$fname);
+		        $attachment = $fname;
+		        if(move_uploaded_file($_FILES['attachment']['tmp_name'], FCPATH.'/datastore/credential/'.$fname)) {
+		          $this->us1usercredentialsmdl->update_attachment($user_credential_id, $attachment);
+		        }
+	    	}
+			$this->assignPostData($this->us1usercredentialsmdl);	
+			$this->us1usercredentialsmdl->status = $credential->status;		
+			$this->us1usercredentialsmdl->update($user_credential_id);
+			
+			$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_upd_msg'));
+			
+			$this->credentials();
+			
+		}	
+	}
+	function delete ( $user_credential_id ) {
+		$this->load->model('us1usercredentialsmdl');	
+		$credential = $this->us1usercredentialsmdl->getByCredentialId($user_credential_id);
+		if ($credential->user_id == $this->user_id) {
+			$this->us1usercredentialsmdl->delete($user_credential_id);
+			if ($credential->attachment) {
+				@unlink(FCPATH."datastore/credential/".$credential->attachment);
+			}
+			$this->tpl->assign('gmessage', "Credential" . $this->lang->line('grl_del_msg'));
+		}
+		$this->credentials();	
+	}
+	function __daysLeft($expiration_date=null){
+
+		if(!$expiration_date)
+			return 0;
+
+		$expiration_time = strtotime($expiration_date);    
+		$now = time();        
+		$days_left = floor(($expiration_time-$now)/86400);            
+		return $days_left;
+
+	}
+
+	function __needto_alert($credential){
+		if ($credential->verify_expiration == 'no') {
+			return false;
+		}
+		if(!$credential->expiration_date)
+			return false;
+
+		$now = time();
+		$alert = false;
+		$expiration_time = strtotime($credential->expiration_date);
+		if($expiration_time < $now )
+			$alert = true;    
+		else{
+			$days_left = $this->__daysLeft($credential->expiration_date);
+			if($days_left <= $credential->alert_days)
+				$alert = true;    
+		}
+		return $alert;
+	}
+  
+ }

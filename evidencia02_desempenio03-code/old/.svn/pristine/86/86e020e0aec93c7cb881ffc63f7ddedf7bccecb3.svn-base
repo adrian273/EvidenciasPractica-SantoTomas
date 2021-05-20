@@ -1,0 +1,53 @@
+<?php
+
+ class TinettiBalanceScoresMdl extends Model {
+
+	var $id;
+	var $visit_log_id;
+	var $sitting_balance;
+	var $rises_from_chair;
+	var $attemps_to_rise;
+	var $immediate_standing_balance;
+	var $standing_balance;
+	var $nudged;
+	var $eyes_closed;
+	var $turning_360_degrees_1;
+	var $turning_360_degrees_2;
+	var $sitting_down;
+  	
+	function TinettiBalanceScoresMdl () {
+		parent::Model();
+	}
+	
+	function get($visit_log_id){
+		$this->db->where('tinetti_balance_scores.visit_log_id',$visit_log_id);
+		$query = $this->db->get('tinetti_balance_scores');
+		return $query->row();
+	}
+	
+	function getById ( $id ) {
+		$this->db->where('id', $id);
+		$query = $this->db->get('tinetti_balance_scores');
+		return $query->row();
+	}
+	
+	function insert (  $visit_log_id ) {
+		$this->visit_log_id = $visit_log_id;
+		$this->id = null;
+		$this->db->insert('tinetti_balance_scores', $this);		
+	}
+	
+	function update ( $visit_log_id, $id ) {
+		$this->visit_log_id = $visit_log_id;
+		$this->id = $id;
+		$this->db->where('id', $id);
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->update('tinetti_balance_scores', $this);		
+	}
+	
+	function delete ( $id ) {
+		$this->db->where('id', $id);
+		$this->db->delete('tinetti_balance_scores');
+	}
+	
+ }

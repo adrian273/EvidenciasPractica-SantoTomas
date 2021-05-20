@@ -1,0 +1,667 @@
+
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <input type="hidden" name="episode_start_date" value="{$episode_start_date|date_format}">
+  <input type="hidden" name="episode_end_date"   value="{$episode_end_date|date_format}">
+  <input type="hidden" name="soc_id"   value="{$soc_id}">
+  <input type="hidden" name="doc_doctor_order_id"   value="{$doc_doctor_order_id}">
+  <input type="hidden" name="order_date"   value="{$doctor_order->order_date|date_format}">
+  <input type="hidden" name="doc_doctor_order_type_id"   value="{$doctor_order->doc_doctor_order_type_id}">
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section1')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Home Health Certification And Plan Of Care 485
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tr id="section1">
+    <td colspan="4">
+    
+		<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+		  <tr>
+		    <td class="ftitle" style="width: 20%">1. Patient's HIC No.</td>
+		    <td class="ftitle" style="width: 20%">2. SOC Date</td>
+		    <td class="ftitle" style="width: 20%">3. Certification Period</td>
+		    <td class="ftitle" style="width: 20%">4. Medical Recod No.</td>
+		    <td class="ftitle" style="width: 20%">5. Provider No.</td>
+		  </tr> 
+		  <tr>
+		    <td>{$patient->medicare_id}</td>
+		    <td>{$estimated_soc_date|date_format}</td>
+		    <td>{$episode_start_date|date_format} to {$episode_end_date|date_format}</td>
+		    <td>{$patient->medical_rec_nbr}</td>
+		    <td>{$agency->medicare_lic_nbr}</td>
+		  </tr>
+		  <tr>
+		    <td colspan="5" height="15"></td>
+		  </tr> 
+		  <tr>
+		    <td class="ftitle" colspan="2">6. Patient's Name and Address</td>
+		    <td class="ftitle" colspan="2">7. Providers' Name, Address and Telephone Number</td>
+		    <td class="ftitle">8. Date of Birth</td>
+		  </tr>
+		  <tr>
+		    <td colspan="2" rowspan="3">
+		    	{$patient->first_name} {$patient->last_name}<br>
+		    	{$patient->address}<br>
+		    	{$patient->city}, {$patient->state_name_long} {$patient->zip1}<br>
+		    	{$patient->phone_home}<br>
+		    </td>
+		    <td colspan="2" rowspan="3">
+		    	{$agency->agency_name}<br>
+		    	{$agency->address}<br>
+		    	{$agency->city}, {$agency->state_name_long} {$agency->zip}<br>
+		    	{$agency->phone_primary}<br>
+		    </td>
+		    <td>
+		    	{$patient->date_birth|date_format}
+		    </td>
+		  </tr>
+		  <tr>
+		    <td class="ftitle">9. Sex</td>
+		  </tr>
+		  <tr>
+		    <td>{$patient->tab_description}</td>
+		  </tr>
+		</table>
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section2')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> ICD-9-CM
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section2">
+	  <tr>
+	    <td colspan="4" height="250">
+	    	<div id="icd_grid_area" style="height: 99%; width: 98%"></div>
+	    	<input type="hidden" id="icd_to_delete" name="icd_to_delete">
+	    </td>
+	  </tr> 
+	  {if !$no_commit_form}
+	  <tr>
+	    <td colspan="4" height="5">
+	    	<a href="javascript:addIcd()"><img src="{$image_url}icon_add.png" border="0" style="vertical-align: middle"> Add Icd9</a>
+	    </td>
+	  </tr>
+	  {/if}
+  </tbody>
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section3')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 10. Medications
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section3">
+	  <tr>
+	    <td colspan="4" height="250">
+	    	<div id="med_grid_area" style="height: 99%; width: 98%"></div>
+	    	<input type="hidden" id="icd_to_delete" name="icd_to_delete">
+	    </td>
+	  </tr>
+	  {if !$no_commit_form}
+	  <tr>
+	    <td colspan="4" height="5">
+	    	<a href="javascript:addAllMedications()"><img src="{$image_url}icon_add.png" border="0" style="vertical-align: middle"> Add All Medications</a>
+	    </td>
+	  </tr> 
+	  {/if}
+  </tbody>
+  
+  <tr>
+    <td colspan="4">
+    
+		<table border="0" width="100%" cellpadding="0" cellspacing="0"> 
+		  <tr>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section4')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 14. DME and Supplies
+		    </td>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section4')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 15. Safety Measures
+		    </td>
+		  </tr> 
+		</table>
+    
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tr id="section4">
+    <td colspan="2" height="">
+	  <textarea name="dme_and_supplies" rows="6" style="width: 90%" wrap="auto">{$dme_and_supplies}</textarea>
+    </td>
+    <td colspan="2" height="">
+	  <textarea name="safety_measures" rows="6" style="width: 90%" wrap="auto">{$safety_measures}</textarea>
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4">
+    
+		<table border="0" width="100%" cellpadding="0" cellspacing="0"> 
+		  <tr>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section5')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 16. Nutritional Requirements
+		    </td>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section5')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 17. Allergies
+		    </td>
+		  </tr> 
+		</table>
+    
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tr id="section5">
+    <td colspan="2" height="">
+	  <textarea name="nutritional_requirements" rows="6" style="width: 90%" wrap="auto">{$nutritional_requirements}</textarea>
+    </td>
+    <td colspan="2" height="">
+	  <textarea name="allergies" rows="6" style="width: 90%" wrap="auto">{$allergies}</textarea>
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section6')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 18.A. Funcional Limitation
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section6">
+	  <tr>
+	    <td colspan="4" height="">
+          <table width="100%">
+            <tr> 
+              <td width="20"><input type="checkbox" name="amputation" value="1" {if $amputation}checked{/if}></td>
+              <td width="213">1.&nbsp;Amputation</td>
+              <td width="20"><input type="checkbox" name="paralysis" value="1" {if $paralysis}checked{/if}></td>
+              <td width="231">5.&nbsp;Paralysis</td>
+              <td width="20"><input type="checkbox" name="leagally_blind" value="1" {if $leagally_blind}checked{/if}></td>
+              <td width="166">9.&nbsp;Legally&nbsp;Blind</td>
+            </tr>
+            <tr> 
+              <td width="20"><input type="checkbox" name="bowell_incontinence" value="1" {if $bowell_incontinence}checked{/if}></td>
+              <td width="213">2.&nbsp;Bowel/Bladder(Incontinence)</td>
+              <td width="20"><input type="checkbox" name="endurance" value="1" {if $endurance}checked{/if}></td>
+              <td width="231">6.&nbsp;Endurance</td>
+              <td width="20"><input type="checkbox" name="dyspnea" value="1" {if $dyspnea}checked{/if}></td>
+              <td width="166">A.&nbsp;Dyspnea</td>
+            </tr>
+            <tr> 
+              <td width="20"><input type="checkbox" name="contracture" value="1" {if $contracture}checked{/if}></td>
+              <td width="213">3.&nbsp;Contracture</td>
+              <td width="20"><input type="checkbox" name="ambulation" value="1" {if $ambulation}checked{/if}></td>
+              <td width="231">7.&nbsp;Ambulation</td>
+              <td width="20"><input type="checkbox" name="other_lim" value="1" {if $other_lim}checked{/if}></td>
+              <td width="166">B.&nbsp;Other&nbsp;Limitation</td>
+            </tr>
+            <tr> 
+              <td width="20"><input type="checkbox" name="hearing" value="1" {if $hearing}checked{/if}></td>
+              <td width="213">4.&nbsp;Hearing</td>
+              <td width="20"><input type="checkbox" name="speech" value="1" {if $speech}checked{/if}></td>
+              <td width="231">8.&nbsp;Speech</td>
+              <td width="20">&nbsp;</td>
+              <td width="166">&nbsp;</td>
+            </tr>
+          </table>
+	    </td>
+	  </tr>
+  </tbody>
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section7')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 18.B. Activities Permit
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section7">
+	  <tr>
+	    <td colspan="4" height="">
+          <table width="100%">
+            <tr> 
+              <td width="20"><input type="checkbox" name="bedrest" value="1" {if $bedrest}checked{/if}></td>
+              <td width="213">1.&nbsp;Complete&nbsp;Bedrest</td>
+              <td width="20"><input type="checkbox" name="partial_weight_bearing" value="1" {if $partial_weight_bearing}checked{/if}></td>
+              <td width="231">6.&nbsp;Partial&nbsp;Wieght&nbsp;Bearing</td>
+              <td width="20"><input type="checkbox" name="wheelchair" value="1" {if $wheelchair}checked{/if}></td>
+              <td width="166">A.&nbsp;Wheelchair</td>
+            </tr>
+            <tr> 
+              <td width="20"><input type="checkbox" name="bedrest_brp" value="1" {if $bedrest_brp}checked{/if}></td>
+              <td width="213">2.&nbsp;Bedrest&nbsp;BRP</td>
+              <td width="20"><input type="checkbox" name="independent_at_home" value="1" {if $independent_at_home}checked{/if}></td>
+              <td width="231">7.&nbsp;Independent&nbsp;At&nbsp;Home</td>
+              <td width="20"><input type="checkbox" name="walker" value="1" {if $walker}checked{/if}></td>
+              <td width="166">B.&nbsp;Walker</td>
+            </tr>
+            <tr> 
+              <td width="20"><input type="checkbox" name="up_as_tolerated" value="1" {if $up_as_tolerated}checked{/if}></td>
+              <td width="213">3.&nbsp;Up&nbsp;As&nbsp;Tolerated</td>
+              <td width="20"><input type="checkbox" name="crutches" value="1" {if $crutches}checked{/if}></td>
+              <td width="231">8.&nbsp;Crutches</td>
+              <td width="20"><input type="checkbox" name="no_restrictions" value="1" {if $no_restrictions}checked{/if}></td>
+              <td width="166">C.&nbsp;No&nbsp;Restrictions</td>
+            </tr>
+            <tr> 
+              <td width="20"><input type="checkbox" name="transfer_bed_chair" value="1" {if $transfer_bed_chair}checked{/if}></td>
+              <td width="213">4.&nbsp;Transfer&nbsp;Bed/Chair</td>
+              <td width="20"><input type="checkbox" name="cane" value="1" {if $cane}checked{/if}></td>
+              <td width="231">9.&nbsp;Cane</td>
+              <td width="20"><input type="checkbox" name="other_specify" value="1" {if $other_specify}checked{/if}></td>
+              <td width="166">D.&nbsp;Other&nbsp;(specify)</td>
+            </tr>
+            <tr> 
+              <td width="20"><input type="checkbox" name="exercises_prescribed" value="1" {if $exercises_prescribed}checked{/if}></td>
+              <td width="213">5.&nbsp;Exercises&nbsp;Prescribed</td>
+              <td width="20">&nbsp;</td>
+              <td width="231">&nbsp;</td>
+              <td width="20">&nbsp;</td>
+              <td width="166">&nbsp;</td>
+            </tr>
+          </table>
+	    </td>
+	  </tr>
+  </tbody>
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section8')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 19. Mental Status
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section8">
+	  <tr>
+	    <td colspan="4" height="">
+          <table width="100%">
+            <tr> 
+              <td width="20"><input type="checkbox" name="oriented" value="1" {if $oriented}checked{/if}></td>
+              <td width="213">1.&nbsp;Oriented</td>
+              <td width="20"><input type="checkbox" name="depressed" value="1" {if $depressed}checked{/if}></td>
+              <td width="231">4.&nbsp;Depressed</td>
+              <td width="22"><input type="checkbox" name="agitated" value="1" {if $agitated}checked{/if}></td>
+              <td width="166">7.&nbsp;Agitated</td>
+            </tr>
+            <tr> 
+              <td><input type="checkbox" name="comatose" value="1" {if $comatose}checked{/if}></td>
+              <td width="213">2.&nbsp;Comatose</td>
+              <td width="20"><input type="checkbox" name="disoriented" value="1" {if $disoriented}checked{/if}></td>
+              <td width="231">5.&nbsp;Disoriented</td>
+              <td width="22"><input type="checkbox" name="other_mental" value="1" {if $other_mental}checked{/if}></td>
+              <td width="166">8.&nbsp;Other</td>
+            </tr>
+            <tr> 
+              <td><input type="checkbox" name="forgetful" value="1" {if $forgetful}checked{/if}></td>
+              <td width="213">3.&nbsp;Forgetful</td>
+              <td width="20"><input type="checkbox" name="lethargic" value="1" {if $lethargic}checked{/if}></td>
+              <td width="231">6.&nbsp;Lethargic</td>
+              <td width="22">&nbsp;</td>
+              <td width="166">&nbsp;</td>
+            </tr>
+          </table>
+	    </td>
+	  </tr>
+  </tbody>
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section9')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 20. Prognosis
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section9">
+	  <tr>
+	    <td colspan="4" height="">
+          
+          {html_radios options=$prognosis_list selected=$prognosis_20 name='prognosis_20'}
+          
+	    </td>
+	  </tr>
+  </tbody>
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section10')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 21. Orders For Dicipline and Treatments(Specify Amount/Frecuency/Duration)
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5">
+    	<span class="stip">Please do not use the Enter-key to skip to the next line. Please use the Space-bar instead.</span>
+    </td>
+  </tr>
+  <tbody id="section10">
+	  <tr>
+	    <td colspan="4" height="">
+		  <textarea name="orders_discip_21" rows="10" style="width: 830px; font-family: courier; font-size: 12px" wrap="auto">{$orders_discip_21}</textarea>
+	    </td>
+	  </tr>
+  </tbody>  
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section11')">
+    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 22. Orders For Dicipline and Treatments(Specify Amount/Frecuency/Duration)
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section11">
+	  <tr>
+	    <td colspan="4" height="">
+		  <textarea name="goal_rehab_disch_22" rows="10" style="width: 830px; font-family: courier; font-size: 12px" wrap="auto">{$goal_rehab_disch_22}</textarea>
+	    </td>
+	  </tr>
+  </tbody> 
+  
+  <tr>
+    <td colspan="4">
+    
+		<table border="0" width="100%" cellpadding="0" cellspacing="0"> 
+		  <tr>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section12')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle">
+		    	23. Nurse's Signature and Date of Verbal SOC where Applicable
+		    </td>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section12')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+		    	25. Date HHA Received Signed POT
+		    </td>
+		  </tr> 
+		</table>
+    
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tr id="section12">
+    <td colspan="2" width="50%">
+	  	{html_options options=$nurse_list selected=$nurse_user_id_23 name='nurse_user_id_23'}
+	  	
+    	<input type="text" id="nurse_date_23" name="nurse_date_23" value="{$nurse_date_23|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)" style="margin-left: 10px">
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('nurse_date_23'), document.getElementById('fecha_help'));return false;" >
+    </td>
+    <td colspan="2" width="50%">
+    	<input type="text" id="hha_rcv_date_signed_poc_25" name="hha_rcv_date_signed_poc_25" value="{$hha_rcv_date_signed_poc_25|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('hha_rcv_date_signed_poc_25'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4">
+    
+		<table border="0" width="100%" cellpadding="0" cellspacing="0"> 
+		  <tr>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section13')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle">
+		    	24. Physician's Name and Address
+		    </td>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section13')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+		    	26.
+		    </td>
+		  </tr> 
+		</table>
+    
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tr id="section13">
+    <td colspan="4">
+		<table border="0" width="100%" cellpadding="0" cellspacing="0"> 
+		  <tr>
+		    <td width="50%" nowrap>
+				{$doctorOffice->agency_name}<br>
+				{$doctorOffice->address}<br>
+				{$doctorOffice->city}, {$doctorOffice->state_name_long} {$doctorOffice->zip}<br>
+				{$doctorOffice->phone_home}<br>
+		    </td>
+		    <td width="50%">
+		    	I certify/recertify that this 
+		        patient id confined to his/her home and needs intermittent skill 
+		        nursing care, physical therapy or continues to need occupational 
+		        therapy. The patient is under my care, and I have authorized the 
+		        services on this plan of care and will periodically review the 
+		        plan.
+		    </td>
+		  </tr> 
+		</table>
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4">
+    
+		<table border="0" width="100%" cellpadding="0" cellspacing="0"> 
+		  <tr>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section14')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle">
+		    	27. Atending Physician Signature and Date Signed
+		    </td>
+		    <td colspan="2" class="subtitle hand" onclick="switchDisplay('section14')" width="50%" nowrap>
+		    	<img src="{$image_url}button_small_side.png" style="vertical-align: middle"> 
+		    	28.
+		    </td>
+		  </tr> 
+		</table>
+    
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tr id="section14">
+    <td colspan="4">
+		<table border="0" width="100%" cellpadding="0" cellspacing="0"> 
+		  <tr>
+		    <td width="50%" nowrap>
+			  	{html_options options=$doctor_office_list selected=$doctor_office_id name='doctor_office_id' id='doctor_office_id'}
+			  	
+		    	<input type="text" id="phys_sign_date_27" name="phys_sign_date_27" value="{$phys_sign_date_27|date_format}" 
+		    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)" style="margin-left: 10px">
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('phys_sign_date_27'), document.getElementById('fecha_help'));return false;" >
+		    </td>
+		    <td width="50%">
+				Anyone who missrepresents, falsifies, 
+                or conceils essential information required of payment of federal 
+                funds may be subject to fine, inprisonment, or civil penalty under 
+                applicable federal laws.
+		    </td>
+		  </tr> 
+		</table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  {include file='doctor_order/document/dateform.tpl'}
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	function sentToPhysician () {literal}{
+
+		if (getValue('phys_user_id') != '') {
+			setValue('tab_023_order_status', 2); gform.submit();
+		} else {
+			alert('You must select Physician before send.');
+		}
+	  
+	}{/literal}
+
+    function refreshPhysicianList ( patient_id ) {literal}{{/literal}
+ 
+    	ajaxComboBox('{$index_url}doctororder/doctororder/physicianList/', patient_id, 'physician_id')
+    	
+    {literal}}{/literal}
+    
+
+	//document.getElementById('cms485_div').style.height = getWindowHeight() - 30 + "px";
+
+	var grid;
+	var totalsections = 15;
+	
+	function changeSections ( estatus ) {literal}{{/literal}
+	
+		for (i = 1; i <= totalsections; i++) {literal}{{/literal}
+			switchDisplay2('section' + i, estatus);
+		{literal}}{/literal}
+		
+	{literal}}{/literal}
+
+	function loadGrid () {literal}{{/literal}
+	
+		if (document.getElementById("icd_grid_area").innerHTML != "") {literal}{{/literal}
+		
+			grid.clearAll();
+			grid.updateFromXMl("{$index_url}patient/episodeicd/grid/{$cms485_id}", 'gform');
+			grid.setSizes();
+			
+		{literal}}{/literal} else {literal}{{/literal}
+	
+		    grid = new dhtmlXGridObject("icd_grid_area");
+	    	grid.setImagePath("{$base_url}style/grid/imgs/")
+	    	grid.iconImagePath = "{$base_url}style/grid/imgs/";
+	    	grid.setSkin("light");
+	    	{if !$no_commit_form}grid.enableDragAndDrop(true);{/if}
+	    	grid.setDragHandler(isDragable);
+	    	grid.setDropHandler(dropHandler);
+	    	grid.enableSmartXMLParsing(true);
+	    	grid.loadXMLPost("{$index_url}patient/episodeicd/grid/{$cms485_id}", 'gform');
+	    	grid.setSizes();
+    	
+    	{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+	function isDragable (id, id2) {literal}{{/literal}
+
+		if (grid.getUserData(id, 'icd_type') == 3 && grid.getUserData(id2, 'icd_type') == 3) 
+			return true;
+			
+		return false;
+	  
+	{literal}}{/literal}
+	
+	function dropHandler (id) {literal}{{/literal}
+	
+		//ajax("{$index_url}patient/episodeicd/icdReorder/" + grid.getAllItemIds(","));
+	  
+	{literal}}{/literal}
+	
+	loadGrid();
+
+	var mgrid;
+
+	function loadMGrid () {literal}{{/literal}
+	
+		if (document.getElementById("med_grid_area").innerHTML != "") {literal}{{/literal}
+		
+			mgrid.clearAll();
+			mgrid.updateFromXMl("{$index_url}patient/episodemedication/grid/{$cms485_id}", 'gform');
+			grid.setSizes();
+			
+		{literal}}{/literal} else {literal}{{/literal}
+	
+		    mgrid = new dhtmlXGridObject("med_grid_area");
+	    	mgrid.setImagePath("{$base_url}style/grid/imgs/")
+	    	mgrid.iconImagePath = "{$base_url}style/grid/imgs/";
+	    	mgrid.setSkin("light");
+	    	mgrid.enableSmartXMLParsing(true);
+	    	mgrid.loadXMLPost("{$index_url}patient/episodemedication/grid/{$cms485_id}", 'gform');
+	    	mgrid.setSizes();
+    	
+    	{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+    function addAllMedications () {literal}{{/literal}
+ 
+    	ajax("{$index_url}patient/episodemedication/addAllMedications/{$patient_id}/{$cms485_id}", ajaxParseAction);
+    	
+    {literal}}{/literal}
+	
+	loadMGrid();
+	
+    function deleteEpisodeMedication ( cms_485_med_id ) {literal}{{/literal}
+ 
+    	if (confirm('Are you sure to delete this medication?')) 
+    		ajax("{$index_url}patient/episodemedication/delete/" + cms_485_med_id, ajaxParseAction);
+    	
+    {literal}}{/literal}
+	
+    
+    var dhxWins;
+	
+    function addIcd () {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-170, getWindowHeight()/2, 340, 340);
+		w1.setText("Add Icd9");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}patient/episodeicd/modalAdd/{$cms485_id}");
+		
+    {literal}}{/literal}
+    
+    function cancelModal () {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+    
+    function editIcd ( cms_485_icd9 ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-170, getWindowHeight()/2, 340, 340);
+		w1.setText("Edit Icd9");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}patient/episodeicd/modalEdit/" + cms_485_icd9);
+    	
+    {literal}}{/literal}
+    
+    function deleteIcd ( cms_485_icd9 ) {literal}{{/literal}
+ 
+    	setValue('icd_to_delete', cms_485_icd9);
+		loadGrid();
+		
+    {literal}}{/literal}
+    
+</script>
+

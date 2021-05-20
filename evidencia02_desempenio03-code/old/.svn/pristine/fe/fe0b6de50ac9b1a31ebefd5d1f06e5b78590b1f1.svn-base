@@ -1,0 +1,46 @@
+<?
+
+ class ProfileMdl extends Model {
+
+	var $profile_id;
+  	var $profile_name;
+  	var $profile_desc;
+  	var $show_manager;
+  	var $show_independ;
+  	var $profile_agency;
+  	var $profile_contractor;
+
+	function ProfileMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get ( $normal_result=true ) {
+	
+		$query = $this->db->get('x_profile');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('profile_id', 'profile_name');
+	
+	}
+	
+	function getByType ( $profile_type, $normal_result=true  ) {
+	
+		$this->db->where($profile_type, "1");
+		$this->db->order_by('profile_name', "asc");
+		return $this->get($normal_result);
+	
+	}
+	
+	function getById ( $profile_id ) {
+	
+		$this->db->where('profile_id', $profile_id);
+	
+		$query = $this->db->get('x_profile');
+		return $query->row();			
+	
+	}
+	
+ }

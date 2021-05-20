@@ -1,0 +1,19 @@
+<?php
+
+class Mail extends My_Controller {
+
+	function Mail() {
+		parent::MY_Controller();
+	}
+
+	function index ( $active_tab='inbox', $message_sent=0 ) {
+
+		$this->tpl->assign('active_tab',   $active_tab);
+		$this->tpl->assign('msg_sent',     $message_sent);
+
+		$this->tpl->assign_include("dynamic_tpl", "mail/base");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+}

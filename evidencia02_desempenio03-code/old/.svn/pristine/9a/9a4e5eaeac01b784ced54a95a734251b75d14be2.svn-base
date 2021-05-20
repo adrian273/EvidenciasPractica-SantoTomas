@@ -1,0 +1,65 @@
+<?php
+
+ class VisitTemplatesMdl extends Model {
+
+	
+	var $visit_template_id;
+	var $agency_id;
+	var $us_agy_id;
+	var $visit_type_id;
+	var $tpl_name;
+	var $visit_data;
+
+	function VisitTemplatesMdl () {
+
+		parent::Model();
+		
+	}
+
+	function get($visit_type_id, $us_agy_id=null, $agency_id=null, $keyword=null){
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = visit_templates.visit_type_id', 'left');
+
+		$this->db->where('visit_templates.visit_type_id',$visit_type_id);
+		if ($us_agy_id) {
+			$this->db->where('visit_templates.us_agy_id',$us_agy_id);
+		}
+		if ($agency_id) {
+			$this->db->where('visit_templates.agency_id',$agency_id);
+		}
+		
+		if ($keyword) {
+			$this->db->like('tpl_name',$keyword);
+		}	
+		$query = $this->db->get('visit_templates');
+		return $query->result();
+	}
+	
+	function getById ( $visit_template_id, $us_agy_id=null ) {
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = visit_templates.visit_type_id', 'left');
+		$this->db->where('visit_template_id', $visit_template_id);
+		
+		if (!is_null($us_agy_id)) {
+			$this->db->where('us_agy_id', $us_agy_id);
+		}
+		
+		$query = $this->db->get('visit_templates');
+		return $query->row();
+	}
+	
+	function insert ( ) {
+		$this->visit_template_id = null;
+		$this->db->insert('visit_templates', $this);		
+	}
+	
+	function update ( $visit_template_id ) {
+		// unset($this->visit_template_id);
+		$this->db->where('visit_template_id', $visit_template_id);
+		$this->db->update('visit_templates', $this);		
+	}
+	
+	function delete ( $visit_template_id ) {
+		$this->db->where('visit_template_id', $visit_template_id);
+		$this->db->delete('visit_templates');
+	}
+	
+ }

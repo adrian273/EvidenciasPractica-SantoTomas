@@ -1,0 +1,135 @@
+<?
+
+ class Territory extends MY_Controller {
+
+	var $rules;
+
+	function Territory () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "territory");
+		
+		$this->rules = array ('territory_name'			=> 'required');
+		
+	}
+	
+	function index () {
+
+		$this->load->model('territorymdl');	
+		$agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+		$this->tpl->assign(array("list_title" => "Territories", "add_sufix" => "Territory"));
+		$this->tpl->assign_include("filter_tpl", "territory/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid () {
+		
+		$this->load->model('territorymdl');	
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Territory"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->territorymdl->get($this->getAgencyId(), $this->input->post('keyword')) as $territory) {
+			
+			$cell = $this->xml->Element("row", "id=" . $territory->territory_id);
+			$cell->append($this->xml->Element("cell", null, $territory->territory_id));
+			$cell->append($this->xml->Element("cell", null, $territory->territory_name));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add () {
+		
+		$this->load->model('territorymdl');	
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Territory");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "territory/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->territorymdl);
+			$this->territorymdl->insert($this->getAgencyId());
+			
+			$this->tpl->assign('gmessage', $this->territorymdl->territory_name . $this->lang->line('grl_add_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function edit ( $territory_id ) {
+		
+		$this->load->model('territorymdl');	
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $territory_id);
+		
+		$this->assignObject($this->territorymdl->getByTerritoryId($territory_id));
+						
+		$this->validation->set_rules($this->rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Edit Territory");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "territory/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->territorymdl);
+			$this->territorymdl->update($territory_id, $this->getAgencyId());
+			
+			$this->tpl->assign('gmessage', $this->territorymdl->territory_name . $this->lang->line('grl_upd_msg'));
+			
+			$this->index();
+			
+		}
+		
+	}
+	
+	function delete ( $territory_id ) {
+		
+		$this->load->model('territorymdl');	
+		$territory = $this->territorymdl->getByTerritoryId($territory_id);
+		
+		$this->territorymdl->delete($territory_id);
+		
+		$this->tpl->assign('gmessage', $territory->territory_name . $this->lang->line('grl_del_msg'));
+		$this->index();
+		
+	}
+
+	function suggest ( $keyword ) {
+		
+		$this->load->model('territorymdl');	
+		$this->xml->root_name = "results";
+		$document = $this->xml->Document();
+		
+		if (is_null($keyword)) { return; } // if string null, return no results
+		
+		foreach ($this->territorymdl->suggest($this->getAgencyId(), $keyword) as $territory) {
+			$document->append($this->xml->Element("rs", "id=" . $territory->territory_id . ";info=", $territory->territory_name));
+		}
+
+		
+	}
+	
+ }

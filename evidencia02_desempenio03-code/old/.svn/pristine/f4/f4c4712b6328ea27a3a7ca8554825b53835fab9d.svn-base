@@ -1,0 +1,97 @@
+<?php
+
+include ('admin_controller.php');
+
+ class System extends Admin_Controller {
+
+	function System () {
+		parent::Admin_Controller();
+	}
+	
+	function index () {
+	
+		$this->tpl->assign(array("list_title" => "System settings"));
+		$this->tpl->assign_include("dynamic_tpl", "administrator/system/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	function t1(){
+		
+		$this->_validate();
+		
+        if (!$this->form_validation->run() == FALSE) {
+			$this->assignObject($this->syssettingsmdl->getSysSetting("maintenance mode"));
+			$this->assignPostData($this->syssettingsmdl);
+			$this->syssettingsmdl->update('maintenance mode');        	
+        }
+
+   		$this->assignObject($this->syssettingsmdl->getSysSetting("maintenance mode"));
+		$this->tpl->assign('maintenance_state', array(0=>"No",1=>"Yes"));
+		$this->tpl->view("administrator/system/t1", $this->lang->language);
+		
+	}
+
+	function other_settings() {
+		$this->tpl->assign('resource_path', 'administrator/system');
+		$this->tpl->assign('faction', 'other_settings');
+		$this->tpl->assign('no_delete_form', true);
+		
+		if ($this->session->flashdata('success_string') != '') {
+			$this->tpl->assign('success_string', $this->session->flashdata('success_string'));
+		}
+
+		if ($_SERVER['REQUEST_METHOD'] == 'GET' OR ( isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 ) ) {
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0) {
+				# code...
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please select pdf Document";
+				$this->tpl->assign("error_string", $error_string);
+			}
+
+			$this->tpl->assign("form_title", "Grievance Visit: Annual Grievance Report");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/system/grvi_setting_form");
+			// $this->tpl->assign_include("dynamic_form", "patient/documents/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else if($_FILES['document']['error']==0){
+			if(copy(FCPATH.'/datastore/grvi/Policies-Procedures.pdf', FCPATH.'/datastore/grvi/Policies-Procedures-copy.pdf')) {
+				if(move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/datastore/grvi/Policies-Procedures.pdf')) {
+					$this->session->set_flashdata('success_string', "Annual Grievance Report has been uploaded");
+					
+					redirect('administrator/system/other_settings');
+				}else{
+					exit("Document Upload Failed!");
+				}
+			} else {
+				exit("Document Upload Failed!");
+			}
+		}
+	}
+	
+	function maintenance_mode(){
+		echo "maintenance mode! Try later!";
+	}
+	
+    function _validate(){
+        
+        $this->form_validation->set_rules('sys_value');
+        $this->form_validation->set_error_delimiters('<dd class="descripcion_error">', '</dd>');
+        
+    }
+    
+    function fixVisitLogNumber () {
+    	
+    	$episodes = $this->cms485mdl->getAll();
+    	
+    	foreach ($episodes as $episode) {
+    		
+    		$this->app->updateEpisodeVisitNumber($episode->cms485_id);
+    		
+    	}
+    	
+    	echo "Visit Log Numbers fixed!";
+    	
+    }
+    
+ }

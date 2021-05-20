@@ -1,0 +1,88 @@
+<?
+
+ class ContractorRateDefaultMdl extends Model {
+
+	var $contractor_custom_rate_id;
+	var $contractor_id; 	 	
+	var $visit_type_id;
+	var $rate_effective_date;
+	var $company_rate;
+	var $PTA_or_COTA_rate;
+	var $class_rate;
+	var $yes_rate;
+	var $private_rate;
+	var $private_rate_min;
+	var $waiver_rate;
+	var $modify_user_id;
+	var $modify_date;
+
+	function ContractorRateDefaultMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $contractor_custom_rate_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = contractor_rate_default.visit_type_id');    
+		
+    
+    $this->db->join('agy_agency', 'agy_agency.agency_id = contractor_rate_default.contractor_id');
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = contractor_rate_default.modify_user_id' , 'left');
+		$this->db->where("contractor_rate_default.contractor_custom_rate_id", $contractor_custom_rate_id);		
+		$query = $this->db->get('contractor_rate_default');
+		return $query->row();
+	}
+  
+  	function getRate ( $contractor_id, $visit_type, $rate_effective_date) {	
+		$this->db->where("contractor_rate_default.contractor_id", $contractor_id);	
+		$this->db->where("contractor_rate_default.visit_type_id", $visit_type);		
+    	$this->db->where("contractor_rate_default.rate_effective_date <= '{$rate_effective_date}'");		
+		$query = $this->db->get('contractor_rate_default');
+
+		if ($query->num_rows() > 0) {
+			return $query->row()->company_rate;
+		}
+		return false;		
+	}
+
+	function getByContractorId ( $contractor_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = contractor_rate_default.visit_type_id');    
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = contractor_rate_default.modify_user_id' , 'left');
+    
+		$this->db->where("contractor_rate_default.contractor_id", $contractor_id);		
+    
+		$this->db->order_by("vit_visit_type.visit_description", "ASC");		
+		$this->db->order_by("contractor_rate_default.rate_effective_date", "DESC");		
+    
+		$query = $this->db->get('contractor_rate_default');
+		return $query->result();
+	}
+	
+	
+  function updateFlex($contractor_custom_rate_id, $attribute, $value, $where = 'contractor_custom_rate_id') {
+
+		$this->db->where($where, $contractor_custom_rate_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('contractor_rate_default');
+
+	}
+  
+	function insert ( $contractor_id ) {
+		
+		$this->contractor_id = $contractor_id;		
+		$this->db->insert('contractor_rate_default', $this);
+		$this->contractor_custom_rate_id = $this->db->insert_id();		
+	}	
+	
+	function delete ( $contractor_custom_rate_id ) {
+		
+		$this->db->where('contractor_custom_rate_id', $contractor_custom_rate_id);
+		
+		$this->db->delete('contractor_rate_default'); 
+		
+	}
+
+ }

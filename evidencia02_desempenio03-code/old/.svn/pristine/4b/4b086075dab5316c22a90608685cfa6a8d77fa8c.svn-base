@@ -1,0 +1,67 @@
+<?php
+
+ class Disciplines extends MY_Controller {
+	
+	function Disciplines () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/disciplines");
+		
+		$this->load->model('usagydisciplinemdl');	
+	}
+
+	function index ( $us_agy_id ) {
+		$this->tpl->assign('us_agy_id', $us_agy_id);
+
+		// $us_agy = $this->usagymdl->getByUsAgyId($us_agy_id);
+  
+		$data = $this->usagydisciplinemdl->getByUser($us_agy_id);
+		//echo "<pre>"; print_r($data); echo "</pre>";
+		$this->tpl->assign('discipline_list', $this->usagydisciplinemdl->getFilterDisciplineByUser($us_agy_id));
+		// $this->tpl->assign("list_title", "User Disciplines");
+		$this->tpl->assign("grid_buttons", "false");
+		$this->tpl->assign(array("us_agy_id" => $us_agy_id));
+		
+		$this->tpl->assign_include("dynamic_tpl", "useragency/user_disciplines");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+
+	// to add a row in vit_visit_type_discip table with 2 fields 1. discipline_id and 2. visit_type_id
+	function add ( $us_agy_id, $discipline_id ) {
+		
+		$this->usagydisciplinemdl->insert($us_agy_id, $discipline_id);
+		$this->index($us_agy_id);
+		
+	}
+	
+	// to delete a row from vit_visit_type_discip table based on the discipline_id and us_agy_discipline_id
+	function delete ( $us_agy_id, $us_agy_discipline_id ) {
+		
+		$this->usagydisciplinemdl->delete($us_agy_discipline_id, $us_agy_id);
+		$this->index($us_agy_id);
+		
+	}
+	
+	// to display the rows from vit_visit_type_discip table
+	function grid ( $us_agy_id ) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Discipline"));
+		$head->append($this->xml->Element("column", "width=6;align=center;type=linkc", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->usagydisciplinemdl->getByUser($us_agy_id) as $disc) {
+			$cell = $this->xml->Element("row", "id=" . $disc->us_agy_discipline_id);
+			$cell->append($this->xml->Element("cell", null, $disc->discipline_id));
+			$cell->append($this->xml->Element("cell", null, $disc->description.' ('.$disc->short_description.')' ));			
+			$cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "useragency/disciplines/delete/" . $us_agy_id . "/" . $disc->us_agy_discipline_id . "^Are you sure to delete this discipline?"));
+			$document->append($cell);
+		}
+	}
+}

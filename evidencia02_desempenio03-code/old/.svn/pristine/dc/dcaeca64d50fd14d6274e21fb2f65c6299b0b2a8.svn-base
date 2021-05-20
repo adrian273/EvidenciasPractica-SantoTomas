@@ -1,0 +1,3331 @@
+<?
+class VisitLogMdl extends Model {
+
+	var $visit_log_id;
+	var $cms485_id;
+	var $visit_type_id;
+	var $visit_log_number;
+	var $billable_YN;
+	var $visit_user_id;
+	var $visit_asigned_by;
+	var $visit_date_time;
+	var $visit_duration;
+	var $visit_status_id;
+	var $visited_date;
+	var $visited_time_in;
+	var $visited_time_out;
+	var $mileage;
+	var $visit_comments;
+	var $comments;
+	var $user_comments;
+	var $user_approver;
+	var $sent_to_approve_date;
+	var $approve_date;
+	var $superv_user_id;
+	var $superv_approval_date;
+	var $agency_approv_user_id;
+	var $agency_approv_date;
+	var $agency_or_company;
+	var $visit_amount;
+	var $mileage_amount;
+	var $payroll_confirmed;
+//	var $payroll_status;
+	var $payroll_comments;
+	var $payroll_batch_id;
+	//var $tab_status_description;
+	var $cms_485_mcaid_pa_visits_id;
+	var $tab_023_doctor_order_status;
+	var $phys_user_id;
+	var $agency_comments;
+	var $tab105_delivery_sent_via;
+	var $sent_to_physician_date;
+	var $signed_by_physician_date;
+	var $received_by_agency_date;
+	var $doctor_office_id;
+	var $signature;
+	var $invoice_notes;
+	var $agency_cm_comments;
+	var $visit_discipline_id;
+	var $locked; // default is 0
+
+	function VisitLogMdl() {
+
+		parent :: Model();
+
+	}
+
+	function getById2($visit_log_id, $agency_type="A") {
+		$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		//
+		$this->db->join('us_agy AS doctor' ,	"doctor.us_agy_id = IF(vis_visit_log.phys_user_id != '', vis_visit_log.phys_user_id, cms_485.phys_user_id)" , 'left');
+		$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('doc_doctor_order_2', 'doc_doctor_order_2.visit_log_id = vis_visit_log.visit_log_id','LEFT');
+		$this->db->join('doc_doctor_order_type', 'doc_doctor_order_2.order_type_id = doc_doctor_order_type.doc_doctor_order_type_id','LEFT');
+
+	
+		if ($agency_type == "A") {
+			$this->db->join('agy_agency', 		 'agy_agency.agency_id = us_agy.agency_id');
+		}else{
+			$this->db->join('agy_agency', 		 'agy_agency.agency_id = pat_patient.agency_id');
+			$this->db->join('pat_contractor', 		 'pat_contractor.patient_id = pat_patient.patient_id');
+			$this->db->join('agency_contractor', 	 'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id');
+		}
+		$this->db->select("vis_visit_log.visit_log_id, 
+		doctor.us_agy_id as doctorid, 
+		us_agy.user_id, 
+		CONCAT_WS(' ', doctor.first_name, doctor.last_name) as doctor_name, 
+		pat_patient.first_name, 
+		pat_patient.last_name, 
+		us_agy.user_id AS user_id_visit, 
+		us1_user.first_name as visit_user_first_name, 
+		us1_user.last_name as visit_user_last_name, 
+		dis_discipline.short_description AS short_discipline, 
+		us_agy.agency_id as contractor_id, 
+		pat_patient.agency_id as agency_id");
+
+
+
+		$this->db->where('vis_visit_log.visit_log_id', $visit_log_id);
+
+		$query = $this->db->get('vis_visit_log');
+		return $query->row();
+
+	}
+
+	function getById($visit_log_id) {
+		$this->db->select("*, us1_user.first_name,us1_user.last_name, vis_visit_log.phys_user_id, agy_agency.agency_name as visit_contractor_name, vis_visit_log.comments");
+		$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');		
+		$this->db->join('agy_agency', 'us_agy.agency_id = agy_agency.agency_id');
+
+		$this->db->where('visit_log_id', $visit_log_id);
+
+		$query = $this->db->get('vis_visit_log');
+		return $query->row();
+
+	}
+
+	function getByIdArchive($visit_log_id) {
+
+		$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log_copy.cms485_id');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log_copy.visit_user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('tab_parameters', 'vis_visit_log_copy.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log_copy.visit_type_id');
+
+		$this->db->where('visit_log_id', $visit_log_id);
+
+		$query = $this->db->get('vis_visit_log_copy');
+		return $query->row();
+
+	}
+	
+	function getTotalTherapy ( $cms485_id ) {
+		
+		$this->db->select('count(*) as total');
+
+		$this->db->where('cms485_id', $cms485_id);
+		$this->db->where_in('visit_type_id', array(10, 12, 40, 42, 60, 62,101, 103, 104, 113, 114, 115, 116, 117, 118, 119, 301, 303, 304, 305, 306, 307, 308, 309));
+		
+		$query = $this->db->get('vis_visit_log');
+		return $query->row()->total;
+
+	}
+	
+	function getShould ( $cms485_id ) {
+		
+		$this->db->where('visit_date_time <', date('Y-m-d'));
+		return $this->getTotalTherapy($cms485_id);
+
+	}
+	
+	function getActual ( $cms485_id ) {
+		// pending agency status or pending company approval
+		$this->db->where_in('visit_status_id', array(3, 8));
+		return $this->getShould($cms485_id);
+
+	}
+
+	function getByEpsodeId2($cms485_id) {
+
+		$this->db->select('vis_visit_log.visit_log_id');
+		$this->db->where('vis_visit_log.cms485_id', $cms485_id);
+
+		$this->db->order_by('visit_date_time');
+
+		$query = $this->db->get('vis_visit_log');
+		return $query->result();
+
+	}
+
+	function getByEpsodeId($cms485_id, $visit_type_id = null, $visit_status_id = null, $from_date = null, $keyword = null, $user_id = null, $approver_type_id = null, $discipline_id = null, $billable=null, $schedule_display = 'yes', $visit_log_ids = array()) {
+
+		$this->db->select('
+			vis_visit_log.*, 
+			tab_parameters.*, 
+			dis_discipline.*, 
+			vit_visit_type.*, 
+			approver_type_id, 
+			us1_user.first_name, 
+			us1_user.last_name, 
+			TIMEDIFF(visited_time_out, visited_time_in) as visit_duration, 
+			soc_start_of_care.estimated_soc_date,
+			count(sent_email_instance_details.id) as sent_email_log_count 
+		');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+		$this->db->join('sent_email_instance_details', "vis_visit_log.visit_log_id = sent_email_instance_details.source_id && sent_email_instance_details.source_name = 'VLOG'", 'LEFT');
+		$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		$this->db->join('cms_485', 'vis_visit_log.cms485_id = cms_485.cms485_id', 'LEFT');
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id', 'LEFT');
+		$this->db->where('vis_visit_log.cms485_id', $cms485_id);
+
+		if (!is_null($visit_type_id)) {
+			if (is_array($visit_type_id)) {
+				$this->db->where_in("vis_visit_log.visit_type_id", $visit_type_id);
+			} else {
+				$this->db->where("vis_visit_log.visit_type_id", $visit_type_id);
+			}
+		}
+
+
+		if (!is_null($visit_status_id)) {
+			if (is_array($visit_status_id)) {
+				$this->db->where_in("vis_visit_log.visit_status_id", $visit_status_id);
+			} else {
+				$this->db->where("vis_visit_log.visit_status_id", $visit_status_id);
+			}
+		}
+		if(!empty($visit_log_ids)) {
+			$this->db->where_in("vis_visit_log.visit_log_id", $visit_log_ids);
+		}
+		//echo $schedule_display;
+		if($schedule_display == "no") {
+			$this->db->where("vis_visit_log.visit_status_id != ", 1);
+		}
+		
+		if ($discipline_id) {
+			$this->db->where("dis_discipline.discipline_id", $discipline_id);
+		}
+
+		if (!is_null($from_date)) {
+			$this->db->where('visit_date_time >=', $from_date . ' 00:00:00');
+		}
+
+		if (!is_null($keyword)) {
+			$this->db->where("(us_agy.first_name LIKE '%" . $keyword . "%' OR us_agy.last_name LIKE '%" . $keyword . "%')");
+		}
+		
+		if (!is_null($billable)) {
+			$this->db->where("vis_visit_log.billable_YN", 1);  
+		}
+
+		if (!is_null($user_id)) {
+			$this->db->where('visit_user_id', $user_id);
+		}
+
+		if (!is_null($approver_type_id)) {
+			$this->db->where('approver_type_id', $approver_type_id);
+		}
+
+		$this->db->group_by('vis_visit_log.visit_log_id');
+		$this->db->order_by('visit_date_time');
+
+		$query = $this->db->get('vis_visit_log');
+		return $query->result();
+
+	}
+
+	function getByEpsodeIdArchive($cms485_id, $visit_type_id = null, $visit_status_id = null, $from_date = null, $keyword = null, $user_id = null, $approver_type_id = null, $discipline_id = null, $billable=null) {
+
+		$this->db->select('vis_visit_log_copy.*, tab_parameters.*, dis_discipline.*, vit_visit_type.*, approver_type_id, us1_user.first_name, us1_user.last_name, TIMEDIFF(visited_time_out, visited_time_in) as visit_duration');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log_copy.visit_user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+		$this->db->join('tab_parameters', 'vis_visit_log_copy.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log_copy.visit_type_id');
+		$this->db->where('cms485_id', $cms485_id);
+
+		if (!is_null($visit_type_id)) {
+			if (is_array($visit_type_id)) {
+				$this->db->where_in("vis_visit_log_copy.visit_type_id", $visit_type_id);
+			} else {
+				$this->db->where("vis_visit_log_copy.visit_type_id", $visit_type_id);
+			}
+		}
+
+		if (!is_null($visit_status_id)) {
+			if (is_array($visit_status_id)) {
+				$this->db->where_in("vis_visit_log_copy.visit_status_id", $visit_status_id);
+			} else {
+				$this->db->where("vis_visit_log_copy.visit_status_id", $visit_status_id);
+			}
+		}
+
+		if ($discipline_id) {
+			$this->db->where("dis_discipline.discipline_id", $discipline_id);
+		}
+
+		if (!is_null($from_date)) {
+			$this->db->where('visit_date_time >=', $from_date . ' 00:00:00');
+		}
+
+		if (!is_null($keyword)) {
+			$this->db->where("(us_agy.first_name LIKE '%" . $keyword . "%' OR us_agy.last_name LIKE '%" . $keyword . "%')");
+		}
+		
+		if (!is_null($billable)) {
+			$this->db->where("vis_visit_log_copy.billable_YN", 1);  
+		}
+
+		if (!is_null($user_id)) {
+			$this->db->where('visit_user_id', $user_id);
+		}
+
+		if (!is_null($approver_type_id)) {
+			$this->db->where('approver_type_id', $approver_type_id);
+		}
+
+		$this->db->order_by('visit_date_time');
+
+		$query = $this->db->get('vis_visit_log_copy');
+		return $query->result();
+
+	}
+
+	function getCoRatePatientLevel($visit_log_id){
+		$this->db->select("contractor_rate_patient.*");  
+
+		$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+
+		$this->db->join('agency_contractor', 'agency_contractor.contractor_id = ua.agency_id AND agency_contractor.agency_id = pat_patient.agency_id');
+
+		$this->db->join('contractor_rate_patient', 'contractor_rate_patient.agency_contractor_id = agency_contractor.agency_contractor_id AND contractor_rate_patient.patient_id = pat_patient.patient_id AND contractor_rate_patient.visit_type_id = vis_visit_log.visit_type_id AND contractor_rate_patient.rate_effective_date <= vis_visit_log.visited_date');
+
+
+		$this->db->where('visit_log_id',$visit_log_id);
+		$this->db->order_by('contractor_rate_patient.rate_effective_date','DESC');
+		$this->db->limit(1);
+		$query = $this->db->get('vis_visit_log');
+		return $query->row();
+	}
+
+	function getCoRateAgencyLevel($visit_log_id){
+		$this->db->select("contractor_rate_agency.*");  
+
+		$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+
+		$this->db->join('agency_contractor', 'agency_contractor.contractor_id = ua.agency_id AND agency_contractor.agency_id = pat_patient.agency_id');
+
+		$this->db->join('contractor_rate_agency', 'contractor_rate_agency.agency_contractor_id = agency_contractor.agency_contractor_id AND contractor_rate_agency.visit_type_id = vis_visit_log.visit_type_id AND contractor_rate_agency.rate_effective_date <= vis_visit_log.visited_date');
+
+
+		$this->db->where('visit_log_id',$visit_log_id);
+		$this->db->order_by('contractor_rate_agency.rate_effective_date','DESC');
+		$this->db->limit(1);
+		$query = $this->db->get('vis_visit_log');
+		return $query->row();
+	}
+
+	function getCoRateDefault($visit_log_id){
+		$this->db->select("contractor_rate_default.*");  
+
+		$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+
+		$this->db->join('agency_contractor', 'agency_contractor.contractor_id = ua.agency_id AND agency_contractor.agency_id = pat_patient.agency_id');
+
+		$this->db->join('contractor_rate_default', 'contractor_rate_default.contractor_id = agency_contractor.contractor_id AND contractor_rate_default.visit_type_id = vis_visit_log.visit_type_id AND contractor_rate_default.rate_effective_date <= vis_visit_log.visited_date');
+
+
+		$this->db->where('visit_log_id',$visit_log_id);
+		$this->db->order_by('contractor_rate_default.rate_effective_date','DESC');
+		$this->db->limit(1);
+		$query = $this->db->get('vis_visit_log');
+		return $query->row();
+	}
+
+	function getCoRateDefaultV2($visit_log_id, $client_program){
+		$this->db->select("contractor_rate_default_v2.*");  
+
+		$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+
+		$this->db->join('agency_contractor', 'agency_contractor.contractor_id = ua.agency_id AND agency_contractor.agency_id = pat_patient.agency_id');
+
+		$this->db->join('contractor_rate_default_v2', 'contractor_rate_default_v2.contractor_id = agency_contractor.contractor_id AND contractor_rate_default_v2.visit_type_id = vis_visit_log.visit_type_id AND contractor_rate_default_v2.rate_effective_date <= vis_visit_log.visited_date');
+
+
+		$this->db->where('visit_log_id',$visit_log_id);
+		$this->db->where('client_program',$client_program);
+		$this->db->order_by('contractor_rate_default_v2.rate_effective_date','DESC');
+		$this->db->limit(1);
+		$query = $this->db->get('vis_visit_log');
+		return $query->row();
+	}
+	
+  /*function getRateInfoById($visit_log_id){
+    $this->db->select("agency_contractor.*, vis_visit_log.visited_date, vis_visit_log.visit_status_id, vis_visit_log.visit_type_id, pat_patient.patient_id, agency_contractor_rate.company_rate, pat_contractor.billing_factor");  
+    
+    $this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+    $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+    $this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+    
+    $this->db->join('agency_contractor', 'agency_contractor.contractor_id = ua.agency_id AND agency_contractor.agency_id = pat_patient.agency_id');
+    $this->db->join('agency_contractor_rate', 'agency_contractor_rate.agency_contractor_id = agency_contractor.agency_contractor_id AND agency_contractor_rate.visit_type_id = vis_visit_log.visit_type_id AND   agency_contractor_rate.rate_effective_date <= vis_visit_log.visited_date');
+    
+    $this->db->join('pat_contractor', 'pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+AND pat_contractor.patient_id = soc_start_of_care.patient_id');            
+    
+    
+    $this->db->where('visit_log_id',$visit_log_id);
+    
+    $query = $this->db->get('vis_visit_log');
+		return $query->row();
+	}*/
+
+	function getBillableVisits($agency_contractor_id, $from_date=null, $to_date=null, $patient_id=null, $provides_altern_therapy='N'){
+		$this->db->select("cms_485.*, soc_start_of_care.*, agency_contractor.*, pat_contractor.*, ua.*, dis_discipline.*, tab_parameters.*, vit_visit_type.*, vis_visit_log.*, pat_patient.gov_program, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as clinician, dis_discipline.short_description as clinician_discipline");  
+
+		$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+		$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+		$this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = '.$agency_contractor_id);
+//    $this->db->join('agency_contractor ac2', 'ac2.agency_id = agency_contractor.contractor_id');
+		$this->db->join('pat_contractor', 'pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+			AND pat_contractor.patient_id = soc_start_of_care.patient_id');            
+//    $this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id AND (ua.agency_id = agency_contractor.contractor_id OR ua.agency_id = ac2.contractor_id)');    
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id AND ua.agency_id = agency_contractor.contractor_id');
+		$this->db->join('us1_user', 'us1_user.user_id = ua.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = ua.discipline_id');    
+		$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+
+		if (!is_null($from_date)) {
+			$this->db->where('visited_date >=', standard_date(human_to_unix($from_date), 'MYSQL_NOTIME') . ' 00:00:00');
+		}
+
+		if (!is_null($to_date)) {
+			$this->db->where('visited_date <=', standard_date(human_to_unix($to_date), 'MYSQL_NOTIME') . ' 23:59:59');
+		}
+
+		$this->db->where_in("visit_status_id", array(3,4));
+
+		// For special therapies, do not send 8606a (101) and QRs (104) and Missed visit(320) to Billing anymore.
+		$visit_types_to_exclude = array(101,104);
+		if ($provides_altern_therapy == 'Y') {
+			$visit_types_to_exclude[] = 320;
+		}
+
+		$this->db->where_not_in("vis_visit_log.visit_type_id", $visit_types_to_exclude);
+
+	    //$this->db->where("co_billing_confirmed", 1);
+	    //$this->db->where_in("billable_YN", 1);
+		$this->db->where("(co_invoice_id IS NULL OR co_invoice_id =0)");
+		if(!is_null($patient_id))
+			$this->db->where('soc_start_of_care.patient_id',$patient_id);
+
+    	//$this->db->where('co_rate > 0'); // we commented this for now
+		if ($this->input->post('include_removed') == 1) {
+			// do not include condition 
+		} else {
+			$this->db->where("co_billing_deleted", 0); 
+		}
+
+
+		$this->db->order_by('visit_date_time, visit_log_number');
+		$this->db->group_by('visit_log_id');
+
+		$query = $this->db->get('vis_visit_log');
+    /*if($patient_id == 93)
+    {echo "\n\n".$this->db->last_query();exit;}*/
+    return $query->result();
+    
+}
+
+function get_gov_program($visit_log_id){
+	$this->db->select('pat_patient.gov_program');
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+
+	$this->db->where("vis_visit_log.visit_log_id", $visit_log_id); 
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->row()->gov_program;
+}
+
+function getSingleVisitBillAmount($visit, &$return_visit_units=0, &$return_visit_duration=0){
+	$date2 = strtotime(date("Y-m-d ").$visit->visited_time_out);
+	$date1 = strtotime(date("Y-m-d ").$visit->visited_time_in);
+
+	$visit_duration = floor(($date2 - $date1)/60);
+
+	if($visit_duration < 0){
+		$date2 = strtotime(date("Y-m-d ", mktime(0,0,0,date("m"),date("j")+1,date("Y") )).$visit->visited_time_out);
+		$visit_duration = floor(($date2 - $date1)/60);
+		// $visit_duration = 0;          
+	}
+
+	$return_visit_duration = $visit_duration;
+
+	$bill_amount = 0.00;
+	if(!$visit->co_final_rate)
+    	$visit->co_final_rate = 0.00; 
+   
+  	if($visit->billable_YN == 0){
+    	$visit->co_final_rate = 0.00;  
+  	}
+
+  	if (!isset($visit->gov_program)) {
+		$visit->gov_program = $this->get_gov_program($visit->visit_log_id);
+	}
+
+  	if (in_array($visit->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+  		$CI =& get_instance();
+		$CI->load->model('spvisitunitmdl');
+		$units = $CI->spvisitunitmdl->get($visit->gov_program, $visit_duration);
+
+		// when final rate edited by contractor return that final amount
+		if ($visit->co_sp_final_rate) {
+			$bill_amount = $visit->co_sp_final_rate;          
+		} else if ($units > 0){
+			// Else calculate visit amount
+			$visit_rate = round($visit->co_final_rate*$units, 2);    
+			$visit_rate = number_format($visit_rate, 2, '.', '');  
+
+			if (substr($visit_rate, -3) == '.99') {
+			  $visit_rate += 0.01;
+			} else if (substr($visit_rate, -3) == '.98') {
+			  $visit_rate += 0.02;
+			}
+
+			$bill_amount = $visit_rate;
+	  	}
+
+        $return_visit_units = $units; // need this line to return $units of the visits if needed for any grid
+      } else if ($visit->gov_program == 'Waiver') {
+      	// When patient gov program is 'Waiver' it definately from contractor with LOB = 2 (Long term care)
+		// So we need to find units using gov program CLASS because this will act as CLASS program
+		$CI =& get_instance();
+		$CI->load->model('spvisitunitmdl');
+		$units = $CI->spvisitunitmdl->get('CLASS', $visit_duration);
+
+		// when final rate edited by contractor return that final amount
+		if ($visit->co_sp_final_rate) {
+			$bill_amount = $visit->co_sp_final_rate;          
+		} else if ($units > 0){
+			// Else calculate visit amount
+			$visit_rate = round($visit->co_final_rate*$units, 2);    
+			$visit_rate = number_format($visit_rate, 2, '.', '');  
+
+			if (substr($visit_rate, -3) == '.99') {
+			  $visit_rate += 0.01;
+			} else if (substr($visit_rate, -3) == '.98') {
+			  $visit_rate += 0.02;
+			}
+
+			$bill_amount = $visit_rate;
+	  	}
+
+        $return_visit_units = $units; // need this line to return $units of the visits if needed for any grid
+      } else {
+        $bill_amount = $visit->co_final_rate;
+      }
+
+
+	// if($visit->co_billing_confirmed != 1){
+	// 	$bill_amount = 0.00;
+	// }
+
+    return $bill_amount;
+}
+
+function getBillableTotalFinalRate($agency_contractor_id, $from_date=null, $to_date=null, $patient_id=null, $provides_altern_therapy='N'){
+	// $this->db->select("SUM(co_final_rate) as total_final_rate");  
+	$this->db->select("vis_visit_log.*, pat_patient.*, agy_agency.*");  
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');    
+	$this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = '.$agency_contractor_id);
+	$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+	$this->db->join('agy_agency', 'agy_agency.agency_id = pat_patient.agency_id');
+	$this->db->join('pat_contractor', 'pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+		AND pat_contractor.patient_id = soc_start_of_care.patient_id');        
+	$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id AND ua.agency_id = agency_contractor.contractor_id');
+
+	if (!is_null($from_date)) {
+		$this->db->where('visited_date >=', standard_date(human_to_unix($from_date), 'MYSQL_NOTIME') . ' 00:00:00');
+	}
+
+	if (!is_null($to_date)) {
+		$this->db->where('visited_date <=', standard_date(human_to_unix($to_date), 'MYSQL_NOTIME') . ' 23:59:59');
+	}
+
+	// For special therapies, do not send 8606a (101) and QRs (104) and Missed visit(320) to Billing anymore.
+	$visit_types_to_exclude = array(101,104);
+	if ($provides_altern_therapy == 'Y') {
+		$visit_types_to_exclude[] = 320;
+	}
+
+	$this->db->where_not_in("vis_visit_log.visit_type_id", $visit_types_to_exclude);
+	
+	$this->db->where_in("visit_status_id", array(3,4));
+	$this->db->where("(co_invoice_id IS NULL OR co_invoice_id =0)");
+	if(!is_null($patient_id)){
+		if (is_array($patient_id)) {
+			$this->db->where_in('soc_start_of_care.patient_id',$patient_id);
+		} else {
+			$this->db->where('soc_start_of_care.patient_id',$patient_id);
+		}
+	}
+
+    //$this->db->where('co_rate > 0'); // we commented this for now
+
+	$this->db->where("vis_visit_log.billable_YN", 1);
+	$this->db->where("co_billing_confirmed", 1);  
+	$this->db->where("(co_billing_deleted IS NULL OR co_billing_deleted =0)");
+
+	$query = $this->db->get('vis_visit_log');
+    //echo "\n\n".$this->db->last_query();exit;
+	// $row =  $query->row();
+
+	// return $row->total_final_rate;
+
+
+	$invoice_bill_amount = 0.00;
+    foreach ($query->result() as $visit) {
+    	$invoice_bill_amount += $this->getSingleVisitBillAmount($visit);
+    }
+
+    $invoice_bill_amount = round($invoice_bill_amount, 2);
+    
+    return $invoice_bill_amount;
+
+}
+
+function getVisitsBillAmount($visits){    
+    $invoice_bill_amount = 0.00;
+    foreach ($visits as $visit) {
+    	$invoice_bill_amount += $this->getSingleVisitBillAmount($visit);
+    }
+    return $invoice_bill_amount;
+}
+
+function getInvoiceVisitsPatientIds($invoice_id, $sortByPtLastName = false){
+	$this->db->select("distinct pat_patient.patient_id");  
+
+
+	$this->db->join('company_invoice', 'company_invoice.invoice_id = vis_visit_log.co_invoice_id');    
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+	$this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = company_invoice.agency_contractor_id', 'left');
+	$this->db->join('pat_contractor', 'pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+		AND pat_contractor.patient_id = soc_start_of_care.patient_id', 'left');            
+	$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id AND ua.agency_id = agency_contractor.contractor_id');
+	$this->db->join('us1_user', 'us1_user.user_id = ua.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'dis_discipline.discipline_id = ua.discipline_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+
+
+    //$this->db->where_in("visit_status_id", array(3,4));
+	$this->db->where("co_invoice_id", $invoice_id);
+
+	if ($sortByPtLastName) {
+		$this->db->order_by('pat_patient.last_name');
+	} else {
+		$this->db->order_by('visit_date_time, visit_log_number');
+	}
+
+	$query = $this->db->get('vis_visit_log');
+    // echo "\n\n".$this->db->last_query();
+    // exit;
+
+	return $query->result();
+}
+
+function getInvoiceVisits($invoice_id, $patient_id=null, $select=null){
+	if (!is_null($select)) {
+		$this->db->select($select);
+	} else {
+		$this->db->select("company_invoice.*, cms_485.*, soc_start_of_care.*, agency_contractor.*, pat_contractor.*, ua.*, dis_discipline.*, tab_parameters.*, vit_visit_type.*, vis_visit_log.*, pat_patient.gov_program, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as clinician, us1_user.first_name as us1_user_first_name, us1_user.last_name as us1_user_last_name, dis_discipline.short_description as clinician_discipline");  
+	}
+
+	$this->db->join('company_invoice', 'company_invoice.invoice_id = vis_visit_log.co_invoice_id');    
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+	$this->db->join('agency_contractor', 'agency_contractor.agency_contractor_id = company_invoice.agency_contractor_id', 'left');
+	$this->db->join('pat_contractor', 'pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+		AND pat_contractor.patient_id = soc_start_of_care.patient_id', 'left');            
+	$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id AND ua.agency_id = agency_contractor.contractor_id');
+	$this->db->join('us1_user', 'us1_user.user_id = ua.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'dis_discipline.discipline_id = ua.discipline_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+
+
+    //$this->db->where_in("visit_status_id", array(3,4));
+	$this->db->where("co_invoice_id", $invoice_id);
+
+	if(!is_null($patient_id))
+		$this->db->where('soc_start_of_care.patient_id',$patient_id);
+
+	$this->db->order_by('visit_date_time, visit_log_number');
+
+	$query = $this->db->get('vis_visit_log');
+    //echo "\n\n".$this->db->last_query();exit;
+	return $query->result();
+
+}
+
+function getInvoicePatients($invoice_ids){
+	$this->db->select("pat_patient.*, cms_485.*, soc_start_of_care.*");  
+	
+	$this->db->join('company_invoice', 'company_invoice.invoice_id = vis_visit_log.co_invoice_id');    
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+	
+
+    //$this->db->where_in("visit_status_id", array(3,4));
+	$this->db->where_in("co_invoice_id", $invoice_ids);
+
+	$this->db->group_by('pat_patient.patient_id');
+	$this->db->order_by('pat_patient.last_name, pat_patient.first_name');
+
+	$query = $this->db->get('vis_visit_log');
+    //echo "\n\n".$this->db->last_query();exit;
+	return $query->result();
+
+}
+
+function getInvoicePatient($invoice_id){
+	$this->db->select("pat_patient.*, cms_485.*, soc_start_of_care.*");  
+	
+	$this->db->join('company_invoice', 'company_invoice.invoice_id = vis_visit_log.co_invoice_id');    
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+	
+
+    //$this->db->where_in("visit_status_id", array(3,4));
+	$this->db->where("co_invoice_id", $invoice_id);
+
+	$this->db->group_by('pat_patient.patient_id');
+
+	$query = $this->db->get('vis_visit_log');
+    //echo "\n\n".$this->db->last_query();exit;
+	return $query->result();
+
+}
+
+function isInvoiceEverCreatedForPatient($patient_id){
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+
+	$this->db->where("co_invoice_id IS NOT NULL");
+	$this->db->where('soc_start_of_care.patient_id',$patient_id);
+
+
+	$query = $this->db->get('vis_visit_log');
+	if ($query->num_rows() > 0) {
+		return TRUE;
+	} else {
+		return FALSE;
+	}
+}
+
+function getByUser($user_id, $visit_year, $visit_month, $visit_type_id = null, $visit_status_id = null, $keyword = null, $day_ini = '01', $day_fini = '31', $date_to = '') {
+
+	$this->db->select('pat_patient.*, vis_visit_log.*, vit_visit_type.*, color_lengend_mycalendar.* ');
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('us_agy', 'us_agy_id = visit_user_id');
+	$this->db->where('us_agy_id', $user_id);
+
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	$this->db->join('color_lengend_mycalendar', 'color_lengend_mycalendar.tab_083_visit_status =  vis_visit_log.visit_status_id');
+
+	$this->db->where('visit_date_time >=', $visit_year . '-' . $visit_month . '-' . $day_ini . ' 00:00:00');
+
+	if($date_to == '') {
+		if($this->input->post('date_to')) {
+			$date_to = $this->input->post('date_to');
+		}
+	}
+
+
+	if ($date_to != '') {
+		$this->db->where("visit_date_time <=", standard_date(human_to_unix($date_to), 'MYSQL_NOTIME')." 23:59:59");
+	} else if(!is_null($day_fini)){      
+		$this->db->where('visit_date_time <=', $visit_year . '-' . $visit_month . '-' . $day_fini . ' 23:59:59');
+	}
+
+	if (!is_null($visit_type_id)) {
+		$this->db->where("vis_visit_log.visit_type_id", $visit_type_id);
+	}
+
+	if (!is_null($keyword)) {
+		$this->db->like("pat_patient.first_name", $keyword);
+		$this->db->or_like("pat_patient.last_name", $keyword);
+	}
+
+	if (!is_null($visit_status_id)) {
+		$this->db->where("vis_visit_log.visit_status_id", $visit_status_id);
+	}
+
+	$this->db->order_by('visit_date_time');
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->result();
+
+}
+
+function getVisitsForApproval($user_id=null, $user_approver = null, $from_date = null, $visit_type_id = null, $visit_status_id = null, $keyword = null, $agency_id = null, $greater_date = null, $to_date = null, $order_by = null, $desc = null){
+
+	// Get visit ids for co-sign of PTPN
+	$SQL1 = "SELECT visit_log_id FROM ( 
+		SELECT vis_visit_log.visit_log_id
+	    FROM (
+	    `vt12_pt_progress_note`
+	    )
+	    JOIN `vis_visit_log` ON vis_visit_log.visit_log_id = vt12_pt_progress_note.visit_log_id
+	    JOIN `us_agy` ON us_agy.us_agy_id = vis_visit_log.visit_user_id
+	    JOIN `agy_agency_settings` ON agy_agency_settings.agency_id = us_agy.agency_id AND agy_agency_settings.ptpn_req_co_sign = 1
+	    JOIN `cms_485` ON cms_485.cms485_id = vis_visit_log.cms485_id
+        JOIN `soc_start_of_care` ON soc_start_of_care.soc_id = cms_485.soc_id
+        JOIN `pat_patient` ON soc_start_of_care.patient_id = pat_patient.patient_id";
+	    // JOIN `agy_agency` ON agy_agency.agency_id = us_agy.agency_id
+
+    $where = array();
+    $where[] = "vis_visit_log.visit_type_id =12";
+    
+    if ($this->input->post('co_sign_only') == 2) {
+    	$where[] = "vt12_pt_progress_note.ther_supervisor IS NOT NULL";
+    	$where[] = "vt12_pt_progress_note.ther_supervisor != ".$user_approver;
+    	if ($this->input->post('agency_ids')) {
+    		$where[] = "pat_patient.agency_id IN(".$this->input->post('agency_ids').")";
+    	}
+    } else  {
+    	$where[] = "vt12_pt_progress_note.ther_supervisor = ".$user_approver;
+    }
+
+    $where[] = "vis_visit_log.visit_status_id IN(3,8)";
+    $where[] = "(vt12_pt_progress_note.supervisor_signed =0 OR vt12_pt_progress_note.supervisor_signed IS NULL)";
+
+    if ($agency_id) {
+    	$where[] = "us_agy.agency_id = ".$agency_id;
+    }
+
+    $SQL1 .= " WHERE ". implode(" AND ", $where);
+    $SQL1 .= " ) as tbl1";
+
+    // Get visit ids for co-sign for OTPN
+    $SQL2 = "SELECT visit_log_id FROM (
+	    SELECT vis_visit_log.visit_log_id
+	    FROM (
+	    `vt_ot_progress_note`
+	    )
+	    JOIN `vis_visit_log` ON vis_visit_log.visit_log_id = vt_ot_progress_note.visit_log_id
+	    JOIN `us_agy` ON us_agy.us_agy_id = vis_visit_log.visit_user_id
+	    JOIN `agy_agency_settings` ON agy_agency_settings.agency_id = us_agy.agency_id AND agy_agency_settings.ptpn_req_co_sign = 1
+	    JOIN `cms_485` ON cms_485.cms485_id = vis_visit_log.cms485_id
+        JOIN `soc_start_of_care` ON soc_start_of_care.soc_id = cms_485.soc_id
+        JOIN `pat_patient` ON soc_start_of_care.patient_id = pat_patient.patient_id";
+	    // JOIN `agy_agency` ON agy_agency.agency_id = us_agy.agency_id";
+
+    $where = array();
+    $where[] = "vis_visit_log.visit_type_id =42";
+
+    if ($this->input->post('co_sign_only') == 2) {
+    	$where[] = "vt_ot_progress_note.ther_supervisor IS NOT NULL";
+    	$where[] = "vt_ot_progress_note.ther_supervisor != ".$user_approver;
+    	if ($this->input->post('agency_ids')) {
+    		$where[] = "pat_patient.agency_id IN(".$this->input->post('agency_ids').")";
+    	}
+    } else  {
+    	$where[] = "vt_ot_progress_note.ther_supervisor = ".$user_approver;
+    }
+
+    $where[] = "vis_visit_log.visit_status_id IN(3,8)";
+    $where[] = "(vt_ot_progress_note.supervisor_signed =0 OR vt_ot_progress_note.supervisor_signed IS NULL)";
+
+    if ($agency_id) {
+    	$where[] = "us_agy.agency_id = ".$agency_id;
+    }
+
+    $SQL2 .= " WHERE ". implode(" AND ", $where);
+    $SQL2 .= " ) as tbl2";
+
+
+    // Get visit ids for co-sign STPN
+    $SQL3 = "SELECT visit_log_id FROM (
+	    SELECT vis_visit_log.visit_log_id
+	    FROM (
+	    `vt_st_progress_note`
+	    )
+	    JOIN `vis_visit_log` ON vis_visit_log.visit_log_id = vt_st_progress_note.visit_log_id
+	    JOIN `us_agy` ON us_agy.us_agy_id = vis_visit_log.visit_user_id
+	    JOIN `agy_agency_settings` ON agy_agency_settings.agency_id = us_agy.agency_id AND agy_agency_settings.ptpn_req_co_sign = 1
+	    JOIN `cms_485` ON cms_485.cms485_id = vis_visit_log.cms485_id
+        JOIN `soc_start_of_care` ON soc_start_of_care.soc_id = cms_485.soc_id
+        JOIN `pat_patient` ON soc_start_of_care.patient_id = pat_patient.patient_id";
+	    // JOIN `agy_agency` ON agy_agency.agency_id = us_agy.agency_id";
+
+    $where = array();
+    $where[] = "vis_visit_log.visit_type_id =62";
+    $where[] = "vt_st_progress_note.ther_supervisor = ".$user_approver;
+
+    if ($this->input->post('co_sign_only') == 2) {
+    	$where[] = "vt_st_progress_note.ther_supervisor IS NOT NULL";
+    	$where[] = "vt_st_progress_note.ther_supervisor != ".$user_approver;
+    	if ($this->input->post('agency_ids')) {
+    		$where[] = "pat_patient.agency_id IN(".$this->input->post('agency_ids').")";
+    	}
+    } else  {
+    	$where[] = "vt_st_progress_note.ther_supervisor = ".$user_approver;
+    }
+
+    $where[] = "vis_visit_log.visit_status_id IN(3,8)";
+    $where[] = "(vt_st_progress_note.supervisor_signed =0 OR vt_st_progress_note.supervisor_signed IS NULL)";
+
+    if ($agency_id) {
+    	$where[] = "us_agy.agency_id = ".$agency_id;
+    }
+
+    $SQL3 .= " WHERE ". implode(" AND ", $where);
+    $SQL3 .= " ) as tbl3";
+
+
+    $SQL4 = "";
+    // Get visit ids for approval
+    if (!($this->input->post('co_sign_only') == 1) AND !($this->input->post('co_sign_only') == 2)) {
+	    $SQL4 = "SELECT visit_log_id FROM (
+		    SELECT vis_visit_log.visit_log_id
+		    FROM (
+		    `vis_visit_log`
+		    )
+		    JOIN `cms_485` ON cms_485.cms485_id = vis_visit_log.cms485_id
+		    JOIN `soc_start_of_care` ON soc_start_of_care.soc_id = cms_485.soc_id
+		    JOIN `vit_visit_type` ON vit_visit_type.visit_type_id = vis_visit_log.visit_type_id
+		    LEFT JOIN `tab_parameters` ON vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83
+		    JOIN `us_agy` ON us_agy.us_agy_id = vis_visit_log.user_approver
+		    JOIN `us_agy` AS ua ON ua.us_agy_id = vis_visit_log.visit_user_id
+		    JOIN `pat_patient` ON soc_start_of_care.patient_id = pat_patient.patient_id";
+
+	    $where = array();
+
+	    if (!is_null($user_id)) {
+			$where[] = "visit_user_id = ".$user_id;
+		}
+
+		if (!is_null($user_approver)) {
+			$where[] = "user_approver = ".$user_approver;
+		}
+
+		if (!is_null($agency_id)) {
+			$where[] = "ua.agency_id = ".$agency_id;
+		}
+
+		if (!is_null($from_date)) {
+			$where[] = "visit_date_time >= '".$from_date."  00:00:00'";
+		}
+
+
+		if (!is_null($visit_type_id)) {
+			$where[] = "vis_visit_log.visit_type_id = ".$visit_type_id;
+		}
+
+		if (!is_null($greater_date)) {
+			$where[] = "visit_date_time >= '".$greater_date."  23:59:59'";
+			if (!is_null($to_date)) {
+				$where[] = "visit_date_time <= '".$to_date."  23:59:59'";
+			} else {      
+				if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+					$where[] = "visit_date_time <= '".standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59'";
+				}      
+			}
+		} else {
+			if (is_null($from_date)) {
+				if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+					$where[] = "visit_date_time >= '".standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00'";
+				}
+			}
+			if (!is_null($to_date)) {    
+				$where[] = "visit_date_time <= '".$to_date." 23:59:59'";
+			} else {      
+				if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+					$where[] = "visit_date_time <= '".standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59'";
+				}      
+			}
+		}
+
+		if (!is_null($keyword)) {
+			if ($this->input->post('search_type') == 1) {
+				$where[] = "(pat_patient.first_name LIKE '%" . $keyword . "%' OR pat_patient.last_name LIKE '%" . $keyword . "%')";
+			} else
+			if ($this->input->post('search_type') == 2) {
+				$where[] = "(us_agy.first_name LIKE '%" . $keyword . "%' OR us_agy.last_name LIKE '%" . $keyword . "%')";
+			}
+		}
+
+		if (!is_null($visit_status_id) && $visit_status_id[0] != '') {
+			$where[] = "vis_visit_log.visit_status_id IN (".implode(",", $visit_status_id).")";
+		}
+
+		if($pat_agency_id = $this->input->post('agency_id')){
+			$where[] = "pat_patient.agency_id = ".$pat_agency_id;
+		}
+
+	    $SQL4 .= " WHERE ". implode(" AND ", $where);
+	    $SQL4 .= " ) as tbl4";
+
+    }
+
+
+    $SQL = $SQL1." UNION ".$SQL2." UNION ".$SQL3;
+
+    if ($SQL4 != "") {
+    	$SQL .= " UNION ".$SQL4;
+    }
+
+
+    // GET all visit info 
+    $this->db->select('*, us1_user.first_name as visit_user_first_name, us1_user.last_name as visit_user_last_name, pat_patient.first_name as patient_first_name, pat_patient.last_name as patient_last_name');
+    $this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+	$this->db->join('us1_user', 'us1_user.user_id = ua.user_id', 'LEFT');
+	$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+
+	
+	$this->db->where("vis_visit_log.visit_log_id IN (".$SQL.")");      
+	
+	if (!is_null($from_date)) {
+		$this->db->where('visit_date_time >=', $from_date . ' 00:00:00');      
+	}
+
+	if (!is_null($visit_type_id)) {
+		$this->db->where("vis_visit_log.visit_type_id", $visit_type_id);
+	}
+
+	if (!is_null($greater_date)) {
+		$this->db->where('visit_date_time >', $greater_date . ' 23:59:59');
+		if (!is_null($to_date)) {
+			$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+		} else {      
+			if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}      
+		}
+	} else {
+		if (is_null($from_date)) {
+			if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+				$this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+			}
+		}
+		if (!is_null($to_date)) {    
+			$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+		} else {      
+			if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}      
+		}
+	}
+
+	if (!is_null($keyword)) {
+		if ($this->input->post('search_type') == 1) {
+			$this->db->where("(pat_patient.first_name LIKE '%" . $keyword . "%' OR pat_patient.last_name LIKE '%" . $keyword . "%')");
+		} else
+		if ($this->input->post('search_type') == 2) {
+			$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.user_approver');
+			$this->db->where("(us_agy.first_name LIKE '%" . $keyword . "%' OR us_agy.last_name LIKE '%" . $keyword . "%')");
+		}
+	}
+
+	if($pat_agency_id = $this->input->post('agency_id')){
+		$this->db->where('pat_patient.agency_id', $pat_agency_id);
+		// $where[] = "pat_patient.agency_id = ".$pat_agency_id;
+	}
+
+	if(!is_null($user_id)) {
+		$this->db->where('visit_user_id ', $user_id);
+	}
+
+	if (!is_null($order_by)) {
+		if (!is_null($desc))
+			$this->db->order_by($order_by, 'desc');
+		else
+			$this->db->order_by($order_by);
+	} else {
+		$this->db->order_by('visit_date_time, visit_log_number');
+	}
+
+	$query = $this->db->get('vis_visit_log'); 
+	// echo $this->db->last_query();exit;    
+	return $query->result();
+
+}
+
+function getVisitTaskList($user_id = null, $user_approver = null, $from_date = null, $visit_type_id = null, $visit_status_id = null, $keyword = null, $agency_id = null, $greater_date = null, $to_date = null, $order_by = null, $desc = null) {
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+
+	if (!is_null($user_id)) {
+		$this->db->where('visit_user_id', $user_id);
+	}
+
+	if (!is_null($user_approver)) {
+		$this->db->where('user_approver', $user_approver);
+	}
+
+	if (!is_null($agency_id)) {
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+		$this->db->where('ua.agency_id', $agency_id);
+	}
+
+	if (!is_null($from_date)) {
+		$this->db->where('visit_date_time >=', $from_date . ' 00:00:00');      
+	}
+
+
+	if (!is_null($visit_type_id)) {
+		$this->db->where("vis_visit_log.visit_type_id", $visit_type_id);
+	}
+
+	if (!is_null($greater_date)) {
+		$this->db->where('visit_date_time >', $greater_date . ' 23:59:59');
+		if (!is_null($to_date)) {
+			$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+		} else {      
+			if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}      
+		}
+	} else {
+		if (is_null($from_date)) {
+			if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+				$this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+			}
+		}
+		if (!is_null($to_date)) {    
+			$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+		} else {      
+			if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}      
+		}
+	}
+
+	if (!is_null($keyword)) {
+		if ($this->input->post('search_type') == 1) {
+			$this->db->where("(pat_patient.first_name LIKE '%" . $keyword . "%' OR pat_patient.last_name LIKE '%" . $keyword . "%')");
+		} else
+		if ($this->input->post('search_type') == 2) {
+			$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.user_approver');
+			$this->db->where("(us_agy.first_name LIKE '%" . $keyword . "%' OR us_agy.last_name LIKE '%" . $keyword . "%')");
+		}
+	}
+
+
+	if (!is_null($visit_status_id) && $visit_status_id[0] != '') {
+		$this->db->where_in("vis_visit_log.visit_status_id", $visit_status_id);
+	}
+
+	if($this->input->post('agency_id')){
+		$this->db->where("pat_patient.agency_id", $this->input->post('agency_id'));
+	}
+
+	if($this->input->post('tab_013_status')){
+		$this->db->where("pat_patient.tab_013_status", $this->input->post('tab_013_status'));
+	}
+
+	if($this->input->post('number_day_old')) {
+		$number_day_old = $this->input->post('number_day_old');
+	    $this->db->where("(TIMESTAMPDIFF(DAY, vis_visit_log.visit_date_time, NOW()) >= {$number_day_old})"); 
+	}
+
+	$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+
+	if (!is_null($order_by)) {
+		if (!is_null($desc))
+			$this->db->order_by($order_by, 'desc');
+		else
+			$this->db->order_by($order_by);
+	} else
+	$this->db->order_by('visit_date_time, visit_log_number');
+
+	$query = $this->db->get('vis_visit_log'); 
+	//echo $this->db->last_query();exit;    
+	return $query->result();
+
+}
+
+function getLateTaskList($user_id = null, $user_agency_id = null, $from_date = null, $to_date = null, $order_by = null, $desc = null, $patient_status = null) {
+
+	$visit_status_id = array();
+    $visit_status_id[] = 1; // values: visit_status_id (schelud, in progress, return)
+    $visit_status_id[] = 2;
+	$visit_status_id[] = 5;
+	$visit_status_id[] = 6;
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	if (!is_null($user_agency_id)) {
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+		$this->db->where('ua.agency_id', $user_agency_id);
+	}
+
+	if ($user_id) {
+		$this->db->where('vis_visit_log.visit_user_id', $user_id);
+	}
+
+	if (!is_null($from_date)) {
+		$this->db->where('visit_date_time >=', $from_date . ' 00:00:00');      
+	}
+
+	if (!is_null($patient_status)) {
+		$this->db->where('pat_patient.tab_013_status != ', $patient_status);   
+	}
+
+	$not_visit_type_ids = array();
+	$not_visit_type_ids[] = 200;
+	$not_visit_type_ids[] = 201;
+	$not_visit_type_ids[] = 400;
+	$not_visit_type_ids[] = 350;
+
+	$this->db->where_not_in("vit_visit_type.visit_type_id", $not_visit_type_ids);
+	// $this->db->where('vit_visit_type.billable', 1);
+	
+	if (is_null($from_date)) {
+		if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+			$this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+		}
+	}
+	if (!is_null($to_date)) {    
+		$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+	} else {      
+		if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+			$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+		}      
+	}
+
+	if ($this->input->post('keyword')) {
+		$keyword = $this->input->post('keyword');
+		if ($this->input->post('search_type') == 1) {
+			$this->db->where("(pat_patient.first_name LIKE '%" . $keyword . "%' OR pat_patient.last_name LIKE '%" . $keyword . "%')");
+		} else
+		if ($this->input->post('search_type') == 2) {
+			$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.user_approver');
+			$this->db->where("(us_agy.first_name LIKE '%" . $keyword . "%' OR us_agy.last_name LIKE '%" . $keyword . "%')");
+		}
+	}
+
+
+	if (!is_null($visit_status_id) && $visit_status_id[0] != '') {
+		$this->db->where_in("vis_visit_log.visit_status_id", $visit_status_id);
+	}
+
+	if($this->input->post('agency_id')){
+		$this->db->where("pat_patient.agency_id", $this->input->post('agency_id'));
+	}
+
+	
+	if($this->input->post('number_day_old')) {
+		$number_day_old = $this->input->post('number_day_old');
+	    $this->db->where("(TIMESTAMPDIFF(DAY, vis_visit_log.visit_date_time, NOW()) >= {$number_day_old})"); 
+	}
+
+	$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+
+	if (!is_null($order_by)) {
+		if (!is_null($desc))
+			$this->db->order_by($order_by, 'desc');
+		else
+			$this->db->order_by($order_by);
+	} else
+	$this->db->order_by('visit_date_time, visit_log_number');
+	$this->db->where('tab_021_user_status =', 1);
+	$query = $this->db->get('vis_visit_log'); 
+	// echo $this->db->last_query();exit;    
+	return $query->result();
+
+}
+
+function getVisitsApprovalOtherCM($user_id, $user_approver = null, $from_date = null, $visit_type_id = null, $visit_status_id = null, $keyword = null, $agency_id = null, $greater_date = null, $to_date = null, $order_by = null, $desc = null) {
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	$this->db->join('us_agy AS login_ua', 'login_ua.us_agy_id = '.$user_id);	
+	$this->db->join('us_agy AS aprover_ua', 'aprover_ua.us_agy_id = vis_visit_log.user_approver AND aprover_ua.agency_id = login_ua.agency_id');
+
+	$this->db->where('visit_user_id !=', $user_id);
+	$this->db->where('user_approver !=', $user_id);
+		
+	if (!is_null($user_approver)) {
+		$this->db->where('user_approver', $user_approver);
+	}
+
+	if (!is_null($agency_id)) {
+		$this->db->join('us_agy AS ua', 'ua.us_agy_id = vis_visit_log.visit_user_id');
+		$this->db->where('ua.agency_id', $agency_id);
+	}
+
+	if (!is_null($from_date)) {
+		$this->db->where('visit_date_time >=', $from_date . ' 00:00:00');      
+	}
+
+
+	if (!is_null($visit_type_id)) {
+		$this->db->where("vis_visit_log.visit_type_id", $visit_type_id);
+	}
+
+	if (!is_null($greater_date)) {
+		$this->db->where('visit_date_time >', $greater_date . ' 23:59:59');
+		if (!is_null($to_date)) {
+			$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+		} else {      
+			if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}      
+		}
+	} else {
+		if (is_null($from_date)) {
+			if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+				$this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+			}
+		}
+		if (!is_null($to_date)) {    
+			$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+		} else {      
+			if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}      
+		}
+	}
+
+	if (!is_null($keyword)) {
+		if ($this->input->post('search_type') == 1) {
+			$this->db->where("(pat_patient.first_name LIKE '%" . $keyword . "%' OR pat_patient.last_name LIKE '%" . $keyword . "%')");
+		} else
+		if ($this->input->post('search_type') == 2) {
+			$this->db->where("(aprover_ua.first_name LIKE '%" . $keyword . "%' OR aprover_ua.last_name LIKE '%" . $keyword . "%')");
+		}
+	}
+
+	if (!is_null($visit_status_id) && $visit_status_id[0] != '') {
+		$this->db->where_in("vis_visit_log.visit_status_id", $visit_status_id);
+	}
+
+	if($this->input->post('agency_id')){
+		$this->db->where("pat_patient.agency_id", $this->input->post('agency_id'));
+	}
+
+	$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+
+	if (!is_null($order_by)) {
+		if (!is_null($desc))
+			$this->db->order_by($order_by, 'desc');
+		else
+			$this->db->order_by($order_by);
+	} else
+	$this->db->order_by('visit_date_time, visit_log_number');
+
+	$query = $this->db->get('vis_visit_log'); 
+//echo $this->db->last_query();exit;    
+	return $query->result();
+
+}
+
+function getLastByPatient ( $patient_id ) {
+
+	$this->db->select('*, DATE_ADD(visit_date_time, INTERVAL 7 DAY) as visit_date_time_plus_seven', FALSE);
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+
+	$this->db->where('soc_start_of_care.patient_id', $patient_id);
+
+	$this->db->order_by('visit_date_time', 'DESC');
+
+	$query = $this->db->get('vis_visit_log');
+
+	return $query->row();
+
+}
+
+function getByEpisodeDate($cms485_id, $date = null, $start_date=null, $end_date=null) {
+
+	$this->db->select('vis_visit_log.*, us_agy.*, visit_description, tab_parameters.*, visit_abbrev, cal_backcolor, cal_forecolor, vit_visit_type.visit_type_color, us1_user.first_name,us1_user.last_name, soc_start_of_care.estimated_soc_date');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	$this->db->join('cms_485', 'vis_visit_log.cms485_id = cms_485.cms485_id', 'LEFT');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id', 'LEFT');
+
+	$this->db->where('vis_visit_log.cms485_id', $cms485_id);
+
+	if (!is_null($date)) {
+		$this->db->where('visit_date_time >=', $date . ' 00:00:00');
+		$this->db->where('visit_date_time <=', $date . ' 23:59:59');
+	}else if (!is_null($start_date) AND !is_null($end_date)) {
+		$this->db->where('visit_date_time >=', $start_date . ' 00:00:00');
+		$this->db->where('visit_date_time <=', $end_date . ' 23:59:59');
+	}
+
+	$this->db->order_by('visit_date_time');
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->result();
+
+}
+
+/**
+ * Functon to get visits for section F of the 3625 form
+ *
+ */
+function getVisitsForSectionF($visit, $cms485_id, $visit_type_id=null, $start_date=null, $end_date=null) {
+
+	if (!isset($visit->co_invoice_id)) {
+		return array();
+	}
+
+	if (!$visit->co_invoice_id) {
+		return array();
+	}
+
+	// overwrite end date to unbroken exisint function call. beause we don't need this param.
+	// if (is_null($start_date)) {
+		$visit_timestamp = strtotime($visit->visit_date_time);
+		$start_date = date("Y",$visit_timestamp).'-'.date("m",$visit_timestamp).'-01';
+	// }
+
+	// overwrite end date to unbroken exisint function call. beause we don't need this param.
+	// if (is_null($end_date)) {
+		$visit_timestamp = strtotime($visit->visit_date_time);
+		// $end_date = date("Y-m-d",strtotime($visit->visit_date_time));
+		$end_date = date("Y",$visit_timestamp).'-'.date("m",$visit_timestamp).'-';
+	// }
+
+	$this->db->select('vis_visit_log.*, us_agy.*, visit_description, tab_parameters.*, visit_abbrev, cal_backcolor, cal_forecolor, vit_visit_type.visit_type_color, pat_patient.gov_program,us1_user.first_name,us1_user.last_name');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+
+	$this->db->where('vis_visit_log.cms485_id', $cms485_id);
+	
+	/*if (is_array($visit_type_id)) {
+		$this->db->where_in('vis_visit_log.visit_type_id', $visit_type_id);
+	} else {
+		$this->db->where('vis_visit_log.visit_type_id', $visit_type_id);
+	}*/
+
+	// consider only with Status=3 or 4 (Pending agency approval and Approved) 
+	// $this->db->where_in("vis_visit_log.visit_status_id", array(3, 4)); 
+	
+	$this->db->where('vis_visit_log.visit_type_id !=', 103);
+	$this->db->where('vis_visit_log.co_invoice_id', $visit->co_invoice_id);
+	$this->db->where("vis_visit_log.billable_YN", 1);
+
+	if (!is_null($end_date)) {
+		// $this->db->where('visit_date_time <=', $end_date . ' 23:59:59');
+		$this->db->like('visit_date_time', $end_date . '%');
+	}
+	if (!is_null($start_date)) {
+		$this->db->where('visit_date_time >=', $start_date . ' 00:00:00');
+	}
+
+	$this->db->order_by('visit_date_time');
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->result();
+
+}
+
+function getByEpisodeAndNumber($cms485_id, $visit_log_number) {
+
+	$this->db->select('vis_visit_log.*, tab_parameters.*, dis_discipline.*, vit_visit_type.*, approver_type_id, us1_user.first_name, us1_user.last_name, TIMEDIFF(visited_time_out, visited_time_in) as visit_duration');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	$this->db->where('cms485_id', $cms485_id);
+	$this->db->where("vis_visit_log.billable_YN", 1);
+	$this->db->where_in('visit_log_number', $visit_log_number);
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->result();
+
+}
+
+function getByEpisodeAndNumberArchive($cms485_id, $visit_log_number) {
+
+	$this->db->select('vis_visit_log_copy.*, tab_parameters.*, dis_discipline.*, vit_visit_type.*, approver_type_id, us1_user.first_name, us1_user.last_name, TIMEDIFF(visited_time_out, visited_time_in) as visit_duration');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log_copy.visit_type_id');
+	$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log_copy.visit_user_id');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('tab_parameters', 'vis_visit_log_copy.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	$this->db->where('cms485_id', $cms485_id);
+	$this->db->where("vis_visit_log_copy.billable_YN", 1);
+	$this->db->where_in('visit_log_number', $visit_log_number);
+
+	$query = $this->db->get('vis_visit_log_copy');
+	return $query->result();
+
+}
+
+function getApproverPending($agency_id, $status_id) {
+
+	$this->db->select("us_agy_id, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name", false);
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+	$this->db->join('us_agy', 'us_agy_id = user_approver');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+
+	$this->db->where("visit_status_id", $status_id);
+
+	$this->db->where("us_agy.agency_id", $agency_id);
+
+	$this->db->order_by('us_agy.first_name');
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->result2('us_agy_id', 'complete_name');
+
+}
+
+function getDisciplineQuantity($cms485_id) {
+
+	$this->db->select('count(discipline_id) as quantity, discipline_id');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+
+	$this->db->where("cms485_id", $cms485_id);
+	$this->db->where("vis_visit_log.billable_YN", 1);
+	$this->db->where_in("discipline_id", array (
+		2,
+		4,
+		6
+		)); // corresponde a la dis_discipline.discipline_id (SN , ST, OT)
+
+	$this->db->group_by('discipline_id');
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->result();
+
+}
+
+function getDisciplineQuantityArchive($cms485_id) {
+
+	$this->db->select('count(discipline_id) as quantity, discipline_id');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log_copy.visit_type_id');
+
+	$this->db->where("cms485_id", $cms485_id);
+	$this->db->where("vis_visit_log_copy.billable_YN", 1);
+	$this->db->where_in("discipline_id", array (
+		2,
+		4,
+		6
+		)); // corresponde a la dis_discipline.discipline_id (SN , ST, OT)
+
+	$this->db->group_by('discipline_id');
+
+	$query = $this->db->get('vis_visit_log_copy');
+	return $query->result();
+
+}
+
+
+function getOverflowVisits ( $soc_id, $soc_start_date, $soc_end_date, $cms485_id=null ) {
+	
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+
+	$this->db->where("cms_485.soc_id = " . $soc_id . " AND (DATE(visit_date_time) < '" . $soc_start_date . "' OR DATE(visit_date_time) > '" . $soc_end_date . "')");
+
+	if (!is_null($cms485_id) AND $cms485_id != "") {
+		$this->db->where('vis_visit_log.cms485_id', $cms485_id);
+	}
+	
+	$query = $this->db->get('vis_visit_log');
+	return $query->result();
+
+}
+
+function getByEpisodeDatePeriod($cms485_id, $from_date = null, $to_date = null, $visit_types=array(), $count=false) {
+
+	$this->db->select('vis_visit_log.*, us_agy.*, visit_description, tab_parameters.*, visit_abbrev, cal_backcolor, cal_forecolor, vit_visit_type.visit_type_color, us1_user.first_name, us1_user.last_name');
+
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	$this->db->where('cms485_id', $cms485_id);
+
+	if(is_array($visit_types) and count($visit_types) > 0){
+		$this->db->where_in('vis_visit_log.visit_type_id', $visit_types);
+	}
+
+	if (!is_null($from_date)) {
+		$this->db->where('visit_date_time >=', $from_date . ' 00:00:00');
+	}  
+	if (!is_null($to_date)) {
+		$this->db->where('visit_date_time <=', $to_date . ' 23:59:59');
+	}
+
+	$this->db->order_by('visit_date_time');
+
+	$query = $this->db->get('vis_visit_log');
+	if($count)
+		return $query->num_rows();
+	else
+		return $query->result();
+
+}
+function dayFree($cms485_id, $date) {
+
+	$this->db->where('visit_status_id', 1);
+	$this->db->where('cms485_id', $cms485_id);
+	$this->db->where('visit_date_time >=', $date . ' 00:00:00');
+	$this->db->where('visit_date_time <=', $date . ' 23:59:59');
+
+	$this->db->delete('vis_visit_log');
+
+}
+
+function dayFreeUser($visit_user_id, $date) {
+	$this->db->where('visit_status_id', 1);
+	$this->db->where('visit_user_id', $visit_user_id);
+	$this->db->where('visit_date_time >=', $date . ' 00:00:00');
+	$this->db->where('visit_date_time <=', $date . ' 23:59:59');
+
+	$this->db->delete('vis_visit_log');
+
+}
+
+function insert( $billable_yn, $visit_status_id = 1 ) {
+
+	$this->visit_status_id = $visit_status_id;
+	$this->billable_YN = ($billable_yn == 'Y' ? 1 : 0);
+
+	$this->db->insert('vis_visit_log', $this);
+	$this->visit_log_id = $this->db->insert_id();
+
+}
+
+function update($visit_log_id) {
+
+	$this->db->set('visit_type_id', $this->visit_type_id);
+	$this->db->set('visit_user_id', $this->visit_user_id);
+	$this->db->set('visit_date_time', $this->visit_date_time);
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateDateTime($visit_log_id, $visit_date_time) {
+
+	$this->db->set('visit_date_time', $visit_date_time);
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->update('vis_visit_log');
+
+}
+
+ function findCoRate($visit_log_id){
+    $this->db->select('vis_visit_log.*, dis_discipline.short_description as disc_name, pat_patient.gov_program, pat_patient.gov_program_waiver, pat_patient.pat_tab111_product_id, us_agy.agency_id, us_agy.mov, agy_agency.provides_altern_therapy, agy_agency.state_id, pta.deals_with_groups, pat_patient.is_a_group_pt, pat_patient.group_flat_rate');
+    $this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+    $this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+    $this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+    $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+    $this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+    $this->db->join('agy_agency ass pta', 'pta.agency_id = pat_patient.agency_id');
+
+    $this->db->where('visit_log_id', $visit_log_id);    
+    $query = $this->db->get('vis_visit_log');
+    $visit = $query->row();
+
+    $visit_type_id = $visit->visit_type_id;
+    $disc_name = $visit->disc_name;
+    $final_rate = false;
+
+    if ($visit->deals_with_groups == 1 AND $visit->is_a_group_pt == 1) {
+  		$final_rate = (float)$visit->group_flat_rate;
+  	} else {
+	  	// if ($visit->provides_altern_therapy OR in_array($visit->pat_tab111_product_id, array(2, 3, 4)) ) {
+	    if (in_array($visit->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+	      	if ($visit->state_id == 6) {
+	      		// for state COLORADO used default rate only from version 2
+	  			if ($visit->gov_program == 'PRIVATE') {
+	  				$info = $this->getCoRateDefaultV2($visit_log_id, 'PRIVATE');
+	  				if (!empty($info)) {
+	  					$final_rate = $info->rate1;
+	  				}
+	  			} else if ($visit->gov_program == 'Y-Waiver') {
+	  				$info = $this->getCoRateDefaultV2($visit_log_id, $visit->gov_program_waiver);
+	  				if (!empty($info)) {
+		  				if ($visit->mov == 'MA') {
+		  					$final_rate = $info->rate2;
+		  				} else {
+		  					$final_rate = $info->rate1;
+		  				}
+		  			}
+	  			}
+	  		
+	      	} else {
+		      	// echo "finding patient level rate<br>";
+		        $info = $this->getCoRatePatientLevel($visit_log_id); // test passed    
+		        if(empty($info)){
+		          // echo "finding agency level rate<br>";
+		            $info = $this->getCoRateAgencyLevel($visit_log_id); // test passed
+		            if(empty($info)){
+		              // echo "finding default rate<br>";
+		              $info = $this->getCoRateDefault($visit_log_id); // test passed
+		              if(empty($info)){
+		                // echo "No company rate defined in any level using false now<br>";
+		                $info = new stdClass;
+		                $info->private_rate = false;          
+		                $info->class_rate = false;          
+		                $info->yes_rate = false;          
+		              }
+		          }
+		        }
+
+		        if ($visit->gov_program == 'PRIVATE' OR $visit->gov_program == 'PRIVATE Agency') {
+		          // echo 'private_rate applied.<br>';
+		          $final_rate = isset($info->private_rate) ? (float)$info->private_rate : false;
+		        }else if ($visit->gov_program == 'CLASS') {
+		            // echo 'class_rate applied.<br>';
+		          $final_rate = isset($info->class_rate) ? (float)$info->class_rate : false;
+		        }else if ($visit->gov_program == 'Y-Waiver') {
+		              // echo 'yes_rate applied.<br>';
+		          $final_rate = isset($info->yes_rate) ? (float)$info->yes_rate : false;
+		        }
+	      	}
+	    } else {
+	      // echo "finding patient level rate<br>";
+	        $info = $this->getCoRatePatientLevel($visit_log_id); // test passed    
+	        if(empty($info)){
+	          // echo "finding agency level rate<br>";
+	            $info = $this->getCoRateAgencyLevel($visit_log_id); // test passed
+	            if(empty($info)){
+	                // echo "finding default rate<br>";
+	                $info = $this->getCoRateDefault($visit_log_id); // test passed
+	                if(empty($info)){
+	                  // echo "No company rate defined in any level using false now<br>";
+	                  $info = new stdClass;
+	                  $info->company_rate = false;          
+	                  $info->PTA_or_COTA_rate = false;          
+	                }
+	            }
+
+	            if(!isset($info->company_rate)){
+	              $info->company_rate = false;
+	              $info->PTA_or_COTA_rate = false;
+	            }
+	      }
+
+	      $final_rate = (float)($info->company_rate);
+	      if($visit_type_id==12 OR $visit_type_id==42){      
+	        if($info->PTA_or_COTA_rate > 0 AND in_array($disc_name, array('PTA','OTA','COTA')))
+	          $final_rate = (float)($info->PTA_or_COTA_rate);
+	      }
+	    }
+  	}
+
+
+    return $final_rate;
+  }
+
+
+function updateStatus($visit_log_id, $visit_status_id) {
+	$this->db->select('vis_visit_log.*, dis_discipline.short_description as disc_name, pat_patient.gov_program, pat_patient.gov_program_waiver, pat_patient.pat_tab111_product_id, us_agy.agency_id, us_agy.mov, agy_agency.provides_altern_therapy, agy_agency.state_id, pta.deals_with_groups, pat_patient.is_a_group_pt, pat_patient.group_flat_rate');
+    $this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+    $this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+    $this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+    $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+    $this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+    $this->db->join('agy_agency as pta', 'pta.agency_id = pat_patient.agency_id');
+
+    $this->db->where('visit_log_id', $visit_log_id);    
+    $query = $this->db->get('vis_visit_log');
+    $visit = $query->row();
+
+	$visit_type_id = $visit->visit_type_id;
+	$disc_name = $visit->disc_name;
+
+
+	$this->db->set('visit_status_id', $visit_status_id);
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->update('vis_visit_log');
+	$this->visit_status_id = $visit_status_id;
+	if($visit_status_id==3){ 
+		$this->calculateBillingRate($visit_log_id, $visit);
+		
+		/*$final_rate = 0.00;
+      	
+      	if ($visit->deals_with_groups == 1 AND $visit->is_a_group_pt == 1) {
+      		$final_rate = (float)$visit->group_flat_rate;
+      		// do not need units calculation
+      		$this->db->set('co_sp_final_rate', $final_rate);
+      	} else {
+	      	// if ($visit->provides_altern_therapy OR in_array($visit->pat_tab111_product_id, array(2, 3, 4)) ) {
+	      	if (in_array($visit->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+
+	      		if ($visit->state_id == 6) {
+		      		// for state COLORADO used default rate only from version 2
+		  			if ($visit->gov_program == 'PRIVATE') {
+		  				$info = $this->getCoRateDefaultV2($visit_log_id, 'PRIVATE');
+		  				if (!empty($info)) {
+		  					$final_rate = isset($info->rate1) ? (float)$info->rate1 : 0.00;
+		  				}
+		  			} else if ($visit->gov_program == 'Y-Waiver') {
+		  				$info = $this->getCoRateDefaultV2($visit_log_id, $visit->gov_program_waiver);
+		  				if (!empty($info)) {
+			  				if ($visit->mov == 'MA') {
+		  						$final_rate = isset($info->rate2) ? (float)$info->rate2 : 0.00;
+			  				} else {
+		  						$final_rate = isset($info->rate1) ? (float)$info->rate1 : 0.00;
+			  				}
+			  			}
+		  			}
+		      	} else {
+		      		// echo "finding patient level rate<br>";
+				    $info = $this->getCoRatePatientLevel($visit_log_id); // test passed    
+				    if(empty($info)){
+				    	// echo "finding agency level rate<br>";
+				      	$info = $this->getCoRateAgencyLevel($visit_log_id); // test passed
+				      	if(empty($info)){
+					      	// echo "finding default rate<br>";
+					        $info = $this->getCoRateDefault($visit_log_id); // test passed
+					        if(empty($info)){
+					        	// echo "No company rate defined in any level using 0.00 now<br>";
+					        	$info = new stdClass;
+					        	$info->private_rate = 0.00;          
+					        	$info->class_rate = 0.00;          
+					        	$info->yes_rate = 0.00;          
+					        }
+				    	}
+				    }
+
+				    if ($visit->gov_program == 'PRIVATE' OR $visit->gov_program == 'PRIVATE Agency') {
+			        	// echo 'private_rate applied.<br>';
+			        	$final_rate = isset($info->private_rate) ? (float)$info->private_rate : 0.00;
+					}else if ($visit->gov_program == 'CLASS') {
+			        	// echo 'class_rate applied.<br>';
+						$final_rate = isset($info->class_rate) ? (float)$info->class_rate : 0.00;
+					}else if ($visit->gov_program == 'Y-Waiver') {
+			        	// echo 'yes_rate applied.<br>';
+						$final_rate = isset($info->yes_rate) ? (float)$info->yes_rate : 0.00;
+					}
+		      	}
+
+			} else {
+				// echo "finding patient level rate<br>";
+			    $info = $this->getCoRatePatientLevel($visit_log_id); // test passed    
+			    if(empty($info)){
+			    	// echo "finding agency level rate<br>";
+			      	$info = $this->getCoRateAgencyLevel($visit_log_id); // test passed
+			      	if(empty($info)){
+				      	// echo "finding default rate<br>";
+				        $info = $this->getCoRateDefault($visit_log_id); // test passed
+				        if(empty($info)){
+				        	// echo "No company rate defined in any level using 0.00 now<br>";
+				        	$info = new stdClass;
+				        	$info->company_rate = 0.00;          
+				        	$info->PTA_or_COTA_rate = 0.00;          
+				        	$info->waiver_rate = 0.00;          
+				        }
+			    	}
+
+				    if(!isset($info->company_rate)){
+						$info->company_rate = 0.00;
+						$info->PTA_or_COTA_rate = 0.00;
+						$info->waiver_rate = 0.00;
+					}
+				}
+
+				$final_rate = (float)($info->company_rate);
+
+				if($visit_type_id==12 OR $visit_type_id==42){      
+					if($info->PTA_or_COTA_rate > 0 AND in_array($disc_name, array('PTA','OTA','COTA')))
+						$final_rate = (float)($info->PTA_or_COTA_rate);
+				}
+
+				if ($visit->gov_program == 'Waiver') {
+					// When patient gov program is 'Waiver' it definately from contractor with LOB = 2 (Long term care)
+					// So we need to use waiver rate here
+					$final_rate = (float)($info->waiver_rate);
+				}
+			}
+			
+			$this->db->set('co_final_rate', $final_rate);
+      	}
+
+		// lock the record prevent visit modify by user
+		$this->db->set('locked', 1);
+
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->update('vis_visit_log');*/
+
+	}else if($visit_status_id==8){ 
+		$this->db->set('co_billing_confirmed', 1);
+
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->update('vis_visit_log');
+
+			// when tasks are "sent for approval" they should be copied to the vis_visit_log_copy table
+		$this->db->query("REPLACE INTO vis_visit_log_copy SELECT * FROM `vis_visit_log` WHERE visit_log_id = {$visit_log_id}");
+	}else if($visit_status_id==5){ 
+		// Unlock the record enable visit modify by user
+		$this->db->set('locked', 0);
+
+		$this->db->set('sent_to_approve_date', null);	      
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->update('vis_visit_log');	    
+	}
+}
+
+function calculateBillingRate($visit_log_id, $visit=null) {
+	if (is_null($visit)) {
+		$this->db->select('vis_visit_log.*, dis_discipline.short_description as disc_name, pat_patient.gov_program, pat_patient.gov_program_waiver, pat_patient.pat_tab111_product_id, us_agy.agency_id, us_agy.mov, agy_agency.provides_altern_therapy, agy_agency.state_id, pta.deals_with_groups, pat_patient.is_a_group_pt, pat_patient.group_flat_rate');
+	    $this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+	    $this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	    $this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');    
+	    $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	    $this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+	    $this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+	    $this->db->join('agy_agency as pta', 'pta.agency_id = pat_patient.agency_id');
+
+	    $this->db->where('visit_log_id', $visit_log_id);    
+	    $query = $this->db->get('vis_visit_log');
+	    $visit = $query->row();
+	}
+
+	if (!is_null($visit->co_sp_final_rate)) {
+		return $visit->co_sp_final_rate;
+	}
+
+	$visit_type_id = $visit->visit_type_id;
+	$disc_name = $visit->disc_name;
+
+	$final_rate = 0.00;
+      	
+  	if ($visit->deals_with_groups == 1 AND $visit->is_a_group_pt == 1) {
+  		$final_rate = (float)$visit->group_flat_rate;
+  		// do not need units calculation
+  		$this->db->set('co_sp_final_rate', $final_rate);
+  	} else {
+      	// if ($visit->provides_altern_therapy OR in_array($visit->pat_tab111_product_id, array(2, 3, 4)) ) {
+      	if (in_array($visit->visit_type_id, array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119))) {
+
+      		if ($visit->state_id == 6) {
+	      		// for state COLORADO used default rate only from version 2
+	  			if ($visit->gov_program == 'PRIVATE') {
+	  				$info = $this->getCoRateDefaultV2($visit_log_id, 'PRIVATE');
+	  				if (!empty($info)) {
+	  					$final_rate = isset($info->rate1) ? (float)$info->rate1 : 0.00;
+	  				}
+	  			} else if ($visit->gov_program == 'Y-Waiver') {
+	  				$info = $this->getCoRateDefaultV2($visit_log_id, $visit->gov_program_waiver);
+	  				if (!empty($info)) {
+		  				if ($visit->mov == 'MA') {
+	  						$final_rate = isset($info->rate2) ? (float)$info->rate2 : 0.00;
+		  				} else {
+	  						$final_rate = isset($info->rate1) ? (float)$info->rate1 : 0.00;
+		  				}
+		  			}
+	  			}
+	      	} else {
+	      		// echo "finding patient level rate<br>";
+			    $info = $this->getCoRatePatientLevel($visit_log_id); // test passed    
+			    if(empty($info)){
+			    	// echo "finding agency level rate<br>";
+			      	$info = $this->getCoRateAgencyLevel($visit_log_id); // test passed
+			      	if(empty($info)){
+				      	// echo "finding default rate<br>";
+				        $info = $this->getCoRateDefault($visit_log_id); // test passed
+				        if(empty($info)){
+				        	// echo "No company rate defined in any level using 0.00 now<br>";
+				        	$info = new stdClass;
+				        	$info->private_rate = 0.00;          
+				        	$info->class_rate = 0.00;          
+				        	$info->yes_rate = 0.00;          
+				        }
+			    	}
+			    }
+
+			    if ($visit->gov_program == 'PRIVATE' OR $visit->gov_program == 'PRIVATE Agency') {
+		        	// echo 'private_rate applied.<br>';
+		        	$final_rate = isset($info->private_rate) ? (float)$info->private_rate : 0.00;
+				}else if ($visit->gov_program == 'CLASS') {
+		        	// echo 'class_rate applied.<br>';
+					$final_rate = isset($info->class_rate) ? (float)$info->class_rate : 0.00;
+				}else if ($visit->gov_program == 'Y-Waiver') {
+		        	// echo 'yes_rate applied.<br>';
+					$final_rate = isset($info->yes_rate) ? (float)$info->yes_rate : 0.00;
+				}
+	      	}
+
+		} else {
+			// echo "finding patient level rate<br>";
+		    $info = $this->getCoRatePatientLevel($visit_log_id); // test passed    
+		    if(empty($info)){
+		    	// echo "finding agency level rate<br>";
+		      	$info = $this->getCoRateAgencyLevel($visit_log_id); // test passed
+		      	if(empty($info)){
+			      	// echo "finding default rate<br>";
+			        $info = $this->getCoRateDefault($visit_log_id); // test passed
+			        if(empty($info)){
+			        	// echo "No company rate defined in any level using 0.00 now<br>";
+			        	$info = new stdClass;
+			        	$info->company_rate = 0.00;          
+			        	$info->PTA_or_COTA_rate = 0.00;          
+			        	$info->waiver_rate = 0.00;          
+			        }
+		    	}
+
+			    if(!isset($info->company_rate)){
+					$info->company_rate = 0.00;
+					$info->PTA_or_COTA_rate = 0.00;
+					$info->waiver_rate = 0.00;
+				}
+			}
+
+			$final_rate = (float)($info->company_rate);
+
+			if($visit_type_id==12 OR $visit_type_id==42){      
+				if($info->PTA_or_COTA_rate > 0 AND in_array($disc_name, array('PTA','OTA','COTA')))
+					$final_rate = (float)($info->PTA_or_COTA_rate);
+			}
+
+			if ($visit->gov_program == 'Waiver') {
+				// When patient gov program is 'Waiver' it definately from contractor with LOB = 2 (Long term care)
+				// So we need to use waiver rate here
+				$final_rate = (float)($info->waiver_rate);
+			}
+		}
+		
+		$this->db->set('co_final_rate', $final_rate);
+  	}
+
+	// lock the record prevent visit modify by user
+	$this->db->set('locked', 1);
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->update('vis_visit_log');
+
+	// var_dump($final_rate);
+	return $final_rate;
+}
+
+function updateVisited($visit_log_id) {
+
+	$this->db->set('visit_date_time', $this->visit_date_time);
+	$this->db->set('visited_time_in', $this->visited_time_in);
+	$this->db->set('visited_time_out', $this->visited_time_out);
+	$this->db->set('visited_date', $this->visited_date);
+	$this->db->set('mileage', $this->mileage);
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateComments($visit_log_id, $comments) {
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->set('comments', $comments);
+
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateSentTo($visit_log_id, $sent_date=null) {
+
+	if (is_null($sent_date)) {
+		$sent_date = standard_date(now(), 'MYSQL');
+	}
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->set('sent_to_agency_date', $sent_date);
+
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateSentToPhysician($visit_log_id, $sent_date=null) {
+
+	if (is_null($sent_date)) {
+		$sent_date = standard_date(now(), 'MYSQL');
+	}
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->set('sent_to_physician_date', $sent_date);
+
+	$this->db->update('vis_visit_log');
+
+}
+function updateUserComments($visit_log_id, $user_comments) {
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->set('user_comments', $user_comments);
+
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateUserApprover($visit_log_id, $us_agy_id) {
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->set('user_approver', $us_agy_id);
+
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateRates($visit_log_id, $visit_rate, $mileage_rate) {
+	$this->db->select('visit_type_id');
+
+	$this->db->where('visit_log_id', $visit_log_id);		
+	$query = $this->db->get('vis_visit_log');
+	$visit_type_id = $query->row()->visit_type_id;
+
+	if($visit_type_id==320)
+		$visit_rate = 0.00;
+
+	$this->db->set('visit_amount', $visit_rate);
+	$this->db->set('mileage_amount', 'mileage * ' . ($mileage_rate == '' || $mileage_rate == null ? 0 : $mileage_rate), FALSE);
+
+	$this->db->where('visit_log_id', $visit_log_id);
+
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateConfirm($visit_log_id, $confirm) {
+
+	$this->db->where('visit_log_id', $visit_log_id);
+	$this->db->set('payroll_confirmed', $confirm);
+
+	$this->db->update('vis_visit_log');
+
+}
+
+function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+
+	$this->db->where($where, $visit_log_id);
+	$this->db->set($attribute, $value);
+
+	$this->db->update('vis_visit_log');
+
+}
+
+function delete($visit_log_id) {
+	$this->db->select('locked');
+	$this->db->where('visit_log_id', $visit_log_id);
+	$query = $this->db->get('vis_visit_log');
+	$visit =  $query->row();
+	if ($visit->locked != 1) {
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->delete('vis_visit_log');
+	}
+
+}
+
+function report1($agency_id) {
+
+	$this->db->join('cms_485', 'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient', 'soc_start_of_care.patient_id = pat_patient.patient_id');
+	$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+
+	$this->db->where('agency_id', $agency_id);
+
+	if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+		$this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME'));
+	}
+
+	if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+		$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME'));
+	}
+
+	if ($tab_013_status = $this->input->post('tab_013_status')) {
+		$this->db->where("tab_013_status", $tab_013_status);
+	}
+
+	$this->db->orderby("visit_date_time", "DESC");
+
+	$query = $this->db->get('vis_visit_log');
+	return $query->result();
+
+}
+
+function report_001 ( $agency_id, $agency_type='A' ) 		{	
+	$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+	$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		//
+	$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('pat_contractor', 'pat_contractor.patient_id = pat_patient.patient_id');
+	$this->db->join('payroll_batch', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id', 'LEFT');
+	$this->db->join('payroll_batch_process', 'payroll_batch.payroll_batch_process_number = payroll_batch_process.payroll_batch_process_number', 'LEFT');
+	$this->db->join('company_invoice', 'vis_visit_log.co_invoice_id = company_invoice.invoice_id', 'LEFT');
+
+	if($agency_type=='C')
+		$this->db->where('us_agy.agency_id', $agency_id );
+	else
+		$this->db->where('pat_patient.agency_id', $agency_id );
+
+		//$this->db->where('agency_id', $agency_id );
+	$this->db->select('*, us_agy.user_id , pat_patient.first_name , pat_patient.last_name , us_agy.user_id AS user_id_visit, dis_discipline.short_description AS short_discipline, company_invoice.invoice_no as co_invoice_no, payroll_batch_process.payroll_batch_process_date') ;
+
+	if($this->input->post('agency_id')){
+		$this->db->where("pat_patient.agency_id", $this->input->post('agency_id'));
+	}
+	
+		// 
+	if( $this->input->post('modal') == 0 )
+	{
+		$today	= date('Y-m-d');
+		$last	= $today ;
+
+			// 1 SEMANA
+		$last	= ( $this->input->post('periodo') == '1s' )	? $this->add_date( $today , 0 , 0 , -7 ) : $last ;
+			// 2 SEMANA
+		$last	= ( $this->input->post('periodo') == '2s' )	? $this->add_date( $today , 0 , 0 , -14 ) : $last ;
+			// 1 MES
+		$last	= ( $this->input->post('periodo') == '1m' )	? $this->add_date( $today , 0 , -1 , 0 ) : $last ;
+			// 3 MESES
+		$last	= ( $this->input->post('periodo') == '3m' )	? $this->add_date( $today , 0 , -3 , 0 ) : $last ;
+
+			// ADD WHERE PERIODO
+		$this->db->where("visit_date_time >=", $last );
+			// ESTA ESTÃ� POR DEFAULT CURRENT (2)
+		$this->db->where("tab_013_status", 2 );
+			// VISIT TYPE ID
+		if ( $this->input->post('chk_mvo') == 1 ) 
+		{
+			$this->db->where("vis_visit_log.visit_type_id", 320 );
+		}
+	}
+		// BUSQUEDA MODAL
+	else
+	{
+			// STATUS
+		if( $this->input->post('status_id') != 0 )
+		{	
+			if($agency_type=='A'){
+				$this->db->where("tab_013_status", (int) $this->input->post('status_id') );	
+			} else if($agency_type=='C'){
+				$this->db->where("pat_contractor.company_patient_status", (int) $this->input->post('status_id') );	
+			}
+		}
+			// PATIENT NAME
+		if( strlen( trim( $this->input->post('patient_name') ) ) > 0 )
+		{	
+			$patient_name = trim( $this->input->post('patient_name') ) ;
+				//
+			$this->db->where("( pat_patient.first_name LIKE '%".addslashes( $patient_name )."%' OR pat_patient.last_name LIKE '%".addslashes( $patient_name )."%' )" );	
+				/*
+				$patient_name = explode(' ' , trim( $this->input->post('patient_name') ) );
+				if( count( $patient_name ) >= 2  )
+				{
+					$this->db->like("pat_patient.first_name", "%".$patient_name[0]."%" );	
+					$this->db->like("pat_patient.last_name", "%".$patient_name[1]."%" );
+				}
+				else
+				{
+					$this->db->where("pat_patient.last_name", "%".$patient_name[0]."%" );
+				}
+				*/
+				
+			}
+			// CLINITIAN
+			$visit_user_id	= preg_replace("/[^0-9]/", "", $this->input->post('clinitian') );
+			if( strlen( $visit_user_id ) > 0 ) 
+			{	
+				$this->db->where("vis_visit_log.visit_user_id", ''.( (int) $visit_user_id ) );	
+			}
+			// VISIT TYPE 
+			$visit_type = $this->input->post('visit_type');
+			$visit_type_str = $this->input->post('visit_type_str');
+			
+			if(strlen($visit_type_str) > 0) {
+				$visit_type_array = explode(',', $visit_type_str);
+				if(!empty($visit_type_array)) {
+					$this->db->where_in("vis_visit_log.visit_type_id", $visit_type_array);	
+				}		
+			} else {
+				if (is_array($visit_type) AND !empty($visit_type)) {
+					$this->db->where_in("vis_visit_log.visit_type_id", $visit_type);	
+				} else if ($visit_type != ''){
+					$this->db->where("vis_visit_log.visit_type_id", $visit_type );	
+				}
+			}
+			
+					
+			// VISIT STATUS
+			if ( $this->input->post('visit_status') != 0 ) 
+			{
+				$this->db->where("vis_visit_log.visit_status_id", (int) $this->input->post('visit_status') );
+			}		
+			
+			//DATE FROM
+			if ($date_from = $this->input->post('date_from')) 
+			{
+				$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($date_from), 'MYSQL_NOTIME') . ' 00:00:00');
+			}
+			//DATE TO
+			if ($date_to = $this->input->post('date_to')) 
+			{
+				$this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($date_to), 'MYSQL_NOTIME') . ' 23:59:59');
+			}
+
+			//Cert DATE FROM
+			if ($date_cert_from = $this->input->post('date_cert_from')) 
+			{
+				$this->db->where("cms_485.episode_start_date >=", standard_date(human_to_unix($date_cert_from), 'MYSQL_NOTIME') . ' 00:00:00');
+			}
+			//Cert DATE TO
+			if ($date_cert_to = $this->input->post('date_cert_to')) 
+			{
+				$this->db->where("cms_485.episode_start_date <=", standard_date(human_to_unix($date_cert_to), 'MYSQL_NOTIME') . ' 23:59:59');
+			}
+		}
+		
+		// ORDER BY
+		$this->db->group_by("vis_visit_log.visit_log_id");
+		$this->db->orderby("visit_date_time", "ASC");
+		
+		$query = $this->db->get('vis_visit_log');
+		//
+		//print( $this->db->last_query() );
+		
+		return $query->result();
+		
+	}
+	
+
+function get_doctororder ( $agency_id, $agency_type='A', $do_status = null, $doctorid=null, $orderby = "visit_date_time", $order="ASC" ) {	
+	$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+	$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	//
+	$this->db->join('us_agy AS doctor' ,	"doctor.us_agy_id = IF(vis_visit_log.phys_user_id != '', vis_visit_log.phys_user_id, cms_485.phys_user_id)" , 'left');
+	$this->db->join('us1_user as user_doctor' ,	'user_doctor.user_id = doctor.user_id ' , 'left');
+	$this->db->join('agy_agency as doctor_office' ,	'doctor_office.agency_id = doctor.agency_id ' , 'left');
+	$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+	$this->db->join('us1_user as vus1', 'vus1.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+	$this->db->join('doc_doctor_order_2', 'doc_doctor_order_2.visit_log_id = vis_visit_log.visit_log_id','LEFT');
+	$this->db->join('doc_doctor_order_type', 'doc_doctor_order_2.order_type_id = doc_doctor_order_type.doc_doctor_order_type_id','LEFT');
+
+	if($agency_type=='C')
+		$this->db->where('us_agy.agency_id', $agency_id );
+	else
+		$this->db->where('pat_patient.agency_id', $agency_id );
+
+	if (!is_null($do_status)) {
+		if (is_array($do_status)) {
+			$this->db->where_in("vis_visit_log.tab_023_doctor_order_status", $do_status );
+		} else{
+			$this->db->where('vis_visit_log.tab_023_doctor_order_status', $do_status );		
+		}
+	}
+
+	if (!is_null($doctorid)) {
+		$this->db->where('doctor.us_agy_id', $doctorid );		
+	}
+
+	if($this->input->post('doctorname') != ''){
+      $this->db->like("CONCAT_WS(' ', user_doctor.last_name, user_doctor.first_name)", $this->input->post('doctorname'));
+    }
+
+		//$this->db->where('agency_id', $agency_id );
+	$this->db->select("*, vis_visit_log.visit_log_id, doctor.us_agy_id as doctorid, us_agy.user_id, CONCAT_WS(' ', user_doctor.first_name, user_doctor.last_name) as doctor_name, doctor_office.phone_primary as doctor_phone, doctor_office.agency_email as doctor_email, user_doctor.tab105_delivery_pref ,pat_patient.first_name, pat_patient.last_name, us_agy.user_id AS user_id_visit, vus1.first_name as visit_user_first_name, vus1.last_name as visit_user_last_name, dis_discipline.short_description AS short_discipline");
+
+	// STATUS
+	if( $this->input->post('status_id') != 0 )
+	{	
+		$this->db->where("tab_013_status", (int) $this->input->post('status_id') );	
+	}
+	// VISIT STATUS
+	if ( $this->input->post('visit_status') != 0 ) 
+	{
+		$this->db->where("vis_visit_log.visit_status_id", (int) $this->input->post('visit_status') );
+	}		
+	// Only visit type 200 (Doctor Order)
+	$this->db->where_in("vis_visit_log.visit_type_id", array(200) );
+		
+	// Filter by From date
+	if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+		$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+	}
+	// Filter By To date
+	if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+		$this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+	}  
+
+	// Search By Keyword (will look to patient, ordered by and agency name)
+	if($this->input->post('keyword') != ''){
+		$this->db->where("( CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name)  LIKE '%".$this->input->post('keyword')."%'
+			OR  CONCAT_WS(' ', vus1.first_name, vus1.last_name)  LIKE '%".$this->input->post('keyword')."%'
+			OR  CONCAT_WS(' ', user_doctor.last_name, user_doctor.first_name)  LIKE '%".$this->input->post('keyword')."%'
+			 )");
+    }
+
+	// ORDER BY
+	/*$this->db->orderby("doc_doctor_order_2.do_date", "ASC");*/
+	// $this->db->orderby("visit_date_time", "ASC");
+	$this->db->orderby($orderby, $order);
+	
+	$query = $this->db->get('vis_visit_log');
+	//
+	//print( $this->db->last_query() );
+	
+	return $query->result();
+		
+}
+	
+function get_doctororder_bypatient ( $patient_id, $do_status = null ) {	
+	$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+	$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	//
+	$this->db->join('us_agy AS doctor' ,	"doctor.us_agy_id = IF(vis_visit_log.phys_user_id != '', vis_visit_log.phys_user_id, cms_485.phys_user_id)" , 'left');
+	$this->db->join('us1_user as doctor_us1', 'doctor_us1.user_id = doctor.user_id', 'LEFT');
+	$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+	$this->db->join('doc_doctor_order_2', 'doc_doctor_order_2.visit_log_id = vis_visit_log.visit_log_id','LEFT');
+	$this->db->join('doc_doctor_order_type', 'doc_doctor_order_2.order_type_id = doc_doctor_order_type.doc_doctor_order_type_id','LEFT');
+	
+	$this->db->where('pat_patient.patient_id', $patient_id );
+
+	if ($order_date_time_from = $this->input->post('order_date_time_from')) {
+    	$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($order_date_time_from), 'MYSQL_NOTIME')." 00:00:00");
+    }
+    
+    if ($order_date_time_to = $this->input->post('order_date_time_to')) {
+      $this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($order_date_time_to), 'MYSQL_NOTIME')." 23:59:59");
+    }
+
+    if($this->input->post('keyword') != ''){
+		$this->db->where("( LOWER(CONCAT_WS(' ', us1_user.last_name, us1_user.first_name))  LIKE '%".$this->input->post('keyword')."%'
+			OR  LOWER(doc_doctor_order_2.do_description)  LIKE '%".$this->input->post('keyword')."%' )");
+    }
+
+	if (!is_null($do_status)) {
+		$this->db->where('vis_visit_log.tab_023_doctor_order_status', $do_status );		
+	}
+
+	if($this->input->post('doctorname') != ''){
+      $this->db->like("CONCAT_WS(' ', doctor_us1.last_name, doctor_us1.first_name)", $this->input->post('doctorname'));
+    }
+
+    if($this->input->post('phys_user_id') != ''){
+      $this->db->where("doctor.us_agy_id", $this->input->post('phys_user_id'));
+    }
+
+		//$this->db->where('agency_id', $agency_id );
+	$this->db->select("*, vis_visit_log.visit_log_id, doctor.us_agy_id as doctorid, us_agy.user_id, CONCAT_WS(' ', doctor_us1.first_name, doctor_us1.last_name) as doctor_name, pat_patient.first_name, pat_patient.last_name, us_agy.user_id AS user_id_visit, us1_user.first_name as visit_user_first_name, us1_user.last_name as visit_user_last_name, dis_discipline.short_description AS short_discipline");
+
+	// STATUS
+	if( $this->input->post('status_id') != 0 )
+	{	
+		$this->db->where("tab_013_status", (int) $this->input->post('status_id') );	
+	}
+	// VISIT STATUS
+	if ( $this->input->post('visit_status') != 0 ) 
+	{
+		$this->db->where("vis_visit_log.visit_status_id", (int) $this->input->post('visit_status') );
+	}		
+	// Only visit type 200
+	$this->db->where_in("vis_visit_log.visit_type_id", array(200) );
+		
+	// ORDER BY
+	// $this->db->orderby("doc_doctor_order_2.do_date", "DESC");
+	$this->db->orderby("visit_date_time", "DESC");
+	
+	$query = $this->db->get('vis_visit_log');
+	//
+	// print( $this->db->last_query() );
+	
+	return $query->result();
+		
+}
+
+function get_my_doctororders( $user_id, $agency_type = "A", $do_status = null ) {	
+	$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+	$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	//
+	$this->db->join('us_agy AS doctor' ,	"doctor.us_agy_id = IF(vis_visit_log.phys_user_id != '', vis_visit_log.phys_user_id, cms_485.phys_user_id)" , 'left');
+	$this->db->join('us1_user as doctor_us1', 'doctor_us1.user_id = doctor.user_id', 'LEFT');
+	$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+	$this->db->join('doc_doctor_order_2', 'doc_doctor_order_2.visit_log_id = vis_visit_log.visit_log_id','LEFT');
+	$this->db->join('doc_doctor_order_type', 'doc_doctor_order_2.order_type_id = doc_doctor_order_type.doc_doctor_order_type_id','LEFT');
+
+	if ($agency_type == "A") {
+		$this->db->join('agy_agency', 		 'agy_agency.agency_id = us_agy.agency_id');
+	}else{
+		$this->db->join('agy_agency', 		 'agy_agency.agency_id = pat_patient.agency_id');
+	}
+
+	$this->db->where('visit_user_id', $user_id);
+	if (!is_null($do_status)) {
+		$this->db->where('vis_visit_log.tab_023_doctor_order_status', $do_status );		
+	}
+	if($this->input->post('doctorname') != ''){
+      $this->db->like("CONCAT_WS(' ', doctor_us1.last_name, doctor_us1.first_name)", $this->input->post('doctorname'));
+    }
+    if($this->input->post('phys_user_id') != ''){
+      $this->db->where("doctor.us_agy_id", $this->input->post('phys_user_id'));
+    }
+	//$this->db->where('agency_id', $agency_id );
+	$this->db->select("*, vis_visit_log.visit_log_id, doctor.us_agy_id as doctorid, us_agy.user_id, CONCAT_WS(' ', doctor_us1.first_name, doctor_us1.last_name) as doctor_name, pat_patient.first_name, pat_patient.last_name, us_agy.user_id AS user_id_visit, us1_user.first_name as visit_user_first_name, us1_user.last_name as visit_user_last_name, dis_discipline.short_description AS short_discipline, us_agy.agency_id as contractor_id, pat_patient.agency_id as agency_id");
+
+	// Search By Keyword (will look to patient, ordered by and agency name)
+	if($this->input->post('keyword') != ''){
+		$this->db->where("( CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name)  LIKE '%".$this->input->post('keyword')."%'
+			OR  CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)  LIKE '%".$this->input->post('keyword')."%'
+			OR  agy_agency.agency_name  LIKE '%".$this->input->post('keyword')."%' )");
+    }
+    // Search By Patient Name
+	if($this->input->post('patient_name') != ''){
+      $this->db->like("CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name)", $this->input->post('patient_name'));
+    }
+    // Search By Ordered By Name
+    if($this->input->post('ordered_by') != ''){
+      $this->db->like("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)", $this->input->post('ordered_by'));
+    }
+    // Search By Agency Name
+    if($this->input->post('agency_name') != ''){
+      	// $this->db->like("CONCAT_WS(' ', agy_agency.agency_name)", $this->input->post('agency_name'));
+    	$this->db->like("agy_agency.agency_name", $this->input->post('agency_name'));
+    }
+
+
+
+	// STATUS
+	if( $this->input->post('status_id') != 0 )
+	{	
+		$this->db->where("tab_013_status", (int) $this->input->post('status_id') );	
+	}
+	// VISIT STATUS
+	if ( $this->input->post('visit_status_id') != 0 ) 
+	{
+		$this->db->where("vis_visit_log.visit_status_id", (int) $this->input->post('visit_status_id') );
+	}		
+	// Only visit type 200
+	$this->db->where_in("vis_visit_log.visit_type_id", array(200) );
+
+	// Filter by From date
+	if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+		$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+	}
+	// Filter By To date
+	if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+		$this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+	}   
+	
+	// ORDER BY
+	// $this->db->orderby("doc_doctor_order_2.do_date", "DESC");
+	$this->db->orderby("visit_date_time", "DESC");
+	$query = $this->db->get('vis_visit_log');
+	//
+	// print( $this->db->last_query() );
+	return $query->result();
+}
+function get_all_doctororders( $agency_id, $us_agy_id=null, $agency_type = "A", $do_status = null, $sentto = null) {	
+	$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+	$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+	$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+	$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+	$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+	//
+	$this->db->join('us_agy AS doctor' ,	"doctor.us_agy_id = IF(vis_visit_log.phys_user_id != '', vis_visit_log.phys_user_id, cms_485.phys_user_id)" , 'left');
+	$this->db->join('us1_user as doctor_us1', 'doctor_us1.user_id = doctor.user_id', 'LEFT');
+	$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+	$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+	$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+	$this->db->join('doc_doctor_order_2', 'doc_doctor_order_2.visit_log_id = vis_visit_log.visit_log_id','LEFT');
+	$this->db->join('doc_doctor_order_type', 'doc_doctor_order_2.order_type_id = doc_doctor_order_type.doc_doctor_order_type_id','LEFT');
+
+	if($sentto == 'yes') {
+		$this->db->where("vis_visit_log.sent_to_agency_date IS NOT NULL");
+	} else if ($sentto == 'no') {
+		$this->db->where("(vis_visit_log.sent_to_agency_date IS NULL && vis_visit_log.visit_status_id NOT IN (1, 2))");
+	}
+
+	if ($agency_type == "A") {
+		$this->db->where("pat_patient.agency_id", $agency_id);
+		$this->db->join('agy_agency', 		 'agy_agency.agency_id = us_agy.agency_id');
+	}else{
+		$this->db->join('agy_agency', 		 'agy_agency.agency_id = pat_patient.agency_id');
+		$this->db->join('pat_contractor', 		 'pat_contractor.patient_id = pat_patient.patient_id');
+		$this->db->join('agency_contractor', 	 'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id');
+		$this->db->where("agency_contractor.contractor_id", $agency_id);
+	}
+	if (!is_null($us_agy_id)) {
+		$this->db->join('ppr_patient_provider', 'ppr_patient_provider.patient_id = pat_patient.patient_id');
+		$this->db->where("ppr_patient_provider.user_id", $us_agy_id);
+	}
+	if (!is_null($do_status)) {
+		$this->db->where('vis_visit_log.tab_023_doctor_order_status', $do_status );		
+	}
+	// Search By Keyword (will look to patient, ordered by and agency name)
+	if($this->input->post('keyword') != ''){
+		$this->db->where("( CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name)  LIKE '%".$this->input->post('keyword')."%'
+			OR  CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)  LIKE '%".$this->input->post('keyword')."%'
+			OR  agy_agency.agency_name  LIKE '%".$this->input->post('keyword')."%' )");
+    }
+	// Search By Patient Name
+	if($this->input->post('patient_name') != ''){
+      $this->db->like("CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name)", $this->input->post('patient_name'));
+    }
+    // Search By Ordered By Name
+    if($this->input->post('ordered_by') != ''){
+      $this->db->like("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)", $this->input->post('ordered_by'));
+    }
+    // Search By Agency Name
+    if($this->input->post('agency_name') != ''){
+      	// $this->db->like("CONCAT_WS(' ', agy_agency.agency_name)", $this->input->post('agency_name'));
+    	$this->db->like("agy_agency.agency_name", $this->input->post('agency_name'));
+    }
+    // Search By Doctor Name
+    if($this->input->post('doctorname') != ''){
+      $this->db->like("CONCAT_WS(' ', doctor_us1.last_name, doctor_us1.first_name)", $this->input->post('doctorname'));
+    }
+    // Search By Physician Name
+    if($this->input->post('phys_user_id') != ''){
+      $this->db->where("doctor.us_agy_id", $this->input->post('phys_user_id'));
+    }
+
+	$this->db->select("*, vis_visit_log.visit_log_id, doctor.us_agy_id as doctorid, us_agy.user_id, CONCAT_WS(' ', doctor_us1.first_name, doctor_us1.last_name) as doctor_name, pat_patient.first_name, pat_patient.last_name, us_agy.user_id AS user_id_visit, us1_user.first_name as visit_user_first_name, us1_user.last_name as visit_user_last_name, dis_discipline.short_description AS short_discipline, us_agy.agency_id as contractor_id, pat_patient.agency_id as agency_id");
+
+	// STATUS
+	if( $this->input->post('status_id') != 0 )
+	{	
+		$this->db->where("tab_013_status", (int) $this->input->post('status_id') );	
+	}
+	// VISIT STATUS
+	if ( $this->input->post('visit_status_id') != 0 ) 
+	{
+		$this->db->where("vis_visit_log.visit_status_id", (int) $this->input->post('visit_status_id') );
+	}		
+	// Only visit type 200
+	$this->db->where_in("vis_visit_log.visit_type_id", array(200) );
+
+	// Filter by From date
+	if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+		$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+	}
+	// Filter By To date
+	if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+		$this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+	}      
+		
+	// ORDER BY
+	// $this->db->orderby("doc_doctor_order_2.do_date", "DESC");
+	$this->db->orderby("visit_date_time", "DESC");
+	
+	$query = $this->db->get('vis_visit_log');
+	//
+	//print( $this->db->last_query() );
+	
+	return $query->result();
+		
+}
+
+	function add_date( $fecha_original , $anios , $meses , $dias )
+	{
+		$dia			= substr($fecha_original,8,2);
+		$mes			= substr($fecha_original,5,2);
+		$anio			= substr($fecha_original,0,4);
+		//
+		return ( date ("Y-m-d", mktime (0,0,0,$mes + $meses ,$dia + $dias ,$anio + $anios )) );
+	}
+
+
+	function getVisitLogByRFA($agency_id, $rfaTab)         {    
+		$this->db->join('cms_485',               'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',           'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('vit_visit_type',       'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+       // $this->db->join('tab_parameters',         'vis_visit_log.visit_status_id = tab_parameters.tab_value ', 'LEFT');
+		$this->db->join('tab_parameters',   'vis_visit_log.RFA_tab_97_status = tab_parameters.tab_value AND tab_parameters.tab_type = 97', 'LEFT');
+
+		$this->db->join('us_agy' ,    'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+		$this->db->where('pat_patient.agency_id', $agency_id );
+
+		$this->db->where('vis_visit_log.visit_type_id >', '300'); 
+		$this->db->where('vis_visit_log.visit_type_id <', '310');
+		$this->db->where('vis_visit_log.RFA_export_id', null);
+
+		$this->db->where('vis_visit_log.RFA_tab_97_status', $rfaTab );
+        //$this->db->where('agency_id', $agency_id );
+		$this->db->select('*, us_agy.user_id ,tab_parameters.tab_description as tab_status_description , pat_patient.first_name , pat_patient.last_name , us_agy.user_id AS user_id_visit') ;
+
+
+        // ORDER BY
+		$this->db->orderby("visit_date_time", "ASC");
+
+		$query = $this->db->get('vis_visit_log');
+        //
+        //fpre( $this->db->last_query() );
+
+		return $query->result();
+
+	}
+	function getVisitLogByVisitlogid($visitlogid)         {    
+
+		$this->db->join('cms_485',               'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',           'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('vit_visit_type',       'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		$this->db->join('tab_parameters',   'vis_visit_log.RFA_tab_97_status = tab_parameters.tab_value AND tab_parameters.tab_type = 97', 'LEFT');
+
+		$this->db->join('us_agy' ,    'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+
+		$this->db->where('vis_visit_log.visit_log_id', $visitlogid );
+		$this->db->select('*, us_agy.user_id ,tab_parameters.tab_description as tab_status_description , pat_patient.first_name , pat_patient.last_name , us_agy.user_id AS user_id_visit') ;
+
+
+
+		$query = $this->db->get('vis_visit_log');
+        //
+        //fpre( $this->db->last_query() );
+
+		return $query->result();
+
+	}
+
+	/**
+	 * validate that the visit date of the visit is not greater than inlastDays (default 29) days from the date of the last evaluation  in SOC
+	 * @param int, $soc_id
+	 * @param datetime, $visit_date_time
+	 * @param int, $inlastDays , default 29 days
+	 * @return bolean, true when validation passed (last eval found), false when validation failed (last eval not found)
+	 */
+	function validateLastEvaluationDate ( $soc_id, $visit_date_time , $inlastDays = 29 ) {
+		
+		// $this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt_pt_evaluation.visit_log_id');
+		
+		$dateToStartValidate = date("Y-m-d", mktime(0,0,0, date("m",strtotime($visit_date_time)), date("d",strtotime($visit_date_time))-$inlastDays, date("Y",strtotime($visit_date_time)) ));
+
+		$this->db->where('visit_date_time >=', $dateToStartValidate);
+		$this->db->where('visit_date_time <', $visit_date_time);
+		
+		// $this->db->where('visit_status_id != 1');
+		// $this->db->where('visit_type_id != 320');
+		$this->db->where_in('visit_type_id', array(10, 40, 60,));
+		
+		// to validate to soc level
+		$this->db->join('cms_485',   'cms_485.soc_id = '.$soc_id);
+		$this->db->where('vis_visit_log.cms485_id=cms_485.cms485_id');
+		$this->db->group_by('vis_visit_log.visit_log_id');
+
+		// to validate to episode level
+		// $this->db->where('cms485_id', $episode_id);
+		
+		
+		// $this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vis_visit_log'); 
+		
+		if ($query->num_rows() > 0) {
+			return true;
+		} else {
+			return false;
+		}		
+	}
+
+	//added by ksa to update the signature name in the vis_visit_log table
+	function updateSignature($visit_log_id, $signature) {
+	
+		$this->db->select("visit_status_id");
+		$this->db->where('visit_log_id', $visit_log_id);
+		$query = $this->db->get('vis_visit_log');
+		$row = $query->row();
+
+
+		$this->db->set('signature', $signature);
+		if ($row->visit_status_id == 1) {
+			$this->db->set('visit_status_id', 2);
+		}
+		
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->update('vis_visit_log');
+
+		// Update visit_log_copy table also so that signature are not lost by restore process 
+		$this->db->set('signature', $signature);	
+		$this->db->where('visit_log_id', $visit_log_id);
+		$this->db->update('vis_visit_log_copy');	
+	}	
+
+	function get_patients_user_info( $agency_id=null, $agency_type='A' )
+	{
+		
+		$sql = "
+		SELECT 
+			vis_visit_log.visit_user_id ,
+			pat_patient.patient_id ,
+			pat_patient.address as pat_address, 
+			pat_patient.first_name as pat_first_name, 
+			pat_patient.last_name as pat_last_name ,
+			us1_user.first_name as usr_first_name, 
+			us1_user.last_name usr_last_name ,
+			us1_user.address usr_address ,
+			us1_user.geo_lat ,
+			us1_user.geo_lng ,
+			us_agy.user_id ,
+			us_agy.us_agy_id ,
+			us_agy.estimated_monthly_patients ,
+			dis_discipline.short_description
+		FROM 
+			(vis_visit_log)
+		JOIN 
+			cms_485 ON cms_485.cms485_id = vis_visit_log.cms485_id
+		JOIN 
+			soc_start_of_care ON soc_start_of_care.soc_id = cms_485.soc_id
+		JOIN 
+			pat_patient ON soc_start_of_care.patient_id = pat_patient.patient_id
+		JOIN 
+			vit_visit_type ON vit_visit_type.visit_type_id = vis_visit_log.visit_type_id
+		LEFT JOIN 
+			us_agy ON us_agy.us_agy_id = vis_visit_log.visit_user_id
+		LEFT JOIN
+			dis_discipline
+		ON
+			dis_discipline.discipline_id = us_agy.discipline_id
+		LEFT JOIN
+			us1_user
+		ON
+			us1_user.user_id = us_agy.user_id
+    	";
+    	if(!is_null($agency_id)){   
+    		if($agency_type=='C'){
+    			$sql .=" WHERE 
+    			us_agy.agency_id = '".$agency_id."'
+    			";      
+    		}else{
+    			$sql .=" WHERE 
+    			pat_patient.agency_id = '".$agency_id."'
+    			";
+    		}
+
+    	}
+    	$sql .= " ORDER BY us1_user.last_name ASC";
+		$query	= $this->db->query( $sql );
+		return $query->result();
+	}
+	
+	
+
+	function nonbilable($agency_id, $agency_type = 'A', $visit_type_list = array()) {
+		$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+			//
+		$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+		$this->db->join('agy_agency' ,	'agy_agency.agency_id = pat_patient.agency_id ' , 'left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+		$this->db->join('sent_email_instance_details', "vis_visit_log.visit_log_id = sent_email_instance_details.source_id && sent_email_instance_details.source_name = 'NONB'", 'LEFT');
+		// $this->db->join('pat_contractor', 'pat_contractor.patient_id = pat_patient.patient_id');
+		$this->db->join('payroll_batch', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id', 'LEFT');
+		$this->db->join('payroll_batch_process', 'payroll_batch.payroll_batch_process_number = payroll_batch_process.payroll_batch_process_number', 'LEFT');
+		$this->db->join('company_invoice', 'vis_visit_log.co_invoice_id = company_invoice.invoice_id', 'LEFT');
+	
+		if($agency_type=='C')
+			$this->db->where('us_agy.agency_id', $agency_id );
+		else
+			$this->db->where('pat_patient.agency_id', $agency_id );
+	
+		$this->db->where('vit_visit_type.billable', 0); // only get records where billable=0
+		//$this->db->where('agency_id', $agency_id );
+		$this->db->select('*, 
+			us_agy.user_id, 
+			agy_agency.agency_name, 
+			pat_patient.first_name, 
+			pat_patient.last_name, 
+			us1_user.first_name as clinician_first_name, 
+			us1_user.last_name as clinician_last_name, 
+			us_agy.user_id AS user_id_visit, 
+			dis_discipline.short_description AS short_discipline, 
+			company_invoice.invoice_no as co_invoice_no, 
+			payroll_batch_process.payroll_batch_process_date, 
+			vis_visit_log.visit_log_id,
+			count(sent_email_instance_details.id) as sent_email_log_count'
+		);
+		//echo "<pre>"; print_r($_POST); echo "</pre>";
+		if($this->input->post('agency_id')){
+			$this->db->where("pat_patient.agency_id", $this->input->post('agency_id'));
+		}
+		//echo "exclude_send_date is " . $this->input->post('exclude_send_date');
+		if($this->input->post('exclude_send_date') && $this->input->post('exclude_send_date') == 1){
+			$this->db->where("(vis_visit_log.sent_to_agency_date IS NULL OR vis_visit_log.sent_to_agency_date = '0000-00-00 00:00:00')");
+		} else if($this->input->post('exclude_send_date') == 0){
+		} else {
+			$this->db->where("(vis_visit_log.sent_to_agency_date IS NULL OR vis_visit_log.sent_to_agency_date = '0000-00-00 00:00:00')");
+		}
+		// PATIENT NAME
+		if( strlen( trim( $this->input->post('keyword') ) ) > 0 ) {	
+			$keyword = trim( $this->input->post('keyword') ) ;
+			$this->db->where("( pat_patient.first_name LIKE '%".addslashes( $keyword )."%' OR pat_patient.last_name LIKE '%".addslashes( $keyword )."%'  OR us1_user.first_name LIKE '%".addslashes( $keyword )."%'  OR us1_user.last_name LIKE '%".addslashes( $keyword )."%' )" );	
+		
+		}
+		// CLINITIAN
+		$visit_user_id	= preg_replace("/[^0-9]/", "", $this->input->post('clinitian') );
+		if( strlen( $visit_user_id ) > 0 ) {	
+			$this->db->where("vis_visit_log.visit_user_id", ''.( (int) $visit_user_id ) );	
+		}
+		// VISIT TYPE 
+		$visit_type = $this->input->post('visit_type');
+		if (is_array($visit_type) && !empty($visit_type)){
+			$this->db->where_in("vis_visit_log.visit_type_id", $visit_type );
+		} else {
+			if($visit_type == '') {
+				if(!empty($visit_type_list)) {
+					$visit_type_list_keys = array_keys($visit_type_list);
+					$this->db->where_in("vis_visit_log.visit_type_id", $visit_type_list_keys);
+				}
+			} else {
+				$this->db->where("vis_visit_log.visit_type_id", $visit_type );	
+			}
+		}
+		
+				
+		// VISIT STATUS
+		if ( $this->input->post('visit_status') != 0 ) {
+			$this->db->where("vis_visit_log.visit_status_id", (int) $this->input->post('visit_status') );
+		}		
+		
+		//DATE FROM
+		if ($date_from = $this->input->post('date_from')) {
+			$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($date_from), 'MYSQL_NOTIME') . ' 00:00:00');
+		} else {
+			//$date_from = date('m-d-Y', strtotime('-90 days'));
+			//$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($date_from), 'MYSQL_NOTIME') . ' 00:00:00');
+		}
+		//DATE TO
+		if ($date_to = $this->input->post('date_to')) {
+			$this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($date_to), 'MYSQL_NOTIME') . ' 23:59:59');
+		}	
+		// ORDER BY
+		$this->db->group_by('vis_visit_log.visit_log_id'); 
+		$this->db->orderby("visit_date_time", "ASC");
+		$query = $this->db->get('vis_visit_log');
+		//print( $this->db->last_query() );
+		
+		return $query->result();	
+	}
+
+	function getPatientLevelVisitConflictsByAgency($agency_id, $contractor_id) {
+	    $agency_id_where = "";
+	    if (is_array($agency_id)) {
+	      $agency_id_where .= 'pat_patient.agency_id IN ('.implode(",", $agency_id).')';
+	    } else {
+	      $agency_id_where .= 'pat_patient.agency_id = '.$agency_id;
+	    }
+
+	    $SQL = "SELECT * 
+	        FROM (
+	          SELECT visit_log_id, pat_patient.patient_id, vit_visit_type.visit_type_id, vit_visit_type.visit_description, CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name) as patient_name, agy_agency.agency_name, visit_date_time AS visit_start_date_time, if( visited_time_out IS NOT NULL , CONCAT( DATE_FORMAT( visit_date_time, '%Y-%m-%d' ) , ' ', visited_time_out ) , visit_date_time + INTERVAL 45
+	          MINUTE ) AS visit_end_date_time
+	          FROM vis_visit_log
+	          JOIN 
+	            cms_485 ON cms_485.cms485_id = vis_visit_log.cms485_id
+	          JOIN 
+	            soc_start_of_care ON soc_start_of_care.soc_id = cms_485.soc_id
+	          JOIN 
+	            pat_patient ON soc_start_of_care.patient_id = pat_patient.patient_id AND $agency_id_where
+	          JOIN 
+	            vit_visit_type ON vit_visit_type.visit_type_id = vis_visit_log.visit_type_id
+	          JOIN 
+	            agy_agency ON agy_agency.agency_id = pat_patient.agency_id
+	          JOIN 
+	            agency_contractor ON agency_contractor.agency_id = pat_patient.agency_id AND agency_contractor.contractor_id = $contractor_id
+	          JOIN pat_contractor ON pat_contractor.patient_id = pat_patient.patient_id AND pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+
+	          WHERE vis_visit_log.visit_type_id NOT IN ( 200, 350, 400 )
+	          AND vis_visit_log.billable_YN = 1
+	          
+	          ORDER BY visit_start_date_time
+	          ) AS visit_schedules_1
+
+	        INNER JOIN  (
+	          SELECT visit_log_id AS visit_log_id2, pat_patient.patient_id AS patient_id2, vit_visit_type.visit_type_id AS visit_type_id2, vit_visit_type.visit_description AS visit_description2, CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name) as patient_name2, agy_agency.agency_name AS agency_name2, visit_date_time AS visit_start_date_time2, if( visited_time_out IS NOT NULL , CONCAT( DATE_FORMAT( visit_date_time, '%Y-%m-%d' ) , ' ', visited_time_out ) , visit_date_time + INTERVAL 45
+	          MINUTE ) AS visit_end_date_time2
+	          FROM vis_visit_log
+	          JOIN 
+	            cms_485 ON cms_485.cms485_id = vis_visit_log.cms485_id
+	          JOIN 
+	            soc_start_of_care ON soc_start_of_care.soc_id = cms_485.soc_id
+	          JOIN 
+	            pat_patient ON soc_start_of_care.patient_id = pat_patient.patient_id AND $agency_id_where
+	          JOIN 
+	            vit_visit_type ON vit_visit_type.visit_type_id = vis_visit_log.visit_type_id
+	          JOIN 
+	            agy_agency ON agy_agency.agency_id = pat_patient.agency_id
+	          JOIN 
+	            agency_contractor ON agency_contractor.agency_id = pat_patient.agency_id AND agency_contractor.contractor_id = $contractor_id
+	          JOIN pat_contractor ON pat_contractor.patient_id = pat_patient.patient_id AND pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+
+	          WHERE vis_visit_log.visit_type_id NOT IN ( 200, 350, 400 )
+	          AND vis_visit_log.billable_YN = 1
+	          ORDER BY visit_start_date_time2
+	        ) AS join_tbl 
+	          ON visit_schedules_1.visit_log_id != join_tbl.visit_log_id2 AND visit_schedules_1.patient_id = join_tbl.patient_id2 AND (
+	            visit_schedules_1.visit_start_date_time < join_tbl.visit_end_date_time2 AND visit_schedules_1.visit_end_date_time > join_tbl.visit_start_date_time2
+	          )
+	        GROUP BY visit_schedules_1.visit_log_id";
+
+	    $query  = $this->db->query( $SQL );
+	    return $query->result();
+  	}
+
+	function getUserLevelVisitConflictsByAgency($agency_id, $contractor_id) {
+	    $agency_id_where = "";
+	    if (is_array($agency_id)) {
+	      $agency_id_where .= 'pat_patient.agency_id IN ('.implode(",", $agency_id).')';
+	    } else {
+	      $agency_id_where .= 'pat_patient.agency_id = '.$agency_id;
+	    }
+
+	    $SQL = "SELECT * 
+	        FROM (
+	          SELECT visit_log_id, vis_visit_log.visit_user_id, vit_visit_type.visit_type_id, vit_visit_type.visit_description, CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name) as patient_name, agy_agency.agency_name, visit_date_time AS visit_start_date_time, if( visited_time_out IS NOT NULL , CONCAT( DATE_FORMAT( visit_date_time, '%Y-%m-%d' ) , ' ', visited_time_out ) , visit_date_time + INTERVAL 45
+	          MINUTE ) AS visit_end_date_time
+	          FROM vis_visit_log
+	          JOIN 
+	            cms_485 ON cms_485.cms485_id = vis_visit_log.cms485_id
+	          JOIN 
+	            soc_start_of_care ON soc_start_of_care.soc_id = cms_485.soc_id
+	          JOIN 
+	            pat_patient ON soc_start_of_care.patient_id = pat_patient.patient_id AND $agency_id_where
+	          JOIN 
+	            vit_visit_type ON vit_visit_type.visit_type_id = vis_visit_log.visit_type_id
+	          JOIN 
+	            agy_agency ON agy_agency.agency_id = pat_patient.agency_id
+	          JOIN 
+	            agency_contractor ON agency_contractor.agency_id = pat_patient.agency_id AND agency_contractor.contractor_id = $contractor_id
+	          JOIN pat_contractor ON pat_contractor.patient_id = pat_patient.patient_id AND pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+
+	          WHERE vis_visit_log.visit_type_id NOT IN ( 200, 350, 400 )
+	          AND vis_visit_log.billable_YN = 1
+	          
+	          ORDER BY visit_start_date_time
+	          ) AS visit_schedules_1
+
+	        INNER JOIN  (
+	          SELECT visit_log_id AS visit_log_id2, vis_visit_log.visit_user_id AS visit_user_id2, pat_patient.patient_id AS patient_id2, vit_visit_type.visit_type_id AS visit_type_id2, vit_visit_type.visit_description AS visit_description2, CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name) as patient_name2, agy_agency.agency_name AS agency_name2, visit_date_time AS visit_start_date_time2, if( visited_time_out IS NOT NULL , CONCAT( DATE_FORMAT( visit_date_time, '%Y-%m-%d' ) , ' ', visited_time_out ) , visit_date_time + INTERVAL 45
+	          MINUTE ) AS visit_end_date_time2
+	          FROM vis_visit_log
+	          JOIN 
+	            cms_485 ON cms_485.cms485_id = vis_visit_log.cms485_id
+	          JOIN 
+	            soc_start_of_care ON soc_start_of_care.soc_id = cms_485.soc_id
+	          JOIN 
+	            pat_patient ON soc_start_of_care.patient_id = pat_patient.patient_id AND $agency_id_where
+	          JOIN 
+	            vit_visit_type ON vit_visit_type.visit_type_id = vis_visit_log.visit_type_id
+	          JOIN 
+	            agy_agency ON agy_agency.agency_id = pat_patient.agency_id
+	          JOIN 
+	            agency_contractor ON agency_contractor.agency_id = pat_patient.agency_id AND agency_contractor.contractor_id = $contractor_id
+	          JOIN pat_contractor ON pat_contractor.patient_id = pat_patient.patient_id AND pat_contractor.agency_contractor_id = agency_contractor.agency_contractor_id
+
+	          WHERE vis_visit_log.visit_type_id NOT IN ( 200, 350, 400 )
+	          AND vis_visit_log.billable_YN = 1
+	          
+	          ORDER BY visit_start_date_time2
+	        ) AS join_tbl 
+	          ON visit_schedules_1.visit_log_id != join_tbl.visit_log_id2 AND visit_schedules_1.visit_user_id = join_tbl.visit_user_id2 AND
+	            (
+	              visit_schedules_1.visit_start_date_time < join_tbl.visit_end_date_time2 AND visit_schedules_1.visit_end_date_time > join_tbl.visit_start_date_time2
+	            )
+	        GROUP BY visit_schedules_1.visit_log_id";
+
+	    $query  = $this->db->query( $SQL );
+	    return $query->result();
+		}
+		
+		function get_all_events( $agency_id, $us_agy_id=null, $agency_type = "A", $do_status = null, $sentto = null) {	
+			$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+			$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+			$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+			$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+			$this->db->join('vt_events', 'vt_events.visit_log_id = vis_visit_log.visit_log_id', 'LEFT');
+			$this->db->join('tab_parameters', 		'vt_events.tab106_event_type = tab_parameters.tab_value AND tab_parameters.tab_type = 106', 'LEFT');
+			//
+			$this->db->join('us_agy AS doctor' ,	"doctor.us_agy_id = IF(vis_visit_log.phys_user_id != '', vis_visit_log.phys_user_id, cms_485.phys_user_id)" , 'left');
+			$this->db->join('us1_user as doctor_us1', 'doctor_us1.user_id = doctor.user_id', 'LEFT');
+			$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+			$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+			$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		
+			if($sentto == 'yes') {
+				$this->db->where("vis_visit_log.sent_to_agency_date IS NOT NULL");
+			} else if ($sentto == 'no') {
+				$this->db->where("(vis_visit_log.sent_to_agency_date IS NULL && vis_visit_log.visit_status_id NOT IN (1, 2))");
+			}
+
+			if ($agency_type == "A") {
+				$this->db->where("pat_patient.agency_id", $agency_id);
+				$this->db->join('agy_agency', 		 'agy_agency.agency_id = us_agy.agency_id');
+			}else{
+				$this->db->join('agy_agency', 		 'agy_agency.agency_id = pat_patient.agency_id');
+				$this->db->join('pat_contractor', 		 'pat_contractor.patient_id = pat_patient.patient_id');
+				$this->db->join('agency_contractor', 	 'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id');
+				$this->db->where("agency_contractor.contractor_id", $agency_id);
+			}
+			if (!is_null($us_agy_id)) {
+				$this->db->join('ppr_patient_provider', 'ppr_patient_provider.patient_id = pat_patient.patient_id');
+				$this->db->where("ppr_patient_provider.user_id", $us_agy_id);
+			}
+			if (!is_null($do_status)) {
+				$this->db->where('vis_visit_log.tab_023_doctor_order_status', $do_status );		
+			}
+			// Search By Keyword (will look to patient, ordered by and agency name)
+			if($this->input->post('keyword') != ''){
+				$this->db->where("( CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name)  LIKE '%".$this->input->post('keyword')."%'
+					OR  CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)  LIKE '%".$this->input->post('keyword')."%'
+					OR  agy_agency.agency_name  LIKE '%".$this->input->post('keyword')."%' 
+					OR vt_events.event_comment  LIKE '%".$this->input->post('keyword')."%' )");
+				}
+			// Search By Patient Name
+			if($this->input->post('patient_name') != ''){
+					$this->db->like("CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name)", $this->input->post('patient_name'));
+				}
+				// Search By Ordered By Name
+				if($this->input->post('ordered_by') != ''){
+					$this->db->like("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)", $this->input->post('ordered_by'));
+				}
+				// Search By Agency Name
+				if($this->input->post('agency_name') != ''){
+						// $this->db->like("CONCAT_WS(' ', agy_agency.agency_name)", $this->input->post('agency_name'));
+					$this->db->like("agy_agency.agency_name", $this->input->post('agency_name'));
+				}
+				
+				// Search By Physician Name
+				if($this->input->post('phys_user_id') != ''){
+					$this->db->where("doctor.us_agy_id", $this->input->post('phys_user_id'));
+				}
+
+			$this->db->select("*, vis_visit_log.visit_log_id, doctor.us_agy_id as doctorid, us_agy.user_id, CONCAT_WS(' ', doctor_us1.first_name, doctor_us1.last_name) as doctor_name, pat_patient.first_name, pat_patient.last_name, us_agy.user_id AS user_id_visit, us1_user.first_name as visit_user_first_name, us1_user.last_name as visit_user_last_name, dis_discipline.short_description AS short_discipline, us_agy.agency_id as contractor_id, pat_patient.agency_id as agency_id");
+
+			// STATUS
+			if( $this->input->post('status_id') != 0 )
+			{	
+				$this->db->where("tab_013_status", (int) $this->input->post('status_id') );	
+			}
+			// VISIT STATUS
+			if ( $this->input->post('tab106_event_type') != 0 ) 
+			{
+				$this->db->where("vt_events.tab106_event_type", (int) $this->input->post('tab106_event_type') );
+			}		
+			// Only visit type 400
+			$this->db->where_in("vis_visit_log.visit_type_id", array(400) );
+
+			// Filter by From date
+			/*if ($visit_date_ini = $this->input->post('visit_date_ini')) {
+				$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')." 00:00:00");
+			}*/
+			// Filter By To date
+			/*if ($visit_date_fin = $this->input->post('visit_date_fin')) {
+				$this->db->where("vis_visit_log.visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME')." 23:59:59");
+			}*/
+
+			// filter by to event created
+			if ($event_created = $this->input->post('event_created_list')) {
+				$this->db->where("vis_visit_log.visit_date_time >=", standard_date(human_to_unix($event_created), 'MYSQL_NOTIME')." 23:59:59");
+			}
+
+			if ($due_in = $this->input->post('due_in')) {
+				if(standard_date(human_to_unix($due_in), 'MYSQL_NOTIME') === date('Y-m-d')) {
+					$this->db->where("vt_events.action_date =", standard_date(human_to_unix($due_in), 'MYSQL_NOTIME'));
+				} else {
+					$this->db->where("vt_events.action_date >=", standard_date(human_to_unix($due_in), 'MYSQL_NOTIME'));
+				}
+			}
+			// filter by event status
+			if ($event_status = $this->input->post('event_status')) {
+				$this->db->where('vt_events.event_status', $event_status);
+			}
+			// filter by action required?
+			if ($action_required = $this->input->post('action_required')) {
+				$this->db->where('vt_events.action_required', $action_required);
+			}
+				
+			$this->db->orderby("visit_date_time", "DESC");
+			
+			$query = $this->db->get('vis_visit_log');
+			return $query->result();
+				
+		}
+
+
+	function visits_outside_cert ( $agency_id, $agency_type='A', $after_cert_end_date=null ) {	
+		$this->db->select('*, us_agy.user_id , pat_patient.first_name as pat_first_name , pat_patient.last_name as pat_last_name , us_agy.user_id AS user_id_visit, dis_discipline.short_description AS short_discipline, agy_agency.agency_name') ;
+
+
+		$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		$this->db->join('pat_patient',   		'soc_start_of_care.patient_id = pat_patient.patient_id');
+		$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id');
+		$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+			//
+		$this->db->join('us_agy' ,	'us_agy.us_agy_id = vis_visit_log.visit_user_id ' , 'left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id');
+		// $this->db->join('pat_contractor', 'pat_contractor.patient_id = pat_patient.patient_id');
+		// $this->db->join('payroll_batch', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id', 'LEFT');
+		// $this->db->join('payroll_batch_process', 'payroll_batch.payroll_batch_process_number = payroll_batch_process.payroll_batch_process_number', 'LEFT');
+		// $this->db->join('company_invoice', 'vis_visit_log.co_invoice_id = company_invoice.invoice_id', 'LEFT');
+
+		// when type contractor, then agency id is patient id is passed
+		if($agency_type=='C') {
+			$this->db->where('pat_patient.agency_id', $agency_id );
+			$this->db->join('agy_agency' ,	'agy_agency.agency_id = pat_patient.agency_id' , 'left');
+		}
+		else {
+			$this->db->where('us_agy.agency_id', $agency_id );
+			$this->db->join('agy_agency' ,	'agy_agency.agency_id = us_agy.agency_id' , 'left');
+		}
+
+		// if($this->input->post('agency_id')){
+		// 	$this->db->where("pat_patient.agency_id", $this->input->post('agency_id'));
+		// }
+		
+		if ($after_cert_end_date) {
+			$this->db->where("cms_485.episode_end_date > ", $after_cert_end_date);
+		}
+
+		$this->db->where("vis_visit_log.visit_date_time NOT BETWEEN cms_485.episode_start_date AND cms_485.episode_end_date");
+
+		// ORDER BY
+		$this->db->group_by("vis_visit_log.visit_log_id");
+		$this->db->orderby("visit_date_time", "ASC");
+		
+		$query = $this->db->get('vis_visit_log');
+		//
+		// print( $this->db->last_query() );
+		
+		return $query->result();
+		
+	}
+
+	function getNext($visit_date, $episode_id, $visit_type_ids=array(), $status_ids=array(), $user_id=null)
+    {
+
+        if (!is_null($user_id)) $this->db->where('visit_user_id', $user_id);
+        
+        $this->db->where('visit_date_time >', $visit_date);
+        $this->db->where('cms485_id', $episode_id);
+        
+        if (!empty($visit_type_ids)) {
+        	$this->db->where_in('visit_type_id', $visit_type_ids);
+        }
+
+        if (!empty($status_ids)) {
+        	$this->db->where_in('visit_status_id', $status_ids);
+        }
+
+        $this->db->order_by('visit_date_time');
+
+        $query = $this->db->get('vis_visit_log');
+
+        return $query->result();
+
+    }
+}

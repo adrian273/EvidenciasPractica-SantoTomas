@@ -1,0 +1,35 @@
+<table border="0" height="100%" width="60%" cellpadding="2" cellspacing="0" align="left">
+  <tr>
+    <td><b>Employee/User:</b> </td><td>{$first_name} {$last_name} </td>
+    <td><b>Nbr of Payable Visits:</b> </td><td>{$visit_count} </td>
+    <td></td><td></td>
+  </tr>
+  <tr>
+    <td><b>Process Date:</b> </td><td>{$payroll_batch_process_date|date_format:"%m-%d-%Y":""} </td>
+    <td><b>Period Date:</b> </td><td>{$payroll_batch_process_period_from|date_format:"%m-%d-%Y":""} - {$payroll_batch_process_period_end|date_format:"%m-%d-%Y":""} </td>
+    <td></td><td></td>
+  </tr>
+  <tr>
+    <!-- <td><b>Check Amount:</b> </td><td>$ {$sum_visit_amount + $sum_mileage_amount} </td> -->
+    <td><b>Payment Amount:</b> </td><td>$ {$sum_visit_amount + $sum_mileage_amount} </td>
+    <!-- <td><b>Check Date:</b></td><td>{$check_date|date_format:"%m-%d-%Y":""}</td> -->
+    <td><b>Payment Date:</b></td><td>{$check_date|date_format:"%m-%d-%Y":""}</td>
+    <td></td><td></td>
+  </tr>
+  <tr>
+    <td><b>Payroll Status:</b></td><td>
+            {if $payment_status eq 'paid'}Paid{elseif $payment_status eq 'not'}Not Paid{/if}</label>  
+    </td>
+    <td><b>Check Number:</b></td><td>{$check_no}</td>
+    <td></td><td></td>
+  </tr>
+  <tr>
+    <td><b>Notes:</b> </td><td colspan="3">{$notes}</td>
+    <td></td><td></td>
+  </tr>
+</table>
+<script type="text/javascript">
+function print ( payroll_batch_id ) {literal}{{/literal}
+    document.location = '{$index_url}payroll/history/printit/' + payroll_batch_id;
+{literal}}{/literal}  
+</script>

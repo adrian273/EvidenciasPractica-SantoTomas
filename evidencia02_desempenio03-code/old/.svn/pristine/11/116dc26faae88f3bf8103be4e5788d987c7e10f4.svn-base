@@ -1,0 +1,76 @@
+<?
+
+ class Patient extends MY_Controller {
+
+	function Patient () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "contractor/patient");
+		$this->tpl->assign('tab_page', true);
+		
+	}
+	
+	function add ( $agency_id ) {
+		
+		$this->tpl->assign('entity_id', $agency_id);
+		$this->tpl->assign('faction', 'add');
+		
+		$rules = array ('first_name'  	=> 'required',
+						'last_name'  	=> 'required',
+						'date_birth'  	=> 'required',
+						'soc_sec_nbr'  	=> 'valid_ssn',
+						'phone_cell'	=> 'valid_phone',
+						'phone_home'	=> 'valid_phone',
+						'fax'			=> 'valid_phone',
+						'email' 		=> 'valid_email',
+						'referral_time' => 'valid_time');
+						
+		$rules['date_birth'] = 'callback_validatepatient';
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->request->is_get()) {
+			$agency = $this->agencymdl->getByAgencyId($agency_id);
+			$this->tpl->assign('state_id', $agency->state_id);
+		}
+		
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Patient");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "contractor/add_patient");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			// creating patient
+			$this->assignPostData($this->patientmdl);
+			$this->patientmdl->tab_013_status = 1;
+			$this->patientmdl->insert($agency_id);
+			
+			// creating soc
+			$this->assignPostData($this->socmdl);
+			$referral_time_unix  = human_to_unix($this->input->post('referral_date') . " " . $this->input->post('referral_time')) + ($this->input->post('referral_time_m') == 'PM' ? 43200 : 0);
+			$this->socmdl->referral_date_time  = standard_date($referral_time_unix, 'MYSQL');
+			$this->socmdl->current_soc = 1;
+			$this->socmdl->insert($this->patientmdl->patient_id);
+			
+			// creating complementary patient information
+			$this->assignPostData($this->patientinsurancemdl);
+			$this->patientinsurancemdl->insert($this->patientmdl->patient_id, $this->getUsAgyId());
+			$this->patientpharmacymdl->insert($this->patientmdl->patient_id, $this->getUsAgyId());
+			$this->patientemergencymdl->insert($this->patientmdl->patient_id, $this->getUsAgyId());
+			
+			$agency_contractor = $this->agencycontractormdl->getByAgencyContractor($agency_id, $this->getAgencyId());
+			$this->patientcontractormdl->agency_contractor_id = $agency_contractor->agency_contractor_id;
+			$this->patientcontractormdl->insert($this->patientmdl->patient_id);
+			
+			
+			echo "<SCRIPT>parent.document.location = '" . $this->config->config['index_url'] . "patient/mypatient/edit/" . $this->patientmdl->patient_id . "'</SCRIPT>";
+			
+		}
+		
+	}
+	
+ }

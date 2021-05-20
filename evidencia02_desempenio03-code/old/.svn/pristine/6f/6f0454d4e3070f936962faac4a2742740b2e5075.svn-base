@@ -1,0 +1,99 @@
+<?php
+
+ class InvoiceOtherChargesMdl extends Model {
+
+    var $other_charge_id;
+    var $invoice_id;
+    var $service_date;
+    var $description;
+    var $quantity;
+    var $amount;
+    
+	function InvoiceOtherChargesMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getOtherAmount($invoice_id){
+		$this->db->select("SUM(amount) as total_amount");      
+		$this->db->where("invoice_id", $invoice_id);			
+		$query = $this->db->get('invoice_additional_charges');
+		$row = $query->row();	
+		return $row->total_amount;
+	}
+
+	function get ( $invoice_id=null ) {
+    	//$this->db->select("invoice_additional_charges.*, SUM(payment_amount) as total_payment");  
+    
+		if (!is_null($invoice_id)) {
+			$this->db->where("invoice_id", $invoice_id);			
+			//$this->db->group_by("invoice_id");			
+		}		
+		$query = $this->db->get('invoice_additional_charges');
+		return $query->result();		
+	}
+	
+	function getById ( $other_charge_id ) {
+		
+		$this->db->where("other_charge_id", $other_charge_id);
+		
+		$query = $this->db->get('invoice_additional_charges');
+		return $query->row();
+		
+	}
+
+	function insert ($invoice_id) {
+		
+		$this->invoice_id = $invoice_id;
+		$this->amount = round($this->amount, 2);
+		$this->db->insert("invoice_additional_charges", $this);
+		$this->other_charge_id = $this->db->insert_id();
+
+		// update company_invoice table
+    	$this->db->query("UPDATE company_invoice SET company_invoice.invoice_amount=company_invoice.invoice_amount+{$this->amount} WHERE company_invoice.invoice_id = {$invoice_id}");
+    
+	}
+	
+	function update ( $other_charge_id ) {
+		$prevCharge = $this->getById($other_charge_id);
+		if (empty($prevCharge)) {
+			return false;
+		}
+		$this->other_charge_id = $other_charge_id;
+		$this->amount = round($this->amount, 2);
+		$this->db->where("other_charge_id", $other_charge_id);
+		$this->db->update("invoice_additional_charges", $this);
+
+		// update company_invoice table
+    	$this->db->query("UPDATE company_invoice SET company_invoice.invoice_amount=company_invoice.invoice_amount-{$prevCharge->amount} WHERE company_invoice.invoice_id = {$prevCharge->invoice_id}");
+    	$this->db->query("UPDATE company_invoice SET company_invoice.invoice_amount=company_invoice.invoice_amount+{$this->amount} WHERE company_invoice.invoice_id = {$prevCharge->invoice_id}");
+	
+	}
+	
+  	function delete ( $other_charge_id ) {		
+    	$row = $this->getById($other_charge_id);
+	    if(!empty($row)){
+	      	// $invoice_id = $row->invoice_id;
+	  		$this->db->where('other_charge_id', $other_charge_id);
+	  		$this->db->delete('invoice_additional_charges'); 
+
+	  		$this->db->query("UPDATE company_invoice SET company_invoice.invoice_amount=company_invoice.invoice_amount-{$row->amount} WHERE company_invoice.invoice_id = {$row->invoice_id}");
+	    }
+	}
+
+  	/*function updateFlex($other_charge_id, $set, $where = 'other_charge_id') {
+    	$row = $this->getById($other_charge_id);
+	    if(!empty($row)){
+	      	$invoice_id = $row->invoice_id;
+	  		$this->db->where($where, $other_charge_id);
+	  		//$this->db->set($attribute, $value);
+	  		$this->db->set($set);
+	  		$this->db->update('invoice_additional_charges');
+
+	  		// update company_invoice table
+      		
+	    }
+	}*/
+	      
+ }

@@ -1,0 +1,273 @@
+<?
+
+ class SocMdl extends Model {
+
+	var $soc_id;
+	var $patient_id;
+	var $has_insu_medicare;
+	var $insu_medicare_hic_number;
+	var $has_insu_medicaid;
+	var $insu_medicaid_id;
+	var $insu_medicaid_auth_from_date;
+	var $insu_medicaid_auth_to_date;
+	var $insu_medicaid_nursing;
+	var $insu_medicaid_PT;
+	var $insu_medicaid_OT;
+	var $insu_medicaid_ST;
+	var $has_insu_other;
+	var $insu_other_id;
+	var $insu_other_auth_from_date;
+	var $insu_other_auth_to_date;
+	var $insu_other_nursing;
+	var $insu_other_PT;
+	var $insu_other_OT;
+	var $insu_other_ST;
+	var $date_disch_from_hospital;
+	var $discharge_from;
+	var $date_discharge_from_agency;
+	var $f2f_date;
+	var $f2f_received_date;
+  	var $prim_doctor_office_id;
+	var $second_doctor_office_id;
+	var $prim_doctor_user_id;
+	var $second_doctor_user_id;
+	var $diagnosis_info;
+	var $referral_id;
+	var $other_referral_name;
+	var $facility_id;
+	var $referral_notes;
+	var $dis_sn;
+	var $dis_pt;
+	var $dis_ot;
+	var $dis_st;
+	var $dis_msgw;
+	var $dis_aqu;
+	var $dis_beh;
+	var $dis_mas;
+	var $dis_mus;
+	var $dis_rec;
+	var $dis_hbr;
+	var $dis_art;
+	// var $participate_class; // removed this field because it is replace by pat_patient.gov_program
+	var $case_manager_user_id;
+	var $estimated_soc_date;
+	var $lock_soc;
+	var $clinician_user_id;
+	var $assign_now;
+	var $current_soc;
+	var $create_user_id;
+	var $create_datetime;
+	var $modify_user_id;
+	var $modify_datetime;
+	var $homebound_st;
+	var $precautions_contra;
+	var $length_stay;
+	var $weigth_bearing_sts;
+	var $dnr_orders;
+	var $elig_verif_by;
+
+	function SocMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $soc_id ) {
+		
+		$this->db->where('soc_id', $soc_id);
+		
+		$query = $this->db->get('soc_start_of_care');
+		return $query->row();
+		
+	}
+	
+	function getByAgencyId ( $agency_id ) {
+		
+		$this->db->join('tab_parameters', 'tab_parameters.tab_value = soc_start_of_care.discharge_from AND tab_parameters.tab_type = 91', 'LEFT');
+		$this->db->join('agy_referral_source', 'agy_referral_source.referral_id = soc_start_of_care.referral_id', 'LEFT');
+		$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+		
+		if ($referral_id = $this->input->post('referral_id')) {
+			$this->db->where("soc_start_of_care.referral_id", $referral_id);
+		}
+		
+		if ($referral_date_ini = $this->input->post('referral_date_ini')) {
+			$this->db->where("referral_date_time >=", standard_date(human_to_unix($referral_date_ini), 'MYSQL_NOTIME'));
+		}
+		
+		if ($referral_date_fin = $this->input->post('referral_date_fin')) {
+			$this->db->where("referral_date_time <=", standard_date(human_to_unix($referral_date_fin), 'MYSQL_NOTIME'));
+		}
+		
+		$this->db->where('pat_patient.agency_id', $agency_id);
+		
+		$this->db->orderby('referral_date_time', 'DESC');
+		
+		$query = $this->db->get('soc_start_of_care');
+		return $query->result();
+		
+	}
+	
+	function getCurrent ( $patient_id ) {
+		
+		$this->db->select('soc_start_of_care.*, referral_name');
+		$this->db->join('agy_referral_source', 'agy_referral_source.referral_id = soc_start_of_care.referral_id', 'LEFT');
+		$this->db->where("patient_id", $patient_id);
+		
+		$this->db->order_by("soc_id", "DESC");
+		
+		$this->db->limit('1');
+		
+		$query = $this->db->get('soc_start_of_care');
+		return $query->row();
+		
+	}
+	
+	function getCurrentDoctors ( $patient_id ) {
+		
+		$this->db->select('us_agy.*');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = soc_start_of_care.prim_doctor_user_id OR us_agy.us_agy_id = soc_start_of_care.second_doctor_user_id', 'LEFT');
+		$this->db->where("patient_id", $patient_id);
+
+		$this->db->order_by("soc_id", "DESC");
+		
+		$this->db->limit('2');
+		
+		$query = $this->db->get('soc_start_of_care');
+		return $query->result();
+		
+	}
+	
+	function getSocLimitDates ( $soc_id, $soc_old_date, $soc_new_date ) {		
+		$sql = "SELECT DATEDIFF('" . $soc_new_date . "', '" . $soc_old_date . "')  as date_diff";
+		$date_diff = $this->db->query($sql)->row()->date_diff;
+		$date_diff = abs($date_diff);
+
+		$sql = "";
+		if ($date_diff < 364) {
+			$sql = "SELECT MIN(DATE_ADD(episode_start_date, INTERVAL DATEDIFF('" . $soc_new_date . "', '" . $soc_old_date . "') DAY)) as soc_start_date, " .
+			   "episode_end_date as soc_end_date " .
+			   "FROM cms_485 " .
+			   "WHERE soc_id = " . $soc_id;
+		} else {
+			$sql = "SELECT MIN(DATE_ADD(episode_start_date, INTERVAL DATEDIFF('" . $soc_new_date . "', '" . $soc_old_date . "') DAY)) as soc_start_date, " .
+				   "MAX(DATE_ADD(episode_end_date, INTERVAL DATEDIFF('" . $soc_new_date . "', '" . $soc_old_date . "') DAY)) as soc_end_date " .
+				   "FROM cms_485 " .
+				   "WHERE soc_id = " . $soc_id;
+		}
+
+		$query = $this->db->query($sql);
+		return $query->row();
+	}
+	
+	function getByPatient ( $patient_id ) {
+		
+		$this->db->where("patient_id", $patient_id);
+		$this->db->order_by('soc_id', 'ASC');
+		
+		$query = $this->db->get('soc_start_of_care');
+		return $query->result();
+		
+	}
+
+	function insert ( $patient_id ) {
+
+		$this->create_datetime = date('Y-m-d');
+		$this->patient_id = $patient_id;
+
+		$this->db->insert('soc_start_of_care', $this);
+		
+		$this->soc_id = $this->db->insert_id();
+	
+	}
+	
+	function update ( $soc_id ) {
+		
+		$this->soc_id = $soc_id;
+		$this->db->where("soc_id", $soc_id);
+		
+		$this->db->update("soc_start_of_care", $this);
+		
+	}
+
+	function updateFlex($soc_id, $attribute, $value, $where = 'soc_id') {
+
+		$this->db->where($where, $soc_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('soc_start_of_care');
+
+	}
+	
+	function updateLock ( $soc_id ) {
+	
+		$this->db->set('lock_soc', '1');
+		$this->db->where('soc_id', $soc_id);
+		
+		$this->db->update("soc_start_of_care");
+		
+	}
+	
+	function updateDate ( $soc_id, $estimated_soc_date ) {
+	
+		$this->db->set('estimated_soc_date', standard_date(human_to_unix($estimated_soc_date), 'MYSQL_NOTIME'));
+		$this->db->where('soc_id', $soc_id);
+		
+		$this->db->update("soc_start_of_care");
+		
+	}
+	
+	function updateCaseManager ( $soc_id ) {
+		
+//		$this->db->set('case_manager_user_id', $this->case_manager_user_id);
+//		$this->db->where("soc_id", $soc_id);
+//		
+//		$this->db->update("soc_start_of_care");
+		
+	}
+	
+	function updateClinician ( $soc_id, $clinician_user_id ) {
+		
+		$this->db->set('clinician_user_id', $clinician_user_id);
+		$this->db->where("soc_id", $soc_id);
+		
+		$this->db->update("soc_start_of_care");
+		
+	}
+	
+	function updateDoctors ( $soc_id, $prim_doctor_user_id, $second_doctor_user_id ) {
+		
+		$this->db->set('prim_doctor_user_id', $prim_doctor_user_id);
+		$this->db->set('second_doctor_user_id', $second_doctor_user_id);
+		
+		$this->db->where("soc_id", $soc_id);
+		
+		$this->db->update("soc_start_of_care");
+		
+	}
+
+
+        function getByCmsId ( $cms485_id ) {
+
+            $this->db->select('*');
+
+                $this->db->join('soc_start_of_care', 'soc_start_of_care.soc_id = cms_485.soc_id');
+
+		$this->db->join('tab_parameters', 'tab_parameters.tab_value = soc_start_of_care.discharge_from AND tab_parameters.tab_type = 91', 'LEFT');
+		$this->db->join('agy_referral_source', 'agy_referral_source.referral_id = soc_start_of_care.referral_id', 'LEFT');
+		$this->db->join('pat_patient', 'pat_patient.patient_id = soc_start_of_care.patient_id');
+                $this->db->join('agy_agency', 'agy_agency.agency_id = pat_patient.patient_id','LEFT');
+
+
+
+		$this->db->where('cms_485.cms485_id', $cms485_id);
+
+		$this->db->orderby('referral_date_time', 'DESC');
+
+		$query = $this->db->get('soc_start_of_care');
+		return $query->row_array();
+
+	}
+
+	
+ }

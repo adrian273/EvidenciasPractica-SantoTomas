@@ -1,0 +1,179 @@
+<?
+
+class DoctorOrder extends MY_Controller {
+
+	var $rules = array("order_date"				=> "required",
+						"order_description"		=> "required",
+						"physician_id"			=> "required");
+
+	function DoctorOrder() {
+	
+		parent::MY_Controller();
+		
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("resource_path", "useragency/doctororder");
+
+	}
+
+	function index ( $us_agy_id ) {
+
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign("noedit", true);
+		$this->tpl->assign("no_grid_buttons", true);
+		
+		$this->tpl->assign('doctor_order_status_list', $this->parametermdl->getByType(23));
+		
+		$this->tpl->assign_include("filter_tpl", "doctor_order/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+	function grid ( $us_agy_id ) {
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+
+		$head->append($this->xml->Element("column", "width=10;align=center", "Order Date"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Ordered By"));
+		$head->append($this->xml->Element("column", "width=*", "Order Description"));
+		$head->append($this->xml->Element("column", "width=*", "Physician"));
+		$head->append($this->xml->Element("column", "width=*", "Status"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->doctorordermdl->getByUserOrderId($us_agy_id, $this->input->post('keyword'), $this->input->post('tab_023_order_status')) as $order) {
+
+			$patient   = $this->patientmdl->getById($order->patient_id);
+			$physician = $this->usagymdl->getByUsAgyId($order->physician_id);
+
+			$cell = $this->xml->Element("row", "id=" . $order->doctor_order_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->order_date))));
+			$cell->append($this->xml->Element("cell", null, $patient->first_name . " " . $patient->last_name));
+			$cell->append($this->xml->Element("cell", null, $order->first_name . " " . $order->last_name));
+			$cell->append($this->xml->Element("cell", null, $order->order_description));
+			$cell->append($this->xml->Element("cell", null, $physician->first_name . " " . $physician->last_name));
+			$cell->append($this->xml->Element("cell", null, $order->tab_description));
+			$document->append($cell);
+		}
+
+	}
+
+	function setDoctorOrderStatus () {
+		
+		$this->doctorordermdl->tab_023_order_status = 1;
+		
+		if (!is_null($this->doctorordermdl->sent_date)) {
+			$this->doctorordermdl->tab_023_order_status = 2;
+		}
+		
+		if (!is_null($this->doctorordermdl->signed_date)) {
+			$this->doctorordermdl->tab_023_order_status = 3;
+		}
+		
+		if (!is_null($this->doctorordermdl->rejected_date)) {
+			$this->doctorordermdl->tab_023_order_status = 4;
+		}
+		
+	}
+
+	function add () {
+
+		$this->tpl->assign("faction", "add");
+		
+		$this->tpl->assign('patient_list', $this->getPatients(null, null, false));
+		$this->tpl->assign('physician_list', $this->patientmdl->getPhysicians($this->input->post('patient_id')));
+		
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Add Doctor Order");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "doctor_order/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$episode = $this->episodemdl->getCurrentByPatientId($this->input->post('patient_id'));
+
+			$this->assignPostData($this->doctorordermdl);
+			$this->doctorordermdl->order_by_user_id = $this->getUsAgyId();
+			$this->setDoctorOrderStatus();
+			$this->doctorordermdl->insert($episode->cms485_id);
+			
+			$this->tpl->assign('gmessage', "Doctor Order" . $this->lang->line('grl_add_msg'));
+			
+			$this->index();
+
+		}
+		
+	}
+	
+	function edit ( $us_agy_id, $doctor_order_id ) {
+
+		$this->tpl->assign("faction", "edit");
+		$this->tpl->assign("record_id", $doctor_order_id);
+		
+		$doctor_order = $this->doctorordermdl->getById($doctor_order_id);
+		
+		$episode = $this->episodemdl->getById($doctor_order->cms485_id);
+		
+		$this->tpl->assign('patient_list', $this->getPatients(null, null, false));
+		$this->tpl->assign('physician_list', $this->patientmdl->getPhysicians($episode->patient_id));
+		
+		$this->assignObject($doctor_order);
+		$this->assignObject($this->patientmdl->getById($episode->patient_id));
+
+		$this->validation->set_rules($this->rules);
+
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Edit Doctor Order");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "doctor_order/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		} else {
+
+			$this->assignPostData($this->doctorordermdl);
+			$this->doctorordermdl->order_by_user_id = $this->getUsAgyId();
+			$this->setDoctorOrderStatus();
+			$this->doctorordermdl->update($doctor_order->cms485_id, $doctor_order_id);
+			
+			$this->tpl->assign('gmessage', "Doctor Order" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index();
+
+		}
+		
+	}
+	
+	function delete ( $doctor_order_id ) {
+		
+		$this->doctorordermdl->delete($doctor_order_id);
+		
+		$this->tpl->assign('gmessage', "Doctor Order" . $this->lang->line('grl_del_msg'));
+
+		$this->index();
+		
+	}
+	
+	function physicianList ( $patient_id ) {
+		
+		$document = $this->xml->Document();
+		
+		$document->append($this->xml->Option("", "Select Option"));
+		
+		foreach ($this->patientmdl->getPhysicians($patient_id) as $us_agy_id => $physician) {
+			
+			$document->append($this->xml->Option($us_agy_id, $physician));
+			
+		}
+		
+	}
+
+}

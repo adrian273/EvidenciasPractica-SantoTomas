@@ -1,0 +1,219 @@
+<?
+
+ class UserMdl extends Model {
+
+    var $user_id;
+    var $tab_005_user_type = 1;
+    var $last_name;
+    var $first_name;
+    var $middle_initial;
+    var $address;
+    var $city;
+    var $state_id;
+    var $zip_code;
+    var $phone_cell;
+    var $phone_home;
+    var $phone_other;
+    var $user_email;
+    // var $password;
+    var $user_nick;
+    var $home_app_id;
+    var $modify_date;
+    var $open_new_window;
+    var $internal_email_to_mailbox;
+    var $tab105_delivery_pref;
+    var $last_login_datetime;
+    var $date_birth;
+    var $tab_002_sex;	
+    var $soc_sec_nbr;
+    var $tab_010_other_lang_1;	
+    var $fax;
+    var $geo_lat;
+    var $geo_lng;
+	var $default_internal_email_inbox_filter;
+	var $open_patient_signature; // open new window patient signature;
+    //var $cover_area;
+	var $order_pre_payroll;
+
+	function UserMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $keyword=null, $profile_id=null ) {
+		
+		if (!is_null($keyword)) {
+      $this->db->like("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)", $keyword);			
+		}
+		
+		if (!is_null($profile_id)) {
+			$this->db->join('us_agy', 'us_agy.user_id = us1_user.user_id', 'LEFT');
+			$this->db->where("us_agy.profile_id", $profile_id);
+			$this->db->group_by('us1_user.user_id');
+		}
+		
+		$query = $this->db->get('us1_user');
+		return $query->result();
+		
+	}
+
+	// getOnlyUsers($this->input->post('keyword'), 3);
+	// getOnlyUsers($this->input->post('keyword'), null, 3);
+	// 
+	function getOnlyUsers($keyword, $user_type=null, $user_not_type=null){
+
+		if ($keyword != "") {
+			$this->db->like('last_name', $keyword);
+			$this->db->or_like('first_name', $keyword);
+			$this->db->or_like('phone_cell', $keyword);
+			$this->db->or_like('user_email', $keyword);
+			
+		}
+		if (!is_null($user_type)) {
+			$this->db->where('tab_005_user_type', $user_type);
+		}
+		if (!is_null($user_not_type)) {
+			$this->db->where("tab_005_user_type != ".$user_not_type);
+		}
+
+		$this->db->order_by('last_name', 'asc');
+		$query = $this->db->get('us1_user');
+		return $query->result();
+
+	}
+	
+	function getById ( $user_id ) {
+		$this->db->select("us1_user.*,sta_states.*",false);	
+		$this->db->join('sta_states', 'sta_states.state_id = us1_user.state_id', 'LEFT');	
+		$this->db->where("user_id", $user_id);
+		
+		$query = $this->db->get('us1_user');
+		return $query->row();
+		
+	}
+
+	function getByEmail ( $user_email ) {
+	
+		$this->db->where("user_email", $user_email);
+	
+		$query = $this->db->get('us1_user');
+		return $query->row();			
+	
+	}
+	
+	function getByNickName ( $user_nick ) {
+	
+		$this->db->where("user_nick", $user_nick);
+	
+		$query = $this->db->get('us1_user');
+		return $query->row();			
+	
+	}
+
+	function insert () {
+		
+		$this->home_app_id = 5;
+		
+		$this->db->insert("us1_user", $this);
+		$this->user_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $user_id ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->update("us1_user", $this);
+		
+	}
+	
+	function updateLoginTime ( $user_id ) {
+
+		$this->db->where("user_id", $user_id);
+		$this->db->set("last_login_datetime", date('Y-m-d H:i:s'));
+		$this->db->update('us1_user');
+
+	}
+	
+	function updateUserEmail ( $user_id, $user_email ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->set("user_email", $user_email);
+		$this->db->update('us1_user');
+		
+	}
+
+	function updateGeocode ( $user_id, $lat, $lng ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->set("geo_lat", $lat);
+		$this->db->set("geo_lng", $lng);
+		$this->db->update('us1_user');
+		
+	}
+	
+	function updatePassword ( $user_id, $password ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->set("password", "md5('" . $password . "')", FALSE);
+		$this->db->update('us1_user');
+		
+	}
+	
+	function login ( $user_email, $password ) {
+		
+		$where = "(user_email='".$user_email."' OR user_nick='".$user_email."') and password = md5('" . $password . "')";
+
+		$this->db->where($where);
+		
+		
+		//$this->db->where("user_email", $user_email);
+		//$this->db->where("password = md5('" . $password . "')");
+
+		$query = $this->db->get('us1_user');
+		return $query->row();
+		
+	}
+	
+	function checkOldPassword ( $user_id, $password ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->where("password = md5('" . $password . "')");
+
+		$query = $this->db->get('us1_user');
+		return $query->row();
+		
+	}
+
+	function updateEPassword ( $user_id, $password ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->set("electronic_signature", "md5('" . $password . "')", FALSE);
+		$this->db->update('us1_user');
+		
+	}
+	function checkOldEPassword ( $user_id, $password ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->where("electronic_signature = md5('" . $password . "')");
+
+		$query = $this->db->get('us1_user');
+		return $query->row();
+		
+	}
+
+	function submitContractAgreement($user_id,$agreement_id)
+	{
+		$data['contract_flag']=$agreement_id;
+		$this->db->where('user_id',$user_id);
+		$this->db->update('us1_user',$data);
+	}
+
+	function delete ( $user_id ) {
+		
+		$this->db->where("user_id", $user_id);
+		$this->db->delete("us1_user");
+		
+	}
+	
+ }

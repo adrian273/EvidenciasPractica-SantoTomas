@@ -1,0 +1,72 @@
+<?
+
+ class VtEventsMdl extends Model {
+
+	var $event_id;
+	var $visit_log_id;  	
+	var $tab106_event_type;
+	var $event_comment;
+	var $visibility;
+	var $created_by_user_id;
+	var $create_datetime;
+	var $modified_by_user_id;
+	var $modify_datetime;
+	var $action_required;
+	var $action_date;
+	var $action_date_complete;
+	
+	function VtEventsMdl () {
+		parent::Model();		
+	}
+
+	function get ( $visit_log_id ) {	
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt_events.visit_log_id');	
+		$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+		$this->db->where('vt_events.visit_log_id', $visit_log_id);	
+		$query = $this->db->get('vt_events');
+		return $query->row();	
+	}
+
+	function insert ($visit_log_id) {
+		$this->visit_log_id = $visit_log_id;
+		$this->db->insert('vt_events', $this);	
+	}
+	
+	function update ( $visit_log_id ) {
+		unset($this->event_id);	
+		$this->db->where('visit_log_id', $visit_log_id);	
+		$this->db->update('vt_events', $this);
+	}
+	
+	function getPrevious ( $user_id, $previous_date, $episode_id ) {		
+		$this->db->join('vis_visit_log',   'vis_visit_log.visit_log_id = vt_events.visit_log_id');		
+		$this->db->where('visit_user_id', $user_id);
+		$this->db->where('visit_date_time <', $previous_date);
+		$this->db->where('cms485_id', $episode_id);		
+		$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vt_events');
+		return $query->result();		
+	}
+	
+	function copy ( $destination_visit_log_id, $source_visit_log_id ) {
+
+		$object = new VtEventsMdl();
+		$object1 = $this->get($destination_visit_log_id);
+		$object = $this->get($source_visit_log_id);
+		
+		$object->event_id	    = $object1->event_id;
+		$object->visit_log_id 		= $destination_visit_log_id;
+	
+		$this->db->where('visit_log_id', $destination_visit_log_id);
+		$this->db->update('vt_events', $object);		
+	}
+	function updateFlex($visit_log_id, $attribute, $value, $where = 'visit_log_id') {
+
+		$this->db->where($where, $visit_log_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('vt_events');
+
+	}
+ }

@@ -1,0 +1,41 @@
+<?php
+ class Login extends MY_Controller {
+
+
+	function login() {
+		parent::MY_Controller();
+	}
+
+	function index() {
+		
+		$rules = array ('user_email' => 'required|callback_verify_login',
+						'password'	 => 'required');
+		
+		$this->validation->set_rules($rules);
+		
+		if (!@$_POST['user_email']) {
+			
+			$this->tpl->view("login/login", $this->lang->language);
+			
+		} else {
+
+			$user_data=$this->usermdl->getByEmail($this->input->post('user_email'));
+			
+			$this->session->set_userdata('logged', TRUE);
+			$this->session->set_userdata('user_id',$user_data->user_id);
+			$user = $this->usermdl->getById($this->session->userdata('user_id'));
+			
+			// checking how many agencies is associated
+			$us_agy = $this->usagymdl->getByUserId($this->session->userdata('user_id'));
+//			if (count($us_agy) == 1 && $user->tab_005_user_type == 1) {
+//				$this->session->set_userdata('agency_id', $us_agy[0]->agency_id);
+//			}
+			if (count($us_agy) == 1) {
+				$this->session->set_userdata('agency_id', $us_agy[0]->agency_id);
+			}
+			
+			redirect();		
+		
+		}	
+	}
+ }

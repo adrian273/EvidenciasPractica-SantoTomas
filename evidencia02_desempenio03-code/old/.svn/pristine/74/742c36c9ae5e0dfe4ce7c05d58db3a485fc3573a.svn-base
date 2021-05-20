@@ -1,0 +1,89 @@
+<?
+
+ class DischargeSummaryMdl extends Model {
+
+	var $id;
+	var $soc_id;
+	var $discharge_date;
+	var $sn;
+	var $pt;
+	var $ot;
+	var $st;
+	var $msw;
+	var $hha;
+	var $prob_ident_admission;
+	var $status_of_problem;
+	var $rea_dis_goals_met;
+	var $rea_admit_to_fac;
+	var $rea_moved_out_of_area;
+	var $rea_pat_phys_req;
+	var $rea_deceased;
+	var $rea_other_flag;
+	var $rea_other_text;
+	var $cond_indep;
+	var $cond_need_assis;
+	var $reso_state_funded;
+	var $reso_meals_on_wheels;
+	var $reso_other_flag;
+	var $reso_other_text;
+	var $psyco_mental;
+	var $psyco_mental_text;
+	var $psyco_emotion_status;
+	var $psyco_emotion_text;
+	var $psyco_other_flag;
+	var $psyco_other_text;
+	var $phyco_fami_care;
+	var $phyco_fami_care_name;
+	var $pat_retention;
+	var $equip_to_remain;
+	var $disch_instruc_yn;
+	var $home_program_given_yn;
+	var $couns_to_continue;
+	var $couns_call_agency;
+	var $day5_discharge;
+	var $copy_physician;
+	var $copy_physcian_date;
+	var $discharge_us_agy_id;
+	var $clinician_date;
+	var $modify_us_agy_id;
+	var $modify_datetime;
+
+	function DischargeSummaryMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $soc_id ) {
+	
+		$this->db->where("soc_id", $soc_id);
+		
+		$query = $this->db->get('disch_summary');
+		return $query->row();
+
+	}
+	
+	function insert ( $soc_id ) {
+		
+		$this->soc_id = $soc_id;
+		$this->db->insert('disch_summary', array('soc_id'=>$soc_id));
+		$this->id = $this->db->insert_id();
+		
+	}
+	
+	function update(){
+		$data=$this;
+		unset($data->id);
+		$this->db->where('soc_id',$this->soc_id);
+		$this->db->update('disch_summary',$data);
+	}	
+	
+	function delete ( $id ) {
+		
+		$this->db->where('id', $id);
+		
+		$this->db->update('disch_summary'); 
+		
+	}
+
+ }

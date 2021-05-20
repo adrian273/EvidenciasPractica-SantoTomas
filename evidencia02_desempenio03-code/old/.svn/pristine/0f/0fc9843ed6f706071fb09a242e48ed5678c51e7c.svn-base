@@ -1,0 +1,44 @@
+</form>
+
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/email_statement/{$agency_contractor_id}">
+<input type="hidden" name="invoice_from_date_print" id="invoice_from_date_print" value="{$invoice_from_date_print}" />
+<input type="hidden" name="invoice_to_date_print" id="invoice_to_date_print" value="{$invoice_to_date_print}" />
+
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+  <tr><td colspan="2" height="10"></td></tr>
+  <tr>		
+	<td height="10"><b>Email:</b> </td>
+    <td height="10">
+			<input type="text" name="email" value="{$user_email}" />
+    </td>
+  </tr>	
+	<tr>		
+		<td height="10"><small>Email a copy to Company:</small> </td>
+    <td height="10">
+			<input type="checkbox" name="email_copy_company" value="1" checked="checked" /> <small>{$company_email}</small>
+    </td>
+  </tr>	
+  <tr><td colspan="2" height="10"></td></tr>
+  <tr>		
+		<td height="10" valign="top"><b>Special Notes:</b> </td>
+    <td height="10">
+			<textarea name="special_notes" rows="2" cols="30"></textarea>
+    </td>
+  </tr>	
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Send Email">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>
+<script language="JavaScript" type="text/javascript">
+document.getElementById('invoice_from_date_print').value = parent.document.getElementById('invoice_from_date_print').value;
+document.getElementById('invoice_to_date_print').value = parent.document.getElementById('invoice_to_date_print').value;
+</script>

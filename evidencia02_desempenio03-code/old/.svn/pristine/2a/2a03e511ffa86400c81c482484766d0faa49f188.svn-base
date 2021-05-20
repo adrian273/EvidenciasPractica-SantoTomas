@@ -1,0 +1,127 @@
+
+<script language="JavaScript" type="text/javascript">
+
+	function deleteRegister ( record_id ) {literal}{{/literal}
+
+		if (confirm('Are you sure to delete this doctor order?')) document.location = "{$index_url}{$resource_path}/delete{if $entity_id}/{$entity_id}{/if}/" + record_id;
+	  
+	{literal}}{/literal}
+	
+	function sentToPhysician () {literal}{{/literal}
+
+		setValue('tab_023_order_status', 2); gform.submit();
+	  
+	{literal}}{/literal}
+	
+    function sign (){literal}{
+		
+		if (getValue('signed_date') != '') {
+			setValue('tab_023_order_status', 3); gform.submit();
+		} else {
+			alert('You must enter Sign Date.');
+		}
+	    
+    }{/literal};
+	
+</script>
+<div id="form_div" style="overflow: auto; height: 100%">
+	<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center"> 
+	 {if !$no_commit_form}<form id="gform" method="POST" action="{$index_url}{$resource_path}/{$faction}{if $entity_id}/{$entity_id}{/if}{if $record_id}/{$record_id}{/if}">{/if}
+	 <input type="hidden" id="fecha_help">
+	 <input type="hidden" id="tab_023_order_status" name="tab_023_order_status" value="{$tab_023_order_status|default:1}">
+	  {if $form_title}
+	  <tr>
+	    <td valign="top" nowrap class="title" colspan="2">
+	    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$form_title}
+	    </td>
+	  </tr>
+	  {/if}
+	  <tr> 
+	    <td height="10" colspan="2"></td>
+	  </tr>
+	  {if $error_string}
+	  <tr>
+	    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+	  </tr>
+	  {/if}
+	  <tr> 
+	    <td height="100%" valign="top" colspan="2">
+			{include file=$dynamic_form}
+	    </td>
+	  </tr>
+	  <tr>
+	    <td colspan="2"></td>
+	  </tr>
+	  <tr> 
+	    <td valign="bottom">
+	    	{if !$no_commit_form}
+		    	{if $tab_023_order_status == 1 || $tab_023_order_status == ''}
+		    		<input type="submit" class="btn" value="{$grl_save}">
+		    	{/if}
+		    	{if $tab_023_order_status == 1 && $doc_doctor_order_id}
+		    		<input type="button" class="btn" onclick="checkEpass('modalCheckEpasswordSent')" value="Send to Physician">
+		    	{/if}
+		    {/if}
+	    	{if $tab_023_order_status == 2 && $allow_sign}
+	    		<input type="button" class="btn" onclick="sign()" value="Sign by Physician">
+	    	{/if}
+	      	<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">
+	      	* Mandatory fields
+	    </td>
+	    <td valign="bottom" align="right">
+	    	{if $tab_023_order_status <= 2}
+	  		<input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister({$record_id})">
+	  		{/if}
+	    </td>  
+	  </tr>
+	  {if !$no_commit_form}</form>{/if}
+	</table> 
+</div>
+
+<script language="JavaScript" type="text/javascript">
+  
+    function checkEpass( action ){literal}{{/literal}
+    	
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 200);
+		w1.setText("Enter your Electronic Password");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+	    dhxWins.window('w1').center();
+		w1.attachURL("{$index_url}/doctororder/doctororderdocument/" + action + "/{$doc_doctor_order_id}");
+		
+	    dhxWins.window('w1').attachEvent("onClose", function(win) {literal}{{/literal}
+	        
+	        w1.hide();
+			w1.setModal(false);
+	        
+	    {literal}}{/literal});
+    
+
+    {literal}}{/literal}
+    
+    function sendDoctorOrder (){literal}{{/literal}
+		
+		dhxWins.window('w1').close();	
+	    
+	    setValue('tab_023_order_status', 2); gform.submit();
+		
+    {literal}}{/literal};
+    
+    function signDoctorOrder (){literal}{{/literal}
+	    
+	    setValue('tab_023_order_status', 3); gform.submit();
+		
+    {literal}}{/literal};
+    
+    
+    document.getElementById('form_div').style.height = getWindowHeight() + "px";
+  
+</script>

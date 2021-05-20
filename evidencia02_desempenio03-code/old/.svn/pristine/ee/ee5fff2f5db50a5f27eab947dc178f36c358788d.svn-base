@@ -1,0 +1,548 @@
+<?php
+
+ class User_Expiredcredential extends MY_Controller {
+
+	function __construct () {
+
+		parent::__construct();
+		$this->tpl->assign("resource_path", "useragency/user_expiredcredential");
+
+		$this->tpl->assign('type_employee_list', $this->parametermdl->getByType(6));
+		$this->tpl->assign("profile_list", $this->profilemdl->getByType(($this->getAgencyType() == 'C' ? 'profile_contractor' : 'profile_agency'), false));
+		$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+		$this->tpl->assign("user_status_list", $this->parametermdl->getByType(21));
+		$this->load->model('agencycredentialtypemdl');
+
+	}
+
+	function index ($user_us_agy_id=null) {
+
+	    $allow_edit = false;
+	    if (is_null($user_us_agy_id)) {
+	    	$user_us_agy_id = $this->getUsAgyId();
+	    	$this->tpl->assign(array("list_title" => "Expired User Credentials", "items_per_page" => 9999));
+	    	$this->tpl->assign('additional_buttons', array('Send Email' => 'send_email()'));
+	    } else {
+	    	$this->tpl->assign('resource_grid', 'usergrid/'.$user_us_agy_id);
+	    	$this->tpl->assign(array("list_title" => "Expired Credentials", "items_per_page" => 9999));
+	    	$this->tpl->assign('user_us_agy_id', $user_us_agy_id);
+	    }
+
+
+	    $user_us_agy  = $this->usagymdl->getByUsAgyId($user_us_agy_id);
+	    if($user_us_agy->profile_id==1 OR $user_us_agy->profile_id==3 OR $this->hasPermission(10)){
+	      $allow_edit = true;
+	    }
+	    $this->tpl->assign("allow_edit", $allow_edit);
+	    if(!$allow_edit)
+
+   		$this->tpl->assign('status', '');
+
+   		
+
+		// $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        
+        $this->tpl->assign_include("filter_tpl", "useragency/g_filter_expireduser");
+		$this->tpl->assign_include("dynamic_tpl", "useragency/gbase_expireduser");
+		// $this->tpl->assign_include("dynamic_tpl", "parts/gbasenew");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+
+	}
+
+	function grid () {
+		$this->load->model('us1usercredentialsmdl');
+		$this->load->model('usagydisciplinemdl');
+		$agency_id = $this->session->userdata('agency_id');
+		$agency_types = $this->lang->line('agency_type_list');
+		$status		  = $this->lang->line('agency_status_list');
+
+	    $allow_edit = false;
+	    $user_us_agy_id = $this->getUsAgyId();
+	    $user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);
+	    //$this->tpl->assign('user_profile_id', $user_us_agy->profile_id);
+	    if($user_us_agy->profile_id==1 OR $user_us_agy->profile_id==3 OR $this->hasPermission(10)){
+	      $allow_edit = true;
+	    }
+	    $this->tpl->assign("allow_edit", $allow_edit);
+
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+
+		// $head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=12", "User Name"));
+
+		$head->append($this->xml->Element("column", "width=6", "Send"));
+
+		//$head->append($this->xml->Element("column", "width=16", "Last Name"));
+		//$head->append($this->xml->Element("column", "width=*", "Type Employee"));
+		$head->append($this->xml->Element("column", "width=*", "Credential Name"));
+		$head->append($this->xml->Element("column", "width=15", "Expiration Date"));
+		// $head->append($this->xml->Element("column", "width=*", "Discipline"));
+		//vanlt add
+		$head->append($this->xml->Element("column", "width=10", "Expiration in Days"));
+		$head->append($this->xml->Element("column", "width=*", "Email Sent"));
+		$head->append($this->xml->Element("column", "width=10", "Days Sent"));
+		$head->append($this->xml->Element("column", "width=*;align=center", "Credentials"));
+
+		//end
+		// $head->append($this->xml->Element("column", "width=10;type=linkc;align=center", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		if ($this->input->post('search_into') == 'user') {
+			$_POST['keyword'] = $this->input->post('search');
+		} else {
+			$_POST['search_credential'] = $this->input->post('search');
+		}
+			
+
+		foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'),$this->input->post('search_type'), $this->input->post('profile_id'),$this->input->post('tab_013_status'), true, false, null, array(), null, 1) as $user) {
+			$credentials = $this->us1usercredentialsmdl->getExpiredList($user->user_id, null, $user->agency_id);
+		    $discipline_list = $this->usagydisciplinemdl->getByUser($user->us_agy_id);
+
+		    $discipline_data = "";
+		    if (is_array($discipline_list)) {
+		    	foreach ($discipline_list as $dl) {
+	                $discipline_data .= $dl->short_description.", ";
+	            }
+		    }
+
+            $cred_alert = false;
+			if (count($credentials) >= 1) {
+			$cell = $this->xml->Element("row", "id=" . $user->user_id. (count($credentials) >= 1 ? ";xmlkids=1" : null));
+
+			$cell->append($this->xml->Element("cell", null, '<![CDATA[<b> <font color="#000000">'.$user->user_last_name. " " .$user->user_first_name . ($user->legal_name != '' ? ' ' : '') .' </font></b>]]>'  ));
+
+			$cell->append($this->xml->Element("cell", null, "" ));
+
+			//$cell->append($this->xml->Element("cell", null, $user->last_name));
+			// $cell->append($this->xml->Element("cell", null, $user->tab_description));
+			$cell->append($this->xml->Element("cell", null, null));
+
+			$address = array($user->address);
+			if ($user->city) {
+				$address[] = $user->city;
+			}
+			if ($user->state_name_short) {
+				$address[] = $user->state_name_short;
+			}
+			if ($user->zip_code) {
+				$address[] = $user->zip_code;
+			}
+
+			$addres_str = trim(implode($address, ", "), ",");
+
+			$cell->append($this->xml->Element("cell", null, null));
+			// $cell->append($this->xml->Element("cell", null, $user->description.' ('.$user->short_description.')'));
+			//vanlt add
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, null));
+			$cell->append($this->xml->Element("cell", null, null));
+			if(count($credentials) >= 1) {
+				$color = "green";
+				foreach ($credentials as $value) {
+					if ($value->expiration_days_left <= 0) {
+						$color = "red";
+						break;
+					}
+					else if ($value->expiration_days_left >=1 && $value->expiration_days_left <= 15 ) {
+						$color = "orange"; break;
+					}
+					else if  ($value->expiration_days_left >= 16 && $value->expiration_days_left <= 30) {
+						$color = "#F0FF33";
+						break;
+					}
+
+
+				}
+				$txt = '<div style="
+				width: 20px;
+				height: 20px;
+				-moz-border-radius: 50%;
+				-webkit-border-radius: 50%;
+				border-radius: 50%;
+				background: '. $color .';
+				color: white;
+				">
+					<p style="text-align:center;padding-top:3px;">'.count($credentials).'</p>
+				</div>';
+				$cell->append($this->xml->Element("cell", null, htmlspecialchars($txt)));
+			}
+
+            $document->append($cell);
+			foreach ($credentials as $credential) {
+
+				$cell = $this->xml->Element("row", "id=" . $credential->user_credential_id);
+
+				$cell->append($this->xml->Element("cell", null, ""));
+				/*if(is_null($credential->send_date)){
+					$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<input type='checkbox' onchange='recordsIds(this," . $credential->user_credential_id . ")'>")));
+				} else {
+					$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<input type='checkbox' title='send email' checked disabled onclick='recordsIds(" . $credential->user_credential_id . ", 0)'>")));
+				}*/
+				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<input type='checkbox' onchange='recordsIds(this," . $credential->user_credential_id . ",". $credential->send_date .")'>")));
+				$cell->append($this->xml->Element("cell", null, $credential->tab_description));
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($credential->expiration_date))));
+				$cell->append($this->xml->Element("cell", null, $credential->expiration_days_left));
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($credential->send_date))));
+
+				if( $credential->days_sent_email == 0 && !is_null($credential->send_date)) {
+					$cell->append($this->xml->Element("cell", null, "Today"));
+				} else {
+					$cell->append($this->xml->Element("cell", null, $credential->days_sent_email));
+				}
+				$document->append($cell);
+
+			}
+		}
+		}
+
+    }
+
+    function usergrid ($user_us_agy_id) {
+		$this->load->model('us1usercredentialsmdl');
+		$this->load->model('usagydisciplinemdl');
+		$agency_id = $this->session->userdata('agency_id');
+		$agency_types = $this->lang->line('agency_type_list');
+		$status		  = $this->lang->line('agency_status_list');
+
+	    $allow_edit = false;
+	    $user_us_agy = $user  = $this->usagymdl->getByUsAgyId($user_us_agy_id);
+	    //$this->tpl->assign('user_profile_id', $user_us_agy->profile_id);
+	    if($user_us_agy->profile_id==1 OR $user_us_agy->profile_id==3 OR $this->hasPermission(10)){
+	      $allow_edit = true;
+	    }
+	    $this->tpl->assign("allow_edit", $allow_edit);
+
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+
+		// $head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		// $head->append($this->xml->Element("column", "width=12", "User Name"));
+
+		// $head->append($this->xml->Element("column", "width=6", "Send"));
+
+		//$head->append($this->xml->Element("column", "width=16", "Last Name"));
+		//$head->append($this->xml->Element("column", "width=*", "Type Employee"));
+		$head->append($this->xml->Element("column", "width=*", "Credential Name"));
+		$head->append($this->xml->Element("column", "width=15", "Expiration Date"));
+		// $head->append($this->xml->Element("column", "width=*", "Discipline"));
+		//vanlt add
+		$head->append($this->xml->Element("column", "width=*", "Expiration in Days"));
+		// $head->append($this->xml->Element("column", "width=*", "Email Sent"));
+		// $head->append($this->xml->Element("column", "width=10", "Days Sent"));
+		$head->append($this->xml->Element("column", "width=*;align=center", "Credentials"));
+
+		//end
+		// $head->append($this->xml->Element("column", "width=10;type=linkc;align=center", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		if ($this->input->post('search_into') == 'user') {
+			$_POST['keyword'] = $this->input->post('search');
+		} else {
+			$_POST['search_credential'] = $this->input->post('search');
+		}
+			
+
+		// foreach ($this->usagymdl->getByAgencyId($this->getAgencyId(), $this->input->post('keyword'),$this->input->post('search_type'), $this->input->post('profile_id'),$this->input->post('tab_013_status'), true, false, null, array(), null, 1) as $user) {
+			$credentials = $this->us1usercredentialsmdl->getExpiredList($user_us_agy->user_id, null, $user_us_agy->agency_id);
+		    $discipline_list = $this->usagydisciplinemdl->getByUser($user_us_agy->us_agy_id);
+
+		    $discipline_data = "";
+		    if (is_array($discipline_list)) {
+		    	foreach ($discipline_list as $dl) {
+	                $discipline_data .= $dl->short_description.", ";
+	            }
+		    }
+
+            $cred_alert = false;
+			if (count($credentials) >= 1) {
+				$cell = $this->xml->Element("row", "id=" . $user->user_id. (count($credentials) >= 1 ? ";xmlkids=1" : null));
+
+				
+				$cell->append($this->xml->Element("cell", null, "" ));
+
+				//$cell->append($this->xml->Element("cell", null, $user->last_name));
+				// $cell->append($this->xml->Element("cell", null, $user->tab_description));
+				$cell->append($this->xml->Element("cell", null, null));
+
+				$address = array($user->address);
+				if ($user->city) {
+					$address[] = $user->city;
+				}
+				if ($user->state_name_short) {
+					$address[] = $user->state_name_short;
+				}
+				if ($user->zip_code) {
+					$address[] = $user->zip_code;
+				}
+
+				$addres_str = trim(implode($address, ", "), ",");
+
+				$cell->append($this->xml->Element("cell", null, null));
+				// $cell->append($this->xml->Element("cell", null, $user->description.' ('.$user->short_description.')'));
+				//vanlt add
+				if(count($credentials) >= 1) {
+					$color = "green";
+					foreach ($credentials as $value) {
+						if ($value->expiration_days_left <= 0) {
+							$color = "red";
+							break;
+						}
+						else if ($value->expiration_days_left >=1 && $value->expiration_days_left <= 15 ) {
+							$color = "orange"; break;
+						}
+						else if  ($value->expiration_days_left >= 16 && $value->expiration_days_left <= 30) {
+							$color = "#F0FF33";
+							break;
+						}
+
+
+					}
+					$txt = '<div style="
+					width: 20px;
+					height: 20px;
+					-moz-border-radius: 50%;
+					-webkit-border-radius: 50%;
+					border-radius: 50%;
+					background: '. $color .';
+					color: white;
+					">
+						<p style="text-align:center;padding-top:3px;">'.count($credentials).'</p>
+					</div>';
+					$cell->append($this->xml->Element("cell", null, htmlspecialchars($txt)));
+				}
+
+	            $document->append($cell);
+				foreach ($credentials as $credential) {
+
+					$cell = $this->xml->Element("row", "id=" . $credential->user_credential_id);
+
+					$cell->append($this->xml->Element("cell", null, $credential->tab_description));
+					$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($credential->expiration_date))));
+					$cell->append($this->xml->Element("cell", null, $credential->expiration_days_left));
+					// $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($credential->send_date))));
+
+					// if( $credential->days_sent_email == 0 && !is_null($credential->send_date)) {
+					// 	$cell->append($this->xml->Element("cell", null, "Today"));
+					// } else {
+					// 	$cell->append($this->xml->Element("cell", null, $credential->days_sent_email));
+					// }
+					$document->append($cell);
+
+				}
+			}
+		// }
+
+    }
+
+	/*
+    function child ( $user_id ) {
+        $this->load->model('us1usercredentialsmdl');
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document(true, "parent=" . $user_id);
+        $credentials = $this->us1usercredentialsmdl->getExpiredList($user_id);
+		foreach ($credentials as $credential) {
+
+			$cell = $this->xml->Element("row", "id=" . $credential->user_credential_id);
+
+            $cell->append($this->xml->Element("cell", null, ""));
+			$cell->append($this->xml->Element("cell", null, ""));
+			if(is_null($credential->send_date)){
+				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<input type='checkbox' onchange='recordsIds(this," . $credential->user_credential_id . ")'>")));
+			} else {
+				$cell->append($this->xml->Element("cell", null,  htmlspecialchars("<input type='checkbox' title='send email' checked disabled onclick='recordsIds(" . $credential->user_credential_id . ", 0)'>")));
+			}
+			$cell->append($this->xml->Element("cell", null, $credential->tab_description));
+            $cell->append($this->xml->Element("cell", null, $credential->expiration_date));
+			$cell->append($this->xml->Element("cell", null, $credential->expiration_days_left));
+			$cell->append($this->xml->Element("cell", null, $credential->send_date));
+			$document->append($cell);
+
+		}
+
+	}*/
+
+
+	function __daysLeft($expiration_date=null){
+
+		if(!$expiration_date)
+			return 0;
+
+		$expiration_time = strtotime($expiration_date);
+		$now = time();
+		$days_left = floor(($expiration_time-$now)/86400);
+		return $days_left;
+
+	}
+
+	function __needto_alert($credential){
+		if(!$credential->expiration_date)
+			return false;
+
+		if ($credential->verify_expiration == 'no') {
+			return false;
+		}
+
+		$now = time();
+		$alert = false;
+		$expiration_time = strtotime($credential->expiration_date);
+		if($expiration_time < $now )
+			$alert = true;
+		else{
+			$days_left = $this->__daysLeft($credential->expiration_date);
+			if($days_left <= $credential->alert_days)
+				$alert = true;
+		}
+		return $alert;
+	}
+
+	function email_expired($record_ids = null){
+
+		if (is_null($record_ids)) {
+			exit('At least one Expired Credentials must be selected');
+		}
+		$records = explode(",", $record_ids);
+		$this->tpl->assign("record_ids", $record_ids);
+
+		$rules = array (
+          'notes' 	=> 'required',
+        );
+	    $fields = array(
+	        'notes' => 'Notes',
+	    );
+
+	    $this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		// $patient = $this->patientmdl->getById($patient_id);
+
+		if ($this->validation->run() == FALSE) {
+	      	$this->tpl->assign_include("dynamic_tpl", "useragency/email_expiredCredential");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+	    } else{
+			$this->load->model('us1usercredentialsmdl');
+	    	$records = explode(",", $record_ids);
+	    	$userInfos = $this->us1usercredentialsmdl->getUserInfos($records);
+	    	$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+			// $contractor_info = $this->usermdl->getById($this->session->userdata('user_id'));
+			$sent_date = standard_date(human_to_unix(date('Y-m-d')), 'MYSQL_NOTIME');
+
+			$this->load->library('email');
+			foreach ($userInfos as $userInfo) {
+				
+				$this->email->from('noreply@homehealthsoft.com', $company->agency_name);
+				$this->email->to($userInfo->user_email);
+
+				$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary<br><br>\n\n".$this->input->post('description');
+				$body .= "<br><br>\n\n";
+				$body .= "
+					The following credential(s) are expired or about to be expired <br>
+				";
+
+				$credentials = $this->us1usercredentialsmdl->getExpiredList($userInfo->user_id);
+
+				$credential_body = array();
+				$SN = 1;
+				foreach ($credentials as $credential) {
+					if (in_array($credential->user_credential_id, $records)) {
+						$credential_body[] = $SN.". Credential type: ".$credential->tab_description.", Expiration Date: ".standard_date(mysql_to_unix($credential->expiration_date));
+						
+						$this->us1usercredentialsmdl->updateSendDate($credential->user_credential_id, date('Y-m-d'));
+						$SN++;
+					}
+				}
+
+				$body .= implode("<br>\n", $credential_body);
+				// echo $body; exit();
+
+				$this->email->set_mailtype("html");
+				$this->email->message($body);
+				$subject = $this->input->post('subject');
+
+				$this->email->subject($subject);
+				$this->email->send();
+				// echo $this->email->print_debugger();
+				$this->email->clear(true);
+				
+			}
+
+			echo "Email has been sent";
+	    }
+	}
+
+	function verif_email ( $user_email ) {
+
+		$user = $this->usagymdl->getByEmailAgencyId($this->getAgencyId(), $user_email);
+		if (count($user)) {
+			$this->validation->set_message('verif_email', "The user already exist in this agency.");
+			return FALSE;
+		} else {
+			return TRUE;
+		}
+
+	}
+
+  function check_permission(){
+    $allow_edit = false;
+    $user_us_agy_id = $this->getUsAgyId();
+    $user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);
+
+    //$this->tpl->assign('user_profile_id', $user_us_agy->profile_id);
+    if($user_us_agy->profile_id==1 OR $user_us_agy->profile_id==3 OR $this->hasPermission(10)){
+      if($this->input->post('profile_id')==1 AND $user_us_agy->profile_id!=1){
+        $allow_edit = false;
+      }else{
+        $allow_edit = true;
+      }
+    }
+
+    if(!$allow_edit)
+    {
+      $this->validation->set_message('check_permission', "Can't Add or Update Administrator information.");
+			return FALSE;
+    }else{
+      return TRUE;
+    }
+  }
+
+	function xml_entities($text, $charset = 'Windows-1252'){
+	    //return $text;
+	    // Debug and Test
+	    // $text = "test &amp; &trade; &amp;trade; abc &reg; &amp;reg; &#45;";
+
+	    // First we encode html characters that are also invalid in xml
+	    //$text = htmlentities($text, ENT_COMPAT, $charset, false);
+	    $text = htmlentities($text, ENT_QUOTES);
+	    $text=str_replace("'","",$text);
+	    $text=str_replace('"',"",$text);
+
+	    return $text;
+
+	    // XML character entity array from Wiki
+	    // Note: &apos; is useless in UTF-8 or in UTF-16
+	    $arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+
+	    // Building the regex string to exclude all strings with xml special char
+	    $arr_xml_special_char_regex = "(?";
+	    foreach($arr_xml_special_char as $key => $value){
+	        $arr_xml_special_char_regex .= "(?!$value)";
+	    }
+	    $arr_xml_special_char_regex .= ")";
+
+	    // Scan the array for &something_not_xml; syntax
+	    $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+
+	    // Replace the &something_not_xml; with &amp;something_not_xml;
+	    $replacement = '&amp;${1}';
+	    return preg_replace($pattern, $replacement, $text);
+  }
+ }

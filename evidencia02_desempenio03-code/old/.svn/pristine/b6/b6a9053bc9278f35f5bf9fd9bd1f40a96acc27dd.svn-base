@@ -1,0 +1,82 @@
+<table border="0" width="100%" cellpadding="2" cellspacing="2"> 
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Ticket Information Number: {$ticket_id}</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+ 
+  <tr>
+    <td class="ftitle" style="background-color: #cccccc">Status</td>
+    <td style="background-color: #f4f4f4">{$ticket_status->tab_description}</td>
+    <td class="ftitle" style="background-color: #cccccc">Sent On</td>
+    <td style="background-color: #f4f4f4">{$ticket_datetime|date_format:"%m-%d-%Y %I:%M %p"}</td>
+  </tr>
+  <tr>
+    <td class="ftitle" style="background-color: #cccccc">Subject</td>
+    <td style="background-color: #f4f4f4">{$ticket_subject}</td>
+    <td class="ftitle" style="background-color: #cccccc">Category</td>
+    <td style="background-color: #f4f4f4">{$ticket_type->tab_description}</td>
+  </tr>
+  <tr>
+    <td class="ftitle" valign="top" style="background-color: #cccccc">Message</td>
+    <td valign="top" colspan="3" style="background-color: #f4f4f4">
+    	{$ticket_content|nl2br}
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle" style="background-color: #cccccc">Attachment</td>
+    <td style="background-color: #f4f4f4" colspan="3">
+    	<a  href="{$attachment_url}{$attachment}" target="_blank">{$attachment}</a>
+    </td>
+  </tr>
+
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Ticket Replies</td>
+  </tr> 
+  
+  {foreach from=$ticket_replies key=parent_menu_name item=ticket_reply}
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td class="ftitle" style="background-color: #cccccc">User</td>
+    <td style="background-color: #f4f4f4">{$ticket_reply->first_name} {$ticket_reply->last_name}</td>
+    <td class="ftitle" style="background-color: #cccccc">Replied On</td>
+    <td style="background-color: #f4f4f4">{$ticket_reply->response_datetime|date_format:"%m-%d-%Y %I:%M %p"}</td>
+  </tr>
+    <td valign="top" colspan="4" style="background-color: #f4f4f4">
+    	{$ticket_reply->response_content|nl2br}
+    </td>
+  </tr>
+  {/foreach}
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Reply to this Ticket</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  
+  <tr>
+    <td class="ftitle" valign="top">Message</td>
+  </tr>
+  <tr>
+  	<form name="gform" id="gform" method="POST" action="{$index_url}{$resource_path}/reply/{$record_id}">
+    <td valign="top" colspan="4">
+    	<textarea name="response_content" id="response_content" rows="7" cols="50" wrap="auto"></textarea>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" height="10">
+    	<input type="button" class="btn" value="Reply" onclick="if(getValue('response_content') != '') gform.submit(); else alert('Please enter your reply');">
+    </td>
+    </form>
+  </tr>
+  
+
+</table> 
+
+
+

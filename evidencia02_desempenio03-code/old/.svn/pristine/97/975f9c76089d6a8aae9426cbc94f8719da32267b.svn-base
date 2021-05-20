@@ -1,0 +1,281 @@
+<?
+
+ class TeamMdl extends Model {
+
+	var $ppr_id; 	 	
+	var $patient_id;
+	var $user_id;
+	var $primary;
+	var $assigned_by_user_id;
+	var $assigned_date;
+	var $message_to_user;
+	var $approver_type_id;
+	var $user_status;
+	var $comments;
+
+	function TeamMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getActive ( $patient_id ) {
+		$this->db->select('*, us1_user.first_name, us1_user.last_name');
+		$this->db->join('us_agy', 			'us_agy.us_agy_id = ppr_patient_provider.user_id');
+		$this->db->join('us1_user', 		'us1_user.user_id = us_agy.user_id');
+		$this->db->join('agy_agency', 		'agy_agency.agency_id = us_agy.agency_id');
+		$this->db->join('dis_discipline', 	'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->order_by("us1_user.first_name", "asc");
+		
+		$this->db->where("patient_id", $patient_id);
+		$this->db->where("us_agy.tab_021_user_status", 1);
+		$this->db->where("ppr_patient_provider.user_status", 'A');
+		
+		$query = $this->db->get('ppr_patient_provider');
+		return $query->result();
+
+	}
+	
+	function get ( $patient_id, $keyword=null, $discipline_id=null, $agency_id=null, $us_agy_id=null, $approver_type_id=null, $not_discipline_id = array() ) {
+		$this->db->select('ppr_patient_provider.*,us_agy.*,agy_agency.*,dis_discipline.*,us1_user.first_name,us1_user.last_name,us1_user.user_email');
+		$this->db->join('us_agy', 			'us_agy.us_agy_id = ppr_patient_provider.user_id');
+		$this->db->join('us1_user', 			'us1_user.user_id = us_agy.user_id');
+		$this->db->join('agy_agency', 		'agy_agency.agency_id = us_agy.agency_id');
+		$this->db->join('dis_discipline', 	'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->order_by("us1_user.first_name", "asc");
+		
+		if (!is_null($keyword)) {
+			$this->db->like("CONCAT_WS(' ', us1_user.first_name, us1_user.last_name)", $keyword);
+		}
+		
+		if (!is_null($discipline_id)) {
+			$this->db->where('us_agy.discipline_id', $discipline_id);
+		}
+    
+    if (!empty($not_discipline_id)) {
+			$this->db->where_not_in('us_agy.discipline_id', $not_discipline_id);
+		}
+		
+		if (!is_null($agency_id)) {
+			$this->db->where('us_agy.agency_id', $agency_id);
+		}
+		
+		if (!is_null($us_agy_id)) {
+			$this->db->where('us_agy.us_agy_id', $us_agy_id);
+		}
+		
+		if (!is_null($approver_type_id)) {
+			$this->db->where('approver_type_id', $approver_type_id);
+		}
+
+		if ($this->input->post('user_status') != '') {
+			$this->db->where("ppr_patient_provider.user_status", $this->input->post('user_status'));
+		}
+		
+		$this->db->where("patient_id", $patient_id);
+		
+		$query = $this->db->get('ppr_patient_provider');
+		return $query->result();
+
+	}
+	
+	function exitInTeam ( $patient_id, $us_agy_id ) {
+		
+		$this->db->where("patient_id", $patient_id);
+		$this->db->where("user_id", $us_agy_id);
+		
+		$query = $this->db->get('ppr_patient_provider');
+		if (count($query->result())) {
+			return true;
+		} else {
+			return false;
+		}
+		
+	}
+	
+	function getAll ( $patient_id, $discipline_id=null, $agency_id_session=true,  $not_discipline_id = array(), $user_status = null ) {
+	
+		$this->db->select("*, CONCAT(us1_user.first_name, ' ', us1_user.last_name, ' - ', short_description, if(us_agy.legal_name is null,'', CONCAT(' - ', us_agy.legal_name)) ) as complete_name");
+	
+		$this->db->join('us_agy', 'us_agy.us_agy_id = ppr_patient_provider.user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id');
+		$this->db->join('dis_discipline', 'dis_discipline.discipline_id = us_agy.discipline_id');
+		$this->db->order_by("us1_user.first_name", "asc");
+		
+		$this->db->where("patient_id", $patient_id);
+		if ($agency_id_session) $this->db->where("agency_id",  $this->session->userdata('agency_id'));
+		
+		if (!is_null($discipline_id)) {
+			$this->db->where_in("us_agy.discipline_id", $discipline_id);
+		}
+
+		if (!is_null($user_status)) {
+			$this->db->where("ppr_patient_provider.user_status", $user_status);
+		}
+
+		if (!empty($not_discipline_id)) {
+			$this->db->where_not_in('us_agy.discipline_id', $not_discipline_id);
+		}
+		
+		$query = $this->db->get('ppr_patient_provider');
+		return $query->result2('us_agy_id', 'complete_name');
+
+	}
+	
+	function hasUserTaskAssigned ( $patient_id, $us_agy_id ) {
+		
+		$this->db->select('COUNT(*) as total');
+		
+		$this->db->join('cms_485',   			'cms_485.soc_id = soc_start_of_care.soc_id AND patient_id = ' . $patient_id);
+		$this->db->join('vis_visit_log',   		'vis_visit_log.cms485_id = cms_485.cms485_id AND visit_user_id = ' . $us_agy_id);
+		
+		$query = $this->db->get('soc_start_of_care');
+		return $query->row()->total;
+		
+	}
+	
+	function getAllAgencyUsers ( $patient_id, $agency_id, $discipline_id=null ) {
+		$this->db->select("*");		
+		$this->db->join('us_agy', 'us_agy.us_agy_id=ppr_patient_provider.user_id AND us_agy.agency_id='.$agency_id);
+		$this->db->where('ppr_patient_provider.patient_id', $patient_id);	
+		if ($discipline_id) {
+			$this->db->where('us_agy.discipline_id', $discipline_id);	
+		}
+		$query = $this->db->get('ppr_patient_provider');
+
+		return $query->result();		
+	}		
+
+	function getByPPRId ( $ppr_id ) {
+		$this->db->select('*, us1_user.first_name, us1_user.last_name');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = ppr_patient_provider.user_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id');
+		$this->db->where('ppr_id', $ppr_id);
+		
+		$query = $this->db->get('ppr_patient_provider');
+		return $query->row();
+		
+	}
+	
+	function getPPRId($patient_id, $us_agy_id){
+		$this->db->where('patient_id', $patient_id);
+		$this->db->where('user_id', $us_agy_id);
+		
+		$query = $this->db->get('ppr_patient_provider');
+		$row = $query->row();
+		if (isset($row->ppr_id)) {
+			return $row->ppr_id;
+		} else {
+			return false;
+		}
+	}
+	
+	function insert ( $patient_id ) {
+		
+		$this->ppr_id = null;
+		$this->patient_id = $patient_id;
+		
+		if(is_null($this->user_status))
+		$this->user_status = 'A';
+    
+		$this->db->insert('ppr_patient_provider', $this);
+		$this->ppr_id = $this->db->insert_id();
+		
+	}	
+	
+	function update ( $patient_id, $ppr_id ) {
+		
+		$this->db->set('comments', $this->comments);
+		$this->db->set('user_status', $this->user_status);
+		$this->db->where('ppr_id', $ppr_id);
+		
+		$this->db->update('ppr_patient_provider');
+		
+	}
+
+	function updateFlex($ppr_id, $attribute, $value, $where = 'ppr_id') {
+		$this->db->where($where, $ppr_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('ppr_patient_provider');
+	}
+
+	function updatePatientPrimary ( $ppr_id, $primary ) {
+		
+		$this->db->set('primary', $primary);
+		$this->db->where('ppr_id', $ppr_id);
+		
+		$this->db->update('ppr_patient_provider');
+		
+	}
+	
+	function cleanPatientPrimary ( $patient_id ) {
+		
+		$this->db->set('primary', '0');
+		$this->db->where('patient_id', $patient_id);
+		
+		$this->db->update('ppr_patient_provider');
+		
+	}	
+	
+	function assignPatientApprover ( $ppr_id, $approver_type_id ) {
+		
+		$this->db->set('approver_type_id', $approver_type_id);
+		$this->db->where('ppr_id', $ppr_id);
+		
+		$this->db->update('ppr_patient_provider');
+		
+	}
+	
+	function cleanPatientApprover ( $patient_id, $approver_type_id, $agency_id=null ) {
+		
+		$q = "UPDATE ppr_patient_provider, us_agy SET approver_type_id = NULL WHERE patient_id = ? AND approver_type_id = ?";
+		
+		if (!is_null($agency_id)) {
+			$q .= " AND us_agy.us_agy_id = ppr_patient_provider.user_id AND agency_id = ?";
+		}
+		
+		$this->db->query($q, array($patient_id, $approver_type_id, $agency_id));
+		
+	}		
+	
+	function inactiveForAllUsersOfContractor ( $patient_id, $contractor_id, $discipline_id=null ) {
+		$this->db->select("us_agy.us_agy_id");		
+		$this->db->join('us_agy', 'us_agy.us_agy_id=ppr_patient_provider.user_id AND us_agy.agency_id='.$contractor_id);
+		$this->db->where('ppr_patient_provider.patient_id', $patient_id);	
+		if ($discipline_id) {
+			$this->db->where('us_agy.discipline_id', $discipline_id);	
+		}
+		$query = $this->db->get('ppr_patient_provider');
+
+		$users = $query->result();
+
+		foreach ($users as $key => $user) {
+			$this->db->set('ppr_patient_provider.user_status', 'I');
+			$this->db->where('ppr_patient_provider.patient_id', $patient_id);		
+			$this->db->where('ppr_patient_provider.user_id', $user->us_agy_id);		
+			$this->db->update('ppr_patient_provider');
+		}		
+	}	
+
+	function ActiveAllPPRByUser ( $user_id ) {
+		$this->db->set('ppr_patient_provider.user_status', 'A');
+		$this->db->where('ppr_patient_provider.user_id', $user_id);		
+		$this->db->update('ppr_patient_provider');
+	}		
+
+	function InactiveAllPPRByUser ( $user_id ) {
+		$this->db->set('ppr_patient_provider.user_status', 'I');
+		$this->db->where('ppr_patient_provider.user_id', $user_id);		
+		$this->db->update('ppr_patient_provider');
+	}		
+	
+	function delete ( $ppr_id ) {
+		
+		$this->db->where('ppr_id', $ppr_id);
+		
+		$this->db->delete('ppr_patient_provider'); 
+		
+	}
+
+ }

@@ -1,0 +1,219 @@
+<?php
+
+include ('admin_controller.php');
+class Faq extends MY_Controller {
+
+	function Faq () {		
+		parent::MY_Controller();		
+		$this->tpl->assign("resource_path", "administrator/faq");		
+		$this->load->model("faqgroupmdl");
+		$this->load->model("faqmdl");
+	}
+
+	function index () {	
+		$this->tpl->assign("list_title", "Faq Group List");
+		$this->tpl->assign("add_sufix", "Group");
+		// $this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}	
+	
+	function grid () {
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Group Name"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Sequence"));
+		$head->append($this->xml->Element("column", "width=6;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->faqgroupmdl->get() as $group) {			
+			$cell = $this->xml->Element("row", "id=" . $group->faq_group_id);
+			$cell->append($this->xml->Element("cell", null, $group->faq_group_id));
+			$cell->append($this->xml->Element("cell", null, $group->faq_group_name));
+			$cell->append($this->xml->Element("cell", null, $group->faq_sequence));
+			$cell->append($this->xml->Element("cell", null, "Questions^" . $this->config->config['index_url'] . "administrator/faq/questions/" . $group->faq_group_id));
+			$document->append($cell);
+		}
+	}
+		
+	function add () {
+		$this->tpl->assign('faction', 'add');
+		
+		$rules = array ('faq_group_name'	=> 'required',
+						'faq_sequence' => 'required');
+		$fields = array ('faq_group_name'	=> 'Group Name',
+						'faq_sequence' => 'Sequence');
+		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign("form_title", "Add Faq Group");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/faq/group_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->faqgroupmdl);
+			$this->faqgroupmdl->insert();
+			$this->tpl->assign('gmessage', $this->faqgroupmdl->faq_group_name . "group " . $this->lang->line('grl_add_msg'));			
+			$this->index();			
+		}		
+	}
+		
+	function edit ( $faq_group_id ) {
+		$this->tpl->assign('faction', 'edit');
+		$this->tpl->assign('record_id', $faq_group_id);
+		
+		$this->assignObject($this->faqgroupmdl->getById($faq_group_id));
+		
+		$rules = array ('faq_group_name'	=> 'required',
+						'faq_sequence' => 'required');
+		$fields = array ('faq_group_name'	=> 'Group Name',
+						'faq_sequence' => 'Sequence');
+						
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->tpl->assign("form_title", "Edit Faq Group");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/faq/group_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->faqgroupmdl);
+			$this->faqgroupmdl->update($faq_group_id);
+			$this->tpl->assign('gmessage', $this->faqgroupmdl->faq_group_name . " group " . $this->lang->line('grl_upd_msg'));
+			$this->index();
+		}
+	}
+		
+	
+	function questions ($faq_group_id) {
+		$faqGroup = $this->faqgroupmdl->getById($faq_group_id);
+		$this->tpl->assign("list_title", "{$faqGroup->faq_group_name} Faq List");
+		$this->tpl->assign("entity_id", $faq_group_id);
+		$this->tpl->assign("resource_grid", "questions_grid");
+		$this->tpl->assign("resource_edit", "question_edit");
+		$this->tpl->assign("resource_add", "question_add");
+		$this->tpl->assign("add_sufix", "Faq");
+		$this->tpl->assign('additional_buttons', array (
+		'Back' => 'window.location.href=\'' . $this->config->site_url() . '/administrator/faq\''));
+		
+
+		// $this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}	
+	
+	function questions_grid ($faq_group_id) {
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Sequence"));
+		$head->append($this->xml->Element("column", "width=*", "Question"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->faqmdl->get($faq_group_id, null, null) as $faq) {			
+			$cell = $this->xml->Element("row", "id=" . $faq->faq_id);
+			$cell->append($this->xml->Element("cell", null, $faq->faq_id));
+			$cell->append($this->xml->Element("cell", null, $faq->sequence));
+			$cell->append($this->xml->Element("cell", null, $faq->title));
+			$document->append($cell);
+		}
+	}
+
+	function question_add($entity_id){
+		$group = $this->faqgroupmdl->getById($entity_id);
+		
+		$this->tpl->assign('entity_id', $entity_id);
+		$this->tpl->assign('faq_group_name', $group->faq_group_name);
+		$this->tpl->assign('no_delete_form', true);
+
+		$this->tpl->assign('resource_index', 'questions');
+
+		$this->tpl->assign('faction', 'question_add');
+		
+		$rules = array ('title'=>'required', 'answer'=>'required', 'publish'=>'required', 'sequence'=>'required');
+		$fields = array ('title'  => 'Question Title','answer'=>'Answer','publish'=>'Publish Status','sequence'=>'Sequence');
+		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->load->library('fckeditor', 'answer');
+
+			$FCK_config['BasePath'] = base_url().'system/plugins/fckeditor/';
+	        $FCK_config['ToolbarSet'] = 'Common';
+	        $FCK_config['Width'] = 800;
+	        $FCK_config['Height'] = 280;
+	        $FCK_config['InstanceName'] = "answer";
+	        $FCK_config['Value'] = $this->input->post('answer');
+	        $this->fckeditor->initialize($FCK_config);
+			$this->tpl->assign("fck_answer", $this->fckeditor->CreateHtml());
+
+			$this->tpl->assign("form_title", "Add Faq");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/faq/faq_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->faqmdl);
+			$this->faqmdl->insert($entity_id);
+			$this->tpl->assign('gmessage', "Faq " . $this->lang->line('grl_add_msg'));			
+			$this->questions($entity_id);			
+		}
+	}
+	
+	function question_edit($entity_id, $record_id){
+		$this->tpl->assign('entity_id', $entity_id);
+		$this->tpl->assign('record_id', $record_id);
+		$this->tpl->assign('resource_index', 'questions');
+
+		$this->tpl->assign('faction', 'question_edit');
+		$FAQ = $this->faqmdl->getById($record_id);
+		$this->assignObject($FAQ);
+
+		$rules = array ('title'=>'required', 'answer'=>'required', 'publish'=>'required','sequence'=>'required');
+		$fields = array ('title'  => 'Question Title','answer'=>'Answer','publish'=>'Publish Status','sequence'=>'Sequence');
+		
+		$this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+		
+		if ($this->validation->run() == FALSE) {
+			$this->load->library('fckeditor', 'answer');
+
+			$FCK_config['BasePath'] = base_url().'system/plugins/fckeditor/';
+	        $FCK_config['ToolbarSet'] = 'Common';
+	        $FCK_config['Width'] = 800;
+	        $FCK_config['Height'] = 300;
+	        $FCK_config['InstanceName'] = "answer";
+	        $FCK_config['Value'] = $FAQ->answer;
+	        $this->fckeditor->initialize($FCK_config);
+			$this->tpl->assign("fck_answer", $this->fckeditor->CreateHtml());
+
+			$this->tpl->assign("form_title", "Edit Faq");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/faq/faq_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+		} else {
+			$this->assignPostData($this->faqmdl);
+			$this->faqmdl->update($entity_id, $record_id);
+			$this->tpl->assign('gmessage', "Faq " . $this->lang->line('grl_upd_msg'));			
+			$this->questions($entity_id);			
+		}
+	}
+			
+			
+			
+			
+			
+		
+	
+
+}

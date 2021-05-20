@@ -1,0 +1,786 @@
+<?php  if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+// 8606A Visit PDF functions
+
+function form8606A_pdf( $visit_log_id, $output ='F' ){
+    global $GL_VISIT;
+
+    $CI =& get_instance();
+
+    $CI->load->model('form8606amdl');
+    $CI->load->model('us1usercredentialsmdl');
+
+    $visit_log = $visitlog = $CI->visitlogmdl->getById($visit_log_id);
+
+    $visit_user = $CI->usagymdl->getByUsAgyId($visit_log->visit_user_id);
+    if ($visitlog->visit_discipline_id) {
+        $user_discipline = $CI->disciplinemdl->getById($visitlog->visit_discipline_id);
+        $visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+    }
+
+    $us1_user = $CI->usermdl->getById($visit_user->user_id);
+    $credentials = $CI->us1usercredentialsmdl->getById($visit_user->user_id, 2, 'Active', $visit_user->agency_id);
+    $credential = array();
+    if (count($credentials) > 0) {
+        $credential = $credentials[0];
+    } else {
+        $credentials = $CI->us1usercredentialsmdl->getById($visit_user->user_id, null, 'Active', $visit_user->agency_id);
+        if (count($credentials) > 0) {
+            $credential = $credentials[0];
+        }
+    }
+
+    $discipline = $CI->disciplinemdl->getById($visit_user->discipline_id);
+    $f8606a = $CI->form8606amdl->get($visit_log_id);
+    if (empty($f8606a)) {
+        $f8606a = $CI->form8606amdl->getEmpty();
+    } else {
+        array_walk($f8606a, 'convert_special_chars');
+    }
+
+
+    $GL_VISIT = $f8606a;
+
+    $patient = $CI->patientmdl->getById($visit_log->patient_id);
+    $medicaidInsurance = $CI->patientinsurancemdl->getMedicaidInsurance($visit_log->patient_id);
+    $agency = $CI->agencymdl->getByAgencyId($patient->agency_id);
+    $requested_skilled_list = $CI->disciplinemdl->getByIds(array(13, 14, 15, 16, 17, 18), FALSE, 'mayor_discipline');
+
+
+
+    $path_ticket = realpath("style/images/icon_enable_negro.gif");
+    $path_logo = realpath("upload/logos/THHS.jpg");
+    $label_font = "Arial";
+    $data_font = "Courier";
+
+    $__FONT['PDF']['SIZE'] = 9;
+    $__FONT['PDF']['FORM_MEDIUM'] = 10;
+    $__FONT['PDF']['FORM_SMALL'] = 9;
+    $__FONT['PDF']['FORM_SMALL2'] = 8;
+    $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+    $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+    $__FONT['PDF']['FORM_arial8'] = 9.5;
+
+
+    $CI->load->library('fpdf');
+    if(!defined('FPDF_FONTPATH'))
+      define('FPDF_FONTPATH',$CI->config->item('fonts_path'));
+    $total_page = 2;
+    $CI->fpdf->Open();
+    $pdf = $CI->fpdf;
+    $pdf->AddPage();
+    // $pdf->AddPage('P', 'legal');
+
+    $con = 2.8346456692913384;
+    $cero_x = 11;
+    $cero_y = 2;
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+
+    $CI->fpdf->Image( $path_logo, ( $cero_x + 7 ),($cero_y + 15), 125);
+
+    $CI->fpdf->SetFont('Arial', 'B', 7);
+    $CI->fpdf->Text(($x +500), ($y - 2), "Form 8606-A");
+    $CI->fpdf->SetFont('Arial', '', 7);
+    $CI->fpdf->Text(($x +496), ($y + 7), "August 2011-E");
+
+    $pdf->SetFont('Arial', '', 10);
+    $CI->fpdf->Text(($x +145), ($y + 43), "Community Living Assistance and Support Services (CLASS)");
+    $pdf->SetFont('Arial', 'B', 12);
+    $CI->fpdf->Text(($x +157), ($y + 56), "Therapy Justifications - Attachment to IPP");
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +95), ($cero_x +562), ($cero_y +95));
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +120), ($cero_x +562), ($cero_y +120));
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +145), ($cero_x +562), ($cero_y +145));
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +145), ($cero_x +562), ($cero_y +145));
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +195), ($cero_x +562), ($cero_y +195));
+
+    $CI->fpdf->Line(($cero_x +6.5), ($cero_y +94.5), ($cero_x +6.5), ($cero_y +195));
+    $CI->fpdf->Line(($cero_x +561.5), ($cero_y +94.5), ($cero_x +561.5), ($cero_y +195));
+
+    $CI->fpdf->Line(($cero_x +290), ($cero_y +94.5), ($cero_x +290), ($cero_y +120));
+    $CI->fpdf->Line(($cero_x +195), ($cero_y +119.5), ($cero_x +195), ($cero_y +145));
+    $CI->fpdf->Line(($cero_x +370), ($cero_y +119.5), ($cero_x +370), ($cero_y +145));
+    // $CI->fpdf->Line(($cero_x +551), ($cero_y +95), ($cero_x +551), ($cero_y +147));
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 6), ($y + 78), "Individual's Name");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x - 4), ($y + 88), $patient->first_name ." ". $patient->middle_initial ." ". $patient->last_name);
+
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 277), ($y + 78), "Medicaid No.");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x + 290), ($y + 88), @$medicaidInsurance->ins_id);
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 6), ($y + 103), "Case Management Agency (CMA) Name");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x + 290), ($y + 88), $agency->spe_cma_name);
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 181), ($y + 103), "CMA Vendor No.");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x + 190), ($y + 113), $agency->F8606A_CMA_vendor_nbr);
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 356), ($y + 103), "Requested Skilled or Specialized Therapy");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($requested_skilled_list[@$f8606a->requested_skilled])) {
+        $CI->fpdf->Text(($x + 360), ($y + 113), $requested_skilled_list[$f8606a->requested_skilled]);
+    } else {
+        $CI->fpdf->Text(($x + 360), ($y + 113), $requested_skilled_list[$visit_user->discipline_id]);
+    }
+        
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 6), ($y + 129), "List non-waiver resources that were exhausted:");
+
+    // Start Box 1
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->SetFont($data_font,'',$__FONT['PDF']['FORM_SMALL2']);;
+    $list_of_none=@$f8606a->list_of_none;
+    $list_of_none = str_replace("\n", " ", $list_of_none);
+    $list_of_none1 = "";
+    $list_of_none2 = "";
+    if (strlen($list_of_none) > 495) {
+        $list_of_none1 = substr($list_of_none, 0, 69);
+        $list_of_none2 = substr($list_of_none, 69, 495);
+
+    } else {
+        $list_of_none1 = substr($list_of_none, 0, 69);
+        $list_of_none2 = substr($list_of_none, 69);
+    }
+
+    $pdf->Text(($x + 185), ($y + 129), $list_of_none1);
+    $CI->fpdf->SetXY(($x - 6), ($y + 132));
+    $list_of_none2 = str_replace("\n", " ", $list_of_none2);
+    $CI->fpdf->MultiCell(550, 8, $list_of_none2);
+    // $CI->fpdf->Text(($x + 185), ($y + 129), substr($f8606a->list_of_none, 0, 495));
+
+
+    // End of Box 1
+
+    $CI->fpdf->Line(($cero_x +45), ($cero_y +220), ($cero_x +280), ($cero_y +220));
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 90), ($y + 203), "Signature - Case Manager");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($f8606a->cm_signature) AND $f8606a->cm_signature != "") {
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$f8606a->cm_signature;
+        $CI->fpdf->Image( $img_path, ($x + 95), ($y + 169), 55);
+    }
+    // $CI->fpdf->Text(($x + 95), ($y + 190), $f8606a->cm_signature);
+
+    $CI->fpdf->Line(($cero_x +365), ($cero_y +220), ($cero_x +530), ($cero_y +220));
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 425), ($y + 203), "Date");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($f8606a->cm_signature) AND $f8606a->cm_signature != "") {
+        $CI->fpdf->Text(($x + 430), ($y + 190), standard_date(mysql_to_unix($visit_log->visit_date_time)));
+    }
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x - 9), ($y + 223), "To be Completed by the Appropriate Professional");
+
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +252), ($cero_x +562), ($cero_y +252));
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +693), ($cero_x +562), ($cero_y +693));
+    $CI->fpdf->Line(($cero_x +6.5), ($cero_y +252), ($cero_x +6.5), ($cero_y +693));
+    $CI->fpdf->Line(($cero_x +561.5), ($cero_y +252), ($cero_x +561.5), ($cero_y +693));
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 235), "Diagnosis:");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +265), ($cero_x +558), ($cero_y +265));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +315), ($cero_x +558), ($cero_y +315));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +265), ($cero_x +10), ($cero_y +315));
+    $CI->fpdf->Line(($cero_x +558), ($cero_y +265), ($cero_x +558), ($cero_y +315));
+
+    // Start Diagnosis Box
+
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->SetFont($data_font,'',$__FONT['PDF']['FORM_SMALL2']);;
+    $diagnosis=@$f8606a->diagnosis;
+    $diagnosis = str_replace("\n", " ", $diagnosis);
+    $CI->fpdf->SetXY(($x - 6), ($y + 242));
+    $CI->fpdf->MultiCell(548, 8.5, $diagnosis);
+
+
+    // End of Diagnosis Box
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 300), "Brief description of need for services:");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +330), ($cero_x +558), ($cero_y +330));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +380), ($cero_x +558), ($cero_y +380));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +330), ($cero_x +10), ($cero_y +380));
+    $CI->fpdf->Line(($cero_x +558), ($cero_y +330), ($cero_x +558), ($cero_y +380));
+
+    // Start Brief description of need for services Box
+
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->SetFont($data_font,'',$__FONT['PDF']['FORM_SMALL2']);;
+    $brief_descrip=@$f8606a->brief_descrip;
+    $brief_descrip = str_replace("\n", " ", $brief_descrip);
+    $CI->fpdf->SetXY(($x - 6), ($y + 307));
+    $CI->fpdf->MultiCell(548, 8.5, $brief_descrip);
+
+    // End of Brief description of need for services Box
+
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 365), "Specific qualifying conditions requiring treatment:");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +395), ($cero_x +558), ($cero_y +395));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +445), ($cero_x +558), ($cero_y +445));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +395), ($cero_x +10), ($cero_y +445));
+    $CI->fpdf->Line(($cero_x +558), ($cero_y +395), ($cero_x +558), ($cero_y +445));
+
+    // Start Specific qualifying conditions requiring treatment Box
+
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->SetFont($data_font,'',$__FONT['PDF']['FORM_SMALL2']);;
+    $specif_qual_cond=@$f8606a->specif_qual_cond;
+    $specif_qual_cond = str_replace("\n", " ", $specif_qual_cond);
+    $CI->fpdf->SetXY(($x - 6), ($y + 371));
+    $CI->fpdf->MultiCell(548, 8.5, $specif_qual_cond);
+
+    // End of Specific qualifying conditions requiring treatment Box
+
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 430), "Describe or attach the interventions planned with baseline data and goals and objectives outlined in observable and measurable terms.");
+    $CI->fpdf->Text(($x - 7), ($y + 440), "Also include a plan for implementation and the scope, duration, amount, frequency and location of service.");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +470), ($cero_x +558), ($cero_y +470));
+
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->SetFont($data_font,'',$__FONT['PDF']['FORM_SMALL2']);;
+    $describe_attach=@$f8606a->describe_attach;
+    $describe_attach = str_replace("\n", " ", $describe_attach);
+    $CI->fpdf->SetXY(($x - 6), ($y + 448));
+    $CI->fpdf->MultiCell(548, 8.5, $describe_attach);
+
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +520), ($cero_x +558), ($cero_y +520));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +470), ($cero_x +10), ($cero_y +520));
+    $CI->fpdf->Line(($cero_x +558), ($cero_y +470), ($cero_x +558), ($cero_y +520));
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 505), "Can components of the requested service be delivered by someone other than a therapist?");
+
+
+    $CI->fpdf->Rect(450, 526.5, 8.4, 8.4);
+    if (@$f8606a->can_components == 'Y') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 440.5 ),($cero_y + 525.5),5.5);
+    }
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x + 432), ($y + 505.5), "Yes");
+    $CI->fpdf->Rect(500, 526.5, 8.4, 8.4);
+    if (@$f8606a->can_components == 'N') {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 491 ),($cero_y + 525.5),5.5);
+    }
+    $pdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x + 482), ($y + 505.5), "No");
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 5), ($y + 520), "If no, please describe the components that require a licensed/certified professional:");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +550), ($cero_x +558), ($cero_y +550));
+
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->SetFont($data_font,'',$__FONT['PDF']['FORM_SMALL2']);;
+    $if_no_describe=@$f8606a->if_no_describe;
+    $if_no_describe = str_replace("\n", " ", $if_no_describe);
+    $CI->fpdf->SetXY(($x - 6), ($y + 526));
+    $CI->fpdf->MultiCell(548, 8.5, $if_no_describe);
+
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +600), ($cero_x +558), ($cero_y +600));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +550), ($cero_x +10), ($cero_y +600));
+    $CI->fpdf->Line(($cero_x +558), ($cero_y +550), ($cero_x +558), ($cero_y +600));
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 7), ($y + 585), "Describe a plan for transferring the therapy services to a non-therapist and changing the role of the therapist to a supervisory role of the");
+    $CI->fpdf->Text(($x - 7), ($y + 595), "non-therapist:");
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +625), ($cero_x +558), ($cero_y +625));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +690), ($cero_x +558), ($cero_y +690));
+    $CI->fpdf->Line(($cero_x +10), ($cero_y +625), ($cero_x +10), ($cero_y +690));
+    $CI->fpdf->Line(($cero_x +558), ($cero_y +625), ($cero_x +558), ($cero_y +690));
+
+    // Start non-therapist Box
+
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->SetFont($data_font,'',$__FONT['PDF']['FORM_SMALL2']);;
+    $f8606a->describe_plan = str_replace("\n", " ", @$f8606a->describe_plan);
+    $CI->fpdf->SetXY(($x - 6), ($y + 600));
+    $CI->fpdf->MultiCell(548, 8.5, @$f8606a->describe_plan);
+
+    // End of non-therapist Box
+
+
+    $CI->fpdf->Line(($cero_x +12), ($cero_y +725), ($cero_x +225), ($cero_y +725));
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 50), ($y + 710), "Signature - Professional");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($f8606a->clinician_signature) AND $f8606a->clinician_signature != "") {
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$f8606a->clinician_signature;
+        $CI->fpdf->Image( $img_path, ($x + 40), ($y + 668), 60);
+    }
+    // $CI->fpdf->Text(($x + 40), ($y + 695), $f8606a->cm_signature);
+
+    $CI->fpdf->Line(($cero_x +235), ($cero_y +725), ($cero_x +386), ($cero_y +725));
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 285), ($y + 710), "Title");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x + 270), ($y + 695), $visit_user->description);
+
+
+    $CI->fpdf->Line(($cero_x +398), ($cero_y +725), ($cero_x +558), ($cero_y +725));
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 445), ($y + 710), "Date");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($f8606a->clinician_signature) AND $f8606a->clinician_signature != "") {
+        $CI->fpdf->Text(($x + 435), ($y + 695), standard_date(mysql_to_unix($visit_log->visit_date_time)) );
+    }
+
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +742), ($cero_x +562), ($cero_y +742));
+    $CI->fpdf->Line(($cero_x +6), ($cero_y +770), ($cero_x +562), ($cero_y +770));
+    $CI->fpdf->Line(($cero_x +6.5), ($cero_y +741.5), ($cero_x +6.5), ($cero_y +770));
+    $CI->fpdf->Line(($cero_x +561.5), ($cero_y +741.5), ($cero_x +561.5), ($cero_y +770));
+    $CI->fpdf->Line(($cero_x +200), ($cero_y +741.5), ($cero_x +200), ($cero_y +770));
+    $CI->fpdf->Line(($cero_x +345), ($cero_y +741.5), ($cero_x +345), ($cero_y +770));
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x - 5), ($y + 725), "Printed Name of Professional");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x ), ($y + 735), $visit_user->first_name ." ". $visit_user->last_name);
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 188), ($y + 725), "Area Code and Telephone No.");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x + 188), ($y + 735), $us1_user->phone_home);
+
+    $pdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x + 332), ($y + 725), "License No. (if applicable)");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($credential->credential_id) AND $credential->credential_id != "") {
+        $CI->fpdf->Text(($x + 340), ($y + 735), $credential->credential_id . '('.$credential->tab_description.')');
+    }
+
+
+
+
+    $pdf->AddPage();
+    $con = 2.8346456692913384;
+    $cero_x = 11;
+    $cero_y = 2;
+    $adjust_y = 0;
+
+    $y = $pdf->GetY();
+    $x = $pdf->GetX();
+
+    $CI->fpdf->SetFont('Arial', 'B', 10);
+    $CI->fpdf->Text(($x +290), ($y + 10), "Addendum - 8606-A");
+    $CI->fpdf->SetFont('Arial', '', 9);
+    $CI->fpdf->Text(($x +290), ($y + 20), "Therapy Evaluation       Initial       Annual");
+    $CI->fpdf->Rect(( $cero_x + 290 + 100),($cero_y +40), 8.4, 8.4);
+    $CI->fpdf->Rect(( $cero_x + 290 + 140),($cero_y +40), 8.4, 8.4);
+    if (isset($f8606a->adden_ther_evaluation) AND $f8606a->adden_ther_evaluation == "Initial") {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 290 + 100 + 2 ),($cero_y + 40.5),6);
+    }
+    if (isset($f8606a->adden_ther_evaluation) AND $f8606a->adden_ther_evaluation == "Annual") {
+        $CI->fpdf->Image( $path_ticket, ( $cero_x + 290 + 140 + 2 ),($cero_y + 40.5),6);
+    }
+
+
+    $CI->fpdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x +20), ($y + 50), "Client:");
+    $CI->fpdf->Line(($cero_x +83), ($cero_y +78), ($cero_x +250), ($cero_y +78));
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x + 70), ($y + 50), $patient->first_name ." ". $patient->middle_initial ." ". $patient->last_name);
+
+
+    $CI->fpdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x +20), ($y + 63), "Therapist:");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x +70 ), ($y + 60), $visit_user->first_name ." ". $visit_user->last_name);
+    $CI->fpdf->Line(($cero_x +83), ($cero_y +90), ($cero_x +250), ($cero_y +90));
+
+    $CI->fpdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x +290), ($y + 50), "Diagnosis:");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x +340 ), ($y + 48), @$f8606a->adden_diagnosis);
+    $CI->fpdf->Line(($cero_x +355), ($cero_y +78), ($cero_x +500), ($cero_y +78));
+
+    $CI->fpdf->SetFont('Arial', 'B', 9);
+    $CI->fpdf->Text(($x +290), ($y + 63), "Discipline:");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x +340 ), ($y + 62), $discipline->mayor_discipline);
+    $CI->fpdf->Line(($cero_x +355), ($cero_y +90), ($cero_x +500), ($cero_y +90));
+
+    $CI->fpdf->SetFont('Arial', '', 8);
+    $CI->fpdf->SetXY(($x + 14), ($y + 72));
+    $CI->fpdf->MultiCell(500, 8.5, "Client's Diagnosis Of Results In: - (Describe how the diagnosis interferes with the client's ability to perform ADLs or interferes with quality of life)");
+
+    $adjust_y += 17;
+    $y += 17;
+    $cero_y += 17;
+
+    $CI->fpdf->Line(($cero_x +30), ($cero_y +100), ($cero_x +530), ($cero_y +100));
+    $CI->fpdf->Line(($cero_x +30), ($cero_y +100), ($cero_x +30), ($cero_y +608+65));
+    $CI->fpdf->Line(($cero_x +530), ($cero_y +100), ($cero_x +530), ($cero_y +608+65));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +110), ($cero_x +520), ($cero_y +110));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +120), ($cero_x +520), ($cero_y +120));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +128), ($cero_x +520), ($cero_y +128));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +138), ($cero_x +520), ($cero_y +138));
+
+    $pdf->SetFont('Courier', '', 8);
+    $CI->fpdf->SetXY(($x + 14), ($y + 76));
+    $f8606a->adden_client_diagnosis = str_replace("\n", " ", @$f8606a->adden_client_diagnosis);
+    $CI->fpdf->MultiCell(500, 8.5, $f8606a->adden_client_diagnosis);
+
+    $y += 10;
+    $cero_y += 10;
+    $CI->fpdf->Line(($cero_x +35), ($cero_y +140), ($cero_x +520), ($cero_y +140));
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 125), "Intervention:");
+    $pdf->SetFont('Courier', '', 8);
+    $adden_intervention=@$f8606a->adden_intervention;
+    $adden_intervention1 = "";
+    $adden_intervention2 = "";
+    if (strlen($adden_intervention) > 380) {
+        $adden_intervention1 = substr($adden_intervention, 0, strpos(wordwrap($adden_intervention, 93), "\n"));
+        $adden_intervention2 = substr($adden_intervention, strpos(wordwrap($adden_intervention, 93), "\n"), 380);
+
+    } else {
+        $adden_intervention1 = substr($adden_intervention, 0, strpos(wordwrap($adden_intervention, 93), "\n"));
+        $adden_intervention2 = substr($adden_intervention, strpos(wordwrap($adden_intervention, 93), "\n"));
+    }
+    $pdf->Text(($x + 63), ($y + 125), $adden_intervention1);
+    $CI->fpdf->SetXY(($x + 14), ($y + 127));
+    $adden_intervention2 = str_replace("\n", " ", $adden_intervention2);
+    $CI->fpdf->MultiCell(500, 8, $adden_intervention2);
+
+
+    $y += 10;
+    $cero_y += 10;
+
+    // $CI->fpdf->Line(($cero_x +82), ($cero_y +153), ($cero_x +520), ($cero_y +153));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +163), ($cero_x +520), ($cero_y +163));
+
+    $adjust_y += 15;
+    $y += 15;
+    $cero_y += 15;
+
+    $CI->fpdf->Line(($cero_x +30), ($cero_y +168), ($cero_x +528), ($cero_y +168));
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 150), "Baseline Data:");
+
+    $pdf->SetFont('Courier', '', 8);
+    $adden_base_line=@$f8606a->adden_base_line1;
+    $adden_base_line1 = "";
+    $adden_base_line2 = "";
+    if (strlen($adden_base_line) > 380) {
+        $adden_base_line1 = substr($adden_base_line, 0, strpos(wordwrap($adden_base_line, 93), "\n"));
+        $adden_base_line2 = substr($adden_base_line, strpos(wordwrap($adden_base_line, 93), "\n"), 380);
+
+    } else {
+        $adden_base_line1 = substr($adden_base_line, 0, strpos(wordwrap($adden_base_line, 93), "\n"));
+        $adden_base_line2 = substr($adden_base_line, strpos(wordwrap($adden_base_line, 93), "\n"));
+    }
+    $pdf->Text(($x + 70), ($y + 150), $adden_base_line1);
+    $adden_base_line2 = str_replace("\n", " ", $adden_base_line2);
+    $CI->fpdf->SetXY(($x + 14), ($y + 152));
+    $CI->fpdf->MultiCell(500, 8, $adden_base_line2);
+
+    // $CI->fpdf->Line(($cero_x +88), ($cero_y +178), ($cero_x +520), ($cero_y +178));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +188), ($cero_x +520), ($cero_y +188));
+
+    $adjust_y += 15;
+    $y += 15;
+    $cero_y += 15;
+
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 173), "Goals:");
+    $pdf->SetFont('Courier', '', 8);
+    $adden_goals=@$f8606a->adden_goals1;
+    $adden_goals1 = "";
+    $adden_goals2 = "";
+    if (strlen($adden_goals) > 380) {
+        $adden_goals1 = substr($adden_goals, 0, strpos(wordwrap($adden_goals, 97), "\n"));
+        $adden_goals2 = substr($adden_goals, strpos(wordwrap($adden_goals, 97), "\n"), 380);
+
+    } else {
+        $adden_goals1 = substr($adden_goals, 0, strpos(wordwrap($adden_goals, 97), "\n"));
+        $adden_goals2 = substr($adden_goals, strpos(wordwrap($adden_goals, 97), "\n"));
+    }
+    $pdf->Text(($x + 40), ($y + 172), $adden_goals1);
+    $CI->fpdf->SetXY(($x + 14), ($y + 174));
+    $adden_goals2 = str_replace("\n", " ", $adden_goals2);
+    $CI->fpdf->MultiCell(500, 8, $adden_goals2);
+
+    // $CI->fpdf->Line(($cero_x +57), ($cero_y +200), ($cero_x +520), ($cero_y +200));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +210), ($cero_x +520), ($cero_y +210));
+
+    $adjust_y += 15;
+    $y += 15;
+    $cero_y += 15;
+
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 196), "Objectives:");
+
+    $pdf->SetFont('Courier', '', 8);
+    $adden_objectives=$f8606a->adden_objectives1;
+    $adden_objectives1 = "";
+    $adden_objectives2 = "";
+    if (strlen($adden_objectives) > 695) {
+        $adden_objectives1 = substr($adden_objectives, 0, strpos(wordwrap($adden_objectives, 93), "\n"));
+        $adden_objectives2 = substr($adden_objectives, strpos(wordwrap($adden_objectives, 93), "\n"), 695);
+
+    } else {
+        $adden_objectives1 = substr($adden_objectives, 0, strpos(wordwrap($adden_objectives, 93), "\n"));
+        $adden_objectives2 = substr($adden_objectives, strpos(wordwrap($adden_objectives, 93), "\n"));
+    }
+    $pdf->Text(($x + 60), ($y + 196), $adden_objectives1);
+    $CI->fpdf->SetXY(($x + 13), ($y + 198));
+    $adden_objectives2 = str_replace("\n", " ", $adden_objectives2);
+    $CI->fpdf->MultiCell(500, 8.5, $adden_objectives2);
+
+    // $CI->fpdf->Line(($cero_x +77), ($cero_y +224), ($cero_x +520), ($cero_y +224));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +234), ($cero_x +520), ($cero_y +234));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +242), ($cero_x +520), ($cero_y +242));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +252), ($cero_x +520), ($cero_y +252));
+
+    $cero_y=$cero_y+35;
+    $y=$y+35;
+    $CI->fpdf->Line(($cero_x +30), ($cero_y +259), ($cero_x +528), ($cero_y +259));
+
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 242), "Baseline Data:");
+    $pdf->SetFont('Courier', '', 8);
+    $adden_base_line=@$f8606a->adden_base_line2;
+    $adden_base_line1 = "";
+    $adden_base_line2 = "";
+    if (strlen($adden_base_line) > 380) {
+        $adden_base_line1 = substr($adden_base_line, 0, strpos(wordwrap($adden_base_line, 92), "\n"));
+        $adden_base_line2 = substr($adden_base_line, strpos(wordwrap($adden_base_line, 92), "\n"), 380);
+
+    } else {
+        $adden_base_line1 = substr($adden_base_line, 0, strpos(wordwrap($adden_base_line, 92), "\n"));
+        $adden_base_line2 = substr($adden_base_line, strpos(wordwrap($adden_base_line, 92), "\n"));
+    }
+    $pdf->Text(($x + 70), ($y + 242), $adden_base_line1);
+    $CI->fpdf->SetXY(($x + 14), ($y + 244));
+    $adden_base_line2 = str_replace("\n", " ", $adden_base_line2);
+    $CI->fpdf->MultiCell(500, 8, $adden_base_line2);
+
+    // $CI->fpdf->Line(($cero_x +88), ($cero_y +270), ($cero_x +520), ($cero_y +270));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +280), ($cero_x +520), ($cero_y +280));
+    $adjust_y += 15;
+    $y += 15;
+    $cero_y += 15;
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 265), "Goals:");
+
+    $pdf->SetFont('Courier', '', 8);
+    $adden_goals=@$f8606a->adden_goals2;
+    $adden_goals1 = "";
+    $adden_goals2 = "";
+    if (strlen($adden_goals) > 380) {
+        $adden_goals1 = substr($adden_goals, 0, strpos(wordwrap($adden_goals, 97), "\n"));
+        $adden_goals2 = substr($adden_goals, strpos(wordwrap($adden_goals, 97), "\n"), 380);
+
+    } else {
+        $adden_goals1 = substr($adden_goals, 0, strpos(wordwrap($adden_goals, 97), "\n"));
+        $adden_goals2 = substr($adden_goals, strpos(wordwrap($adden_goals, 97), "\n"));
+    }
+    $pdf->Text(($x + 40), ($y + 264), $adden_goals1);
+    $CI->fpdf->SetXY(($x + 14), ($y + 267));
+    $adden_goals2 = str_replace("\n", " ", $adden_goals2);
+    $CI->fpdf->MultiCell(500, 8, $adden_goals2);
+    // $CI->fpdf->Line(($cero_x +57), ($cero_y +292), ($cero_x +520), ($cero_y +292));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +302), ($cero_x +520), ($cero_y +302));
+
+    $adjust_y += 15;
+    $y += 15;
+    $cero_y += 15;
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 288), "Objectives:");
+    $pdf->SetFont('Courier', '', 8);
+    $adden_objectives=$f8606a->adden_objectives2;
+    $adden_objectives1 = "";
+    $adden_objectives2 = "";
+    if (strlen($adden_objectives) > 695) {
+        $adden_objectives1 = substr($adden_objectives, 0, strpos(wordwrap($adden_objectives, 93), "\n"));
+        $adden_objectives2 = substr($adden_objectives, strpos(wordwrap($adden_objectives, 93), "\n"), 695);
+
+    } else {
+        $adden_objectives1 = substr($adden_objectives, 0, strpos(wordwrap($adden_objectives, 93), "\n"));
+        $adden_objectives2 = substr($adden_objectives, strpos(wordwrap($adden_objectives, 93), "\n"));
+    }
+    $pdf->Text(($x + 60), ($y + 288), $adden_objectives1);
+    $CI->fpdf->SetXY(($x + 13), ($y + 290));
+    $adden_objectives2 = str_replace("\n", " ", $adden_objectives2);
+    $CI->fpdf->MultiCell(500, 8.5, $adden_objectives2);
+
+    $cero_y=$cero_y+35;
+    $y=$y+35;
+    $CI->fpdf->Line(($cero_x +30), ($cero_y +351), ($cero_x +528), ($cero_y +351));
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 334), "Baseline Data:");
+    $pdf->SetFont('Courier', '', 8);
+    $adden_base_line=@$f8606a->adden_base_line3;
+    $adden_base_line1 = "";
+    $adden_base_line2 = "";
+    if (strlen($adden_base_line) > 380) {
+        $adden_base_line1 = substr($adden_base_line, 0, strpos(wordwrap($adden_base_line, 92), "\n"));
+        $adden_base_line2 = substr($adden_base_line, strpos(wordwrap($adden_base_line, 92), "\n"), 380);
+
+    } else {
+        $adden_base_line1 = substr($adden_base_line, 0, strpos(wordwrap($adden_base_line, 92), "\n"));
+        $adden_base_line2 = substr($adden_base_line, strpos(wordwrap($adden_base_line, 92), "\n"));
+    }
+    $pdf->Text(($x + 70), ($y + 334), $adden_base_line1);
+    $CI->fpdf->SetXY(($x + 14), ($y + 336));
+    $adden_base_line2 = str_replace("\n", " ", $adden_base_line2);
+    $CI->fpdf->MultiCell(500, 8, $adden_base_line2);
+
+    // $CI->fpdf->Line(($cero_x +88), ($cero_y +362), ($cero_x +520), ($cero_y +362));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +372), ($cero_x +520), ($cero_y +372));
+
+    $adjust_y += 15;
+    $y += 15;
+    $cero_y += 15;
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 357), "Goals:");
+    $pdf->SetFont('Courier', '', 8);
+    $adden_goals=@$f8606a->adden_goals3;
+    $adden_goals1 = "";
+    $adden_goals2 = "";
+    if (strlen($adden_goals) > 380) {
+        $adden_goals1 = substr($adden_goals, 0, strpos(wordwrap($adden_goals, 97), "\n"));
+        $adden_goals2 = substr($adden_goals, strpos(wordwrap($adden_goals, 97), "\n"), 380);
+
+    } else {
+        $adden_goals1 = substr($adden_goals, 0, strpos(wordwrap($adden_goals, 97), "\n"));
+        $adden_goals2 = substr($adden_goals, strpos(wordwrap($adden_goals, 97), "\n"));
+    }
+    $pdf->Text(($x + 40), ($y + 356), $adden_goals1);
+    $CI->fpdf->SetXY(($x + 14), ($y + 359));
+    $adden_goals2 = str_replace("\n", " ", $adden_goals2);
+    $CI->fpdf->MultiCell(500, 8, $adden_goals2);
+
+    // $CI->fpdf->Line(($cero_x +57), ($cero_y +384), ($cero_x +520), ($cero_y +384));
+    // $CI->fpdf->Line(($cero_x +35), ($cero_y +394), ($cero_x +520), ($cero_y +394));
+
+    $adjust_y += 15;
+    $y += 15;
+    $cero_y += 15;
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 380), "Objectives:");
+    $pdf->SetFont('Courier', '', 8);
+    $adden_objectives=$f8606a->adden_objectives3;
+    $adden_objectives1 = "";
+    $adden_objectives2 = "";
+    if (strlen($adden_objectives) > 695) {
+        $adden_objectives1 = substr($adden_objectives, 0, strpos(wordwrap($adden_objectives, 93), "\n"));
+        $adden_objectives2 = substr($adden_objectives, strpos(wordwrap($adden_objectives, 93), "\n"), 695);
+
+    } else {
+        $adden_objectives1 = substr($adden_objectives, 0, strpos(wordwrap($adden_objectives, 93), "\n"));
+        $adden_objectives2 = substr($adden_objectives, strpos(wordwrap($adden_objectives, 93), "\n"));
+    }
+    $pdf->Text(($x + 60), ($y + 380), $adden_objectives1);
+    $CI->fpdf->SetXY(($x + 13), ($y + 382));
+    $adden_objectives2 = str_replace("\n", " ", $adden_objectives2);
+    $CI->fpdf->MultiCell(500, 8.5, $adden_objectives2);
+
+    $cero_y=$cero_y+35;
+    $y=$y+35;
+
+    $CI->fpdf->Line(($cero_x +30), ($cero_y +443), ($cero_x +530), ($cero_y +443));
+
+    $CI->fpdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x +14), ($y + 440), "Recommended frequency of visits:");
+
+    $CI->fpdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x +14), ($y + 455), "Duration:");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x +50 ), ($y + 455), @$f8606a->adden_duration);
+
+    $CI->fpdf->Line(($cero_x +65), ($cero_y +485), ($cero_x +230), ($cero_y +485));
+
+    $CI->fpdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x +14), ($y + 467), "Amount:");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x +54 ), ($y + 467), @$f8606a->adden_amount);
+    $CI->fpdf->Line(($cero_x +67), ($cero_y +497), ($cero_x +189+65), ($cero_y +497));
+
+    $CI->fpdf->SetFont('Arial', '', 8);
+    $CI->fpdf->Text(($x +195+50), ($y + 467), "Location:");
+    $pdf->SetFont('Courier', '', 8.5);
+    $CI->fpdf->Text(($x +230+50 ), ($y + 467), @$f8606a->adden_location);
+    $CI->fpdf->Line(($cero_x +247+50), ($cero_y +497), ($cero_x +320+50+100), ($cero_y +497));
+
+
+    $adjust_y += 20;
+    $y += 20;
+    $cero_y += 20;
+
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +14), ($y + 500), "Therapist Signature:");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($f8606a->clinician_signature) AND $f8606a->clinician_signature != "") {
+        $img_path = str_replace("\\","/", FCPATH) . "upload/signatures/".$f8606a->clinician_signature;
+        $CI->fpdf->Image( $img_path, ($x + 100), ($y + 455), 120);
+    }
+    // $CI->fpdf->Text(($x +100 ), ($y + 500), $f8606a->clinician_signature);
+
+    $CI->fpdf->Line(($cero_x +111), ($cero_y +528), ($cero_x +300), ($cero_y +528));
+
+    $CI->fpdf->SetFont('Arial', 'B', 8);
+    $CI->fpdf->Text(($x +325), ($y + 500), "Date:");
+    $pdf->SetFont('Courier', '', 8.5);
+    if (isset($f8606a->clinician_signature) AND $f8606a->clinician_signature != "") {
+        $CI->fpdf->Text(($x +350 ), ($y + 500), standard_date(mysql_to_unix( $visit_log->visit_date_time)) );
+    }
+    $CI->fpdf->Line(($cero_x +365), ($cero_y +528), ($cero_x +460), ($cero_y +528));
+
+
+    // $CI->fpdf->Output('form8606A_pdf',$output);
+
+    $title_text = "8606a Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+    $filename_only = "Pt ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+
+    switch($output){
+        case 'D':
+            $filename_only = "Pt ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text;
+            $filename = $filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+        case 'F':
+            //$filename = $filename.'tmp/'.time().'_'.$visit_log_id.'_pq_ptpn.pdf';
+            $c = 1;
+            while(file_exists($filename.'tmp/'.$filename_only.'.pdf'))
+            {
+                $filename_only =  "Pt ".cut_firstchar_uc($patient->first_name)." ".$patient->last_name." ".$title_text." _".$c;
+                $c++;
+            }
+            $filename = $filename.'tmp/'.$filename_only.'.pdf';
+            $CI->fpdf->Output($filename,$output);
+            $CI->fpdf->FPDF();
+            break;
+    }
+
+    return $filename;
+
+}

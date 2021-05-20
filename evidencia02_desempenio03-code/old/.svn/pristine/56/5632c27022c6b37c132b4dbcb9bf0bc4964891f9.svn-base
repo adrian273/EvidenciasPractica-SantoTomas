@@ -1,0 +1,39 @@
+<?
+class patientmedicationapprovalmdl extends Model {
+
+	var $med_approv_id;
+	var $patient_id;
+	var $approved_user_id;
+	var $approved_date;
+
+	function patientmedicationapprovalmdl () {
+
+		parent::Model();
+		
+	}
+
+	function approve () {
+
+		$this->approved_date	= standard_date(now(), 'MYSQL_NOTIME');
+		$data['approved_user_id']	=	$this->approved_user_id;
+		$data['patient_id']			=	$this->patient_id;
+		$data['approved_date']		=	$this->approved_date;
+
+		$this->db->insert("pat_medication_approval", $data);
+
+		$this->med_approv_id = $this->db->insert_id();
+				
+	}
+	
+	function get ($patient_id) {
+
+		$this->db->join('us_agy',   	  'us_agy.user_id = pat_medication_approval.approved_user_id');	
+		
+		$this->db->order_by('approved_date','DESC');
+			
+		return $this->db->get_where('pat_medication_approval',array('patient_id'=>$patient_id))->result();
+	
+	}
+	
+	
+}

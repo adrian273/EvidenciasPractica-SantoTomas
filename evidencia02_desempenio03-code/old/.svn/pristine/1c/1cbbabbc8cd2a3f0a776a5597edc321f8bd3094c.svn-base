@@ -1,0 +1,94 @@
+<?
+
+ class MaintenanceMdl extends Model {
+
+  	var $maintenance_id;  	
+  	var $type = 'working';
+  	var $released_date;
+  	var $expected_date;
+  	var $details;
+  	
+  	function MaintenanceMdl () {
+
+  		parent::Model();
+  		
+  	}
+
+	function get ( $keyword=null, $search_type=null, $maintenance_type=null ) {
+	
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}
+		
+		if (!is_null($maintenance_type)) {
+			$this->db->where("type", $maintenance_type);
+		}
+	
+		$query = $this->db->get('maintenance');
+		return $query->result();			
+	
+	}
+	
+  function getSoftwareUpdates ( $keyword=null, $search_type=null ) {
+	
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}
+		
+		
+    $this->db->where("type", 'updates');
+		
+		$query = $this->db->get('maintenance');
+		return $query->result();			
+	
+	}
+  
+  function getWorkingUpdates ( $keyword=null, $search_type=null) {
+	
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}
+		
+		
+    $this->db->where("type", 'working');
+		
+		$query = $this->db->get('maintenance');
+		return $query->result();			
+	
+	}
+	
+  
+	function getById ( $maintenance_id ) {
+	
+		//$this->db->join('sta_states', 'sta_states.state_id = maintenance.state_id', ' LEFT');
+	
+		$this->db->where("maintenance_id", $maintenance_id);
+	
+		$query = $this->db->get('maintenance');
+		return $query->row();			
+	
+	}
+	
+	
+	function insert () {		
+		$this->db->insert("maintenance", $this);
+		$this->maintenance_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $maintenance_id ) {
+		
+		$this->db->where("maintenance_id", $maintenance_id);
+		$this->db->update("maintenance", $this);
+		
+	}
+	
+	
+	function delete ( $maintenance_id ) {
+		
+		$this->db->where("maintenance_id", $maintenance_id);
+		$this->db->delete("maintenance");
+		
+	}
+
+ }

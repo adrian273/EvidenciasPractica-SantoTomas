@@ -1,0 +1,47 @@
+<?php 
+
+class Reports extends MY_Controller {
+	function Reports()
+    {
+        parent::MY_Controller();
+        
+        $this->tpl->assign("resource_path", "reports");
+        
+        $this->load->model('menu_model');
+        $this->load->model('rptprofilegroupmdl');
+        //$this->tpl->assign('tab_page', true);
+    		//$this->tpl->assign('noedit', true);
+    		//$this->tpl->assign('no_grid_buttons', true);
+    }
+
+	public function index()
+	{
+    $user_us_agy_id = $this->getUsAgyId();
+    $user_us_agy 		   = $this->usagymdl->getByUsAgyId($user_us_agy_id);        
+    
+    //$column1 = $this->menu_model->get_menus(1,$user_us_agy->profile_id);
+    $column1 = $this->rptprofilegroupmdl->get_menus(1,$user_us_agy->profile_id);
+		//$column2 = $this->menu_model->get_menus(2,$user_us_agy->profile_id); 
+		$column2 = $this->rptprofilegroupmdl->get_menus(2,$user_us_agy->profile_id); 
+		//$column3 = $this->menu_model->get_menus(3,$user_us_agy->profile_id); 
+		$column3 = $this->rptprofilegroupmdl->get_menus(3,$user_us_agy->profile_id); 
+		//$column4 = $this->menu_model->get_menus(4,$user_us_agy->profile_id);  
+		$column4 = $this->rptprofilegroupmdl->get_menus(4,$user_us_agy->profile_id);  
+		
+    
+    $this->tpl->assign(array("list_title" => "My Patients", "add_sufix" => "Patient"));
+    $this->tpl->assign('column1',$column1);
+    $this->tpl->assign('column2',$column2);
+    $this->tpl->assign('column3',$column3);
+    $this->tpl->assign('column4',$column4);
+    
+    $this->tpl->assign(array("list_title" => "Management Reports"));
+		$this->tpl->assign_include("filter_tpl", "patient/gfilter");
+    
+		//$this->tpl->assign_include("filter_tpl", "patient/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "reports/reports_menu");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    
+	}			
+}
+

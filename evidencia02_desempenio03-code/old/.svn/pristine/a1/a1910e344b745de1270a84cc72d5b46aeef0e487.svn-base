@@ -1,0 +1,284 @@
+<?
+
+include (dirname(realpath(__file__)).'/../task/visitform.php');
+
+class Myorder extends VisitForm {
+	function Myorder () {
+		parent::VisitForm();
+		$this->tpl->assign("resource_path", "doctorder/myorder");
+		$this->tpl->assign(array("tab_page" => true));
+		$this->load->model('dordermdl');
+	}
+	function index () {
+		$this->tpl->assign(array("no_grid_buttons" => true));
+		$this->tpl->assign('additional_buttons', 
+            array(
+                'Print'=>'printSelected()',                 
+            )
+        );
+		$this->tpl->assign('agency', $this->agencymdl->getByAgencyId( $this->getAgencyId() ) );
+		$this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+		// default To date filter is Today
+        $this->tpl->assign('visit_date_fin', date("m-d-Y"));
+        // default From date filter is 90 days before
+        $this->tpl->assign('visit_date_ini', date("m-d-Y", mktime(0,0,0,date("m"),date("d")-90,date("Y"))));
+        
+		$this->tpl->assign_include("filter_tpl", "doctorder/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+	}
+	function grid(){
+		$agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=15", "Order Date"));
+        $head->append($this->xml->Element("column", "width=20", "Order Type"));
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=*", "Ordered By"));   
+        if ($agency->agency_type=='A') {
+        	$head->append($this->xml->Element("column", "width=*", "Contractor"));
+        }else{
+        	$head->append($this->xml->Element("column", "width=*", "Agency Name"));
+        }
+        $head->append($this->xml->Element("column", "width=*", "Order Status"));        
+        // $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actiones"));
+        // $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_my_doctororders($this->getUsAgyId(), $agency->agency_type) as $task) {
+
+            $cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+            $cell->append($this->xml->Element("cell", null, "0"));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            $cell->append($this->xml->Element("cell", null, $task->doc_doctor_order_type_description));
+            $cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+            $cell->append($this->xml->Element("cell", null, $task->visit_user_first_name . " " . $task->visit_user_last_name));
+	        if ($agency->agency_type=='A') {
+	        	$C = $this->agencymdl->getByAgencyId($task->contractor_id); 
+    	        $cell->append($this->xml->Element("cell", null, $C->agency_name));
+	        }else{
+	        	$A = $this->agencymdl->getByAgencyId($task->agency_id); 
+    	        $cell->append($this->xml->Element("cell", null, $A->agency_name));
+	        }
+            $cell->append($this->xml->Element("cell", null, $task->tab_description));
+                                    
+            $document->append($cell);
+             
+        }
+	}
+
+	function edit ( $visit_log_id, $window='self' ) { 
+        $task_return =  "doctorder/myorder";      
+        
+        // This Visit is not yet Due
+        $this->load->helper('url');
+    
+        $config =& get_config();
+        $visit_log = $this->visitlogmdl->getById($visit_log_id);        
+        $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+        
+        if ($visit_type->visit_program == null) {
+      
+            $this->load->model('oasis_model');
+            if(isset($_POST['submit']))
+            {
+                $oasis = $this->oasis_model->getOasisData($visit_log_id);
+                if(empty($oasis)){
+                    unset($_POST['submit']);
+                  
+                    foreach($_POST as $key=>$val){    
+                        if(strrpos($key, "_DT")!==false){
+                          if(!is_null($val) AND strlen($val)>0 AND strpos($val,"-")!==FALSE){                              
+                            list($M,$D,$Y) = explode("-",$val);
+                            if($Y AND $M AND $D)
+                            $_POST[$key] = $Y."-".$M."-".$D;              
+                          }
+                        }
+                    }
+                  
+                    $_POST['visit_log_id'] = $visit_log_id;
+                    $this->oasis_model->insertData($_POST);
+                }else{
+                    unset($_POST['submit']);
+                    foreach($_POST as $key=>$val){    
+                        if(strrpos($key, "_DT")!==false){
+                          if(!is_null($val) AND strlen($val)>0 AND strpos($val,"-")!==FALSE){                              
+                            list($M,$D,$Y) = explode("-",$val);
+                            if($Y AND $M AND $D)
+                            $_POST[$key] = $Y."-".$M."-".$D;              
+                          }
+                        }
+                    }
+                    if(!isset($_POST['M0102_PHYSN_ORDRD_SOCROC_DT_NA']))
+                    $_POST['M0102_PHYSN_ORDRD_SOCROC_DT_NA'] = '';
+                  
+                    $_POST['visit_log_id'] = $visit_log_id;
+                    $this->oasis_model->updateData($_POST, $visit_log_id);
+                }
+                            
+                //$task_return = $this->session->userdata('task_return');               
+                //header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+                //echo $this->config->config["index_url"].$task_return;exit;
+                header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+                return;
+            }else{
+                //$task_return = $this->session->userdata('task_return');               
+                //echo $this->config->config["index_url"].$task_return;exit;
+                $oasis = $this->oasis_model->getOasisData($visit_log_id);
+                if(sizeof($oasis)>0){
+                  $oasis = $oasis[0];
+                  foreach($oasis as $key=>$val){    
+                    if(strrpos($key, "_DT")!==false){
+                      if(!is_null($val) AND strlen($val)>0 AND strpos($val,"-")!==FALSE){                              
+                        list($Y,$M,$D) = explode("-",$val);
+                        if($Y AND $M AND $D)
+                        $oasis[$key] = $M."-".$D."-".$Y;              
+                      }
+                    }
+                  }
+                }
+                
+                $data['oasis'] = $oasis;
+                
+                $data['visit_log_id'] = $visit_log_id;
+                $data['cancel_url'] = $this->config->config["index_url"] . $this->session->userdata('task_return');
+                $this->load->view('task/documents/oasis_c_form',$data); 
+
+                //$this->tpl->assign_include("dynamic_tpl", "mail/comnotes/compose_form");
+                //$this->tpl->view("parts/ibase", $this->lang->language);
+            
+                    //echo "Visit Type Form not implemented...";
+                    return false;
+            }
+        }
+        
+        if ($this->app->validateVisit($visit_log_id) == false) {        
+            if($window=='nw'){
+                $this->tpl->assign('continue_url', $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id."/task/nw" );        
+                $this->tpl->assign('cancel_action', 'window.close();window.opener.loadGrid();' );        
+            }
+            else{
+                $this->tpl->assign('continue_url', $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id );                
+                $this->tpl->assign('cancel_action', 'history.go(-1);' );        
+            }
+      
+            $this->tpl->assign('popupmessage', "Therapy Schedule not complying with 13th and 19th visit rules. Please review and correct." );                
+            $this->tpl->assign('popuptitle', "Warning" );                
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+            $this->tpl->view("parts/ibase", $this->lang->language);      
+            return false;
+        }
+    
+        $this->session->set_userdata('task_return', $task_return );
+
+        if($window=='nw'){
+          header("Location: " . $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id."/task/nw");
+        }
+        else{
+          header("Location: " . $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id);
+        }
+            
+    }
+    
+	function edit_bkup($visit_log_id, $action = 'view') {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+		$patient = $this->getPatientInfo($visit_log_id);
+		if (is_null($visitlog->phys_user_id)) {			
+			$cms485 = $this->episodemdl->getById($visitlog->cms485_id);
+			$visitlog->phys_user_id = $cms485->phys_user_id;			
+		}
+		$this->assignObject($visitlog);
+		$physician_list = array();
+		foreach ($this->patientdoctorofficemdl->get($patient->patient_id, false) as $doctor_office_id => $name) {
+			$doctorOfficeUsers = $this->usagymdl->getByAgencyId($doctor_office_id, null, null, 7);
+			if (count($doctorOfficeUsers)) {
+				$doctorOfficeAdmin = $doctorOfficeUsers[0];
+				$physician_list[$doctorOfficeAdmin->us_agy_id] = $name;				
+			}
+		}
+		
+		$this->tpl->assign('physician_list',  $physician_list);
+		$DO = $this->dordermdl->get($visit_log_id);
+		
+		// if (!$DO->primary_diag OR !$DO->secondary_diag OR !$DO->primary_diag_date OR !$DO->secondary_diag_date) {
+		if (TRUE) {
+			$prev_eval = array();
+			$this->load->model('ptevmdl');
+			$ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($ptevs) == 0) {
+				$ptevs = $this->ptevmdl->getPrevious(null, @ $visitlog->visit_date_time, @ $visitlog->cms485_id, TRUE); // look all PTEV of current SOC        
+			}			
+			if (count($ptevs)) {
+				$prev_eval = $ptevs[count($ptevs) - 1];				
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('otevmdl');
+				$otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+				if (count($otevs) == 0) {
+					$otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($otevs)) {
+					$prev_eval = $otevs[count($otevs) - 1];
+				}
+			}
+
+			if (empty($prev_eval)) {
+				$this->load->model('stevmdl');
+				$stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+				if (count($stevs) == 0) {
+					$stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+				}
+				if (count($stevs)) {
+					$prev_eval = $stevs[count($stevs) - 1];
+				}			
+			}
+
+			
+			if (isset($prev_eval->primary_diag)) {
+				// @$DO->primary_diag = $prev_eval->primary_diag;
+				$this->tpl->assign("primary_diag", $prev_eval->primary_diag);
+			}
+
+			if (isset($prev_eval->secondary_diag)) {
+				// @$DO->secondary_diag = $prev_eval->secondary_diag;
+				$this->tpl->assign("secondary_diag", $prev_eval->secondary_diag);
+			}
+
+			if (isset($prev_eval->primary_diag_date)) {
+				// @$DO->primary_diag_date = $prev_eval->primary_diag_date;
+				$this->tpl->assign("primary_diag_date", $prev_eval->primary_diag_date);
+			}
+
+			if (isset($prev_eval->secondary_diag_date)) {
+				// @$DO->secondary_diag_date = $prev_eval->secondary_diag_date;
+				$this->tpl->assign("secondary_diag_date", $prev_eval->secondary_diag_date);
+			}
+
+		}
+		$this->assignObject($DO);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign_include("dynamic_form", "task/documents/dorder");
+		$this->setfbase($visit_log_id, $action);
+		// overwite cancel action asigned by the setfbase() method
+		$this->tpl->assign('cancel_action', "doctorder/myorder");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+	function pdf ( $visit_log_id ) {
+		$this->load->helper('visit_pdf');
+	    dorder_pdf($visit_log_id,'D');
+	    return;
+	}
+}

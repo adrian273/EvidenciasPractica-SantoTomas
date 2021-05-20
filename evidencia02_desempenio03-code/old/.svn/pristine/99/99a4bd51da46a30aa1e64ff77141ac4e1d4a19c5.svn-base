@@ -1,0 +1,517 @@
+{literal}
+<style type="text/css" media="screen">
+  label.field-value{
+    color: #0000AA;
+  }  
+</style>
+{/literal}
+{if $contractor->provides_altern_therapy eq "Y"}
+<input type="hidden" name="diagnosis" value="{$diagnosis}">
+{/if}
+{if !$show_lob_selection}
+<input type="hidden" name="pat_tab111_product_id" value="{$pat_tab111_product_id}">
+{/if}
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient ID, Status / Primary Insurance</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  {if $show_lob_selection}
+    <tr>
+      <td class="ftitle">Line of Business:</td>
+      <td colspan="3">{html_options options=$agency_products name='pat_tab111_product_id' id='pat_tab111_product_id' selected=$pat_tab111_product_id first_option="- Select Line of Business -"} *</td>
+      <td></td>
+      <td></td>
+    </tr>
+  {/if}
+  {if $contractor->provides_altern_therapy eq "Y" || $pat_tab111_product_id eq 2}
+    <tr>
+      <td class="ftitle" style="width: 30%;">Client Program</td>
+      <td colspan="3">
+        <div>
+          {if $is_admin}
+            {html_options options=$gov_program_list selected=$gov_program name="gov_program"}  {if $gov_program_waiver_show}[{$gov_program_waiver}]{/if}
+          {else}
+            <label class="field-value">{$gov_program_list[$gov_program]} {if $gov_program_waiver_show}[{$gov_program_waiver}]{/if}</label>
+            <input type="hidden" name="gov_program" value="{$gov_program}">
+          {/if}
+          <input type="hidden" name="gov_program_waiver" value="{$gov_program_waiver}">
+          
+          
+        </div>
+      </td>
+    </tr>
+    {if $pt_agency->deals_with_groups}
+      <tr>
+        <td class="ftitle">Is this a Group Patient ?</td>
+        <td colspan="3">
+          <label><input type="radio" name="is_a_group_pt" value="1" class="is_a_group_pt" {if $is_a_group_pt eq '1'}checked="checked"{/if}> Yes</label>
+          <label><input type="radio" name="is_a_group_pt" value="0" class="is_a_group_pt" {if $is_a_group_pt neq '1'}checked="checked"{/if}> No</label>
+        </td>
+      </tr>
+      <tr id="wrap_group_flat_rate" {if $is_a_group_pt neq '1'}style="display: none;"{/if}>
+        <td class="ftitle">Group Rate Amount</td>
+        <td colspan="3">
+          <input type="text" id="group_flat_rate"  name="group_flat_rate" value="{$group_flat_rate}">  *
+        </td>
+      </tr>
+    {/if}
+  {else}
+    {if $is_admin}
+      <tr>
+        <td class="ftitle" style="width: 30%;">Client Program</td>
+        <td colspan="3">
+          {html_options options=$gov_program_list selected=$gov_program name="gov_program"}
+        </td>
+      </tr>
+    {else}
+      <tr style="display: none;">
+        <td class="ftitle" style="width: 30%;">Client Program</td>
+        <td colspan="3">
+            <input type="hidden" name="gov_program" value="{$gov_program}">
+        </td>
+      </tr>
+    {/if}
+  {/if}
+  <tr>
+    <td class="ftitle">Agency Patient Status</td>
+    <td>
+      {if $agency_patient_status_display}
+      <label class="field-value">{$status_list[$tab_013_status]}</label>
+      <input type="hidden" name="tab_013_status" value="{$tab_013_status}">
+      {else}
+      {html_options options=$status_list selected=$tab_013_status name='tab_013_status' onchange="if(this.value==5) switchDisplay2('non-adm_tr', ''); else switchDisplay2('non-adm_tr', 'none');"}
+      {/if}
+    </td>
+    <td colspan="2" style="text-align:left;" width="400" height="30" valign="top">
+      <table border="0" width="100%" cellpadding="0" cellspacing="4">         
+        <tr>
+          <td class="ftitle" style="width: 40%;">(M0020) Patient ID Number</td>
+          <td><input type="text" name="medical_rec_nbr" value="{$medical_rec_nbr}"></td>
+        </tr>
+        <tr>
+          <td class="ftitle" style="width: 40%;">(M0063) Medicare Number</td>
+          <td>
+            {if $medecareInsurance->ins_id}
+                {if $can_edit_insurance}
+                <input type="text" name="medicare_insu_id" value="{$medecareInsurance->ins_id}">
+                {else}
+                <label class="field-value">{$medecareInsurance->ins_id}</label>
+                {/if}
+            {else}
+                <!-- xml field: M0063_MEDICARE_NA -->
+                <label class="field-value"> NA - No Medicare</label>
+            {/if}
+          </td>
+        </tr>
+      </table>
+			{*
+      <!-- {if $count_patient_insurance > 0}
+			{section name=ins loop=$patient_insurance show=true}
+			{if $patient_insurance[ins]->tab_108_prim_sec eq 1}
+			<table border="0" width="100%" cellpadding="0" cellspacing="4"> 				
+        <tr>
+					<td class="ftitle">Insurance Type and ID</td>
+					<td>{$patient_insurance[ins]->ins_type_desc} &nbsp;&nbsp;-&nbsp;&nbsp; {$patient_insurance[ins]->ins_id}</td>
+				</tr>
+				{if $patient_insurance[ins]->tab_107_ins_type eq 5 OR $patient_insurance[ins]->tab_107_ins_type eq 6 OR $patient_insurance[ins]->tab_107_ins_type eq 10}			
+				<tr class="prim_insura_type_ID">
+					<td class="ftitle">Description:</td>
+					<td>
+						 {$patient_insurance[ins]->ins_description}
+					</td>
+				</tr>
+				{/if}
+			</table>
+			{/if}
+			{/section}
+			{/if}	 -->		
+      *}
+		</td>
+  </tr>
+	{if $contractor_patient_status != ""}
+  <tr>
+    <td class="ftitle">Contractor Patient Status </td>
+    <td><label class="field-value">{$contractor_patient_status}</label> &nbsp;&nbsp; [{if $can_edit_contractor_patient_status}<a href="javascript:edit_patient_status({$pat_contractor_id})">Edit</a>{/if}]</td>
+		<td colspan="2"></td>
+  </tr>
+	{/if}
+  <tr>
+    <td class="ftitle">Case Manager</td>
+    <td><label class="field-value">{$cm_approver->complete_name}</label></td>
+		<td colspan="2"></td>
+    {*<td class="ftitle">PT Approver</td>
+    <td>{$pt_approver->complete_name}</td>*}
+  </tr>
+  
+  
+  <tr id="non-adm_tr" {if $tab_013_status != 5}style="display: none"{/if}>
+  	<td class="ftitle" valign="top">Non-admitted Reason</td>
+    <td colspan="2">
+    	<textarea name="non_admitted_reason" rows="4" cols="30" wrap="auto">{$non_admitted_reason}</textarea>
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Demographics</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">(M0040) First Name</td>
+    <td><input type="text" name="first_name" value="{$first_name}"> *</td>
+    <td class="ftitle">(M0066) Birth Date <img src="{$image_url}b_help.png" title="mm-dd-yyyy"></td>
+    <td>
+    	<input type="text" id="date_birth" name="date_birth" value="{$date_birth|date_format}" 
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_birth'), document.getElementById('fecha_help'));return false;" >
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">(M0040) Last Name</td>
+    <td><input type="text" name="last_name" value="{$last_name}"> *</td>
+    <td class="ftitle">(M0069) Sex</td>
+    <td>{html_radios options=$sex_list selected=$tab_002_sex name='tab_002_sex'}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">(M0040) MI</td>
+    <td><input type="text" name="middle_initial" value="{$middle_initial}"></td>
+    <td class="ftitle">(M0064) S.S.N.</td>
+    <td><input type="text" name="soc_sec_nbr" value="{$soc_sec_nbr}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Address</td>
+    <td>
+      <input type="text" name="address" value="{$address}" id="address" maxlength="25">
+      &nbsp; 
+      <a href="javascript://" onclick="open_gmap_address()"><img src="{$base_url}style/images/google_maps_icon.jpg" width="16" border="0" /></a>
+      
+      <a href="javascript://" onclick="clinicians_map()"><img src="{$base_url}style/images/groupevent.png" width="16" border="0" /></a>
+    </td>
+    <td class="ftitle">Medicare ID</td>
+    <td><input type="text" name="medicare_id" value="{$medicare_id}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Address 2</td>
+    <td><input type="text" name="address2" value="{$address2}" maxlength="25"></td>
+    <td class="ftitle">(M0065) Medicaid Number</td>
+    <td>
+      {if $medicaidInsurance->ins_id}
+        {if $can_edit_insurance}
+          <input type="text" name="medicaid_insu_id" value="{$medicaidInsurance->ins_id}">
+        {else}
+          <label class="field-value">{$medicaidInsurance->ins_id}</label>
+        {/if}
+      {else}
+          <label class="field-value">NA - No Medicaid</label>
+      {/if}
+    </td>
+	</tr>	
+  <tr>
+    <td class="ftitle">City</td>
+    <td><input type="text" name="city" value="{$city}"></td>
+    <td class="ftitle">Marital Status</td>
+    <td>{html_options options=$marital_list selected=$tab_001_marital_status name='tab_001_marital_status'}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">(M0050) State</td>
+    <td>{html_options options=$state_list selected=$state_id name='state_id'}</td>
+    <td class="ftitle">Primarily Language</td>
+    <td>{html_options options=$prim_lang_list selected=$tab_003_prim_language name='tab_003_prim_language'}</td>
+
+    <!-- <td class="ftitle">(M0140) Ethnicity / Race</td>
+    <td>
+      {html_options options=$ethnicity_list selected=$tab_004_m140_race_ethnicity name='tab_004_m140_race_ethnicity'}
+      <input type="hidden" name="tab_004_m140_race_ethnicity" value="{$tab_004_m140_race_ethnicity}" >
+    </td> -->
+  </tr>
+  <tr>
+    <td class="ftitle">(M0060) Zip Code</td>
+    <td><input type="text" name="zip1" id="zip1" value="{$zip1}"></td>
+    <td class="ftitle">Mapsco</td>
+    <td><input type="text" name="mapsco" value="{$mapsco}"></td>
+  </tr>
+  <tr>
+    <td colspan="4">
+      <table width="100%">
+        <tr>
+          <td class="ftitle" valign="top">(M0140) Race/Ethnicity</td>
+          <td valign="top">
+            <input type="hidden" name="tab_004_m140_race_ethnicity" value="{$tab_004_m140_race_ethnicity}" >
+
+            <label><input type="checkbox" name="M0140_ETHNIC_AI_AN" id="M0140_ETHNIC_AI_AN" value="1" {if $M0140_ETHNIC_AI_AN eq 1}checked="checked"{/if}> American Indian or Alaska Native</label><br>
+            <label><input type="checkbox" name="M0140_ETHNIC_ASIAN" id="M0140_ETHNIC_ASIAN" value="1" {if $M0140_ETHNIC_ASIAN eq 1}checked="checked"{/if}> Asian</label><br>
+            <label><input type="checkbox" name="M0140_ETHNIC_BLACK" id="M0140_ETHNIC_BLACK" value="1" {if $M0140_ETHNIC_BLACK eq 1}checked="checked"{/if}> Black or African-American</label><br>
+            <label><input type="checkbox" name="M0140_ETHNIC_HISP" id="M0140_ETHNIC_HISP" value="1" {if $M0140_ETHNIC_HISP eq 1}checked="checked"{/if}> Hispanic or Latino</label><br>
+            <label><input type="checkbox" name="M0140_ETHNIC_NH_PI" id="M0140_ETHNIC_NH_PI" value="1" {if $M0140_ETHNIC_NH_PI eq 1}checked="checked"{/if}> Native Hawaiian or Pacific Islander</label><br>
+            <label><input type="checkbox" name="M0140_ETHNIC_WHITE" id="M0140_ETHNIC_WHITE" value="1" {if $M0140_ETHNIC_WHITE eq 1}checked="checked"{/if}> White</label><br>
+          </td>
+          <td class="ftitle" valign="top">(M0150) Current Payment Sources for Home Care: (Mark all that apply.)</td>
+          <td valign="top">
+            <label><input type="checkbox" name="M0150_CPAY_NONE" id="M0150_CPAY_NONE" value="1" {if $M0150_CPAY_NONE eq '1'}checked="checked"{/if}> None; no charge for current services</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_MCARE_FFS" id="M0150_CPAY_MCARE_FFS" value="1" {if $M0150_CPAY_MCARE_FFS eq '1'}checked="checked"{/if}> Medicare (traditional fee-for-service)</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_MCARE_HMO" id="M0150_CPAY_MCARE_HMO" value="1" {if $M0150_CPAY_MCARE_HMO eq '1'}checked="checked"{/if}> Medicare (HMO/managed care/Advantage plan)</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_MCAID_FFS" id="M0150_CPAY_MCAID_FFS" value="1" {if $M0150_CPAY_MCAID_FFS eq '1'}checked="checked"{/if}> Medicaid (traditional fee-for-service)</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_MCAID_HMO" id="M0150_CPAY_MCAID_HMO" value="1" {if $M0150_CPAY_MCAID_HMO eq '1'}checked="checked"{/if}> Medicaid (HMO/managed care)</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_WRKCOMP" id="M0150_CPAY_WRKCOMP" value="1" {if $M0150_CPAY_WRKCOMP eq '1'}checked="checked"{/if}> Workers' compensation</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_TITLEPGMS" id="M0150_CPAY_TITLEPGMS" value="1" {if $M0150_CPAY_TITLEPGMS eq '1'}checked="checked"{/if}> Title programs (for example, Title III, V, or XX)</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_OTH_GOVT" id="M0150_CPAY_OTH_GOVT" value="1" {if $M0150_CPAY_OTH_GOVT eq '1'}checked="checked"{/if}> Other government (for example, TriCare, VA)</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_PRIV_INS" id="M0150_CPAY_PRIV_INS" value="1" {if $M0150_CPAY_PRIV_INS eq '1'}checked="checked"{/if}> Private insurance</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_PRIV_HMO" id="M0150_CPAY_PRIV_HMO" value="1" {if $M0150_CPAY_PRIV_HMO eq '1'}checked="checked"{/if}> Private HMO/managed care</label><br>
+            <label><input type="checkbox" name="M0150_CPAY_SELFPAY" id="M0150_CPAY_SELFPAY" value="1" {if $M0150_CPAY_SELFPAY eq '1'}checked="checked"{/if}> Self-pay</label><br>
+            
+            <label><input type="checkbox" name="M0150_CPAY_OTHER" id="M0150_CPAY_OTHER" value="1" {if $M0150_CPAY_OTHER eq '1'}checked="checked"{/if} onclick="$('#M0150_CPAY_OTHER_TXT_span').toggle();"> Other (specify)</label>
+            <span id="M0150_CPAY_OTHER_TXT_span" {if $M0150_CPAY_OTHER neq '1'}style="display: none{/if}"><input type="text" name="M0150_CPAY_OTHER_TXT" id="M0150_CPAY_OTHER_TXT" value="{$M0150_CPAY_OTHER_TXT}" size="25" maxlength="25"></span>
+            <br>
+            <label><input type="checkbox" name="M0150_CPAY_UK" id="M0150_CPAY_UK" value="1" {if $M0150_CPAY_UK eq '1'}checked="checked"{/if}> Unknown</label>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Telephones / Email</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Home Phone</td>
+    <td><input type="text" name="phone_home" value="{$phone_home}"></td>
+    <td class="ftitle">Fax</td>
+    <td><input type="text" name="fax" value="{$fax}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Cell Phone</td>
+    <td><input type="text" name="phone_cell" value="{$phone_cell}"></td>
+    <td class="ftitle">Email</td>
+    <td><input type="text" name="email" value="{$email}"></td>
+  </tr>
+
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Living Arragement</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Living Arragement</td>
+    <td>{html_options options=$living_arr_list selected=$tab_014_living_arr name='tab_014_living_arr'}</td>
+    <td class="ftitle">Care Giver Name</td>
+    <td><input type="text" name="caregiver_name" value="{$caregiver_name}"></td>
+  </tr>
+  <tr>
+    <td class="ftitle">Living A. Name</td>
+    <td><input type="text" name="liv_arrang_name" value="{$liv_arrang_name}"></td>
+    <td class="ftitle">Care Giver Phone</td>
+    <td><input type="text" name="caregiver_phone" value="{$caregiver_phone}"></td>
+  </tr>
+  
+  <tr style="display: none;">
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Emergency Contact</td>
+  </tr> 
+  <tr style="display: none;">
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr style="display: none;">
+    <td class="ftitle">Emergency Name</td>
+    <td><input type="text" name="emerg_contact_name1" value="{$emerg_contact_name1}"></td>
+    <td class="ftitle">Phone</td>
+    <td><input type="text" name="emerg_contact_phone1" value="{$emerg_contact_phone1}"></td>
+  </tr>
+  <tr style="display: none;">
+    <td class="ftitle">Address</td>
+    <td><input type="text" name="emerg_contact_address1" value="{$emerg_contact_address1}"></td>
+    <td class="ftitle">Relationship</td>
+    <td>{html_options options=$relationship_list selected=$emerg_contact_relation1 name='emerg_contact_relation1'}</td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Physician Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Doctor Office 1</td>
+    <td>
+    	{if $doctor_display == true}
+	    	<label class="field-value">{$prim_doctor_office->agency_name}</label>
+	    	<input type="hidden" value="{$prim_doctor_office_id}" name='prim_doctor_office_id'>
+	    {else}
+    		{html_options options=$doctor_office_list selected=$prim_doctor_office_id name='prim_doctor_office_id'} 
+	    {/if}
+    </td>
+    <td class="ftitle">Doctor Office 2</td>
+    <td>
+    	{if $doctor_display == true}
+	    	<label class="field-value">{$second_doctor_office->complete_name}</label>
+	    	<input type="hidden" value="{$second_doctor_office_id}" name='second_doctor_office_id'>
+	    {else}
+    		{html_options options=$doctor_office_list selected=$second_doctor_office_id name='second_doctor_office_id'}
+	    {/if}
+    </td>
+  </tr>
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Additional Information</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td class="ftitle">Height</td>
+    <td><input type="text" name="height" value="{$height}"></td>
+    <td class="ftitle">Smoke</td>
+    <td>{html_radios name='smoke' options=$logic_list selected=$smoke}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">Weight</td>
+    <td><input type="text" name="weight" value="{$weight}"></td>
+    <td class="ftitle">Pet</td>
+    <td>{html_radios name='pet' options=$logic_list selected=$pet}</td>
+  </tr>
+  <tr>
+    <td class="ftitle">Comments</td>
+    <td colspan="3">
+    	<textarea name="comments" rows="3" style="width: 350px" wrap="auto">{$comments}</textarea>
+    </td>
+  </tr>  	  
+  
+  <tr>
+    <td colspan="4" class="subtitle hand" onclick="switchDisplay('section2')">
+      <img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Patient Contacts
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="5"></td>
+  </tr>
+  <tbody id="section2">
+    <tr>
+      <td colspan="4" height="250">
+        <div id="contacts_grid_area" style="height: 245px; width: 98%"></div>
+        <input type="hidden" id="icd_to_delete" name="icd_to_delete">
+      </td>
+    </tr> 
+    <tr>
+      <td colspan="4" height="5">
+        <a href="{$index_url}patient/contacts/add/{$patient_id}/{$record_id}"><img src="{$image_url}icon_add.png" border="0" style="vertical-align: middle"> Add Contact</a>
+      </td>
+    </tr>
+    
+  </tbody>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+  var grid;
+  function loadGrid () {literal}{{/literal}
+  
+    if (document.getElementById("contacts_grid_area").innerHTML != "") {literal}{{/literal}
+    
+      grid.clearAll();
+      grid.updateFromXMl("{$index_url}patient/contacts/grid/{$patient_id}/{$record_id}", 'gform');
+      grid.setSizes();
+      
+    {literal}}{/literal} else {literal}{{/literal}
+  
+        grid = new dhtmlXGridObject("contacts_grid_area");
+        grid.setImagePath("{$base_url}style/grid/imgs/")
+        grid.iconImagePath = "{$base_url}style/grid/imgs/";
+        grid.setSkin("light");
+        // grid.setDragHandler(isDragable);
+        // grid.setDropHandler(dropHandler);
+        grid.enableSmartXMLParsing(true);
+        grid.loadXMLPost("{$index_url}patient/contacts/grid/{$patient_id}/{$record_id}", 'gform');
+        grid.setSizes();
+      
+      {literal}}{/literal}
+    
+  {literal}}{/literal}
+  
+  loadGrid();
+
+{literal}
+$(function() {
+	// Primary Insu Type Selection
+	$('.prim_insu_sel').click(function(){
+		$('.prim_insura_type_ID').hide();
+		$('#'+$(this).attr('id')+'_id').show();			
+		{/literal}{if $agency_medicaid_hmo eq 1}{literal}
+		if($(this).attr('id').indexOf('type_2')>-1){
+			$('#'+$(this).attr('id')+'_hmo').show();				
+		}else{
+			$('#prim_insura_type_2_hmo').hide();
+		}
+		{/literal}{/if}{literal}
+	});
+	
+
+  $('input[name=is_a_group_pt]').change(function(){
+    if($('input[name=is_a_group_pt]:checked').val() == '1') {
+      $('#wrap_group_flat_rate').show();
+    } else {
+      $('#wrap_group_flat_rate').val('').hide();
+    }
+  });
+
+});
+{/literal}
+	function edit_patient_status(pat_contractor_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 450, 300);
+			w2.setText("Edit Contractor Patient Status");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}/patient/contractor/edit_patient_status/"+pat_contractor_id+"/demographic");
+			
+    	
+  {literal}}{/literal}
+
+  function open_gmap_address() {literal}{{/literal}
+    var address = $('#address').val();
+    var zip = $('#zip1').val();
+    if (address.length == 0 && zip.length==0) {literal}{{/literal}
+      return;
+    {literal}}{/literal}
+
+    window.open('http://maps.google.com/?q='+address+' '+zip,'_blank');
+  {literal}}{/literal}
+
+  function clinicians_map() {literal}{{/literal}
+    var address = $('#address').val();
+    var zip = $('#zip1').val();
+    if (address.length == 0 && zip.length==0) {literal}{{/literal}
+      return;
+    {literal}}{/literal}
+    
+    address = address+' '+zip;
+    // address = address.replace(/ /g, '-');
+
+      dhxWins = new dhtmlXWindows();
+      dhxWins.setImagePath("{$base_url}style/window/imgs/");
+      
+      var w2 = dhxWins.createWindow("w2", 10, 10, 900, 500);
+      w2.setText("Clinicians Map for patient {$first_name} {$last_name}");
+      w2.button("park").hide();
+      w2.button("minmax1").hide();
+      //w2.denyResize(); // deny resizing
+      //w2.denyMove(); 
+      dhxWins.window('w2').center();
+      dhxWins.window('w2').setModal(true);
+      w2.attachURL("{$index_url}/cliniciansavailablemap/index/"+address);
+      
+      
+  {literal}}{/literal}
+</script>
+

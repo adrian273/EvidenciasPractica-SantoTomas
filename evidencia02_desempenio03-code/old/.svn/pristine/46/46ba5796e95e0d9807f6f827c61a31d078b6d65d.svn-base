@@ -1,0 +1,23 @@
+<?
+
+ class Front extends MY_Controller {
+
+	function Front () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/front");
+		
+	}
+
+	function index () {
+		
+		if ($this->hasPermission(14) || $this->getUserProfileId() == 3) $this->tpl->assign('full_tab', true);
+		if ($this->hasPermission(18)) $this->tpl->assign('cm_other_tab', true);
+		if ($this->getUserProfileId() == 3) $this->tpl->assign('visit_log_tab', true);
+		
+		$this->tpl->assign_include("dynamic_tpl", "task/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}	
+	
+ }

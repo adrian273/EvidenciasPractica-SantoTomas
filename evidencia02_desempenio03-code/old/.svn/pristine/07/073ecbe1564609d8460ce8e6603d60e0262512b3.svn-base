@@ -1,0 +1,83 @@
+<?
+
+ class fixApprover extends MY_Controller {
+
+	function fixApprover () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "task/fixapprover");
+		
+	}
+
+	function index () {
+		$visit_status_id = $this->getAgencyType() == 'C' ? 8 : 3;
+		if ($this->validation->run() == TRUE) {
+			foreach ($this->visitlogmdl->getVisitTaskList(null, $this->input->post('approver_user'), null, null, $visit_status_id) as $visitlog) {
+				
+				$this->visitlogmdl->updateUserApprover($visitlog->visit_log_id, $this->input->post('to_approver_user'));
+				
+			}
+			
+		}
+		
+
+
+		
+		$penging_approvers_list = $this->visitlogmdl->getApproverPending($this->getAgencyId(), $visit_status_id);
+
+
+		$gdata = $this->visitlogmdl->getVisitTaskList(null, null, null, null, $visit_status_id, null , $this->getAgencyId());
+		foreach ($gdata as $visit) {
+			$us_agy_id = $visit->user_approver;
+			if (!$us_agy_id) {
+				continue;
+			}
+			if (isset($penging_approvers_list[$us_agy_id])) {
+				continue;
+			}
+
+			$this->db->select("us_agy_id, CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name", false);
+			$this->db->where("us_agy_id", $us_agy_id);		
+			$query = $this->db->get('us_agy');
+			$row = $query->row();
+			if (empty($row)) {
+				$penging_approvers_list[$us_agy_id] = 'Deleted User ('.$us_agy_id.')';
+			}
+		}
+
+		/*$this->db->select("user_approver");		
+		$this->db->where("visit_status_id", $visit_status_id );		
+		$query = $this->db->get('vis_visit_log');
+		$result = $query->result();
+		foreach ($result as $key => $value) {
+			$us_agy_id = $value->user_approver;
+			if (isset($penging_approvers_list[$us_agy_id])) {
+				continue;
+			}
+
+			$this->db->select("us_agy_id, CONCAT_WS(' ', us_agy.first_name, us_agy.last_name) as complete_name", false);
+			$this->db->where("us_agy_id", $us_agy_id);		
+			$query = $this->db->get('us_agy');
+			$row = $query->row();
+			if (empty($row)) {
+				$penging_approvers_list[$us_agy_id] = 'Deleted User ('.$us_agy_id.')';
+			}
+		}*/
+
+		/*print_r($penging_approvers_list);
+		exit();*/
+
+
+		// $this->tpl->assign('penging_approvers_list', $this->visitlogmdl->getApproverPending($this->getAgencyId(), ($this->getAgencyType() == 'C' ? 8 : 3)));
+		$this->tpl->assign('penging_approvers_list', $penging_approvers_list);
+		$this->tpl->assign('us_agy_list', $this->usagymdl->getByAgencyId($this->getAgencyId(), null, null, null, null, false));
+		
+		$this->lang->language['grl_save'] = 'Reassign';
+		
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "task/reassign_form");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+ }

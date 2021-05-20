@@ -1,0 +1,34 @@
+<?php
+
+class SentEmailInstanceMdl extends Model {
+
+	var $id;
+	var $sent_date;
+	
+
+	function SentEmailInstanceMdl () {
+
+		parent::Model();
+		
+	}
+	
+
+	function get($keyword=null, $search_type=null) {}
+
+	function insert () {
+		$this->sent_date = date('Y-m-d');
+		$this->db->insert("sent_email_instances", $this);
+		$this->id = $this->db->insert_id();	
+	}
+	
+	function update ( $id ) {
+		$this->db->where("id", $id);
+		$this->db->update("sent_email_instances", $this);	
+	}
+	
+	
+	function delete ( $id ) {
+		$this->db->where("id", $id);
+		$this->db->delete("sent_email_instances");
+	}
+}

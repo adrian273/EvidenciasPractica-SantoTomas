@@ -1,0 +1,79 @@
+<table width="100%" cellpadding="4" cellspacing="0" border="0">
+	<tr>
+		<td colspan="2">
+			<div id="toolbarObj" style="float: left"></div>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2" id="table_details" style="sdisplay:none" width="100%">
+			<table width="100%">
+			  <tr>
+			    <td width="200" colspan="2" nowrap></td>
+			    <td></td>
+			  </tr>
+			  <tr>
+			    <td class="ftitle" valign="top">From</td>
+			    <td>{$user_name}</td>
+			  </tr>
+			  <tr>
+			    <td class="ftitle" valign="top">To</td>
+			    <td>{$msg_users}</td>
+			  </tr>
+			{if $patient_name!=""}
+			  <tr>
+			  <td class="ftitle" >Patient</td>
+			  <td>{$patient_name}</td>
+			  </tr>
+			{/if}
+			  <tr>
+			    <td class="ftitle" >Date</td>
+			    <td>
+			    	{if $communication_date}
+			    	{$communication_date|date_format:"%m-%d-%Y %r"}
+			    	{else}
+			    	{$creation_date_time|date_format:"%m-%d-%Y %r"}
+			    	{/if}
+			    </td>
+			  {*</tr>
+			    <td class="ftitle" >Subject</td>
+			    <td>{$msg_subject}</td>
+			  </tr>*}
+			  <tr>
+			    <td class="subtitle" colspan="2"><img src="{$image_url}blank.gif"></td>
+			  </tr>
+			</table>
+		</td>
+	</tr>
+  <tr>
+    <td colspan="2" height="10">{$notes_descrip|nl2br}</td>
+  </tr>
+</table>
+<script>
+	function setMsgTrash() {literal}{{/literal}
+		// document.location.href="{$index_url}mail/{$back_path}/messageTrash/{$msg_id}";
+	{literal}}{/literal}
+
+	function goToInbox() {literal}{{/literal}
+		document.location.href="{$index_url}patient/comnotes/index/{$patient_id}/{$cms485_id}";
+	{literal}}{/literal}
+
+	function viewFile(file) {literal}{{/literal}
+		window.open('{$image_url}attachment/'+file,'','toolbar=no,location=no,scrollbars=no,resizable=yes');
+	{literal}}{/literal}
+</script>
+<script language="JavaScript" type="text/javascript">
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addButton("back", 1, "Back", "undo.png");
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'back':
+		  goToInbox()
+		  break;
+		case 'delete':
+		  // setMsgTrash()
+		  break;
+		{literal}}{/literal}
+    {literal}}{/literal});
+</script>

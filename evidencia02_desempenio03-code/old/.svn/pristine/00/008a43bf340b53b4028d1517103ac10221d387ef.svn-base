@@ -1,0 +1,39 @@
+<?php
+
+class addAgencyCredentialTypes extends MY_Controller {
+
+	function addAgencyCredentialTypes () {	
+	    parent::MY_Controller();
+	    $this->tpl->assign("resource_path", "script/addAgencyCredentialTypes");
+	    $this->load->config('constants');  
+	    $this->counter = 0;
+  	}
+
+  	function index () {
+	  	$this->db->select('tab_value');
+	  	$this->db->where('tab_type', 86);
+	  	$query = $this->db->get('tab_parameters');
+	  	$types = $query->result();
+	  	
+	  	$this->db->select('agency_id, agency_name, agency_type');
+	  	$this->db->where_in('agency_type', array('A', 'C'));
+
+	  	$query = $this->db->get('agy_agency');
+	  	$agencies = $query->result();
+	  	foreach ($agencies as $agency) {
+	  		echo 'Agency >> '.$agency->agency_name.' >> Type : '.$agency->agency_type.' >> ';
+	  		$agency_id = $agency->agency_id;
+
+	  		foreach ($types as $key => $value) {
+	  			$data = array();
+	  			$data['credential_type'] = $value->tab_value;
+	  			$data['agency_id'] = $agency_id;
+	  			// $this->db->set($data);
+		  		$this->db->insert('agency_credential_types', $data);
+		  	}
+
+		  	echo 'Credential types inserted.<br>';
+	  	}
+  	}
+
+}  

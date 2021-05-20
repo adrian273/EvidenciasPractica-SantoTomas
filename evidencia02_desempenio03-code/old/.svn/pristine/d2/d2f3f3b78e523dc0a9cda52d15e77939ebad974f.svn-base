@@ -1,0 +1,219 @@
+<?
+
+ class PayRollMdl extends Model {
+
+
+	function PayRollMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function listGenerate ( $agency_id, $status, $visit_date_ini=null, $visit_date_fin=null, $payroll_confirmed=null, $order_by = null ) {
+	
+		$this->db->select('*');
+		$this->db->select('count(visit_user_id) as visit_count');
+		$this->db->select('sum(visit_amount) as sum_visit_amount');
+		$this->db->select('sum(mileage_amount) as sum_mileage_amount');
+	
+		$join_where = 'vis_visit_log.visit_user_id = us_agy.us_agy_id';
+		
+		if (!is_null($visit_date_ini)) {
+			$join_where .= " AND visit_date_time >= '". standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME')."'";
+			// $this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME'));
+		}
+		
+		if (!is_null($visit_date_fin)) {
+			$join_where .= " AND visit_date_time <= '". standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME'). " 23:59:59'";
+
+			// $this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME'). ' 23:59:59' );
+		}
+
+		
+		$join_where .= " AND visit_status_id IN(".implode(",", $status).")";
+		// $this->db->where_in('visit_status_id', $status);
+
+		$not_type_id = array(200, 201, 400, 350, 320, 101, 104);    
+		$join_where .= " AND vis_visit_log.visit_type_id NOT IN(".implode(",", $not_type_id).")";
+		// $this->db->where_not_in('vis_visit_log.visit_type_id', $not_type_id);
+
+		$join_where .= " AND payroll_status='R'";
+		// $this->db->where('payroll_status', 'R');
+		$join_where .= " AND (payroll_batch_id IS NULL OR payroll_batch_id = 0)";
+		// $this->db->where('payroll_batch_id IS NULL OR payroll_batch_id = 0');
+		$join_where .= " AND billable_YN=1";
+		// $this->db->where('billable_YN', '1');
+		
+		$this->db->join('vis_visit_log', $join_where);
+
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		
+		
+
+//		$this->db->where('pat_patient.agency_id', $agency_id);
+		$this->db->where('us_agy.agency_id', $agency_id);
+
+		if (!is_null($payroll_confirmed)) {
+			// $join_where .= " AND payroll_confirmed=".$payroll_confirmed;
+			$this->db->where('payroll_confirmed', $payroll_confirmed);
+		}
+		
+		$this->db->group_by('us_agy.us_agy_id');
+		if(is_null($order_by)){		
+			$this->db->order_by('us1_user.last_name,us1_user.first_name', 'desc');
+		} else {
+			$this->db->order_by('us_agy.legal_name', 'asc');
+		}
+		$query = $this->db->get('us_agy');		
+		return $query->result();
+
+	}
+	
+	function getTotal ( $visit_user_id=null, $agency_id=null, $visit_date_ini=null, $visit_date_fin=null, $status=array(), $payroll_status="R", $payroll_confirmed=1 ) {
+	
+		$this->db->select('count(visit_user_id) as visit_count');
+		$this->db->select('sum(visit_amount) as sum_visit_amount');
+		$this->db->select('sum(mileage_amount) as sum_mileage_amount');
+	
+		if (!is_null($visit_date_ini)) {
+			$this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME'));
+		}
+		
+		if (!is_null($visit_date_fin)) {
+			$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME'). ' 23:59:59' );
+		}
+		
+		if (!is_null($visit_user_id)) {
+			$this->db->where('visit_user_id', $visit_user_id);
+			$this->db->group_by('visit_user_id');
+		}
+		
+		if (!is_null($agency_id)) {
+			$this->db->where('us_agy.agency_id', $agency_id);
+			$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+			$this->db->group_by('us_agy.agency_id');
+		}
+		
+		$this->db->where('payroll_status', $payroll_status);
+		if ($payroll_confirmed==1) {
+			$this->db->where('payroll_confirmed', '1');
+		}
+		if (!empty($status)) {
+			$this->db->where_in('visit_status_id', $status);
+		}
+		
+		$this->db->where('billable_YN', '1');
+
+		// For special therapies, do not send 8606a (101) and QRs (104) to Payroll anymore.
+		$not_type_id = array(200, 201, 400, 350, 320, 101, 104);    
+		$this->db->where_not_in('vis_visit_log.visit_type_id', $not_type_id);
+
+		$query = $this->db->get('vis_visit_log');
+		return $query->row();
+
+	}
+	
+	function listDetail ( $visit_user_id, $status, $visit_date_ini=null, $visit_date_fin=null, $payroll_confirmed=null, $keyword=null ) {
+			
+		$this->db->select("*,  
+			TIMEDIFF(visited_time_out, visited_time_in) as visit_duration, 
+			invoice_view.invoice_no as co_invoice_no, 
+			invoice_view.invoice_id, 
+			us_agy.agency_id as user_agency_id, 
+			vis_visit_log.comments, 
+			agy_agency.agency_name, 
+			pat_patient.first_name as pat_first_name, 
+			pat_patient.last_name as pat_last_name, 
+			CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name) as complete_patient_name, 
+			invoice_view.total_payment as total_payments, payroll_batch_process.payroll_batch_process_date"
+		);
+	
+		$this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id', 'left');
+		$this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id','left');
+		$this->db->join('pat_patient',    		'pat_patient.patient_id = soc_start_of_care.patient_id','left');
+		$this->db->join('vit_visit_type',   	'vit_visit_type.visit_type_id = vis_visit_log.visit_type_id','left');
+		$this->db->join('tab_parameters', 		'vis_visit_log.visit_status_id = tab_parameters.tab_value AND tab_parameters.tab_type = 83', 'LEFT');
+		$this->db->join('us_agy', 'us_agy.us_agy_id = vis_visit_log.visit_user_id', 'left');
+		$this->db->join('agy_agency', 'agy_agency.agency_id = pat_patient.agency_id', 'left');
+		$this->db->join('invoice_view', 'vis_visit_log.co_invoice_id = invoice_view.invoice_id', 'LEFT');
+		$this->db->join('payroll_batch', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id', 'LEFT');
+		$this->db->join('payroll_batch_process', 'payroll_batch.payroll_batch_process_number = payroll_batch_process.payroll_batch_process_number', 'LEFT');
+		
+		if (!is_null($visit_date_ini)) {
+			$this->db->where("visit_date_time >=", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME'));
+		}
+		
+		if (!is_null($visit_date_fin)) {
+			$this->db->where("visit_date_time <=", standard_date(human_to_unix($visit_date_fin), 'MYSQL_NOTIME'). ' 23:59:59' );
+		}
+		
+		if (!is_null($payroll_confirmed)) {
+			$this->db->where('payroll_confirmed', $payroll_confirmed);
+		}
+		
+		if (!is_null($keyword) && strlen($keyword) > 0) {
+			$like_where = "(agy_agency.agency_name LIKE '%" . $keyword . "%' OR CONCAT_WS(' ', pat_patient.first_name, pat_patient.last_name) LIKE '%" . $keyword . "%')";
+			$this->db->where($like_where);
+		}
+		
+		$this->db->where('visit_user_id', $visit_user_id);
+		
+		$this->db->where('payroll_status', 'R');
+		$this->db->where('vis_visit_log.billable_YN', '1');
+		
+		// Also For special therapies, do not send 8606a (101) and QRs (104) to Payroll anymore.
+		$not_type_id = array(200, 201, 400, 350, 320, 101, 104);    
+		$this->db->where_not_in('vis_visit_log.visit_type_id', $not_type_id);
+
+		$this->db->where_in('visit_status_id', $status);
+		
+    	$this->db->order_by('visit_date_time');
+		
+		$query = $this->db->get('vis_visit_log');		
+		return $query->result();
+
+	}
+	function compare_entry ( $agency_id, $status, $visit_date_ini=null, $visit_date_fin=null, $payroll_confirmed=null ) {
+	
+		$this->db->select('*');
+		$this->db->select('count(visit_user_id) as visit_count');
+		$this->db->select('sum(visit_amount) as sum_visit_amount');
+		$this->db->select('sum(mileage_amount) as sum_mileage_amount');
+	
+		// $this->db->join('cms_485',   			'cms_485.cms485_id = vis_visit_log.cms485_id');
+		// $this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+		// $this->db->join('pat_patient',    		'pat_patient.patient_id = soc_start_of_care.patient_id');
+		$this->db->join('us_agy',   			'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+		
+		if (!is_null($visit_date_ini)) {
+			$this->db->where("visit_date_time <", standard_date(human_to_unix($visit_date_ini), 'MYSQL_NOTIME'));
+		}
+		
+		if (!is_null($payroll_confirmed)) {
+			$this->db->where('payroll_confirmed', $payroll_confirmed);
+		}
+		
+		
+		// $this->db->where('pat_patient.agency_id', $agency_id);
+		$this->db->where('us_agy.agency_id', $agency_id);
+
+		$this->db->where_in('visit_status_id', $status);
+		
+		// Also For special therapies, do not send 8606a (101) and QRs (104) to Payroll anymore.
+    	$not_type_id = array(200, 201, 400, 350, 320, 101, 104);
+		$this->db->where_not_in('vis_visit_log.visit_type_id', $not_type_id);
+
+		$this->db->where('payroll_status', 'R');
+		$this->db->where('billable_YN', '1');
+		$this->db->where('payroll_batch_id IS NULL OR payroll_batch_id = 0');
+		
+		$this->db->group_by('visit_user_id');		
+		$this->db->order_by('last_name');
+		
+		$query = $this->db->get('vis_visit_log');		
+		$num = $query->num_rows();		
+  		return $num;
+	}
+	
+ }

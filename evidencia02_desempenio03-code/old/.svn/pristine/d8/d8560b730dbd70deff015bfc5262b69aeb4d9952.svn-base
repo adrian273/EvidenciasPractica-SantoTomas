@@ -1,0 +1,49 @@
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/edit_referral_status/{$soc_contractor_id}">
+ 	<input type="hidden" name="soc_contractor_id" value="{$soc_contractor_id}" />
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+  <tr>
+    <td class="ftitle">Status</td>
+    <td>
+        {html_options options=$referral_status_list selected=$referral_status name='referral_status'}
+    </td>
+  </tr>
+  <tr>
+    <td class="ftitle">Status Notes</td>
+    <td>
+      <textarea name="status_notes" rows="3" style="width: 350px" wrap="auto">{$status_notes}</textarea>
+    </td>
+  </tr>  
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+<script>
+	{literal}
+	/*function calculateBalance() {
+		var invoice_amount = document.getElementById('invoice_amount').value;
+		invoice_amount = parseFloat(invoice_amount);
+		var total_payment = document.getElementById('total_payment').value;
+		total_payment = parseFloat(total_payment);
+		
+		var balance = 0;
+		
+		balance = invoice_amount - total_payment;
+		
+		balance = parseFloat(balance);
+		if(balance == 0)	
+			balance = '$0.00';
+		else
+			balance = '<font color="red">$'+balance+'</font>';	
+		document.getElementById('invoice_balance').innerHTML = balance;		
+	}*/
+	{/literal}
+</script>
+	

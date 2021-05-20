@@ -1,0 +1,75 @@
+<table border="0" width="100%" cellpadding="0" cellspacing="4"> 
+	<tr>		
+		<td class="ftitle">User Status: </td>
+    <td>
+			{if $edit_user_status}
+			{html_options options=$user_status_list name='user_status' id='user_status' selected=$user_status'} 
+			{else}
+    	<input type="hidden" name="user_status" value="{$user_status}">
+			{$user_status_list.$user_status}
+			{/if}
+    </td>
+  </tr>	
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Clinician/User assigned to Patient</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 	
+  <tr>
+    <td class="ftitle">Clinician/User</td>
+    <td>
+    	{$first_name} {$last_name}
+    	<input type="hidden" name="user_id" value="{$us_agy_id}">
+    </td>
+  </tr>
+  {if $us_agy_approver_perms}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Approver Permission</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10">
+      [<a href="javascript://" onclick="clear_approve_permission()" >Clear</a>]
+    </td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+    	{html_radios options=$us_agy_approver_perms selected=$approver_type_id name='approver_type_id' separator='<br>'}
+    </td>
+  </tr> 
+  {/if}
+  
+  {if !$no_commit_form}
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Primary</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr> 
+  <tr>
+    <td colspan="4">
+    	<input type="checkbox" name="primary" value="1" {if $primary}checked{/if} /> Primary
+    </td>
+  </tr> 
+  {/if}
+  
+  <tr>
+    <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> Comments</td>
+  </tr> 
+  <tr>
+    <td colspan="4" height="10"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+    	<textarea name="comments" rows="5" cols="50" wrap="auto">{$comments}</textarea>
+    </td>
+  </tr>
+</table> 
+
+<script type="text/javascript">
+  {literal}
+    function clear_approve_permission(){
+      $('input[name="approver_type_id"]').attr('checked', false);
+    }
+  {/literal}
+</script>

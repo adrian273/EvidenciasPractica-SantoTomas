@@ -1,0 +1,97 @@
+<?php
+
+class AddVisitToInvoice extends MY_Controller {
+
+    
+	function AddVisitToInvoice () {
+      parent::MY_Controller();
+    
+      $this->tpl->assign("resource_path", "script/addvisittoinvoice");
+      $this->load->config('constants');  
+
+      $this->load->model('companyinvoicemdl');
+      $this->load->model('invoiceotherchargesmdl');    
+	}
+
+  function revert_visit($visit_log_id){
+    $visitlog = $this->visitlogmdl->getById($visit_log_id);
+    if(!$visitlog){
+      echo "Visit not found!";
+      // echo "<SCRIPT>parent.loadGrid();parent.dhxWins.unload()</SCRIPT>";exit;
+    }
+
+    $invoice_id = $visitlog->co_invoice_id;
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+
+    $this->visitlogmdl->updateFlex($visit_log_id, 'co_invoice_id', null);
+    
+    // Update Invoice amount
+    $difference = 0;
+    $total_final_rate = 0;
+    
+    $visits = $this->visitlogmdl->getInvoiceVisits($invoice_id);
+    if(count($visits) > 0 ){
+      $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);      
+    }
+
+    $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice_id);
+    $difference = round(abs($total_final_rate - $invoice->invoice_amount), 2);
+    // if($total_final_rate != $invoice->invoice_amount AND $difference >0 ){
+      $this->companyinvoicemdl->updateFlex($invoice_id, 'invoice_amount', $total_final_rate);
+    // }
+
+    if ($invoice->agency_balance > 0) {
+      $agency_balance  = $invoice->agency_balance  - $difference;
+      $this->companyinvoicemdl->updateFlex($invoice_id, 'agency_balance ', $agency_balance );
+    }
+    echo "Visit reverted to Ready to Bill";
+  }
+
+  function index($invoice_id, $visit_log_id, $force=0){
+    $invoice = $this->companyinvoicemdl->getById($invoice_id);
+    if (empty($invoice)) {
+      echo "-1"; exit();
+    } else if($invoice->is_special) {
+      echo "-2"; exit();
+    }
+
+    $visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+    if ($visitlog->co_invoice_id) {
+      if ($force == 1) {
+        $this->db->trans_start();
+        $this->revert_visit($visit_log_id);
+      } else {
+        echo "-3";
+        exit();
+      }
+    }
+
+    if (!$force) {
+      $this->db->trans_start();
+    }
+
+    $this->visitlogmdl->updateFlex($visit_log_id, 'co_invoice_id', $invoice->invoice_id);
+
+    // Calculate new invoice amount and update
+    $this->load->model('invoiceotherchargesmdl');
+    $visits = $this->visitlogmdl->getInvoiceVisits($invoice->invoice_id);
+    $total_final_rate = $this->visitlogmdl->getVisitsBillAmount($visits);
+    $total_final_rate += $this->invoiceotherchargesmdl->getOtherAmount($invoice->invoice_id);
+    // if($total_final_rate != $invoice->invoice_amount AND round(abs($total_final_rate - $invoice->invoice_amount), 2) >0 ){
+      $this->companyinvoicemdl->updateFlex($invoice->invoice_id, 'invoice_amount', $total_final_rate);          
+    // }
+
+    $this->db->trans_complete();
+
+    if($this->db->trans_status() === TRUE){
+      echo "<br>Visit restored to invoice#".$invoice->invoice_no."(".$invoice->invoice_id.")";
+      exit();
+    } else {
+      echo "0"; exit();
+    }
+
+  }
+
+ }
+

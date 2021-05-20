@@ -1,0 +1,86 @@
+<div><a href="javascript:checkall()">Check All</a> | <a href="javascript:uncheckall()">Uncheck All</a></div>
+{*
+<div id="toolbarObj" style="float: left"></div>
+<div id="toolbarObj2" style="float: right"></div>*}
+<div id="toolbarObj3" style="position:absolute; left:0; bottom:0;"></div>	
+
+<input type="hidden" value="" name="RFA_export_ids" id="RFA_export_ids">
+
+<script>
+	
+	function modalEditForm (visit_log_id){literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", 10, 10, 350, 300);
+		w1.setText("EXPORT OASIS TO PC");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').center();
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}oasismanager/task/exporttopc/" + visit_log_id);
+    {literal}}{/literal}
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+	function exportrfa() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('RFA_export_ids', grid.getCheckedRows(0));
+			modalEditForm(grid.getCheckedRows(0));
+		{literal}}{/literal}
+	{literal}}{/literal}
+
+</script>
+{*
+<script language="JavaScript" type="text/javascript">
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+	webBar.addButton("none", 2, "None");
+	webBar.addSeparator('sp1', 3);
+	//webBar.addButton("export", 4, "Export");
+    
+    
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;
+		  case 'export':
+		  exportrfa()
+		  break;
+		{literal}}{/literal}
+    {literal}}{/literal});
+
+
+	
+</script>
+*}

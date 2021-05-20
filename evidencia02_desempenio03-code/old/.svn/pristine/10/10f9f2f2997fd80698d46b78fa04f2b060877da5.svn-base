@@ -1,0 +1,116 @@
+{* <script type="text/javascript" src="{$base_url}style/jquery-1.2.6.pack.js"></script>*}
+<link href="{$base_url}style/dropmenu.css" rel="stylesheet" type="text/css">
+
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center"> 
+  {if !$no_commit_form}<form id="tform" name="tform" method="POST" action="">{/if}
+  <input type="hidden" id="fecha_help">
+  <input type="hidden" name="visit_log_id" value="{$visit_log_id}">
+  <input type="hidden" id="visit_status_id" name="visit_status_id" value="{$visit_status_id}">
+  <tr>
+    <td colspan="2" height="20px">
+    
+		{if $task_page}
+		<div style="float: right">
+			{section name=page_loop loop=$task_page start=0}
+				<div id="btnpag{$smarty.section.page_loop.iteration}" onclick="hidePages({$task_page}); switchDisplay('pag{$smarty.section.page_loop.iteration}'); this.className = 'div_page_tab div_page_tab_selected'" class="div_page_tab">Page {$smarty.section.page_loop.iteration}</div>
+			{/section}
+		</div>
+		{/if}
+    	
+    </td>
+  </tr>
+  
+  <tr bgcolor="#BFDFFF" style="height:25px;">
+    <td valign="bottom" nowrap class="title" colspan="2">
+    	<div style="float: left">
+    		<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$form_title}
+    	</div>
+    	<div style="float: left; padding-left: 20px">
+			<table border="0" width="50%" cellpadding="0" cellspacing="0"> 
+			  <tr>
+			  	<td class="ftitle" style="width: 25%" nowrap>Patient:</td>
+			    <td style="width: 25%" nowrap>&nbsp;&nbsp;{$patient->first_name} {$patient->last_name}</td>
+			  	<td class="ftitle" style="width: 25%" nowrap>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certification:</td>
+			    <td style="width: 25%" nowrap>&nbsp;&nbsp;{$episode_start_date|date_format:"%m-%d-%Y":"":true}  to {$episode_end_date|date_format:"%m-%d-%Y":"":true}</td>
+			  </tr>
+			</table>
+    	</div>
+    </td>
+  </tr>
+  
+  <tr> 
+    <td valign="top" colspan="2" id="form_td">
+	  <div id="form_div" style="overflow: auto; height: 100%">
+	  
+		  {if $error_string}
+		  <div class="error tbl_msg" style='margin: 5px'>{$error_string}</div>
+		  {/if}
+	  
+		  {include file=$dynamic_form}
+	  </div>
+    </td>
+  </tr>
+  <tr> 
+    <td height="30px">
+  		{if !$no_commit_form}
+  			<input type="submit" class="btn" value="{$grl_save}" onclick="tform.action='{$index_url}{$resource_path}/index/{$visit_log_id}{if $window eq 'nw'}/task/nw{/if}';setValue('visit_status_id', 2)">
+  		{/if}
+  		
+  		
+  		{if $cancel_action}
+				{if $window eq 'nw'}
+	  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();">
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">*}
+				{else}
+				<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_action}'">
+				{/if}
+  		{else}
+				{if $window eq 'nw'}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="window.close();">
+				{*<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/task'">*}
+				{else}
+  			<input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}task/task'">
+				{/if}
+  		{/if}
+			{$smarty.capture.addition_button}
+			{foreach from=$additional_buttons key=label item=action}
+				<input type="button" class="btn" value="{$label}" onclick="{$action}">
+			{/foreach}
+			
+    </td>
+    <td>
+    	{if $task_form_updated}
+    		<span class="tbl_msg_ok">Form {$grl_upd_msg}</span>
+			{else}	
+				<span class="tbl_msg_ok" style="display:none;"></span>
+    	{/if}
+    	{if !$no_commit_form}
+    	<input type="button" class="btn" value="{$grl_delete}" onclick="deleteRegister({$visit_log_id})" style="float: right">
+    	{/if}
+    </td>
+  </tr>
+  {if !$no_commit_form}</form>{/if}
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+	function deleteRegister ( record_id ) {literal}{{/literal}
+
+		if (confirm('Are you sure to delete this Event?')) document.location = "{$index_url}task/event/delete/" + record_id+"{if $window eq 'nw'}/nw{/if}";
+	  
+	{literal}}{/literal}
+	
+	
+    
+	{if $window eq 'nw'}		
+		{literal}
+		$(window).unload(function() {
+			window.opener.loadGrid();
+		});		
+		{/literal}
+	{/if}
+
+	function open_popup (url, WD, HT) {literal}{{/literal}
+		window.open(url);
+	{literal}}{/literal}
+</script>

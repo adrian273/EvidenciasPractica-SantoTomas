@@ -1,0 +1,95 @@
+<?php
+
+class Fix3625AuthServiceData extends MY_Controller {
+
+
+	function Fix3625AuthServiceData () {
+    parent::MY_Controller();
+    
+    $this->tpl->assign("resource_path", "script/fix3625authservicedata");
+    $this->load->config('constants');  
+
+    $this->load->model('form3625mdl');
+    $this->load->model('agencysettingmdl');
+  }
+
+  function index(){
+    $this->db->select('vt103_form_3625.vt103_id, vis_visit_log.visit_log_id, vis_visit_log.visit_user_id, vis_visit_log.co_invoice_id, us_agy.discipline_id, pat_patient.agency_id');
+    $this->db->join('vis_visit_log', 'vis_visit_log.visit_log_id = vt103_form_3625.visit_log_id AND vis_visit_log.visit_status_id != 1');       
+    $this->db->join('us_agy' ,  'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+    $this->db->join('cms_485',        'cms_485.cms485_id = vis_visit_log.cms485_id');
+    $this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient',      'soc_start_of_care.patient_id = pat_patient.patient_id');
+
+    $this->db->where("vt103_form_3625.serv_code_box15 IS NULL AND vt103_form_3625.bill_code_box16 IS NULL AND vt103_form_3625.requis_feee_box17 IS NULL AND vt103_form_3625.requis_fee_serv_code_box18 IS NULL AND vt103_form_3625.requis_fee_bill_code_box19 IS NULL");
+
+    $query = $this->db->get('vt103_form_3625');
+    $f3625s = $query->result();
+    
+    $count = 0;
+    foreach ($f3625s as $f3625) {
+      // Load deafult values from agency settings for particual discipline
+      $agency_settings=$this->agencysettingmdl->getByAgencyDisciplineId($f3625->agency_id, $f3625->discipline_id);
+      if (!empty($agency_settings)) {
+        $count++;        
+      }
+    }
+
+    if ($count > 0) {
+      echo $count.' of form3625 records found to be FIXED.';
+    } else {
+      echo 'No form3625 record has been found to be FIXED!';
+    }
+      
+  }
+
+  function fix(){
+    $this->db->select('vt103_form_3625.vt103_id, vis_visit_log.visit_log_id, vis_visit_log.visit_user_id, vis_visit_log.co_invoice_id, us_agy.discipline_id, pat_patient.agency_id');
+    $this->db->join('vis_visit_log', 'vis_visit_log.visit_log_id = vt103_form_3625.visit_log_id AND vis_visit_log.visit_status_id != 1');       
+    $this->db->join('us_agy' ,  'us_agy.us_agy_id = vis_visit_log.visit_user_id');
+    $this->db->join('cms_485',        'cms_485.cms485_id = vis_visit_log.cms485_id');
+    $this->db->join('soc_start_of_care',    'soc_start_of_care.soc_id = cms_485.soc_id');
+    $this->db->join('pat_patient',      'soc_start_of_care.patient_id = pat_patient.patient_id');
+
+    $this->db->where("vt103_form_3625.serv_code_box15 IS NULL AND vt103_form_3625.bill_code_box16 IS NULL AND vt103_form_3625.requis_feee_box17 IS NULL AND vt103_form_3625.requis_fee_serv_code_box18 IS NULL AND vt103_form_3625.requis_fee_bill_code_box19 IS NULL");
+
+    $query = $this->db->get('vt103_form_3625');
+    $f3625s = $query->result();
+    
+    $count = 0;
+    foreach ($f3625s as $f3625) {
+      // Load deafult values from agency settings for particual discipline
+      $agency_settings=$this->agencysettingmdl->getByAgencyDisciplineId($f3625->agency_id, $f3625->discipline_id);
+      if (!empty($agency_settings)) {
+
+        $this->db->trans_start();
+        
+        $this->form3625mdl->updateFlex($f3625->visit_log_id, 'serv_code_box15', $agency_settings->F3625_box15);
+        $this->form3625mdl->updateFlex($f3625->visit_log_id, 'bill_code_box16', $agency_settings->F3625_box16);
+        $this->form3625mdl->updateFlex($f3625->visit_log_id, 'requis_feee_box17', $agency_settings->F3625_box17);
+        $this->form3625mdl->updateFlex($f3625->visit_log_id, 'requis_fee_serv_code_box18', $agency_settings->F3625_box18);
+        $this->form3625mdl->updateFlex($f3625->visit_log_id, 'requis_fee_bill_code_box19', $agency_settings->F3625_box19);
+        
+        $this->db->trans_complete();
+
+
+        if($this->db->trans_status() === TRUE){
+          echo "<font color='green'>Invoice id: {$f3625->co_invoice_id}, visit_log_id:{$f3625->visit_log_id} form3625 Authorized service Fixed</font><br>\n"; 
+          $count++;
+        } else {
+          echo "<font color='red'>Invoice id: {$f3625->co_invoice_id}, visit_log_id:{$f3625->visit_log_id} form3625 Authorized service Can't be FIXED</font><br>\n"; 
+        }
+      }
+
+    }
+
+    if ($count > 0) {
+      echo $count.' of form3625 records has been FIXED.';
+    } else {
+      echo 'No form3625 record has been found to be FIXED!';
+    }
+      
+  }
+
+}
+

@@ -1,0 +1,128 @@
+<?
+
+ class ContractorRatePatientMdl extends Model {
+
+	var $contractor_patient_rate_id 	;
+	var $agency_contractor_id; 	 	
+	var $patient_id; 	 	
+	var $visit_type_id;
+	var $rate_effective_date;
+	var $company_rate;
+	var $PTA_or_COTA_rate;
+	var $class_rate;
+	var $yes_rate;
+	var $private_rate;
+	var $waiver_rate;
+	var $modify_user_id;
+	var $modify_date;
+
+	function ContractorRatePatientMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $contractor_patient_rate_id 	 ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = contractor_rate_patient.visit_type_id');    
+		
+    $this->db->join('pat_patient', 			'pat_patient.patient_id = contractor_rate_patient.patient_id');
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = contractor_rate_patient.modify_user_id' , 'left');
+		$this->db->where("contractor_rate_patient.contractor_patient_rate_id", $contractor_patient_rate_id 	);		
+		$query = $this->db->get('contractor_rate_patient');
+		return $query->row();
+	}
+
+	function getRate ( $agency_contractor_id, $patient_id, $visit_type, $rate_effective_date) {	
+		$this->db->where("contractor_rate_patient.agency_contractor_id", $agency_contractor_id);	
+		$this->db->where("contractor_rate_patient.patient_id", $patient_id);		
+		$this->db->where("contractor_rate_patient.visit_type_id", $visit_type);		
+    	$this->db->where("contractor_rate_patient.rate_effective_date <= '{$rate_effective_date}'");		
+		
+
+		$query = $this->db->get('contractor_rate_patient');
+
+		if ($query->num_rows() > 0) {
+			return $query->row()->company_rate;
+		}
+		return false;		
+	}
+  
+  function getPatientsByContractorId ( $contractor_id, $keyword=null, $tab_013_status=null, $normal_result=true ) {
+		
+		$this->db->select("*, CONCAT_WS(' ', first_name, last_name) as complete_name");
+      
+		$this->db->join('agency_contractor', 	'agency_contractor.agency_contractor_id = pat_contractor.agency_contractor_id');
+    
+		$this->db->join('pat_patient', 			'pat_patient.patient_id = pat_contractor.patient_id');
+    $this->db->join('contractor_rate_patient', 			'contractor_rate_patient.patient_id = pat_patient.patient_id');
+    
+    $this->db->join('pat_patient_insurance1', 'pat_patient_insurance1.patient_id = pat_patient.patient_id');
+		$this->db->join('agy_agency', 			'agy_agency.agency_id = pat_patient.agency_id');
+		$this->db->join('tab_parameters', 		'tab_parameters.tab_type = 13 AND tab_013_status = tab_parameters.tab_value', 'LEFT');
+		$this->db->join('sta_states', 			'sta_states.state_id = pat_patient.state_id', 'LEFT');
+		
+		if (!is_null($keyword)) {
+			$this->db->like("CONCAT_WS(' ', first_name, last_name)", $keyword);
+		}
+		
+    if($this->input->post('tab_102_prim_insura_type')){
+      $this->db->where("tab_102_prim_insura_type", $this->input->post('tab_102_prim_insura_type'));
+    }
+    
+		if (!is_null($tab_013_status)) {
+			$this->db->where("tab_013_status", $tab_013_status);
+		}
+		$this->db->where("contractor_id", $contractor_id);
+          
+    $this->db->groupby("pat_patient.patient_id");      
+		$this->db->orderby("agy_agency.agency_name, last_name, first_name");
+		
+		$query = $this->db->get('pat_contractor');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('patient_id', 'complete_name');
+		
+	}
+  
+  function getByContractorAndPatientId ( $agency_contractor_id, $patient_id ) {	
+		$this->db->join('vit_visit_type', 'vit_visit_type.visit_type_id = contractor_rate_patient.visit_type_id');    
+    
+    $this->db->join('us1_user' , 'us1_user.user_id = contractor_rate_patient.modify_user_id' , 'left');
+    
+		$this->db->where("contractor_rate_patient.agency_contractor_id", $agency_contractor_id);		
+		$this->db->where("contractor_rate_patient.patient_id", $patient_id);		
+    
+		$this->db->order_by("vit_visit_type.visit_description", "ASC");		
+		$this->db->order_by("contractor_rate_patient.rate_effective_date", "DESC");		
+    
+		$query = $this->db->get('contractor_rate_patient');
+		return $query->result();
+	}
+	
+  function updateFlex($contractor_patient_rate_id 	, $attribute, $value, $where = 'contractor_patient_rate_id 	') {
+
+		$this->db->where($where, $contractor_patient_rate_id 	);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('contractor_rate_patient');
+
+	}
+  
+	function insert ( $agency_contractor_id ) {
+		
+		$this->agency_contractor_id = $agency_contractor_id;		
+		$this->db->insert('contractor_rate_patient', $this);
+		$this->contractor_patient_rate_id 	 = $this->db->insert_id();		
+	}	
+	
+	function delete ( $contractor_patient_rate_id 	 ) {
+		
+		$this->db->where('contractor_patient_rate_id 	', $contractor_patient_rate_id 	);
+		
+		$this->db->delete('contractor_rate_patient'); 
+		
+	}
+
+ }

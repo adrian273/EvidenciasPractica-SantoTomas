@@ -1,0 +1,65 @@
+<?php
+
+include ('admin_controller.php');
+
+class Product extends Admin_Controller {
+
+    function Product () {
+        parent::Admin_Controller();
+        $this->tpl->assign("resource_path", "administrator/product");
+        $this->load->model('agencyproductmdl');
+    }
+
+    /**
+     * @param $agency_id
+     */
+    function index ( $agency_id ) {
+        $this->tpl->assign('agency_id', $agency_id);
+        $this->tpl->assign('product_list', $this->agencyproductmdl->getFilterProductByAgency($agency_id));
+        $this->tpl->assign("grid_buttons", "false");
+        $this->tpl->assign(array("agency_id" => $agency_id));
+        $this->tpl->assign_include("dynamic_tpl", "administrator/agency/products");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    /**
+     * @param $agency_id
+     * @param $product_id
+     */
+    function add ( $agency_id, $product_id ) {
+        $this->agencyproductmdl->insert($agency_id, $product_id);
+        $this->index($agency_id);
+    }
+
+    /**
+     * @param $agency_id
+     * @param $prod_id identiti
+     */
+    function delete ( $agency_id, $prod_id ) {
+        $this->agencyproductmdl->delete($prod_id, $agency_id);
+        $this->index($agency_id);
+
+    }
+
+    /**
+     * @param $agency_id
+     */
+    function grid ( $agency_id ) {
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+        $head->append($this->xml->Element("column", "width=*", "Products"));
+        $head->append($this->xml->Element("column", "width=6;align=center;type=linkc", "Actions"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+        $data = $this->agencyproductmdl->getByAgency($agency_id);
+        foreach ($data as $p) {
+            $cell = $this->xml->Element("row", "id=" . $p->prod_id);
+            $cell->append($this->xml->Element("cell", null, $p->tab_value));
+            $cell->append($this->xml->Element("cell", null, $p->tab_description));
+            $cell->append($this->xml->Element("cell", null, "Delete^" . $this->config->config['index_url'] . "administrator/product/delete/" . $agency_id . "/" . $p->prod_id . "^Are you sure to delete this product?"));
+            $document->append($cell);
+        }
+    }
+}

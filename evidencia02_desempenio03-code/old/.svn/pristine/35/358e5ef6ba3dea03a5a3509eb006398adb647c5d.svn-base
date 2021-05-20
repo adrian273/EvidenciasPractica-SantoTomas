@@ -1,0 +1,23 @@
+<?
+
+ class CalendarFront extends MY_Controller {
+
+	function CalendarFront () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/calendarfront");
+		
+	}
+
+	function index ( $patient_id, $cms485_id=null ) {
+    	$patient = $this->patientmdl->getById($patient_id);    
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("tab_102_prim_insura_type", $patient->tab_102_prim_insura_type);
+		$this->tpl->assign("patient_id", $patient_id);
+		$this->tpl->assign("cms485_id", $cms485_id);
+		$this->tpl->assign_include("dynamic_tpl", "patient/calendar/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+ }

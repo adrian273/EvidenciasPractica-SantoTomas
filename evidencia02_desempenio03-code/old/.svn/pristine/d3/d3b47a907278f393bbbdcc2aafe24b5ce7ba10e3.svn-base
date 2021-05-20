@@ -1,0 +1,706 @@
+<?php
+ include('visitform.php');
+
+  class Form8606A extends VisitForm {
+
+	function Form8606A () {
+		
+		parent::VisitForm();
+
+		$this->load->model('form8606amdl');
+		$this->load->model('usagypermissionmdl');
+
+		$this->tpl->assign("resource_path", "task/form8606A");
+
+		// validate before submit for approval
+		$this->tpl->assign("validatationVisit", true);
+		
+		$this->tpl->assign(array("tab_page" => true));		
+	}
+
+	function index($visit_log_id, $action = 'task', $window = 'self') {
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		// echo "<pre>";print_r($visitlog);exit();
+		$this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+		$query = $this->db->get('color_lengend_mycalendar');
+		$row = $query->row();
+		$visit_tab_status_color = $row->color_backg;
+		$this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+		$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+		if ($visitlog->visit_discipline_id) {
+			$user_discipline = $this->disciplinemdl->getById($visitlog->visit_discipline_id);
+        	$visit_user = (object) array_merge((array)$visit_user, (array)$user_discipline );
+		}
+
+		$this->tpl->assign("visit_user", $visit_user);
+
+		$us1_user = $this->usermdl->getById($visit_user->user_id);
+		$this->tpl->assign("us1_user", $us1_user);
+
+
+		$prev_visit_log_id = null;
+		$next_visit_log_id = null;
+
+		if (!count($this->form8606amdl->get($visit_log_id)) OR $visitlog->visit_status_id == 1) {
+			$form8606as = $this->form8606amdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($form8606as) == 0) {
+				$form8606as = $this->form8606amdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE);
+			}
+
+			if (count($form8606as)) {
+				$form8606a = $form8606as[count($form8606as) - 1];
+
+				$prev_visit_log_id = $form8606a->visit_log_id;
+
+				/*$not_to_import = array (
+					'visit_log_id',
+					'vt101_id',			
+					'upload_document_name',					
+					'upload_document_name2',				
+				);
+				foreach ($form8606a as $k => $v) {
+					if (!in_array($k, $not_to_import) AND property_exists($this->form8606amdl, $k))
+						$this->form8606amdl-> $k = $v;
+				}
+				if (count($this->form8606amdl->get($visit_log_id))) {
+					$this->form8606amdl->visit_log_id = $visit_log_id;
+					$this->form8606amdl->update($visit_log_id);
+				} else {
+					$this->form8606amdl->visit_log_id = $visit_log_id;
+					$this->form8606amdl->insert($visit_log_id);
+				}*/
+			}
+		} else {
+			$form8606as = $this->form8606amdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+			if (count($form8606as)) {
+				$form8606a = $form8606as[count($form8606as) - 1];
+				$prev_visit_log_id = $form8606a->visit_log_id;
+			}
+		}
+		$form8606as = $this->form8606amdl->getNext(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+		if (count($form8606as)) {
+			$form8606a = $form8606as[0];
+			$next_visit_log_id = $form8606a->visit_log_id;
+		}
+		//echo $prev_visit_log_id."::".$next_visit_log_id;exit;
+		//$this->tpl->assign("form", 'ptpn');  
+		$this->tpl->assign("prev_visit_log_id", $prev_visit_log_id);
+		$this->tpl->assign("next_visit_log_id", $next_visit_log_id);
+
+		$this->assignObject($visitlog);
+		$form8606a = $this->form8606amdl->get($visit_log_id);
+		if (empty($form8606a)) {
+			$form8606a = $this->form8606amdl->getEmpty();
+			$form8606a->visit_log_id = $visit_log_id;
+		}
+		$this->assignObject($form8606a);
+		
+    	$rules = array ('visit_date_time'  		=> 'required',
+						'requested_skilled'  	=> 'required',
+						'can_components'  		=> 'required',
+						// Addendum Rules
+						'adden_ther_evaluation'	=> 'required',
+						'adden_diagnosis'		=> 'required',
+						'adden_client_diagnosis'=> 'required',
+						'adden_intervention'	=> 'required',
+						'adden_base_line1'		=> 'required',
+						'adden_goals1'			=> 'required',
+						'adden_objectives1'		=> 'required',
+						'adden_duration'		=> 'required',
+						'adden_amount'			=> 'required',
+						'adden_location'		=> 'required',
+						'license_no'		=> 'required',
+						);
+    	$fields = array ('visit_date_time'  	=> 'Order Date',
+						'requested_skilled'  	=> 'Requested Skilled or Specialized Therapy',
+						'can_components'  		=> 'Can components',
+						// Addendum Rules
+						'adden_ther_evaluation'	=> 'Therapy Evaluation',
+						'adden_diagnosis'		=> 'Diagnosis',
+						'adden_client_diagnosis'=> 'Client\'s Diagnosis Of Results In',
+						'adden_intervention'	=> 'Intervention',
+						'adden_base_line1'		=> 'Baseline Data 1',
+						'adden_goals1'			=> 'Goals 1',
+						'adden_objectives1'		=> 'Objectives 1',
+						'adden_duration'		=> 'Duration',
+						'adden_amount'			=> 'Amount',
+						'adden_location'		=> 'Location',
+						'license_no'			=> 'License No.',
+						);
+						
+		if ($this->input->post('can_components')=='N') {
+			$rules['if_no_describe'] = 'required';
+			$fields['if_no_describe'] = 'When Can components No, Describe';
+		}
+
+		if ($this->input->post('visit_status_id')==3) {
+			$rules['clinician_signature'] = 'required';
+			$fields['clinician_signature'] = 'Clinician Signature';
+
+			// $rules['signature'] = 'required';
+			// $fields['signature'] = 'Patient Signature';
+		}
+
+		if (!$form8606a->upload_document_name AND !$form8606a->upload_document_name2) {
+			if ($this->input->post('visit_status_id') == 3) {
+				$this->validation->set_rules($rules);
+				$this->validation->set_fields($fields);
+			}
+		}
+		
+		if ($this->validation->run() == TRUE) {
+			if($this->updateFormEdition($visit_log_id)){
+				$this->assignPostData($this->form8606amdl);
+
+				$form8606a = $this->form8606amdl->get($visit_log_id);
+				if (count($form8606a)) {
+					$this->form8606amdl->update($visit_log_id);
+				} else {
+					$this->form8606amdl->insert($visit_log_id);
+				}
+
+				//echo $visitlog->visit_status_id."::".$this->visitlogmdl->visit_status_id;
+				if($visitlog->visit_status_id != $this->visitlogmdl->visit_status_id AND $this->visitlogmdl->visit_status_id == 8){
+					// when tasks are "sent for approval" they should be copied to the vt101_form_8606a_copy table
+					$this->db->query("REPLACE INTO vt101_form_8606a_copy SELECT * FROM `vt101_form_8606a` WHERE visit_log_id = {$visit_log_id}");
+				}
+
+				$this->load->helper('ajax');
+				if (isAjax()) {
+					echo "1";
+					exit;
+				}else{
+	        		$form8606a = $this->form8606amdl->get($visit_log_id);        		
+	        		$this->assignObject($form8606a);
+
+	        		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+	        		$this->assignObject($visitlog);
+	      		}
+			}
+
+			$this->formRedirection($visit_log_id);
+		}
+
+
+		$additional_buttons = array();
+		/*
+		$additional_buttons['Patient Signature'] = "capture_pt_signature({$visit_log_id})";
+		$additional_buttons['Clinician Signature'] = "capture_clinician_signature({$visit_log_id})";
+		$additional_buttons['Case Manager Signature'] = "capture_cm_signature({$visit_log_id})";
+		*/
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				if ($form8606a->upload_document_name OR $form8606a->upload_document_name2) {
+					$additional_buttons['Change Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+					$additional_buttons['Remove Document'] = 'removeScannedDocument('.$visit_log_id.')';
+				} else {
+					$additional_buttons['Upload Scanned Document'] = 'uploadScannedDocument('.$visit_log_id.')';
+				}
+			}
+		}
+		
+		$this->tpl->assign('additional_buttons', $additional_buttons );
+
+
+		$medicaidInsurance = $this->patientinsurancemdl->getMedicaidInsurance($visitlog->patient_id);
+		$this->tpl->assign("medicaidInsurance", $medicaidInsurance);
+		
+		$patient = $this->getPatientInfo($visit_log_id);
+		$agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$this->tpl->assign("agency", $agency);
+
+		if (isset($form8606a->adden_diagnosis) AND !is_null($form8606a->adden_diagnosis)) {
+		} else {
+			$this->tpl->assign('adden_diagnosis', $patient->diagnosis);
+		}
+			
+		$requested_skilled_ids = array(13, 14, 15, 16, 17, 18);
+		$requested_skilled_list = $this->disciplinemdl->getByIds($requested_skilled_ids, FALSE, 'mayor_discipline');
+		$this->tpl->assign("requested_skilled_list", $requested_skilled_list);
+
+		// Case Manager
+		$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+		if (count($cm_approver)) {
+			$this->tpl->assign("cm_approver", $this->usagymdl->getByUsAgyId($cm_approver[0]->us_agy_id));
+		}
+
+		$this->load->model('us1usercredentialsmdl');
+		$credentials = $this->us1usercredentialsmdl->getById($visit_user->user_id, 2, 'Active', $visit_user->agency_id);
+		if (count($credentials) > 0) {
+			$this->tpl->assign("credential", $credentials[0]);
+		} else {
+			$credentials = $this->us1usercredentialsmdl->getById($visit_user->user_id, null, 'Active', $visit_user->agency_id);
+			if (count($credentials) > 0) {
+				$this->tpl->assign("credential", $credentials[0]);
+			}
+		}
+
+		if ($visit_user->discipline_id) {
+			// $discipline = $this->disciplinemdl->getById($visit_user->discipline_id);
+			// $this->tpl->assign("user_discipline", $discipline->mayor_discipline);
+			if (isset($form8606a->requested_skilled) AND $form8606a->requested_skilled){
+				// do nothing
+			} else {				
+				$this->tpl->assign('requested_skilled', $visit_user->discipline_id);
+			}
+		}
+
+		$can_sign_as_case_manager = FALSE;
+		if ($this->usagypermissionmdl->isCaseManager($this->getUsAgyId())) {
+			$can_sign_as_case_manager = TRUE;
+		}
+		$this->tpl->assign("can_sign_as_case_manager", $can_sign_as_case_manager);
+
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		$this->tpl->assign("window", $window);
+		$this->tpl->assign_include("dynamic_form", "task/documents/form8606a");
+		$this->setfbase($visit_log_id, $action);
+
+		// For user with profile=Company or Agency Manager, for notes w/scanned documents, 
+		// we need to also display button "Save" in addition to "Submit for approval"
+		if ($form8606a->upload_document_name 
+			AND $visitlog->visit_user_id != $this->getUsAgyId()
+			AND ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2) 
+			AND ($this->getUserProfileId() == 1 OR $this->getUserProfileId() == 3)) {
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/fbase_muvi");
+		}
+
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function capture_pt_signature($visit_log_id) {
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$form8606a = $this->form8606amdl->get($visit_log_id);  
+		//echo FCPATH;
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($visitlog->signature)){
+				$this->tpl->assign("signature", $visitlog->signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_pt_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form8606a)) {
+					$this->form8606amdl->visit_log_id = $visit_log_id;
+					$this->form8606amdl->insert($visit_log_id);
+				}
+				
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "pt_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->visitlogmdl->updateSignature($visit_log_id, $signature_file_name);
+				// $this->form8606amdl->updateFlex($visit_log_id, 'pt_signature', $signature_file_name);
+				// $this->form8606amdl->updateFlex($visit_log_id, 'pt_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/form8606A/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function capture_clinician_signature($visit_log_id) {
+		$form8606a = $this->form8606amdl->get($visit_log_id);   
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		if($visitlog->visit_user_id != $this->getUsAgyId()){
+			exit('Only Clinician Signature Allowed');
+		}
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			$visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form8606a->clinician_signature)){
+				$this->tpl->assign("signature", $form8606a->clinician_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_clinician_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form8606a)) {
+					$this->form8606amdl->visit_log_id = $visit_log_id;
+					$this->form8606amdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "clinician_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->form8606amdl->updateFlex($visit_log_id, 'clinician_signature', $signature_file_name);
+				$this->form8606amdl->updateFlex($visit_log_id, 'clinician_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/form8606A/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}
+
+	function capture_cm_signature($visit_log_id) {
+		$can_sign_as_case_manager = FALSE;
+		if ($this->usagypermissionmdl->isCaseManager($this->getUsAgyId())) {
+			$can_sign_as_case_manager = TRUE;
+		}
+		
+		if (!$can_sign_as_case_manager) {
+			exit('You are not authorized for Case Manager Signature.');
+		}
+
+		$form8606a = $this->form8606amdl->get($visit_log_id);   
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $this->getAgencyId(), null, 3);
+		$cm_us_agy_id = 0;
+		if (count($cm_approver)) {
+			$cm_us_agy_id = $cm_approver[0]->us_agy_id;			
+		}
+
+		if ($this->getUsAgyId() != $cm_us_agy_id) {
+			exit('Only Case Manager Signature Allowed');
+		}
+
+		$rules = array (
+			'signature' 	=> 'required'
+		);		
+		$this->validation->set_rules($rules);
+		$this->tpl->assign("visit_log_id", $visit_log_id);	
+		
+		if ($this->validation->run() == FALSE) {
+			// get the image name based on the visit_log_id
+			// $visit_log_array = $this->visitlogmdl->getById($visit_log_id);
+			//echo "<pre>"; print_r($visit_log_array); echo "</pre>";
+			if(isset($form8606a->cm_signature)){
+				$this->tpl->assign("signature", $form8606a->cm_signature);	
+			}
+			$this->tpl->assign_include("dynamic_tpl", "task/capture_cm_signature");
+			$this->tpl->view("task/ibase", $this->lang->language);	
+		} else {
+			if (!is_null($this->input->post('signature'))) {
+				if (empty($form8606a)) {
+					$this->form8606amdl->visit_log_id = $visit_log_id;
+					$this->form8606amdl->insert($visit_log_id);
+				}
+
+				$signature = $this->input->post('signature');
+				$temp_array = explode(",", $signature);
+				$encoded_image = $temp_array[1];
+				$decoded_image = base64_decode($encoded_image);
+				$signature_file_name = "cm_signature_" . $visit_log_id . ".jpg";
+				$upload_path = str_replace("\\","/", FCPATH) . "upload/signatures/";
+				
+				file_put_contents($upload_path . $signature_file_name, $decoded_image);
+				$this->form8606amdl->updateFlex($visit_log_id, 'cm_signature', $signature_file_name);
+				$this->form8606amdl->updateFlex($visit_log_id, 'cm_signed_date', standard_date(now(), 'MYSQL'));
+
+				$config =& get_config();
+
+				echo 'Signature has been captured and saved successfully.';
+				echo '<script>
+					setTimeout(function(){
+						parent.location.href=\''.$config["index_url"].'task/form8606A/index/'.$visit_log_id.'\';
+					}, 2000);
+				</script>';
+			}
+		}	
+	}	
+
+	function validation_visit($visit_log_id){
+		$rules = array ('visit_date_time'  		=> 'required',
+						'requested_skilled'  	=> 'required',
+						'can_components'  		=> 'required',
+						// Addendum Rules
+						'adden_ther_evaluation'	=> 'required',
+						'adden_diagnosis'		=> 'required',
+						'adden_client_diagnosis'=> 'required',
+						'adden_intervention'	=> 'required',
+						'adden_base_line1'		=> 'required',
+						'adden_goals1'			=> 'required',
+						'adden_objectives1'		=> 'required',
+						'adden_duration'		=> 'required',
+						'adden_amount'			=> 'required',
+						'adden_location'		=> 'required',
+						'license_no'		=> 'required',
+						);
+    	$fields = array ('visit_date_time'  	=> 'Order Date',
+						'requested_skilled'  	=> 'Requested Skilled or Specialized Therapy',
+						'can_components'  		=> 'Can components',
+						// Addendum Rules
+						'adden_ther_evaluation'	=> 'Therapy Evaluation',
+						'adden_diagnosis'		=> 'Diagnosis',
+						'adden_client_diagnosis'=> 'Client\'s Diagnosis Of Results In',
+						'adden_intervention'	=> 'Intervention',
+						'adden_base_line1'		=> 'Baseline Data 1',
+						'adden_goals1'			=> 'Goals 1',
+						'adden_objectives1'		=> 'Objectives 1',
+						'adden_duration'		=> 'Duration',
+						'adden_amount'			=> 'Amount',
+						'adden_location'		=> 'Location',
+						'license_no'			=> 'License No.',
+						);
+						
+		if ($this->input->post('can_components')=='N') {
+			$rules['if_no_describe'] = 'required';
+			$fields['if_no_describe'] = 'When Can components No, Describe';
+		}
+
+		$rules['clinician_signature'] = 'required';
+		$fields['clinician_signature'] = 'Clinician Signature';
+
+		// $rules['signature'] = 'required';
+		// $fields['signature'] = 'Patient Signature';
+		$form8606a = $this->form8606amdl->get($visit_log_id);
+		if (empty($form8606a)) {
+			$form8606a = $this->form8606amdl->getEmpty();
+			$form8606a->visit_log_id = $visit_log_id;
+		}
+		
+		if (!$form8606a->upload_document_name AND !$form8606a->upload_document_name2) {
+			$this->validation->set_rules($rules);
+			$this->validation->set_fields($fields);
+		}
+
+
+		$validation_success = 0;
+		$msg = 0;
+		if ($this->validation->run() == TRUE) {
+			$validation_success = 1;
+		} else {
+			$msg = $this->validation->get_error_msg();		
+		}
+
+		echo json_encode(array('validation_success'=>$validation_success, 'msg'=>$msg));
+		exit();
+	}
+
+	function upload_document($visit_log_id){
+		$can_upload = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_upload = true;
+			}
+		}
+
+		if (!$can_upload) {
+			exit('Can\'t Upload!');
+		}
+
+		if ((isset($_FILES['document']) AND $_FILES['document']['error']==0) OR (isset($_FILES['document2']) AND $_FILES['document2']['error']==0)) {
+			$config =& get_config();
+
+			// Save form 
+			$fname = "";
+			$fname2 = "";
+			if (isset($_FILES['document']) AND $_FILES['document']['error']==0) {
+				$fname = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document']['name'], PATHINFO_EXTENSION);
+				$fname = str_replace(" ","_",$fname);
+				$fname = str_replace("%","_",$fname);
+				$fname = str_replace("#","",$fname);
+				$fname = str_replace("&","",$fname);
+				$fname = str_replace(":","-",$fname);
+				if (!move_uploaded_file($_FILES['document']['tmp_name'], FCPATH.'/datastore/form8606a/'.$fname)) {
+					$fname = "";
+				}
+			}
+
+			if (isset($_FILES['document2']) AND $_FILES['document2']['error']==0) {
+				$fname2 = $patient->last_name."_".$visitlog->visit_date_time.'_'.$visitlog->visit_log_number.'_'.$visitlog->visit_log_id.'_'.mt_rand().'.'.pathinfo($_FILES['document2']['name'], PATHINFO_EXTENSION);
+				$fname2 = str_replace(" ","_",$fname2);
+				$fname2 = str_replace("%","_",$fname2);
+				$fname2 = str_replace("#","",$fname2);
+				$fname2 = str_replace("&","",$fname2);
+				$fname2 = str_replace(":","-",$fname2);
+				if (!move_uploaded_file($_FILES['document2']['tmp_name'], FCPATH.'/datastore/form8606a/'.$fname2)) {
+					$fname2 = "";
+				}
+			}
+			// $fname = microtime()."_".$fname;
+			if($fname OR $fname2) {
+					$form8606a = $this->form8606amdl->get($visit_log_id);
+
+					if (empty($form8606a)) {
+						// $patient = $this->patientmdl->getById($visitlog->patient_id);	
+						// $user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+						// $agency = $this->agencymdl->getByAgencyId($patient->agency_id);
+						
+						$form8606a = $this->form8606amdl->getEmpty();
+
+						$this->assignPostData($this->form8606amdl, $form8606a);
+				        $this->form8606amdl->visit_log_id = $visit_log_id;
+				        $this->form8606amdl->upload_document_name = $fname;
+				        $this->form8606amdl->upload_document_name2 = $fname2;
+
+						$this->form8606amdl->insert($visit_log_id);
+				    } else {
+				    	if ($fname) {
+				    		@unlink(FCPATH.'/datastore/form8606a/'.$form8606a->upload_document_name);
+							$this->form8606amdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+				    	}
+				    	if ($fname2) {
+				    		@unlink(FCPATH.'/datastore/form8606a/'.$form8606a->upload_document_name2);
+							$this->form8606amdl->updateFlex($visit_log_id, 'upload_document_name2', $fname2);
+				    	}
+				    }
+
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visit_status_id', 2);
+					$this->visitlogmdl->updateFlex($visit_log_id, 'visited_date', $visitlog->visit_date_time);
+				    
+					echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/form8606A/index/".$visit_log_id."';</SCRIPT>";
+
+					/*if($this->submitForApproval($visit_log_id)){
+						$this->form8606amdl->updateFlex($visit_log_id, 'upload_document_name', $fname);
+
+						$config =& get_config();
+
+						// Submitted for approval. check is co-signer assigned. If assigned then need to send notification to co-signer.
+						$form8606a = $this->form8606amdl->get($visit_log_id);
+						if ($form8606a->ther_supervisor) {
+							$this->messagemdl->user_from = $this->getUsAgyId();
+							$this->messagemdl->msg_type = 'email';
+							$this->messagemdl->msg_subject = 'You have a note to sign';
+							$this->messagemdl->msg_text = 'A form8606a note is waiting for your sign before approval. <a href="javascript://" onclick="window.location.href=\''.$config["index_url"].'task/task/edit/'.$visit_log_id.'\';">Click here</a> to open the note.';
+							$msg_id = $this->messagemdl->insert();
+
+							$this->usermessagemdl->insert($msg_id, $this->form8606amdl->ther_supervisor, 0);
+						}
+					
+
+						echo "<center>Document has been uploaded.</center><SCRIPT>alert('Document has been uploaded');parent.location.href='".$config["index_url"]."task/form8606A/index/".$visit_log_id."';</SCRIPT>";
+					} else {
+						@unlink(FCPATH.'/datastore/form8606a/'.$fname);
+						// echo "<SCRIPT>alert('Payroll visit rate not found');parent.dhxWins.window('w1').close();</SCRIPT>";
+					}*/
+			}else{
+				exit("Document Upload Failed!");
+			}
+		} else {	
+			if (isset($_FILES['document']['error']) AND $_FILES['document']['error'] != 0 AND isset($_FILES['document2']['error']) AND $_FILES['document2']['error'] != 0) {
+				$error_string = $this->tpl->get_template_vars('error_string');
+				$error_string .= "<br>Please select Document";
+				$this->tpl->assign("error_string", $error_string);
+			}
+			$form8606a = $this->form8606amdl->get($visit_log_id);
+			$this->assignObject($form8606a);
+			
+			$this->tpl->assign_include("dynamic_tpl", "task/documents/upload_form8606a_document");
+			
+
+		
+			$this->tpl->assign("gov_program", $patient->gov_program);
+			$this->tpl->assign("visit_log_id", $visit_log_id);
+			$this->tpl->view("parts/ibase", $this->lang->language);
+
+		}
+	}
+
+	function pre_remove_document($visit_log_id){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$patient = $this->patientmdl->getById($visitlog->patient_id); 
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+
+		$form8606a = $this->form8606amdl->get($visit_log_id);
+		$this->assignObject($form8606a);
+		$this->tpl->assign("visit_log_id", $visit_log_id);
+		
+		$this->tpl->assign_include("dynamic_tpl", "task/documents/remove_form8606a_document");
+		
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	}
+
+	function remove_document($visit_log_id, $doc_number){
+		$can_remove = false;
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visitlog->visit_status_id == 1 OR $visitlog->visit_status_id == 2 OR $visitlog->visit_status_id == 5) {
+			if ($this->getUserProfileId() == 1 || $this->getUserProfileId() == 3 || $visitlog->visit_user_id == $this->getUsAgyId()) {
+				$can_remove = true;
+			}
+		}
+
+		if (!$can_remove) {
+			exit('Can\'t Remove document!');
+		}
+		$form8606a = $this->form8606amdl->get($visit_log_id);
+		
+		switch ($doc_number) {
+			case '1':
+				if (isset($form8606a->upload_document_name)) {
+					@unlink(FCPATH.'/datastore/form8606a/'.$form8606a->upload_document_name);
+					$this->form8606amdl->updateFlex($visit_log_id, 'upload_document_name', null);
+				}
+				break;
+			case '2':
+				if (isset($form8606a->upload_document_name2)) {
+					@unlink(FCPATH.'/datastore/form8606a/'.$form8606a->upload_document_name2);
+					$this->form8606amdl->updateFlex($visit_log_id, 'upload_document_name2', null);
+				}
+				break;
+			default:
+				exit('Document Not found.');
+				break;
+		}
+		
+		echo "1";exit();
+
+	}
+
+	function pdf($visit_log_id, $output='D') {
+    	$this->load->helper('form8606A_pdf');
+
+    	form8606A_pdf($visit_log_id, $output);
+    	
+    	return;
+		
+
+	}
+
+ }

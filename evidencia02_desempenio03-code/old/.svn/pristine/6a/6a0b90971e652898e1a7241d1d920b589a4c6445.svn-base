@@ -1,0 +1,41 @@
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+ <form id="gform" method="POST" action="{$index_url}{$resource_path}/payments_edit/{$invoice_id}/{$invoice_payment_id}">
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}	 
+ 	<input type="hidden" name="invoice_id" value="{$invoice_id}" />
+  <tr>		
+		<td height="10">Payment Amount: *</td>
+    <td height="10">
+    	<input type="text" name="payment_amount" value="{$payment_amount}" id="payment_amount"  size="8" maxlength="8"/>
+    </td>
+  </tr>
+  <tr>		
+		<td height="10">payment Date: *</td>
+    <td height="10">
+			<input type="text" id="payment_date" name="payment_date" value="{if $payment_date neq '0000-00-00'}{$payment_date|date_format}{/if}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('payment_date'), document.getElementById('fecha_help'));return false;" >		
+    </td>
+  </tr>	
+  <tr>    
+    <td height="10">Check Nbr: </td>
+    <td height="10">
+      <input type="text" name="check_nbr" value="{$check_nbr}" id="check_nbr"  size="39"/>
+    </td>
+  </tr>
+  <tr>		
+		<td height="10" valign="top">Payment Notes: </td>
+    <td height="10">
+    	<textarea name="payment_notes" id="payment_notes" cols="30" rows="3" >{$payment_notes}</textarea>
+    </td>
+  </tr>		
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="submit" class="btn" value="Save">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 

@@ -1,0 +1,29 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td>
+		<input type="text" name="keyword" id="keyword">
+		<input type="submit" value="Search">
+		<!--<input type="button" onclick="document.location = '{$index_url}{$resource_path}/add/{$entity_id}'" value="Assign User to Team">-->
+    </td>
+    <td align="right">
+		{html_options first_option='All Disciplines' options=$discipline_list name='discipline_id' onchange='loadGrid()'}
+    </td>
+  </tr>
+</table> 
+
+<script language="JavaScript" type="text/javascript">
+
+      function reassignConfirmation ( us_agy_id, patient_id, approver_type_id ) {literal}{{/literal}
+		    
+		    if(confirm('Do you want to reassign all Pending Approval visits to this new Approver?'))
+		    	ajax('{$index_url}{$resource_path}/reassignPending/' + us_agy_id + '/' + patient_id + '/' + approver_type_id, ajaxParseAction);
+		    	
+       {literal}}{/literal}
+       
+       {if $reassign}
+       		function afterload () {literal}{{/literal}
+       			reassignConfirmation({$reassign->us_agy_id}, {$reassign->patient_id}, {$reassign->approver_type_id});
+       		{literal}}{/literal}
+       {/if}
+
+</script>

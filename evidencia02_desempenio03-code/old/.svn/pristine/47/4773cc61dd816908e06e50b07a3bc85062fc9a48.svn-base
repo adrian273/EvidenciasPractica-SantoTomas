@@ -1,0 +1,468 @@
+<?php
+
+include ('admin_controller.php');
+
+ class Ticket extends Admin_Controller {
+
+	function Ticket () {
+		
+		parent::Admin_Controller();
+		
+		$this->tpl->assign("resource_path", "administrator/ticket");
+		$this->tpl->assign('resource_edit', 'view');
+		$this->tpl->assign('delbtn', true);
+		$this->tpl->assign('no_grid_buttons', true);
+		
+		$this->tpl->assign('attachment_url', $this->config->config["base_url"] . 'datastore/ticket/');
+		
+		$this->tpl->assign('ticket_type_list',   $this->parametermdl->getByType(88));
+		$this->tpl->assign('ticket_status_list', $this->parametermdl->getByType(89));
+		
+		$this->rules = array ('tab_088_ticket_type_id'	=> 'required',
+							  'ticket_subject'			=> 'required',
+							  'ticket_content'  		=> 'required');
+		
+	}
+	
+	function index () {
+	
+		$this->tpl->assign_include("dynamic_tpl", "administrator/ticket/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+
+	function hticket () {
+	
+		$this->tpl->assign("resource_grid", "hticket_grid");
+		$this->tpl->assign("items_per_page", 300);
+		
+		// added by ksa to read a session set in the grid function, and used the session values to fill in the filter form
+		$admin_hticket_filter_data = $this->session->userdata('admin_hticket_filter_data');
+		
+		$keyword = isset($admin_hticket_filter_data['keyword'])?$admin_hticket_filter_data['keyword']:'';
+		$referral_date_time_from = isset($admin_hticket_filter_data['referral_date_time_from'])?$admin_hticket_filter_data['referral_date_time_from']:date('m-d-Y', strtotime('-60 days'));
+		$referral_date_time_to = isset($admin_hticket_filter_data['referral_date_time_to'])?$admin_hticket_filter_data['referral_date_time_to']:'';
+		$this->tpl->assign("keyword", $keyword);
+		$this->tpl->assign("referral_date_time_from", $referral_date_time_from);
+		$this->tpl->assign("referral_date_time_to", $referral_date_time_to);
+		
+		
+		$this->tpl->assign_include("filter_tpl", "administrator/ticket/heat_t_gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+
+	function recipients () {
+	
+		$this->tpl->assign("resource_grid", "recipients_grid");
+		$this->tpl->assign("resource_add", "recipients_add");
+		$this->tpl->assign("resource_edit", "recipient_edit");
+		$this->tpl->assign("resource_delete", "recipient_delete");
+		$this->tpl->assign('no_grid_buttons', false);
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+
+	function hticket_grid () {
+		
+		$ticket_status = $this->parametermdl->getByType(89);
+		$ticket_status[NULL] = "";
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5", "Tk Nbr"));
+		$head->append($this->xml->Element("column", "width=13", "Subject"));
+		$head->append($this->xml->Element("column", "width=*", "Description"));
+		$head->append($this->xml->Element("column", "width=10", "Category"));
+		$head->append($this->xml->Element("column", "width=7", "Status"));
+		$head->append($this->xml->Element("column", "width=10", "User"));
+		$head->append($this->xml->Element("column", "width=15;align=center", "Sent On"));
+		$head->append($this->xml->Element("column", "width=11;align=center", "Last Activity"));
+		$head->append($this->xml->Element("column", "width=10;align=center", ""));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		// added by ksa to set a session for the posted value from the admin heat ticket filter form
+		$admin_hticket_filter_data = $_POST;
+    	$this->session->set_userdata('admin_hticket_filter_data', $admin_hticket_filter_data);
+		
+		//echo "<pre>"; print_r($_POST); echo "</pre>";
+		foreach ($this->ticketmdl->get() as $ticket) {
+			
+			$cell = $this->xml->Element("row", "id=" . $ticket->ticket_id);
+			$cell->append($this->xml->Element("cell", null, $ticket->ticket_id));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_subject)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_content)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->tab_description)));
+			$cell->append($this->xml->Element("cell", null, $ticket_status[$ticket->tab_089_ticket_status_id]));
+			$cell->append($this->xml->Element("cell", null, $ticket->first_name . " " . $ticket->last_name));
+			
+			
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($ticket->ticket_datetime), 'USA_DATE_TIME_REVERSE')));
+			
+			if ($ticket_response = $this->ticketresponsemdl->getLastActivity($ticket->ticket_id)) {
+				$cell->append($this->xml->Element("cell", null, standard_date (
+					mysql_to_unix($ticket_response->response_datetime), 'USA_DATE_TIME_REVERSE'))
+				);
+			}
+			
+			
+			$path = realpath('datastore/ticket/');
+			$browse_path = 'datastore/ticket/';
+			
+			$attachment = $ticket->attachment;
+			$attachment_link = $browse_path . $attachment;
+			$attachment_str = '<![CDATA[';
+			if($attachment!="" && file_exists($path . "/" . $attachment))
+				$attachment_str.= '<a href="' . $attachment_link . '" onclick="(isIE()?event:arguments[0]).cancelBubble = true;" target="_blank">View</a>&nbsp;';
+			$attachment_str .= ']]>';  
+			
+			$cell->append($this->xml->Element("cell", null, $attachment_str));
+			
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function recipients_grid () {
+		
+		$this->load->model('recipientmdl');		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=*", "Recipient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Email Address"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->recipientmdl->get() as $recipient) {
+			
+			$cell = $this->xml->Element("row", "id=" . $recipient->recipient_id);
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($recipient->recipient_name)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($recipient->recipient_email)));
+								
+			$document->append($cell);
+			
+		}
+		
+	}
+
+	function recipients_add(){
+
+		$this->tpl->assign("cancel_url", "administrator/ticket/recipients");
+		$this->tpl->assign("resource_index", "recipients");
+		$this->tpl->assign("no_delete_form", true);
+		$this->tpl->assign('faction', 'recipients_add');
+
+		$rules = array ('recipient_name'	=> 'required',
+						'recipient_email'	=> 'required|valid_email|is_unique[ticket_recipients.recipient_email]'
+						);
+						
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Recipients : Add");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/ticket/add_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+      		$this->load->model('recipientmdl');
+      		$this->assignPostData($this->recipientmdl);			
+			$this->recipientmdl->insert();
+			
+			// output message and return to list
+			$this->tpl->assign('gmessage', "A new recipient" . $this->lang->line('grl_add_msg'));
+			
+			$this->recipients();
+			
+		}
+
+
+	}
+
+	function recipient_edit( $recipient_id ){
+
+		$this->load->model('recipientmdl');
+    
+    	$this->tpl->assign("cancel_url", "administrator/ticket/recipients");
+    	$this->tpl->assign("resource_index", "recipients");
+    	$this->tpl->assign("resource_delete", "recipient_delete");
+      
+		$this->tpl->assign('faction', 'recipient_edit');
+		$this->tpl->assign('record_id', $recipient_id);
+		
+		$this->assignObject($this->recipientmdl->getById($recipient_id));
+		
+		$rules = array ('recipient_name'	=> 'required',
+						'recipient_email'	=> 'required|valid_email|is_unique[ticket_recipients.recipient_email]'
+						);
+			
+		$this->validation->set_rules($rules);
+		
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign("form_title", "Recipient : Edit");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "administrator/ticket/edit_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		}
+
+		else {
+			
+			$this->assignPostData($this->recipientmdl);
+     		$this->recipientmdl->update($recipient_id);
+			
+			$this->tpl->assign('gmessage', "Recipient" . $this->lang->line('grl_upd_msg'));
+			
+			$this->recipients();
+			
+		}
+		
+	}
+
+	function recipient_delete ( $recipient_id ) {
+		$this->load->model('recipientmdl');
+		$recipient = $this->recipientmdl->getById($recipient_id);
+		
+		$this->recipientmdl->delete($recipient_id);
+		
+		$this->tpl->assign('gmessage', "An Update/release" . $this->lang->line('grl_del_msg'));
+		$this->recipients();
+		
+	}
+
+	
+	
+	function view ( $ticket_id ) {
+		
+		$ticket = $this->ticketmdl->getById($ticket_id);
+		$this->assignObject($ticket);
+		$this->tpl->assign('ticket_type',   $this->parametermdl->get(88, $ticket->tab_088_ticket_type_id));
+		$this->tpl->assign('ticket_status', $this->parametermdl->get(89, $ticket->tab_089_ticket_status_id));
+		
+		$this->tpl->assign('ticket_replies', $this->ticketresponsemdl->getByTicketId($ticket_id));
+		
+		$usagy = $this->usagymdl->getByUsAgyId($ticket->ticket_us_agy_id);
+		$agency = $this->agencymdl->getByAgencyId($usagy->agency_id);
+		$this->tpl->assign('agency', $agency->agency_name);
+		
+		$this->tpl->assign('record_id', $ticket_id);
+	
+		$this->tpl->assign("title", "Ticket Details");
+		$this->tpl->assign("resource_back", "hticket");
+		$this->tpl->assign_include("dynamic_tpl", "parts/tbase");
+		$this->tpl->assign_include("dynamic_form", "administrator/ticket/view");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function reply ( $ticket_id ) {
+		
+		if (!is_null($this->input->post('response_content'))) {
+			
+			$ticket = $this->ticketmdl->getById($ticket_id);
+			
+			$this->assignPostData($this->ticketresponsemdl);
+			$res = $this->ticketresponsemdl->insert($ticket_id, $this->getUserId());
+            
+            // Insert Table msg_massges  
+            $arr_message = array('user_from'=> 0, 'msg_date'=>date("Y-m-d H:i:s"),'msg_subject'=>'Updated Heat Ticket HHS technical support','msg_text'=>$this->ticketresponsemdl->response_content,'msg_trash'=>0);
+            $rs = $this->db->insert('msg_message', $arr_message);
+            
+            // Insert Table user_massges
+            $message_id = $this->db->insert_id($rs);  
+            $arr_user_message = array('user_to'=> $ticket->ticket_us_agy_id, 'msg_id'=> $message_id, 'msg_status'=> 0, 'msg_read'=> 0, 'msg_important'=> 0);
+            $this->db->insert('user_message', $arr_user_message); 
+            
+            //Get email
+           /* $user_email = $this->ticketresponsemdl->getEmail($ticket_id); 
+            $mail_subject = "Updated Heat Ticket – HHS technical support";
+            //$mail_content = $this->ticketresponsemdl->response_content;
+           
+           /* $body = str_replace('{user_first_name}', $this->usagymdl->first_name, $emailtext->email_content); */
+           /* $body = str_replace('{response_content}', $this->ticketresponsemdl->response_content, $body); 
+            
+            
+            $this->load->library('email');
+            $this->email->from('support@homehealthsoft.com', 'HHS Support');
+            $this->email->to($user_email); 
+            $this->email->subject($mail_subject);
+            $this->email->message($body);    
+            $this->email->send();         */
+		}    
+		
+		$this->ticketmdl->updateStatus($ticket_id, $this->input->post('tab_089_ticket_status_id')); 
+		$this->ticketmdl->updateSendOn($ticket_id);
+		header("Location: " . $this->config->config["index_url"] . "administrator/ticket/view/" .$ticket_id);
+		
+	}
+	
+	function delete ( $ticket_id ) {
+		
+		$this->ticketmdl->delete($ticket_id);
+		
+		$this->tpl->assign('gmessage', "Ticket" . $this->lang->line('grl_del_msg'));
+		$this->hticket();
+		
+	}
+	
+	function deleteresponse ( $ticket_id, $response_id ) {
+		
+		$this->ticketresponsemdl->delete($response_id);
+		
+		$this->view($ticket_id);
+		
+	}
+  
+  function xml_entities($text, $charset = 'Windows-1252'){
+    //return $text;    
+    // Debug and Test
+    // $text = "test &amp; &trade; &amp;trade; abc &reg; &amp;reg; &#45;";
+    
+    // First we encode html characters that are also invalid in xml
+    //$text = htmlentities($text, ENT_COMPAT, $charset, false);
+    $text = iconv('UTF-8', 'ASCII//TRANSLIT', $text);
+    $text = htmlentities($text, ENT_QUOTES);
+    $text=str_replace("'","",$text);
+    $text=str_replace('"',"",$text);
+    
+    return $text;
+    
+    // XML character entity array from Wiki
+    // Note: &apos; is useless in UTF-8 or in UTF-16
+    $arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+    
+    // Building the regex string to exclude all strings with xml special char
+    $arr_xml_special_char_regex = "(?";
+    foreach($arr_xml_special_char as $key => $value){
+        $arr_xml_special_char_regex .= "(?!$value)";
+    }
+    $arr_xml_special_char_regex .= ")";
+    
+    // Scan the array for &something_not_xml; syntax
+    $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+    
+    // Replace the &something_not_xml; with &amp;something_not_xml;
+    $replacement = '&amp;${1}';
+    return preg_replace($pattern, $replacement, $text);
+  }
+  
+	
+	function email_ticket($record_id = null){
+		
+		if (is_null($record_id)) {
+			exit('No ticket id found.');
+		}
+		$ticket = $this->ticketmdl->getById($record_id);
+
+		//echo "<pre>"; print_r($ticket); echo "</pre>";
+		$this->tpl->assign("record_id", $record_id);
+
+		$rules = array (
+          'email_subject' 	=> 'required', 
+          'message' 	=> 'required', 
+          'recipient_ids' 	=> 'required'
+        );
+	    $fields = array(
+	        'email_subject' => 'Subject', 
+	        'message' => 'Email Message', 
+	        'recipient_ids' => 'Recipent'
+	    );
+
+	    $this->validation->set_rules($rules);
+		$this->validation->set_fields($fields);
+
+		// $patient = $this->patientmdl->getById($patient_id);
+
+		if ($this->validation->run() == FALSE) {
+            $this->tpl->assign("paginate", 0);
+			$this->tpl->assign('noedit', true);
+            $this->tpl->assign("resource_grid", "popup_recipients_grid");
+			$message = $this->input->post('message');
+			$email_subject = $this->input->post('email_subject');
+			
+			$this->tpl->assign('message', $message);
+			$this->tpl->assign('email_subject', $email_subject);
+			
+	      	$this->tpl->assign_include("dynamic_tpl", "administrator/ticket/email_ticket");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+	    }else{
+	    	$to_emails = array();
+	    	$company = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+	    	// Send to contractor contacts which are selected
+	    	$this->load->model("recipientmdl");	
+
+            if ($this->input->post('recipient_ids') != "") {
+            	$recipient_ids = explode(",", $this->input->post('recipient_ids'));
+				$recipients = $this->recipientmdl->getByIds($recipient_ids);
+
+				foreach ($recipients as $recipient) {
+					$to_emails[] = $recipient->recipient_email;
+				}
+            }
+			if (empty($to_emails)) {
+				exit("You didn't select any email recipient.");
+			}
+			$this->load->library('email');
+			$this->email->from('noreply@homehealthsoft.com', 'Admin');
+			$this->email->to($to_emails);
+			
+			$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->input->post('message');
+			// $this->email->set_mailtype("html"); 
+			$this->email->message($body); 
+			     
+			$subject = $this->input->post('email_subject');
+			
+			$path = realpath('datastore/ticket/');			
+			$attachment = $ticket->attachment;
+			if($attachment!="" && file_exists($path . "/" . $attachment)) {
+				$this->email->attach($path . "/" . $attachment); // attach the attachment if exists
+			}
+			$this->email->subject($subject);
+			$this->email->send();
+			// echo $this->email->print_debugger();
+			$this->email->clear(true);
+			echo "Email has been sent";
+	    }
+	}
+	
+
+	function popup_recipients_grid () {
+		
+		$this->load->model('recipientmdl');		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=3;type=ch", " ")); # to add checkbox
+		$head->append($this->xml->Element("column", "width=*", "Recipient Name"));
+		$head->append($this->xml->Element("column", "width=*", "Email Address"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->recipientmdl->get() as $recipient) {
+			
+			$cell = $this->xml->Element("row", "id=" . $recipient->recipient_id);
+            $cell->append($this->xml->Element("cell", null, "0")); # to add checkbox
+			
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($recipient->recipient_name)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($recipient->recipient_email)));
+								
+			$document->append($cell);
+			
+		}
+		
+	}
+}

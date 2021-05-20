@@ -1,0 +1,195 @@
+<?
+
+ class RptProfileGroupMdl extends Model {
+
+	var $rpt_profile_group_id;
+	var $profile_id;
+  var $rpt_group_id;
+
+	function RptProfileGroupMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getById ( $rpt_profile_group_id ) {
+    $this->db->join('x_profile', 'x_profile.profile_id = rpt_profile_group.profile_id');
+		$this->db->join('rpt_group', 'rpt_group.rpt_group_id = rpt_profile_group.rpt_group_id');
+		
+		$this->db->where('rpt_profile_group_id', $rpt_profile_group_id);
+		
+		$query = $this->db->get('rpt_profile_group');
+		return $query->row();
+		
+	}
+
+	function getByProfile ( $profile_id ) {
+	
+		$this->db->join('rpt_group', 'rpt_group.rpt_group_id = rpt_profile_group.rpt_group_id');
+		
+		$this->db->where('profile_id', $profile_id);
+		$this->db->order_by('column');
+		$this->db->order_by('position');
+		
+		$query = $this->db->get('rpt_profile_group');
+		return $query->result();
+	
+	}
+	
+	function getDisponibleByProfile ( $profile_id, $rpt_profile_group_id=null ) {
+	
+		$this->db->where('rpt_group_id NOT IN (SELECT rpt_group_id FROM rpt_profile_group WHERE profile_id = ' . $profile_id . ')');
+    if(!is_null($rpt_profile_group_id)){
+      $this->db->or_where('rpt_group_id IN (SELECT rpt_group_id FROM rpt_profile_group WHERE rpt_profile_group_id = ' . $rpt_profile_group_id . ')');
+    }
+    
+		$this->db->order_by('group_name');
+		
+		$query = $this->db->get('rpt_group');
+		return $query->result2('rpt_group_id', 'group_name');			
+	
+	}
+	
+	function insert ( $profile_id, $group_data) {
+		
+    $this->db->select('rpt_profile_group.rpt_profile_group_id');
+    $this->db->from('rpt_profile_group');
+    $this->db->where('rpt_profile_group.profile_id',$profile_id);
+    $this->db->where('rpt_profile_group.column',$group_data['column']);
+    $this->db->order_by('position');
+    $query = $this->db->get();
+    
+    $group_data['position'] = $query->num_rows()+1;
+    
+		$this->profile_id = $profile_id;
+		$this->rpt_group_id = $group_data['rpt_group_id'];
+		$this->column = $group_data['column'];
+		$this->position = $group_data['position'];
+		
+		$this->db->insert('rpt_profile_group', $this);
+		
+	}
+	
+	function delete ( $rpt_profile_group_id ) {
+	
+		$this->db->where('rpt_profile_group_id', $rpt_profile_group_id);
+		
+		$this->db->delete('rpt_profile_group');
+		
+	}
+  
+  function get_positions_with_selected($group){    
+    $this->db->select('rpt_profile_group.*');
+    $this->db->from('rpt_profile_group');
+    $this->db->where('rpt_profile_group.profile_id',$group->profile_id);
+    $this->db->where('rpt_profile_group.column',$group->column);
+    $this->db->order_by('position','asc');
+    $query = $this->db->get();
+    
+		$options = '<option value="">---</option>';
+		if($query->num_rows()>0){
+        	$count = 1;
+        	foreach ($query->result() as $row)
+			{
+      
+				if($row->rpt_group_id==$group->rpt_group_id){
+					$options.= '<option value="'.$count.'" selected="selected">'.$count++.'</option>';
+				}
+				else
+				$options.= '<option value="'.$row->position.'">'.$count++.'</option>';
+			}
+		}
+    
+		return $options;
+	}
+  
+  function edit_group($group, $rpt_profile_group_id)
+  {
+    $old_data = $this->getById($rpt_profile_group_id);
+    $this->update_group_positions($rpt_profile_group_id,$old_data,$group);       	
+    return true;     
+  }
+  
+  function update_group_positions($rpt_profile_group_id,$old_data,$group){
+    $this->db->select('rpt_profile_group.*');
+    $this->db->from('rpt_profile_group');
+    $this->db->where('rpt_profile_group.profile_id',$group['profile_id']);
+    $this->db->where('rpt_profile_group.column',$group['column']);
+    $this->db->order_by('position','asc');
+    $query = $this->db->get();
+    
+    /*
+    $this->db->select('report_profile_group.*, report_group.name, report_group.column_id, report_group.position');
+    $this->db->from('report_profile_group');
+    $this->db->join('report_group','report_group.id = report_profile_group.group_id');
+    $this->db->where('report_profile_group.profile_id',$old_data['profile_id']);
+    $this->db->where('report_group.column_id', $group['column_id']);
+    $this->db->order_by('position','asc');
+    $query = $this->db->get();
+    */
+    
+    $old_position = $old_data->position;
+    
+    if($query->num_rows()>0){
+        	
+      foreach ($query->result() as $row)
+			{
+				if(($row->position>=$group['position'])&&($row->position<$old_position)){ 
+					$pos= $row->position+1;
+					$data = array('position'=>$pos);
+					$this->db->where('profile_id', $row->profile_id);
+					$this->db->where('rpt_group_id', $row->rpt_group_id);
+          $this->db->update('rpt_profile_group', $data); //echo '1>>'.$this->db->last_query();
+				}
+				elseif($row->position>$old_position&&$row->position<=$group['position']){
+					$pos= $row->position-1;
+					$data = array('position'=>$pos);
+					$this->db->where('profile_id', $row->profile_id);
+					$this->db->where('rpt_group_id', $row->rpt_group_id);
+          $this->db->update('rpt_profile_group', $data); //echo '2>>'.$this->db->last_query();
+				}
+				elseif($row->position==$group['position']){
+					
+				}			
+			}					
+		}
+    
+		$this->db->where('rpt_profile_group_id', $rpt_profile_group_id);
+		$this->db->update('rpt_profile_group', $group); //echo '3>>'.$this->db->last_query();
+    if($this->db->affected_rows()>0){       
+      return true;
+    }else 
+      return false;
+		
+ 	}
+
+  function get_menus($column=1,$profile_id=null){      
+    $this->db->from('rpt_profile_group'); 
+    $this->db->join('rpt_group','rpt_group.rpt_group_id = rpt_profile_group.rpt_group_id');
+    //$this->db->('rpt_profile_group');            
+    $this->db->where('rpt_profile_group.profile_id',$profile_id);
+    $this->db->where('column', $column);
+    $this->db->order_by('position');
+    $query = $this->db->get();
+ 
+    $menu = '';
+    if($query->num_rows()>0){
+      foreach ($query->result() as $row)
+			{
+				$menu.='<li><h4>'.$row->group_name.'</h4></li>';
+				$this->db->join('rpt_report_name', 'rpt_report_name.rpt_report_id = rpt_profile_group_report.rpt_report_id');
+				$this->db->where('rpt_profile_group_id', $row->rpt_profile_group_id);
+				$this->db->order_by("position", "asc"); 
+        $report_query = $this->db->get('rpt_profile_group_report');
+        if($report_query->num_rows()>0){
+          foreach ($report_query->result() as $report)
+					{
+						$menu.='<li><a href="'.$report->report_path.'">'.$report->report_name.'</a></li>';
+					}
+        }
+			   
+			}
+    }
+    return $menu;
+	}  	
+}

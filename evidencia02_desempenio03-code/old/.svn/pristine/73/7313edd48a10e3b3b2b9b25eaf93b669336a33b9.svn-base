@@ -1,0 +1,277 @@
+<?php  
+
+class AuthVisitStatus extends MY_Controller {
+
+  function AuthVisitStatus () {
+
+      parent::MY_Controller();
+      $this->tpl->assign("resource_path", "patient/authvisitstatus");        
+      $this->load->model('cms485mcaidpavisitsmdl');
+  }
+
+	function index ( ) {
+    if (($this->getAgencyType() == 'A' && (!$this->hasPermission(4) || !$this->hasPermission(5))) || $this->getAgencyType() == 'C') {
+			$this->tpl->assign("no_grid_buttons", true);
+		} else {            
+      $this->tpl->assign("resource_add", "quickadmit");
+      
+			/*$this->tpl->assign("additional_buttons", array(
+				'Quick Admit / Referral' => "document.location = '" . $this->config->config['index_url'] . "patient/mypatient/quickadmit'"
+			));*/
+		}
+    
+    
+    $this->tpl->assign("no_delete_form", true);
+    $this->tpl->assign("no_cancel_form", true);
+    $this->tpl->assign("grl_save", "Print");
+    $this->tpl->assign("no_commit_form", TRUE);
+    
+		
+    $patients = $this->getPatients();
+    $names = array();
+    
+    foreach($patients as $patient){
+      $names[] = '"'.addslashes($patient->first_name." ".$patient->last_name).'"';
+    }
+    $name_source_obj = "[".implode(",",$names)."]";  
+    $this->tpl->assign("name_source_obj", $name_source_obj);
+    
+    $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+    
+    if($agency->medicaid_hmo!=1){
+      show_404();
+    }
+    //print_r($agency);exit;
+    //$this->tpl->assign('agency', 		$agency);
+    $this->tpl->assign_by_ref('agency', 		$agency);
+    
+    $tab_102_prim_insura_type = $this->input->post('tab_102_prim_insura_type');
+    $medicaid_hmo = $this->input->post('medicaid_hmo');        
+    $tab_013_status = $this->input->post('tab_013_status');
+    $not_auth_yet = $this->input->post('not_auth_yet');
+    $order_by = $this->input->post('order_by');
+    
+    $and_where = array();
+    if(!$tab_102_prim_insura_type)
+    $tab_102_prim_insura_type = 2;
+    
+    if($tab_102_prim_insura_type)
+    $and_where = array('tab_102_prim_insura_type'=>$tab_102_prim_insura_type);
+    /*else
+    $and_where = array('tab_102_prim_insura_type'=>2);*/
+    
+    if($medicaid_hmo){      
+      $this->tpl->assign("medicaid_hmo", $medicaid_hmo);
+      $and_where['medicaid_hmo'] = $medicaid_hmo;
+    }
+    
+    if(!$tab_013_status)
+      $tab_013_status = 2;
+    
+    if($tab_013_status){      
+      $and_where['tab_013_status'] = $tab_013_status;      
+    }
+    
+    $order_by_str = null;
+    if($order_by){
+      switch($order_by){
+        case 'last_name':
+          $order_by_str = 'last_name asc';
+          break;
+        case 'episode_start_date':  
+          break;
+      }          
+    }
+    
+    $this->tpl->assign("tab_102_prim_insura_type", $tab_102_prim_insura_type);
+    $this->tpl->assign("medicaid_hmo", $medicaid_hmo);
+    $this->tpl->assign("tab_013_status", $tab_013_status);
+    $this->tpl->assign("not_auth_yet", $not_auth_yet);
+    $this->tpl->assign("order_by", $order_by);
+    $this->tpl->assign("keyword", $this->input->post('keyword'));
+    
+    /*$this->tpl->assign("additional_buttons", array(
+				//'Print' => "document.location = '" . $this->config->config['index_url'] . "patient/authvisitstatus/pdf/".$medicaid_hmo."'"
+				'Print' => "document.getElementById('pdf_hidden').value='1';document.gform.submit();"
+			));*/
+      
+    $patients = $this->getPatients($this->input->post('keyword'), null, true, null, $and_where, $order_by_str );    		// tab_013_status = 2 is current patients
+    //print_r($and_where);
+    foreach($patients as $key=>$patient){
+      $soc = $this->socmdl->getCurrent($patient->patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      
+      $cms485_id = @$episode->cms485_id;
+      $patients[$key]->soc = $soc;
+      $patients[$key]->episode = $episode;
+      $patients[$key]->cms485_id = $cms485_id;
+      
+      $authvisits = array();
+      foreach ($this->cms485mcaidpavisitsmdl->get($patient->patient_id, $cms485_id) as $authvisit) {
+        $authvisit->pt_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(10,12), true); // PT used        
+        $authvisit->pt_remain = ($authvisit->nbr_pt_visits - $authvisit->pt_used);
+        
+        $authvisit->ot_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(40,42), true); // OT used
+        $authvisit->ot_remain = ($authvisit->nbr_ot_visits - $authvisit->ot_used);
+        
+        $authvisit->st_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(60,62),true); // ST used
+        $authvisit->st_remain = ($authvisit->nbr_st_visits - $authvisit->st_used);
+        
+        $authvisit->sn_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(20,22),true); // SN used
+        $authvisit->sn_remain = ($authvisit->nbr_sn_visits - $authvisit->sn_used);
+        
+        $authvisit->hha_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(80),true); // HHA used
+        $authvisit->hha_remain = ($authvisit->hha_nbr_visits - $authvisit->hha_used);
+        
+        $authvisits[] = $authvisit;
+      }
+      
+      if(isset($not_auth_yet) AND $not_auth_yet ==1 AND count($authvisits)>0){
+        unset($patients[$key]);        
+        continue;
+      }
+      
+      $patients[$key]->authvisits = $authvisits;
+      
+      $team_users = array();
+      foreach ($this->teammdl->get($patient->patient_id, $this->input->post('keyword'), $this->input->post('discipline_id')) as $user) {
+        $team_users[] = $user->first_name." ".$user->last_name;
+      }
+      
+      $patients[$key]->team_users = implode(", ", $team_users);
+    }
+    
+    //echo "<pre>";print_r($patients[0]);
+    $this->tpl->assign('insurance_type_list', $this->parametermdl->getByType(102));
+    
+    $this->tpl->assign('patients', 		$patients);
+    
+    if($this->input->post('pdf')==1){
+      $this->tpl->assign('pdf', true);
+      $this->tpl->assign("form_title", "Medicaid Authorization Status");
+      $this->tpl->assign('patients', 		$patients);
+      $this->tpl->assign("form_title", "Medicaid Authorization Status");
+      
+  		$html = $this->tpl->view("patient/authvisitstatus/authvisitstatus", $this->lang->language, false);
+//echo $html;exit;
+// convert in PDF
+      require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+      try
+      {
+          $html2pdf = new HTML2PDF('L','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+          //$html2pdf = new HTML2PDF('P', 'A4', 'en');
+//        $html2pdf->setModeDebug();
+          //$html2pdf->pdf->SetDisplayMode('fullpage');
+          $html2pdf->setTestTdInOnePage(false);
+          $html2pdf->setDefaultFont('Arial');
+          $html2pdf->writeHTML($html);        
+          $html2pdf->Output('authvisitstatus.pdf', 'D');        
+      }
+      catch(HTML2PDF_exception $e) {
+          echo $e;
+          exit;
+      }    
+
+    
+    }else{
+      $this->tpl->assign("filter", TRUE);
+      $this->tpl->assign("form_title", "Medicaid Authorization Status");
+      $this->tpl->assign_include("dynamic_tpl", "patient/authvisitstatus/fbase2");
+      $this->tpl->assign_include("dynamic_form", "patient/authvisitstatus/authvisitstatus");
+      $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+    
+
+	}
+  
+  function pdf($medicaid_hmo = null){
+    $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+    
+    if($agency->medicaid_hmo!=1){
+      show_404();
+    }
+    
+    $this->tpl->assign('agency', 		$agency);
+
+    $and_where = array('tab_102_prim_insura_type'=>2);
+    
+    if($medicaid_hmo){
+      $this->tpl->assign("medicaid_hmo", $medicaid_hmo);
+      $and_where['medicaid_hmo'] = $medicaid_hmo;
+    }
+    
+    $patients = $this->getPatients($this->input->post('keyword'), 2, true, null, $and_where );    		// tab_013_status = 2 is current patients
+    foreach($patients as $key=>$patient){
+      $soc = $this->socmdl->getCurrent($patient->patient_id);
+      $episode = $this->episodemdl->getCurrent($soc->soc_id);
+      $cms485_id = $episode->cms485_id;
+      $patients[$key]->soc = $soc;
+      $patients[$key]->episode = $episode;
+      $patients[$key]->cms485_id = $cms485_id;
+      
+      $authvisits = array();
+      foreach ($this->cms485mcaidpavisitsmdl->get($patient->patient_id, $cms485_id) as $authvisit) {
+        $authvisit->pt_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(10,12), true); // PT used        
+        $authvisit->pt_remain = ($authvisit->nbr_pt_visits - $authvisit->pt_used);
+        
+        $authvisit->ot_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(40,42), true); // OT used
+        $authvisit->ot_remain = ($authvisit->nbr_ot_visits - $authvisit->ot_used);
+        
+        $authvisit->st_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(60,62),true); // ST used
+        $authvisit->st_remain = ($authvisit->nbr_st_visits - $authvisit->st_used);
+        
+        $authvisit->sn_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(20,22),true); // ST used
+        $authvisit->sn_remain = ($authvisit->nbr_sn_visits - $authvisit->sn_used);
+        
+        $authvisit->hha_used = $this->visitlogmdl->getByEpisodeDatePeriod($cms485_id, $authvisit->author_from_date, $authvisit->author_end_date, array(80),true); // HHA used
+        $authvisit->hha_remain = ($authvisit->hha_nbr_visits - $authvisit->hha_used);
+        
+        $authvisits[] = $authvisit;
+      }
+      
+      $patients[$key]->authvisits = $authvisits;
+      
+      $team_users = array();
+      foreach ($this->teammdl->get($patient->patient_id, $this->input->post('keyword'), $this->input->post('discipline_id')) as $user) {
+        $team_users[] = $user->first_name." ".$user->last_name;
+      }
+      
+      $patients[$key]->team_users = implode(", ", $team_users);
+    }
+    
+    //echo "<pre>";print_r($patients[0]);
+    $this->tpl->assign('pdf', true);
+    $this->tpl->assign("form_title", "Medicaid Authorization Status");
+    $this->tpl->assign('patients', 		$patients);
+    $this->tpl->assign("form_title", "Medicaid Authorization Status");
+/*  
+    $this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+    $this->tpl->assign_include("dynamic_form", "patient/authvisitstatus");
+    $this->tpl->view("parts/ibase", $this->lang->language);
+*/
+    //$this->tpl->assign_include("dynamic_tpl", "patient/authvisitstatus");
+		//$html = $this->tpl->view("parts/ibase", $this->lang->language, false);
+		$html = $this->tpl->view("patient/authvisitstatus/authvisitstatus", $this->lang->language, false);
+//echo $html;exit;
+// convert in PDF
+    require(APPPATH.'third_party/html2pdf_v4.03/html2pdf.class.php');    
+    try
+    {
+        $html2pdf = new HTML2PDF('L','A3','en', true, 'UTF-8', array(15, 5, 15, 5)); // array(mL, mT, mR, mB)
+        //$html2pdf = new HTML2PDF('P', 'A4', 'en');
+//        $html2pdf->setModeDebug();
+        //$html2pdf->pdf->SetDisplayMode('fullpage');
+        $html2pdf->setTestTdInOnePage(false);
+        $html2pdf->setDefaultFont('Arial');
+        $html2pdf->writeHTML($html);        
+        $html2pdf->Output('authvisitstatus.pdf', 'D');        
+    }
+    catch(HTML2PDF_exception $e) {
+        echo $e;
+        exit;
+    }    
+        
+    
+  }
+
+}

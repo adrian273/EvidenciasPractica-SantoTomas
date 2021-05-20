@@ -1,0 +1,86 @@
+<?
+
+include('doctororderdocument.php');
+
+class CMS485 extends DoctorOrderDocument {
+
+	function CMS485 () {
+	
+		parent::DoctorOrderDocument();
+		
+		$this->tpl->assign("resource_path", "doctororder/cms485");
+
+	}
+
+	function index ( $doctor_order_id ) {
+	
+		$doctor_order = $this->docdoctorordermdl->getById($doctor_order_id);
+		$cms485		  = $this->episodemdl->getByDoctorOrder($doctor_order_id);
+		$cms485_id 	  = $cms485->row()->cms485_id;
+		$patient_id   = $doctor_order->patient_id;
+		
+		$this->tpl->assign("no_delete", true);
+		
+		if ($this->validation->run() == FALSE) {
+		
+			$this->tpl->assign('patient', 		$this->patientmdl->getById($patient_id));
+			$this->tpl->assign('agency', 		$this->agencymdl->getByAgencyId($this->getAgencyId()));
+			$this->tpl->assign('nurse_list', 	$this->teammdl->getAll($patient_id, array(1)));
+			$this->tpl->assign('doctor_list', 	$this->teammdl->getAll($patient_id, array(9)));
+			$this->tpl->assign('doctor_office_list',  $this->patientdoctorofficemdl->get($patient_id, false));
+			$this->tpl->assign('doctor_order', 	$doctor_order);
+			
+			$this->tpl->assign(array('patient_id' => $patient_id, 'entity_id' => $doctor_order_id));
+			$this->tpl->assign(array('cms485_id' => $cms485_id));
+			
+			$episode = $this->episodemdl->getById($cms485_id);
+			$this->assignObject($episode);
+			
+			$soc = $this->socmdl->getById($episode->soc_id);
+			$this->assignObject($soc);
+			
+			if ($doctor_order->doctor_office_id) {
+				$this->tpl->assign('doctorOffice', $this->agencymdl->getByAgencyId($doctor_order->doctor_office_id));
+			}
+			
+			$this->assignObject($doctor_order);
+		
+			$this->tpl->assign("faction", "index");
+			$this->tpl->assign("record_id", $doctor_order_id);
+			$this->setfbase($doctor_order_id);
+			$this->tpl->assign_include("dynamic_form", "doctor_order/document/cms485");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+
+			$this->assignPostData($this->episodemdl);
+			$this->assignPostData($this->docdoctorordermdl);
+			
+			$this->episodemdl->update($cms485_id);
+			
+			if ($this->input->post('tab_023_order_status') == 2) {
+				$this->docdoctorordermdl->updateOrderBy($doctor_order_id, $this->getUsAgyId());
+			}
+			
+			$this->docdoctorordermdl->doctor_office_id = $this->input->post('doctor_office_id');
+			
+			$this->docdoctorordermdl->update($doctor_order_id, $this->input->post('tab_023_order_status'));
+			
+			$this->updateEdition($doctor_order_id);
+			
+			redirect('doctororder/front');
+
+		}
+		
+	}
+	
+	function pdf ( $doctor_order_id ) {
+		
+		$cms485		  = $this->episodemdl->getByDoctorOrder($doctor_order_id);
+		$cms485_id 	  = $cms485->row()->cms485_id;
+		
+		redirect('patient/cms485/pdf/' . $cms485_id . '/false');
+		
+	}
+		
+}

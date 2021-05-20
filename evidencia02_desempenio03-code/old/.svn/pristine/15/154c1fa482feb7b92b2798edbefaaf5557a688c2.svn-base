@@ -1,0 +1,34 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+	<tr height="35">	
+    <td>
+    	<strong>{$date_filter_label} Date From</strong>
+		<input type="text" id="period_from" name="period_from" value="{$start_date}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('period_from'), document.getElementById('period_thru'));return false;" >
+		&nbsp;&nbsp; <strong>thru</strong>
+    	<input type="text" id="period_thru" name="period_thru" value="{$end_date}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('period_from'), document.getElementById('period_thru'));return false;" >
+		
+		&nbsp;&nbsp;
+		
+		<input type="hidden" name="date_filter" value="{$date_filter}" />
+		<input type="button" value="Update" onclick="loadGrid()" />
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<strong>User:</strong> {$user_data->last_name} {$user_data->first_name}  {if $user_data->legal_name neq ''}- {$user_data->legal_name}{/if}
+		
+    </td>
+  </tr>
+	<tr><td>
+	<div id="toolbarObj" style="float: left"></div>
+	</td></tr>
+</table> 
+
+
+
+
+<script type="text/javascript">
+function print ( payroll_batch_id ) {literal}{{/literal}
+		document.location = '{$index_url}payroll/history/printit/' + payroll_batch_id;
+{literal}}{/literal}  
+</script>

@@ -1,0 +1,134 @@
+<?php
+
+ class Task extends MY_Controller {
+ 	
+ 	function Task () {
+ 		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "visitlog/task");
+		
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('no_grid_buttons', true);
+ 		
+ 	}
+ 	
+ 	function index ( $agency_id=null ) 
+ 	{
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		
+ 		$this->tpl->assign_include("filter_tpl", "visitlog/task_gfilter");
+ 		$this->tpl->assign_include("script_tpl", "visitlog/task_script");
+ 		$this->tpl->assign('tab_013_status', 1);
+ 		
+ 		// MODAL FILTER
+ 		// GET info para selects
+		$this->tpl->assign("status_list" , $this->mparams->get_pacient_status_list() );
+		$this->tpl->assign("visit_type_list" , $this->mparams->get_visit_type_list( true ) );
+		$this->tpl->assign("visit_status_list" , $this->mparams->get_visit_status_list( false ) );
+    $agency_id = is_null($agency_id) ? $this->getAgencyId()  : $agency_id;
+        
+    $agency = $this->agencymdl->getByAgencyId($agency_id);    
+    
+		$this->tpl->assign("clinician_list" , $this->mparams->get_clinician_list( $agency_id , $agency->agency_type) );
+		
+ 		
+ 		if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+ 		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+ 		
+ 	}
+ 	
+ 	function grid ( $agency_id=null ) 
+ 	{
+    $agency_id = is_null($agency_id) ? $this->getAgencyId()  : $agency_id;    
+    $agency = $this->agencymdl->getByAgencyId($agency_id);    
+    $assesment_types_list = $this->parametermdl->getByType(32);
+    
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=12", "Visit Date"));
+		$head->append($this->xml->Element("column", "width=*",  "Visit Type"));
+		$head->append($this->xml->Element("column", "width=10", "Visit Status"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=15", "Patient Status"));
+		$head->append($this->xml->Element("column", "width=15", "Clinician"));
+		//$head->append($this->xml->Element("column", "width=10", "Discipline"));
+		$head->append($this->xml->Element("column", "width=10", "Case Manager"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->visitlogmdl->report_001($agency_id, $agency->agency_type) as $task) 
+		{
+			//
+			$cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE'))));
+      if($task->visit_program=='ptev'){
+        $this->load->model('ptevmdl');
+        $ptev = $this->ptevmdl->get($task->visit_log_id);
+        if(isset($assesment_types_list[@$ptev->tab_32_assess_type])){
+          $cell->append($this->xml->Element("cell", null, $task->visit_description.' - '.$assesment_types_list[@$ptev->tab_32_assess_type]));        
+        }else{
+          $cell->append($this->xml->Element("cell", null, $task->visit_description));
+        }
+      }else{
+        $cell->append($this->xml->Element("cell", null, $task->visit_description));
+        
+      }
+      
+			$cell->append($this->xml->Element("cell", null, $task->tab_description));
+			$cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+			$cell->append($this->xml->Element("cell", null, @$this->parametermdl->get(13, $task->tab_013_status)->tab_description));
+			
+			$clinician = $this->mparams->get_name_user($task->user_id);
+			$cell->append($this->xml->Element("cell", null, @$clinician->first_name . " " . @$clinician->last_name));
+
+			//$cell->append($this->xml->Element("cell", null, "discipline"));
+			
+			$case_manager = $this->usagymdl->getByUsAgyId($task->case_manager_user_id);
+			$cell->append($this->xml->Element("cell", null, @$case_manager->first_name . " " . @$case_manager->last_name));
+
+			$document->append($cell);
+			
+		}
+ 		
+ 	}
+ 	
+ 	function modal_filter() 
+ 	{
+		// LOAD MODELS
+		$this->load->model('visitlog/task/mparams');
+		
+		$this->tpl->assign('faction', 'modalCheckEpassword');
+						
+		$rules = array ('user_epass' 	=> 'required|callback_verify_epass');
+		$this->validation->set_rules($rules);
+
+		if ($this->validation->run() == FALSE) 
+		{
+			//
+			$this->tpl->assign_include("dynamic_tpl", "visitlog/task_modal_filter");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			/* approve medication, save into pat_medical_approval		 */
+			$this->patientmedicationapprovalmdl->patient_id=$patient_id;
+			$this->patientmedicationapprovalmdl->approved_user_id=$this->getUserId();
+			$this->patientmedicationapprovalmdl->approve();
+			
+			echo "<script>parent.cancelModal();</script>";
+		}
+		
+	}
+ 	
+ }
+
+ 

@@ -1,0 +1,193 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center">
+	<tr>
+		<td nowrap style="padding-right:30px;">
+			<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="4">
+				<tr>
+					<td style="width:15%;"><label for="">Agency</label></td>
+					<td style="width:25%;" align="left">{html_options first_option='All' options=$agency_list name='agency_id' selected=$agency_id}</td>
+					<td style="width:15%;"><label for="">Patient or Therapist</label></td>
+					<td style="width:25%;"><input type="text" id="keyword" name="keyword" value="{$keyword}"></td>
+					<td><input type="submit" name="submit" class="btn" value="Search">
+						<input type="reset" name="reset" class="btn" value="Reset">
+					</td>
+				</tr>
+				<tr>
+					<td><label for="">Visit Type </label></td>
+					<td align="left" colspan="4">
+						{foreach from=$visit_type_list key=k item=visit}
+							
+							<label style="width: 16.4%; margin-top: 10px; display: inline-block;"><input type="checkbox" name="visit_type[]" value="{$k}" {if $k|in_array:$visit_type} checked="checked" {/if} /> {$visit}</label>
+						{/foreach}
+						{* {html_options first_option='All' options=$visit_type_list multiple='checkbox' size='5' id='visit_type' name='visit_type'} *}
+					</td>
+				</tr>
+				<tr>
+					<td><label for="">Visit Status</label></td>				
+					<td align="left">{html_options first_option='All' options=$visit_status_list name='visit_status' selected=$visit_status}</td>
+					<td align="left">&nbsp;</td>
+					<td align="left">&nbsp;</td>
+					<td align="left">&nbsp;</td>
+				</tr>
+				<tr>
+					<td><label for="">Visit From Date</label></td>
+					<td><input type="text" id="date_from" name="date_from" value="{$date_from}" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+						<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" > </td>
+					<td><label for="">Visit End date</label></td>
+					<td><input type="text" id="date_to" name="date_to" value="{$date_to}" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+						<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" > </td>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			
+			<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0">
+				<tr>
+					<td width="10%"><div id="toolbarObj" style="float: left"></div></td>
+					<td>
+						<input type="hidden" name="exclude_send_date" value="0" />
+						<label><input type="checkbox" name="exclude_send_date" value="1" {if $exclude_send_date == 1} checked="checked" {/if} /> Exclude Sent Docs</label>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+<!-- script -->
+<script type="text/javascript" src="{$base_url}/style/jquery/base.js"></script>
+		
+		
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+		webBar.addButton("none", 2, "None");
+		//webBar.addSeparator('sp1', 3);
+		//webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		/*case 'print':
+		  printSelected()
+		  break;	*/
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+
+</script>	
+
+
+<script language="JavaScript" type="text/javascript">
+	function email_docs_confirm() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			var record_ids = grid.getCheckedRows(0);
+	     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+			var w2 = dhxWins.createWindow("w2", 10, 10, 700, 400);
+			w2.setText("Email Visits/Tasks");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+		    //w2.denyResize(); // deny resizing
+		    //w2.denyMove(); 
+		    dhxWins.window('w2').center();
+		    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}{$resource_path}/email_docs/"+record_ids);
+
+		{literal}}{/literal} else {literal}{{/literal}
+			alert("At least one Task/Visit must be selected");
+   	    {literal}}{/literal}
+    	
+    {literal}}{/literal}
+	
+	function show_emails(visit_log_id) {literal}{{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+		var w2 = dhxWins.createWindow("w2", 10, 10, 800, 400);
+		w2.setText("Visit Emails");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}{$resource_path}/show_emails/" + visit_log_id);
+    	
+    {literal}}{/literal}	
+
+	function print_docs() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			printform.action='{$index_url}{$resource_path}/print_docs';
+			printform.target='_blank';
+			printform.submit();
+
+			/*var record_ids = grid.getCheckedRows(0);
+	     	dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+				
+			var w2 = dhxWins.createWindow("w2", 10, 10, 400, 350);
+			w2.setText("Email Visits/Tasks");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+		    //w2.denyResize(); // deny resizing
+		    //w2.denyMove(); 
+		    dhxWins.window('w2').center();
+		    dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}{$resource_path}/print_docs/"+record_ids);*/
+		{literal}}{/literal} else {literal}{{/literal}
+			alert("At least one Task/Visit must be selected");
+   	    {literal}}{/literal}
+	{literal}}{/literal}
+  
+  {literal} 
+	$(document).ready(function(){
+		$("#visit_type").change(function(){
+			 var selMulti = $.map($("#visit_type option:selected"), function (el, i) {
+				 return $(el).val();
+			 });
+			 alert(selMulti.join(","));
+			 $("#visit_type_str").val(selMulti.join(","));
+		});
+	});
+	//loadGrid(); // load the grid by default
+{/literal}
+
+</script>	
+
+</form>
+<form id="printform" name="printform" method="POST" onsubmit="return false;">
+	<input type="hidden" value="" name="record_ids" id="record_ids">

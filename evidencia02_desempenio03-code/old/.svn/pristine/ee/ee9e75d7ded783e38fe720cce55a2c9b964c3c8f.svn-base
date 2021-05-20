@@ -1,0 +1,412 @@
+<?
+
+ class Ticket extends MY_Controller {
+       
+	function Ticket () {
+		
+		parent::MY_Controller();
+        $this->tpl->assign("resource_path", "help/ticket");
+		$this->tpl->assign('resource_edit', 'view');
+		$this->tpl->assign('attachment_url', $this->config->config["base_url"] . 'datastore/ticket/');
+		
+		$this->tpl->assign('ticket_type_list', $this->parametermdl->getByType(88));
+		$this->tpl->assign('ticket_status_list', $this->parametermdl->getByType(89));
+		
+		$this->tpl->assign("patient_list", $this->getPatients(null, null, false));		
+		$this->tpl->assign("patient_list", $this->getPatients(null, null, false));
+		
+		
+		$this->rules = array ('tab_088_ticket_type_id'	=> 'required',
+							  'ticket_subject'			=> 'required',
+                              'ticket_content'          => 'required');
+		
+	}
+	function index () {
+		$agency_id = $this->getAgencyId();	
+		$login_user = $this->usagymdl->getByUserAgencyId($agency_id, $this->getUserId());
+		$this->tpl->assign('login_user', $login_user);
+		
+		$this->tpl->assign_include("dynamic_tpl", "help/ticket/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+	
+	function my_tickets () {
+		$this->load->helper('url');
+		$current_url = site_url($this->uri->uri_string());
+		$base_url = base_url().'index.php/';
+		$current_url = str_replace($base_url, "", $current_url);
+		$this->session->set_userdata('back_url', $current_url);
+
+
+		$this->lang->language['grl_add'] = 'Create';
+		$this->tpl->assign(array("list_title" => "Heat Ticket", "add_sufix" => "Ticket"));
+        
+	    $this->tpl->assign_include("filter_tpl", "help/ticket/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "help/ticket/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid () {
+		
+		$ticket_status = $this->parametermdl->getByType(89);
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5", "Tk Nbr"));
+		$head->append($this->xml->Element("column", "width=*", "Subject"));
+		$head->append($this->xml->Element("column", "width=15", "User Name"));
+		$head->append($this->xml->Element("column", "width=20", "Message"));
+		$head->append($this->xml->Element("column", "width=15", "Category"));
+		$head->append($this->xml->Element("column", "width=5", "Status"));
+		$head->append($this->xml->Element("column", "width=10", "Modified at")); // Send On funcion
+		//$head->append($this->xml->Element("column", "width=10;align=center", "Last Activity"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Attachment"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		$rows = $this->ticketmdl->get2($this->getUserId());
+
+		
+		
+		foreach ($rows as $ticket) {
+			$path = realpath('datastore/ticket/');
+			$browse_path = 'datastore/ticket/';
+		
+			
+			$attachment = $ticket->attachment;
+			$attachment_link = $browse_path . $attachment;
+			$attachment_str = '<![CDATA[';
+			if($attachment!="" && file_exists($path . "/" . $attachment))
+			$attachment_str.= '<a href="' . $attachment_link . '" onclick="(isIE()?event:arguments[0]).cancelBubble = true;" target="_blank">View</a>&nbsp;';
+			$attachment_str .= ']]>';  
+			
+			
+			$user_name = $this->xml_entities($ticket->user_first_name) . " " . $this->xml_entities($ticket->user_last_name);
+			$cell = $this->xml->Element("row", "id=" . $ticket->ticket_id);
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_id)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_subject)));
+			$cell->append($this->xml->Element("cell", null, $user_name));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_content)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->tab_description)));
+			$cell->append($this->xml->Element("cell", null, $ticket_status[$ticket->tab_089_ticket_status_id]));
+			$cell->append($this->xml->Element("cell", null, date('Y-m-d h:i', strtotime($ticket->ticket_datetime))));
+			
+			/*if ($ticket_response = $this->ticketresponsemdl->getLastActivity($ticket->ticket_id)) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($ticket_response->response_datetime), 'DATE_ATOM')));
+			} else {
+				$cell->append($this->xml->Element("cell", null, ''));
+			}*/
+			
+			$response_datetime = date('Y-m-d h:i', strtotime($ticket->response_datetime));
+			if($ticket->response_datetime == '' || strlen($ticket->response_datetime) == 0) {
+				$response_datetime = '';
+			}
+			//$cell->append($this->xml->Element("cell", null, $response_datetime));
+			$cell->append($this->xml->Element("cell", null, $attachment_str));
+			
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function all_tickets () {
+		$this->load->helper('url');
+		$current_url = site_url($this->uri->uri_string());
+		$base_url = base_url().'index.php/';
+		$current_url = str_replace($base_url, "", $current_url);
+		$this->session->set_userdata('back_url', $current_url);
+
+
+
+
+		$this->tpl->assign("resource_grid", 'grid_all_tickets');
+		
+		
+		$this->lang->language['grl_add'] = 'Create';
+		$this->tpl->assign(array("list_title" => "All Ticket", "add_sufix" => "Ticket"));
+				
+		$agency_id = $this->getAgencyId();				
+		$users = $this->usagymdl->getUserByAgency($agency_id);
+		$this->tpl->assign("users", $users); 
+		
+	    $this->tpl->assign_include("filter_tpl", "help/ticket/gfilter2");
+		$this->tpl->assign_include("dynamic_tpl", "help/ticket/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}
+	
+	function grid_all_tickets () {
+		
+		$ticket_status = $this->parametermdl->getByType(89);
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=5", "Tk Nbr"));
+		$head->append($this->xml->Element("column", "width=*", "Subject"));
+		$head->append($this->xml->Element("column", "width=15", "User Name"));
+		$head->append($this->xml->Element("column", "width=20", "Message"));
+		$head->append($this->xml->Element("column", "width=15", "Category"));
+		$head->append($this->xml->Element("column", "width=5", "Status"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Creation Date"));
+		$head->append($this->xml->Element("column", "width=10;align=center", "Last Activity"));
+		$head->append($this->xml->Element("column", "width=5;align=center", "Attachment"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		$agency_id = $this->getAgencyId();
+		$rows = $this->ticketmdl->get2(NULL, $agency_id);
+
+		
+		
+		foreach ($rows as $ticket) {
+			$path = realpath('datastore/ticket/');
+			$browse_path = 'datastore/ticket/';
+		
+			
+			$attachment = $ticket->attachment;
+			$attachment_link = $browse_path . $attachment;
+			$attachment_str = '<![CDATA[';
+			if($attachment!="" && file_exists($path . "/" . $attachment))
+			$attachment_str.= '<a href="' . $attachment_link . '" onclick="(isIE()?event:arguments[0]).cancelBubble = true;" target="_blank">View</a>&nbsp;';
+			$attachment_str .= ']]>';  
+			
+			
+			$user_name = $this->xml_entities($ticket->user_first_name) . " " . $this->xml_entities($ticket->user_last_name);
+			$cell = $this->xml->Element("row", "id=" . $ticket->ticket_id);
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_id)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_subject)));
+			$cell->append($this->xml->Element("cell", null, $user_name));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->ticket_content)));
+			$cell->append($this->xml->Element("cell", null, $this->xml_entities($ticket->tab_description)));
+			$cell->append($this->xml->Element("cell", null, $ticket_status[$ticket->tab_089_ticket_status_id]));
+			$cell->append($this->xml->Element("cell", null,  date('Y-m-d h:i', strtotime($ticket->ticket_datetime))));
+			
+			/*if ($ticket_response = $this->ticketresponsemdl->getLastActivity($ticket->ticket_id)) {
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($ticket_response->response_datetime), 'DATE_ATOM')));
+			} else {
+				$cell->append($this->xml->Element("cell", null, ''));
+			}*/
+			
+			$response_datetime = date('Y-m-d h:i', strtotime($ticket->response_datetime));
+			if($ticket->response_datetime == '' || strlen($ticket->response_datetime) == 0) {
+				$response_datetime = '';
+			}
+			$cell->append($this->xml->Element("cell", null, $response_datetime));
+			$cell->append($this->xml->Element("cell", null, $attachment_str));
+			
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add () {
+		
+		$config['upload_path'] = realpath('datastore/ticket/');
+		$config['allowed_types'] = 'gif|jpg|png|doc|docx|pdf';
+		$this->tpl->assign('faction', 'add');
+		$this->lang->language['grl_save'] = 'Create';
+		$this->load->library('upload', $config);
+		
+		$this->validation->set_rules($this->rules);
+						
+		if ($this->validation->run() == FALSE) {
+			if ($this->session->userdata('back_url')) {
+				$this->tpl->assign('back_url', $this->session->userdata('back_url'));
+			}
+			$this->tpl->assign("form_title", "Add Ticket");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "help/ticket/form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+            	
+		} else {
+			
+			$this->assignPostData($this->ticketmdl);
+            $this->ticketmdl->tab_089_ticket_status_id = 1;
+            $this->ticketmdl->tab_089_ticket_status_id = 1;
+            $this->ticketmdl->ticket_us_agy_id = $this->getUsAgyId();
+
+			$this->ticketmdl->insert($this->getUserId());
+            
+			$ticket_ID = $this->db->insert_id();
+			
+            if ( ! $this->upload->do_upload()) {
+			$error = array('error' => $this->upload->display_errors());
+			}
+            $data = $this->upload->data();
+			$this->ticketmdl->updateAttachment($ticket_ID, $data['file_name']);
+            $this->tpl->assign('gmessage', "Ticket" . $this->lang->line('grl_add_msg'));
+			
+            
+           /* $arr_message = array('user_from'=> 0, 'msg_date'=>date("Y-m-d H:i:s"),'msg_subject'=>$this->ticketmdl->ticket_subject,'msg_text'=>$this->ticketmdl->ticket_content,'msg_attachment'=>'NULL','patient_id'=>$this->ticketmdl->patient_id,'msg_trash'=>0);
+            $rs = $this->db->insert('msg_message', $arr_message);
+            
+            $message_id = $this->db->insert_id($rs);
+            
+            $arr_user_message = array('user_to'=> $this->ticketmdl->ticket_us_agy_id, 'msg_id'=> $message_id, 'msg_status'=> 0, 'msg_read'=> 0, 'msg_important'=> 0);
+            $this->db->insert('user_message', $arr_user_message); 
+            
+            $arr_pat_node = array('msg_id'=> $message_id, 'patient_id'=>$this->ticketmdl->patient_id, 'notes_descrip'=>$this->ticketmdl->ticket_subject, "creation_user"=>$this->getUserId(),'creation_date_time'=>date("Y-m-d H:i:s")); 
+            $this->db->insert('pat_note', $arr_pat_node);                             */
+                       
+			// sending warning mail
+			$email_receiver = $this->syssettingsmdl->getSysSetting('new_ticket_receiver')->sys_value;
+			$emailtext = $this->emailtextmdl->get(5);
+			//$email_receiver = "tieuquan89@gmail.com"; 
+			
+			$body = str_replace('{user}', $this->usagymdl->getByUsAgyId($this->getUsAgyId())->complete_name, $emailtext->email_content);
+			$body = str_replace('{agency}', $this->agencymdl->getByAgencyId($this->getAgencyId())->agency_name, $body);
+		    $body = str_replace('{content}', $this->ticketmdl->ticket_content, $body);
+			 //$body =  "aaaaaaaaaaaaaaaaaaaaaaaaaa";
+			
+			$this->load->model('recipientmdl');		
+			$this->load->library('email');
+			
+			$this->email->from('support@homehealthsoft.com', 'HHS Support');
+			$this->email->to($email_receiver); 
+			$cc = array();
+			foreach ($this->recipientmdl->get() as $recipient) {
+				$cc[] = $recipient->recipient_email;
+			}
+			$this->email->cc($cc); 			
+			$this->email->subject($emailtext->email_subject);
+			$this->email->message($body);	
+			$this->email->send();
+			$this->email->clear(TRUE);
+
+			if ($this->session->userdata('back_url')) {
+				header("Location: " . $this->config->config["index_url"] . $this->session->userdata('back_url'));
+				return;
+			}
+
+			
+
+            $this->my_tickets();
+			// header("Location: " . $this->config->config["index_url"] . "help/ticket/addAttachment/" . $this->ticketmdl->ticket_id);
+			
+		}
+		
+	}
+	
+	function addAttachment ( $ticket_id ) {
+	
+		$config['upload_path'] = realpath('datastore/ticket/');
+		$config['allowed_types'] = 'gif|jpg|png|doc|docx|pdf';
+		
+		$this->tpl->assign(array('cancelbtn' => true,
+								 'resource_cancel' => 'skipAttachment'));
+		$this->lang->language['grl_cancel'] = 'Skip';
+		
+		$this->load->library('upload', $config);
+	
+		if ( ! $this->upload->do_upload()) {
+			$error = array('error' => $this->upload->display_errors());
+			
+			$this->tpl->assign('error_string', $this->upload->display_errors());
+			
+			$this->tpl->assign('faction', 'addAttachment');
+			$this->tpl->assign('record_id', $ticket_id);
+			
+			$this->tpl->assign("form_title", "Add Attachment to Ticket");
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+			$this->tpl->assign_include("dynamic_form", "help/ticket/form_attachment");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$data = $this->upload->data();
+			$this->ticketmdl->updateAttachment($ticket_id, $data['file_name']);
+			
+			$this->skipAttachment();
+			
+		}
+		
+	}
+	
+	function skipAttachment () {
+		
+		$this->tpl->assign('gmessage', "Ticket" . $this->lang->line('grl_add_msg'));
+
+		if ($this->session->userdata('back_url')) {
+			header("Location: " . $this->config->config["index_url"] . $this->session->userdata('back_url'));
+			return;
+		}
+		
+		$this->index();
+		
+	}
+	
+	function view ( $ticket_id ) {
+		
+		$ticket = $this->ticketmdl->getById($ticket_id);
+		$this->assignObject($ticket);
+		$this->tpl->assign('ticket_type',   $this->parametermdl->get(88, $ticket->tab_088_ticket_type_id));
+		$this->tpl->assign('ticket_status', $this->parametermdl->get(89, $ticket->tab_089_ticket_status_id));
+
+
+		$this->tpl->assign('ticket_replies', $this->ticketresponsemdl->getByTicketId($ticket_id));
+		
+		$this->tpl->assign('record_id', $ticket_id);
+
+		if ($this->session->userdata('back_url')) {
+			$this->tpl->assign('back_url', $this->session->userdata('back_url'));
+		}
+	
+		$this->tpl->assign("title", "Ticket Details");
+		$this->tpl->assign_include("dynamic_tpl", "parts/tbase");
+		$this->tpl->assign_include("dynamic_form", "help/ticket/view");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function reply ( $ticket_id ) {
+		
+		$this->assignPostData($this->ticketresponsemdl);
+		$this->ticketresponsemdl->insert($ticket_id, $this->getUserId());
+		$this->ticketresponsemdl->updateStatus($ticket_id, '2');
+		$this->ticketresponsemdl->updateSendOn($ticket_id);
+		
+		
+		header("Location: " . $this->config->config["index_url"] . "help/ticket/view/" .$ticket_id);
+		
+	}
+  function xml_entities($text, $charset = 'Windows-1252'){
+    //return $text;    
+    // Debug and Test
+    // $text = "test &amp; &trade; &amp;trade; abc &reg; &amp;reg; &#45;";
+    
+    // First we encode html characters that are also invalid in xml
+    //$text = htmlentities($text, ENT_COMPAT, $charset, false);
+    $text = iconv('UTF-8', 'ASCII//TRANSLIT', $text);
+    $text = htmlentities($text, ENT_QUOTES);
+    $text=str_replace("'","",$text);
+    $text=str_replace('"',"",$text);
+    
+    return $text;
+    
+    // XML character entity array from Wiki
+    // Note: &apos; is useless in UTF-8 or in UTF-16
+    $arr_xml_special_char = array("&quot;","&amp;","&apos;","&lt;","&gt;");
+    
+    // Building the regex string to exclude all strings with xml special char
+    $arr_xml_special_char_regex = "(?";
+    foreach($arr_xml_special_char as $key => $value){
+        $arr_xml_special_char_regex .= "(?!$value)";
+    }
+    $arr_xml_special_char_regex .= ")";
+    
+    // Scan the array for &something_not_xml; syntax
+    $pattern = "/$arr_xml_special_char_regex&([a-zA-Z0-9]+;)/";
+    
+    // Replace the &something_not_xml; with &amp;something_not_xml;
+    $replacement = '&amp;${1}';
+    return preg_replace($pattern, $replacement, $text);
+  }
+
+ }

@@ -1,0 +1,85 @@
+<?
+
+ class VisitTypeMdl extends Model {
+
+	var $visit_type_id;
+  	var $visit_description;
+  	var $visit_program;
+  	var $visit_abbrev;
+  	var $discipline_id;
+  	var $billable_yn;
+
+	function VisitTypeMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function get ( $normal_result=true ) {
+	
+		$query = $this->db->get('vit_visit_type');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('visit_type_id', 'visit_description');
+	
+	}
+  
+  	function getByBillable ( $normal_result=true, $provides_altern_therapy = null, $contractor_id = null, $LOB = null ) {
+
+	  	$sp_visit_type_ids = array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119);
+		
+		if ($provides_altern_therapy == 'Y' OR $LOB== 3) {
+			if ($contractor_id == 9521 ) {
+				$this->db->where_in('visit_type_id', array(116, 120));
+			} else {
+				$this->db->where_in('visit_type_id', $sp_visit_type_ids);
+			}
+		} else {
+			array_push($sp_visit_type_ids, 120);
+			$this->db->where_not_in('visit_type_id', $sp_visit_type_ids);
+		}
+
+
+	    $this->db->where('billable_yn', 'Y');
+		$query = $this->db->get('vit_visit_type');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('visit_type_id', 'visit_description');
+	
+	}
+
+	function getById ( $visit_type_id ) {
+	
+		$this->db->where('visit_type_id', $visit_type_id);
+		$query = $this->db->get('vit_visit_type');
+		return $query->row();
+	
+	}
+	
+	function getByDisciplineId ( $discipline_id, $eval=array('Y', 'N') ) {
+	
+		$this->db->join('vit_visit_type_discip', 'vit_visit_type_discip.visit_type_id = vit_visit_type.visit_type_id');
+		
+		$this->db->where('vit_visit_type_discip.discipline_id', $discipline_id);
+		$this->db->where_in('vit_visit_type.eval', $eval);
+	
+		$query = $this->db->get('vit_visit_type');
+		return $query->result2('visit_type_id', 'visit_description');
+		
+	}
+	
+	function getOasisTypes ( $eval=array('Y', 'N') ) {
+	
+		$this->db->join('vit_visit_type_discip', 'vit_visit_type_discip.visit_type_id = vit_visit_type.visit_type_id');
+		
+		$this->db->where('vit_visit_type.visit_type_id > 300');
+		$this->db->where('vit_visit_type.visit_type_id < 310');
+		$this->db->where_in('vit_visit_type.eval', $eval);	
+		$query = $this->db->get('vit_visit_type');
+		return $query->result2('visit_type_id', 'visit_description');
+		
+	}
+	
+ }

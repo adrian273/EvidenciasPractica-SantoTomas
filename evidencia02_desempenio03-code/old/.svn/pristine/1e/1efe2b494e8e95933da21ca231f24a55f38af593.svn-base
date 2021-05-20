@@ -1,0 +1,203 @@
+
+<script language="JavaScript" type="text/javascript">
+	
+	function afterload () {literal}{{/literal}
+	
+	{literal}}{/literal}
+	
+	function editRegister ( id ) {literal}{{/literal}
+		//editVisit(id);		
+	{literal}}{/literal}
+	
+</script>
+<table border="0" height="100%" width="100%" cellpadding="4" cellspacing="0" align="center"> 
+ {if $list_title}
+  <tr> 
+    <td valign="top" nowrap class="title" colspan="3">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$list_title}
+    </td>
+  </tr>
+  {/if}
+  {if $filter_tpl != ""}
+  <tr id="gfilter">
+    <td colspan="3">
+	   <form id="gform" method="POST" onsubmit="loadGrid(); return false;">
+	    	<input type="hidden" id="fecha_help">
+			{include file=$filter_tpl}
+   		</form>
+    </td>
+  </tr>
+  {else}
+  <tr>
+    <td colspan="3" height="10"></td>
+  </tr>
+  {/if}
+  <tr> 
+    <td colspan="3" height="80%" valign="top">
+		<div id="grid_area" style="height: 80%; width: 100%"></div>
+    </td>
+  </tr>
+  <tr height="30"> 
+    <td nowrap width="30%" valign="top">
+		{if !$no_grid_buttons}
+			<input type="button" class="btn" value="{$grl_add} {$add_sufix}" onclick="document.location = '{$index_url}{$resource_path}/{$resource_add|default:"add"}{if $entity_id}/{$entity_id}{/if}'">
+		{/if}
+
+		{foreach from=$additional_buttons key=label item=action}
+			<input type="button" class="btn" value="{$label}" onclick="{$action}">
+		{/foreach}
+    </td>
+    <td nowrap align="center" nowrap width="30%">
+    	{if $gmessage != ''}<span class="tbl_msg_ok" style="height: 25px">{$gmessage}</span>{/if}
+    </td>
+    <td nowrap width="30%" align="center" valign="top">
+		<div id="grid_paginal"></div>
+    </td>
+  </tr>
+
+</table> 
+<form id="print_form" name="print_form" method="POST" action="{$index_url}contractor/invoices/print_invoice/{$invoice_id}" target="print_invoice">
+	<input type="hidden" name="include_notes" id="include_notes" value="0" />
+ 	<input type="submit" value="Print" style="display:none;" />
+</form>
+<script language="JavaScript" type="text/javascript">
+
+	document.body.style.overflow = 'hidden';
+	var grid;
+
+	function loadGrid () {literal}{{/literal}
+	
+		if (document.getElementById("grid_paginal").innerHTML != "") {literal}{{/literal}
+		
+			grid.clearAll();
+			grid.updateFromXMl("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform');
+			
+		{literal}}{/literal} else {literal}{{/literal}
+	
+			document.getElementById("grid_paginal").innerHTML = "";
+			document.getElementById("grid_area").innerHTML = "";
+			
+		    grid = new dhtmlXGridObject("grid_area");
+	    	//grid.setColSorting("na,na,na,na,na,na,na,na");
+
+	    	grid.setImagePath("{$base_url}style/grid/imgs/")
+	    	grid.iconImagePath = "{$base_url}style/grid/imgs/";
+	    	grid.setSkin("light");
+	    	{if $enable_paging}grid.enablePaging(true, 80, 5, "grid_paginal");{/if}
+	    	{if !$noedit}grid.setOnRowSelectHandler(editRegister);{/if}
+	    	{if $checkHandler}
+	    		grid.setOnCheckHandler(checkRegister);
+	    	{/if}
+
+	    	grid.enableSmartXMLParsing(true);
+	    	
+	    	grid.kidsXmlFile = "{$index_url}{$resource_path}/child";
+    		grid.loadXMLPost("{$index_url}{$resource_path}/{$resource_grid|default:"grid"}{if $entity_id}/{$entity_id}{/if}", 'gform', afterload);
+	    	grid.setSizes();
+    	
+    	{literal}}{/literal}
+    	
+	{literal}}{/literal}
+	
+	function deleteRegister () {literal}{{/literal}
+
+		
+	{literal}}{/literal}
+	
+	loadGrid();
+
+
+	function email_invoice_confirm(invoice_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		parent.location.href = "{$index_url}/contractor/invoices/email_invoice_confirm/"+invoice_id+"/0/{$back}";
+		return;
+		
+		// the below code is not in use as we do not need to use the popup any more
+		/*var width = 450;
+		var height = 300;
+		if (navigator.userAgent.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i)) {literal}{{/literal}
+			parent.location.href = "{$index_url}/contractor/invoices/email_invoice_confirm/"+invoice_id+"/0/{$back}";
+			return;
+		{literal}}{/literal}	
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, width, height);
+		w2.setText("Confirmation Email Invoice and Notes");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}/contractor/invoices/email_invoice_confirm/"+invoice_id);
+			
+    	var xy = w2.getPosition();
+    	w2.setPosition( xy[0]-(xy[0]/2) , xy[1]);*/
+    	
+  	{literal}}{/literal}
+
+  	function print_notes_confirm(invoice_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var width = 450;
+		var height = 200;
+		if (window.matchMedia("(max-width: 768px)").matches) {literal}{{/literal}
+			height = 330;
+		{literal}}{/literal}	
+		
+		var w2 = dhxWins.createWindow("w2", 10, 10, width, height);
+		w2.setText("Confirmation Print Notes");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}/contractor/invoices/print_notes_confirm/"+invoice_id);
+			
+    	var xy = w2.getPosition();
+    	w2.setPosition( xy[0]-(xy[0]/2) , xy[1]);
+    	
+  	{literal}}{/literal}
+
+	function editVisit (visit_id) {literal}{{/literal}
+			visit_id = parseInt(visit_id);
+			if(visit_id <= 0)
+			return;
+			
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 450, 250);
+			w2.setText("Edit Visit Rate");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/edit_visit_rate/"+visit_id);
+			
+    {literal}}{/literal}
+
+    function add_visit_to_invoice (invoice_id, agency_contractor_id, patient_id) {literal}{{/literal}
+			
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 700, 300);
+			w2.setText("Add Visit to Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/add_visit_to_invoice/"+invoice_id+"/"+agency_contractor_id+"/"+patient_id);
+			
+    {literal}}{/literal}
+	
+</script>
+<iframe id="print_invoice" name="print_invoice" src="blank.html" height="0" width="0" style="border:0;height:0;width:0"></iframe>

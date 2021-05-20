@@ -1,0 +1,300 @@
+<?php
+
+ class CMS487 extends MY_Controller {
+
+	var $rules = array ('cms485_id'		   => 'required|required',
+						'addendum_type'			   => 'required',
+						'description'			   => 'required');
+						//'doctor_id'   => 'required|integer');
+
+	function CMS487 () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "patient/cms487");
+		$this->load->model('cms487mdl');
+		//$this->tpl->assign("discipline_list", $this->disciplinemdl->get(false));
+		$this->tpl->assign('no_commit_form', !$this->hasPermission(6));
+		$this->tpl->assign('tab_page', true);
+		
+	}
+	
+	function index ( $cms485_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		
+		//$this->tpl->assign(array("add_sufix" => " CMS487"));
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+		
+	}
+	
+	function grid ( $cms485_id ) {
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=15", "Addendum to"));
+		$head->append($this->xml->Element("column", "width=*", "Description"));
+		$head->append($this->xml->Element("column", "width=15;align=center",  "Physician"));
+    $head->append($this->xml->Element("column", "width=3;align=center;type=link", "Actions"));
+    $head->append($this->xml->Element("column", "width=3;align=center;type=link", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->cms487mdl->get($cms485_id) as $cms487) {
+			$doctor = $this->usagymdl->getByUsAgyId($cms487->doctor_id);
+			$cell = $this->xml->Element("row", "id=" . $cms487->cms_487_id);
+			$cell->append($this->xml->Element("cell", null, ($cms487->addendum_type=='POT' ? 'PLAN OF TREATMENT' : ($cms487->addendum_type == 'MU' ? 'MEDICAL UPDATE' : '') ) ));
+			$cell->append($this->xml->Element("cell", null, $cms487->description));
+			//$cell->append($this->xml->Element("cell", null, $doctor->first_name." ".$doctor->last_name));
+			$cell->append($this->xml->Element("cell", null, ''));
+      $cell->append($this->xml->Element("cell", null, "Print^" . $this->config->config['index_url'] . "patient/cms487/pdf/" . $cms487->cms_487_id . "/"));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function add ( $cms485_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign('faction', 'add');
+						
+		$this->validation->set_rules($this->rules);			
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/cms485/cms487_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {					
+      $this->assignPostData($this->cms487mdl);
+      $episode = $this->episodemdl->getById($cms485_id);
+      if ($episode->phys_user_id) {
+        //$this->tpl->assign('doctor', $this->usagymdl->getByUsAgyId($episode->phys_user_id));
+        $this->cms487mdl->doctor_id = $episode->phys_user_id;
+      }
+			$this->cms487mdl->insert($cms485_id);
+			
+			$this->tpl->assign('gmessage', "CMS487" . $this->lang->line('grl_add_msg'));
+			
+			$this->index($cms485_id);
+			
+		}
+		
+	}
+	
+	function edit ( $cms485_id, $cms_487_id ) {
+		
+		$this->tpl->assign("entity_id", $cms485_id);
+		$this->tpl->assign("record_id", $cms_487_id);
+		$this->tpl->assign('faction', 'edit');
+		
+		$this->assignObject($this->cms487mdl->getById($cms_487_id));
+						
+		$this->validation->set_rules($this->rules);			
+			
+		if ($this->validation->run() == FALSE) {
+
+			$this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+			$this->tpl->assign_include("dynamic_form", "patient/cms485/cms487_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->cms487mdl);
+      $episode = $this->episodemdl->getById($cms485_id);
+      if ($episode->phys_user_id) {
+        //$this->tpl->assign('doctor', $this->usagymdl->getByUsAgyId($episode->phys_user_id));
+        $this->cms487mdl->doctor_id = $episode->phys_user_id;
+      }
+			$this->cms487mdl->update($cms485_id, $cms_487_id);
+			
+			$this->tpl->assign('gmessage', "CMS487" . $this->lang->line('grl_upd_msg'));
+			
+			$this->index($cms485_id);
+			
+		}
+		
+	}
+	
+	
+	function delete ( $cms485_id, $cms_487_id ) {
+		if (!$this->hasPermission(6)) {
+			return;
+		}
+    
+		$this->cms487mdl->delete($cms_487_id);
+		
+		$this->tpl->assign('gmessage', "CMS487" . $this->lang->line('grl_del_msg'));
+
+		$this->index($cms485_id);
+		
+	}
+	
+  function pdf($cms_487_id){
+    $cms487 = $this->cms487mdl->getById($cms_487_id);
+    $episode 	 = $this->episodemdl->getById($cms487->cms485_id);
+    $agency	 	 = $this->agencymdl->getByAgencyId($this->getAgencyId());
+		$patient 	 = $this->patientmdl->getById($episode->patient_id);
+    
+    $path_ticket = realpath("style/images/icon_enable.gif");
+		
+		$__FONT['PDF']['SIZE'] = 8;
+		$__FONT['PDF']['FORM_LARGE'] = 9;	
+		$__FONT['PDF']['FORM_MEDIUM'] = 8;		
+		$__FONT['PDF']['FORM_SMALL'] = 6;
+        
+		
+		$this->load->library('fpdf');
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+		$pdf = $this->fpdf;
+    
+		  $pdf->AddPage();
+		   	
+		   	
+			$cero_x = 11;
+			$cero_y = 28;	
+			$eje_y_ini = 30;	
+					
+			$pdf->SetDrawColor(130,100);				
+			$pdf->SetFont('Arial','B',6.5);		
+			$pdf->Text(11, 28, "Department of Health and Human Services");
+			$pdf->Text(11, 34, "Centers for Medicare & Medicaid Services");
+	
+			$pdf->SetFont('Arial','B',7);	
+			$pdf->Text(481, 28, "Form Approved");
+			$pdf->Text(481, 35, "OMB No. 0938-0357");				
+			
+			$pdf->SetLineWidth( 0.9 );
+			$pdf->Line(11, 37, 576, 37);
+					
+			$pdf->SetFont('Arial','B',12 );	
+			$pdf->Text(41, 55, "ADDENDUM TO:");	
+			$pdf->Rect(191, 43, 15, 15);		
+			$pdf->Text(211, 55, "PLAN OF TREATMENT");				
+			$pdf->Rect(371, 43, 15, 15);			
+			$pdf->Text(391, 55, "MEDICAL UPDATE");	
+			
+      if(@$cms487->addendum_type=='POT')
+			$pdf->Image($path_ticket, 193, 44, 11);	
+      if(@$cms487->addendum_type=='MU')
+			$pdf->Image($path_ticket, 373, 44, 11);	
+			
+			$pdf->SetLineWidth( 0.3 );
+			$pdf->Line(11, 63, 576, 63);
+			
+			$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );	
+			$pdf->Text(11, 71, '1. Patient\'s HI Claim No.                  2. Start Of Care Date   3. Certification Period' .
+						   '                                               4. Medical Record No.         5. Provider No.');	
+						   
+			$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$pdf->Text(20,  81, $patient->medicare_id);
+			$pdf->Text(145, 81, standard_date(mysql_to_unix($episode->estimated_soc_date)));
+			$pdf->Text(255, 81, standard_date(mysql_to_unix($episode->episode_start_date)));		
+			$pdf->Text(320, 81, standard_date(mysql_to_unix($episode->episode_end_date)));				
+			$pdf->Text(410, 81, $patient->medical_rec_nbr);		
+			$pdf->Text(502, 81, $agency->medicare_lic_nbr);
+						   
+
+			$pdf->Line(134, 63, 134, 85);
+			$pdf->Line(218, 63, 218, 85);
+			$pdf->Line(399, 63, 399, 85);
+			$pdf->Line(499, 63, 499, 85);
+			
+			$pdf->Line(11, 85, 576, 85);
+			
+			$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+			$pdf->Text(11, 94, '6. Patient\'s Name                                                           ' .
+							   '                                        7. Provider\'s Name');
+						
+			
+			$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+			$pdf->Text(20, 104, $patient->first_name . " " . $patient->last_name);		
+			$pdf->Text(295, 104, $agency->agency_name);	
+			
+			$pdf->Line(288, 85, 288, 109);
+			
+			$pdf->Line(11, 109, 576, 109);
+			
+			$pdf->Line(71, 109, 71, 120);
+			
+			
+			$eje_y = 120;
+			//here
+			$cms487 = $this->cms487mdl->getById($cms_487_id);
+			if (@$cms487->description ) {
+				
+				$pdf->Line(71, $eje_y-10, 71, $eje_y);
+				
+				$eje_y += 10;
+				$pdf->SetFont('Arial','B',$__FONT['PDF']['SIZE']);
+				$pdf->Text(20, 	$eje_y, "Description ");
+				
+				$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM'] );
+        $eje_y_tmp = $eje_y;
+        if(@$cms487->description){
+          $this->fpdf->SetXY(80, $eje_y-7);
+          $this->fpdf->MultiCell(490, 10, @$cms487->description);
+          $count = substr_count(@$cms487->description, "\n");
+          $eje_y += $count * 10;
+          $eje_y += ceil(strlen(@$cms487->description) / 100) * 10;
+        }
+        $pdf->Line(71, $eje_y_tmp-10, 71, $eje_y);
+        /*
+				foreach (str_split($cms487->description, 100) as $substring) {
+					
+					$pdf->Line(71, $eje_y-10, 71, $eje_y);
+					
+					$pdf->Text(80, 	$eje_y, $substring);
+					$eje_y += 10;
+					
+					if ($eje_y > 830) {
+						$pdf->AddPage();
+						$eje_y = $eje_y_ini;
+					}
+					
+				}
+				*/
+			}
+			
+			
+			if ($eje_y > 750) {
+				$pdf->Line(71, $eje_y-10, 71, 830);
+				$pdf->AddPage();
+				$eje_y = $eje_y_ini;
+			}
+			
+			
+			$pdf->Line(71, $eje_y-10, 71, 750);
+			
+			$eje_y = 750;
+			
+			$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_MEDIUM'] );
+
+
+			$pdf->Line(11, $eje_y, 576, $eje_y);
+			$pdf->Line(485, $eje_y, 485, $eje_y+70);
+
+			$eje_y += 10;
+			$pdf->Text(11, 	$eje_y, "Signature of Physician");
+			$pdf->Text(491, $eje_y, 'Date');
+			
+			$eje_y += 25;
+			$pdf->Line(11, $eje_y, 576, $eje_y);
+			
+			$eje_y += 10;
+			$pdf->Text(11, 	$eje_y, "Optional Name/Signature of Nuerse/Therapist");
+			$pdf->Text(491, $eje_y, 'Date');
+			
+			$eje_y += 25;
+			$pdf->Line(11, $eje_y, 576, $eje_y);
+			
+			$eje_y += 10;
+			$pdf->Text(11, $eje_y, 'Form CMS-487 (C-3) (02-94) (Formerly HCFA-487) (Print Aligned)');
+			
+      $this->fpdf->Output('cms487.pdf','D');      
+  }
+ }

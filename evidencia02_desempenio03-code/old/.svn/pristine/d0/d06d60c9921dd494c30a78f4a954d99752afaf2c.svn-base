@@ -1,0 +1,37 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+	<tr> 
+		<td>
+			<b>Process Date Start:</b>
+			<input type="text" id="process_date_ini" name="process_date_ini" value="{$process_date_ini}" size="10" 
+			onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('process_date_ini'), document.getElementById('process_date_fin'));return false;" >
+			&nbsp;&nbsp;&nbsp;
+			<b>End:</b>
+			<input type="text" id="process_date_fin" name="process_date_fin" value="{$process_date_fin}" size="10"
+			onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('process_date_ini'), document.getElementById('process_date_fin'));return false;" >
+			<input type="submit" value="Update">
+		</td>			
+	</tr>		
+</table>
+
+<script type="text/javascript">
+	{literal}
+  	function revertPayrollBatch(payroll_batch_process_number){
+    	if (confirm('Are you sure want to Revert this Payroll Batch Process?')) {
+      {/literal}url = index_url + 'payroll/history/revertBatchProcess/' + payroll_batch_process_number ;{literal}
+      ajaxRequest.getRequest(url, [], [], function(data){
+        if (data=='1') {
+          // window.location.reload();
+          loadGrid();
+        }else{
+          alert("Can't be reverted!");
+        }
+      });    
+    }else{
+      return false;
+    }   
+
+  }
+  {/literal}
+</script>

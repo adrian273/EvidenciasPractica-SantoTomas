@@ -1,0 +1,602 @@
+<?
+
+ class UsAgyMdl extends Model {
+
+	var $us_agy_id;
+	var $user_id;
+	var $agency_id;
+	var $first_name;
+	var $last_name;
+	var $middle_initial;
+	var $tab_002_sex;
+	var $date_birth;
+	var $address;
+	var $address2;
+	var $city;
+	var $state_id;
+	var $zip_code;
+	var $zip2;
+	var $phone_cell;
+	var $phone_work;
+	var $phone_home;
+	var $phone_other;
+	var $user_email;
+	var $user_email2;
+	var $fax;
+	var $soc_sec_nbr;
+	var $tab_010_other_lang_1;
+	var $tab_010_other_lang_2;
+	var $profile_id;
+	var $discipline_id;
+	var $upin;
+	var $npi;
+	var $employee_id;
+	var $tab_006_employee_type;
+	var $tab_021_user_status = 1;
+	var $user_start_date;
+	var $user_end_date;
+	var $notes;
+	var $pay_mileage;
+	var $payroll_visit_rate = 1;
+	var $payroll_mileage_rate;
+	var $electronic_sign_setup;
+//	var $create_user_id;
+	var $create_datetime;
+//	var $modify_user_id;
+	var $modify_datetime;
+	var $contractor_or_employee;
+	var $cover_area;
+	var $default_payment_type;
+	var $default_pat_filter_agency;
+	var $default_pat_filter_status;
+	var $territory_id;
+	var $estimated_monthly_patients;
+	var $user_tab111_product_id;
+	var $score;
+	var $legal_name;
+	var $mov;
+
+	function UsAgyMdl () {
+
+		parent::Model();
+		
+	}
+	
+	
+	function getUserByAgency ( $agency_id ) {
+		//echo "agency_id is " . $agency_id;
+		$this->db->select("us_agy.user_id, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name",false);
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->where("us_agy.agency_id", $agency_id);
+		//$this->db->where("us_agy.profile_id IN (1, 3)");
+		$query = $this->db->get('us_agy');
+		//echo "<pre>"; print_r($query);
+		return $query->result2('user_id', 'complete_name');
+	}
+	
+	
+ 	function getByEmailAgencyId ( $agency_id, $user_email ) {
+		
+		$this->db->where("user_email", $user_email);
+		$this->db->where("agency_id", $agency_id);
+		
+		$query = $this->db->get('us_agy');
+		return $query->row();
+		
+	}
+	
+	function getByUsAgyId ( $us_agy_id ) {
+		
+		$this->db->select("us_agy.*,dis_discipline.*,sta_states.*,us1_user.user_email as email, us1_user.tab105_delivery_pref, us1_user.internal_email_to_mailbox, us1_user.phone_cell as phone_cell, us1_user.first_name, us1_user.last_name, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name",false);
+		$this->db->join('sta_states', 'sta_states.state_id = us_agy.state_id', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->where("us_agy_id", $us_agy_id);
+		
+		$query = $this->db->get('us_agy');
+		return $query->row();
+		
+	}
+	
+	function getByUsAgyIds ( $us_agy_ids ) {
+		if (!is_array($us_agy_ids)) {
+			return FALSE;
+		}
+
+		if (empty($us_agy_ids)) {
+			return FALSE;
+		}
+		
+		$this->db->select("us1_user.last_name, us1_user.first_name,us1_user_credentials.expiration_date,DATEDIFF(us1_user_credentials.expiration_date,NOW()) as expiration_days_left,us_agy.*,dis_discipline.*,sta_states.*,x_profile.*,tab_parameters.*,us1_user.user_email as email, CONCAT_WS(' ', us1_user.last_name, us1_user.first_name) as complete_name",false);
+		$this->db->join('us1_user_credentials', 'us_agy.user_id = us1_user_credentials.user_id','left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');		
+		$this->db->join('sta_states', 'sta_states.state_id = us_agy.state_id', 'LEFT');
+		// $this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('x_profile', 'us_agy.profile_id = x_profile.profile_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('tab_parameters', 'us_agy.tab_006_employee_type = tab_parameters.tab_value AND tab_parameters.tab_type = 6', 'LEFT');
+
+		$this->db->where_in("us_agy.us_agy_id", $us_agy_ids);
+		$this->db->orderby("us1_user.last_name, us1_user.first_name");
+		$this->db->groupby("us_agy.us_agy_id");
+		$query = $this->db->get('us_agy');
+		return $query->result();
+		
+	}
+
+	function getByUserAgencyId ( $agency_id, $user_id=null ) {
+		
+		$this->db->where("agency_id", $agency_id);
+    if(!is_null($user_id))
+		$this->db->where("user_id", $user_id);
+
+		$query = $this->db->get('us_agy');
+		return $query->row();
+		
+	}
+	
+	function getByUserId ( $user_id, $keyword=null, $search_type=null ) {
+		$this->db->select('us_agy.*,agy_agency.*,x_profile.*,dis_discipline.*,tab_parameters.*,us1_user.first_name,us1_user.last_name');
+		$this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+		$this->db->join('x_profile', 'us_agy.profile_id = x_profile.profile_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('tab_parameters', 'us_agy.tab_006_employee_type = tab_parameters.tab_value AND tab_parameters.tab_type = 6', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');	
+		
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}
+		
+		
+		$this->db->where("us_agy.user_id", $user_id);
+		//vanlt add
+		$this->db->orderby("agency_name");
+		
+		$query = $this->db->get('us_agy');
+		return $query->result();
+		
+	}
+	
+	function getMemberTeamByAgency ( $agency_id, $patient_id ) {
+		
+		$this->db->select("us_agy_id, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name",false);
+		
+		$this->db->join('ppr_patient_provider', 'us_agy.us_agy_id = ppr_patient_provider.user_id AND patient_id = ' . $patient_id, 'LEFT OUTER ');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');	
+
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("ppr_patient_provider.user_id IS NULL");
+//		$this->db->where("profile_id !=", 1);
+		
+		$query = $this->db->get('us_agy');
+		return $query->result2('us_agy_id', 'complete_name');
+		
+	}
+	function getMemberTeamWithDisciplineByAgency ( $agency_id, $patient_id ) {
+		
+		$this->db->select("us_agy_id, CONCAT(us1_user.last_name, ' (', short_description, '), ', us1_user.first_name) as complete_name",false);
+		
+		$this->db->join('ppr_patient_provider', 'us_agy.us_agy_id = ppr_patient_provider.user_id AND patient_id = ' . $patient_id, 'LEFT OUTER ');
+		$this->db->join('dis_discipline', 	'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');	
+
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("ppr_patient_provider.user_id IS NULL");
+//		$this->db->where("profile_id !=", 1);
+		$this->db->where("tab_021_user_status", 1);
+		$this->db->orderby('us1_user.last_name' ,'asc');
+		$query = $this->db->get('us_agy');
+		return $query->result2('us_agy_id', 'complete_name');
+		
+	}	
+
+	function getAllClinicians ( $agency_id ) {
+		$this->db->select("us_agy.*,dis_discipline.*,us1_user.geo_lat, us1_user.geo_lng,us1_user.first_name,us1_user.last_name",false);
+		$this->db->join('us1_user_credentials', 'us_agy.user_id = us1_user_credentials.user_id','left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+
+		$this->db->join('dis_discipline', 	'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		
+		// $this->db->where("agency_id", $agency_id);
+		
+//		$this->db->where("profile_id !=", 1);
+		$this->db->where("tab_021_user_status", 1);
+		$this->db->orderby('us1_user.last_name' ,'asc');
+		$query = $this->db->get('us_agy');
+		return $query->result();
+		
+	}	
+
+	function getAllCliniciansList ( $agency_id ) {
+		$this->db->select("us_agy_id, CONCAT(us1_user.first_name,' ',us1_user.last_name) as complete_name",false);
+		$this->db->join('us1_user_credentials', 'us_agy.user_id = us1_user_credentials.user_id','left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+
+		$this->db->join('dis_discipline', 	'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		
+		$this->db->where("agency_id", $agency_id);
+		
+//		$this->db->where("profile_id !=", 1);
+		$this->db->where("tab_021_user_status", 1);
+		$this->db->orderby('us1_user.first_name' ,'asc');
+		$query = $this->db->get('us_agy');
+		return $query->result2('us_agy_id', 'complete_name');
+
+		
+	}	
+	
+	function getPhysiciansByAgency ( $agency_id, $normal_result=false ) {
+		
+		//$this->db->select("us_agy_id, CONCAT_WS(' ', first_name, last_name) as complete_name",false);
+		$this->db->select("*, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name,",false);
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');	
+
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("discipline_id", 9);
+		$this->db->where("profile_id", 4);
+		
+    $this->db->orderby("us1_user.last_name, us1_user.first_name");
+    
+		$query = $this->db->get('us_agy');
+    if ($normal_result == true)
+			return $query->result();
+    else  
+      return $query->result2('us_agy_id', 'complete_name');
+		
+	}
+
+	function getNotPhysiciansByAgency ( $agency_id ) {
+		
+		$this->db->select("us_agy_id, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name",false);
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');			
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("discipline_id !=", 9);		
+		
+		$query = $this->db->get('us_agy');
+		return $query->result2('us_agy_id', 'complete_name');
+		
+	}
+
+	
+	function getCaseManagerByAgency ( $agency_id ) {
+		
+		$this->db->select("us_agy.us_agy_id, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name",false);
+		$this->db->join('us_agy_permission', 'us_agy_permission.us_agy_id = us_agy.us_agy_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');	
+
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("permission_id", 2);
+		
+		$query = $this->db->get('us_agy');
+		return $query->result2('us_agy_id', 'complete_name');
+		
+	}
+	
+	function getCliniciansByAgency ( $agency_id, $normal_result = false ) {
+		
+		$this->db->select("us_agy_id, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name",false);
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');	
+
+		$this->db->where("agency_id", $agency_id);
+		$this->db->where("discipline_id !=", 9);
+		$this->db->where("discipline_id !=", 11);
+		
+		$query = $this->db->get('us_agy');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('us_agy_id', 'complete_name');
+		
+	}
+
+	function getCliniciansOnlyAssociatedToPatients ( $contractor_id, $agency_id, $normal_result = false ) {
+		
+		$this->db->select("distinct us_agy.us_agy_id, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name",false);
+		
+		$this->db->join('pat_patient', 'pat_patient.agency_id='.$agency_id);
+		$this->db->join('ppr_patient_provider', 'ppr_patient_provider.patient_id=pat_patient.patient_id AND ppr_patient_provider.user_id=us_agy.us_agy_id');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');	
+
+		$this->db->where("us_agy.agency_id", $contractor_id);
+		$this->db->where("us_agy.discipline_id !=", 9);
+		$this->db->where("us_agy.discipline_id !=", 11);
+		
+		$query = $this->db->get('us_agy');
+		if ($normal_result == true)
+			return $query->result();
+		else
+			return $query->result2('us_agy_id', 'complete_name');
+		
+	}	
+
+	function getReferralNameByAgency($agency_id){
+		
+		$this->db->where("agency_id", $agency_id);		
+		$query = $this->db->get('agy_referral_source');
+		return $query->result2('referral_id', 'referral_name');
+	
+	}
+	
+	function getByAgencyId ( $agency_id, $keyword=null, $search_type=null, $profile_id=null, $permission_id=null, $normal_result=true, $email_list=false, $agency_type=null, $not_prifile_ids=array(), $user_status = null, $agy_status = null, $not_discipline_id = array(), $major_discip_id=null, $not_usagy_ids=array() ) {
+		$this->db->select("us1_user_credentials.expiration_date, 
+		us1_user_credentials.alert_days,DATEDIFF(us1_user_credentials.expiration_date,NOW()) as expiration_days_left,
+		us_agy.*, us1_user.*, dis_discipline.*,x_profile.*,sta_states.*,
+		tab_parameters.*,us1_user.user_email as email, 
+		us1_user.first_name as user_first_name, us1_user.last_name as user_last_name, us1_user.phone_cell as user_phone_cell, us1_user.address,us1_user.last_name, 
+		CONCAT_WS(' ', us1_user.last_name, us1_user.first_name) as complete_name, agy_agency.agency_name",false);
+		//$this->db->select('sum(vis_visit_log.visit_amount + vis_visit_log.mileage_amount) as sum_visit_amount');
+	
+	
+		$this->db->join('us1_user_credentials', 'us_agy.user_id = us1_user_credentials.user_id','left');
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('sta_states', 'sta_states.state_id = us1_user.state_id', 'LEFT');
+		$this->db->join('x_profile', 'us_agy.profile_id = x_profile.profile_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('tab_parameters', 'us_agy.tab_006_employee_type = tab_parameters.tab_value AND tab_parameters.tab_type = 6', 'LEFT');
+		
+		
+		
+		/*$not_type_id = array(200, 201, 400, 350, 320);    
+		$not_type_id_str = implode(",", $not_type_id);
+		$this->db->join('payroll_batch', 'us_agy.us_agy_id = payroll_batch.user_id', 'LEFT');
+		$this->db->join('vis_visit_log', 'vis_visit_log.payroll_batch_id = payroll_batch.payroll_batch_id AND vis_visit_log.visit_type_id NOT IN('.$not_type_id_str.') AND vis_visit_log.billable_YN = 1', 'LEFT');
+		$this->db->join('payroll_batch_process', 'payroll_batch_process.payroll_batch_process_number = payroll_batch.payroll_batch_process_number');*/
+		
+		
+		if(!is_null($agency_type) AND $agency_type=='C'){
+			$this->db->join('agency_contractor', 'agency_contractor.contractor_id = '.$agency_id, 'LEFT');
+		}
+		
+		$this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+		
+		/*$date_filter = 'process';
+		if($this->input->post('date_filter') !== FALSE && $this->input->post('date_filter') != "") {
+			$date_filter = $this->input->post('date_filter');
+		}
+		
+		if($date_filter == 'payment') {
+			$this->db->where("payroll_batch.payment_status = ", 'paid');
+		}
+		if ($this->input->post('date_start') !== FALSE && $this->input->post('date_start') != "") {
+			$date = explode("-", $this->input->post('date_start'));  
+			$date_start = $date[2] . "-" . $date[0] . "-" . $date[1];  
+			
+			if($date_filter == 'payment') {
+				$this->db->where("payroll_batch.check_date >= ", $date_start);
+			} else {
+				//$this->db->where("payroll_batch_process_date >=", standard_date(human_to_unix($date_start), 'MYSQL_NOTIME'));
+				$this->db->where("payroll_batch_process.payroll_batch_process_date >=", $date_start);
+			}
+		}
+		if ($this->input->post('date_end') !== FALSE && $this->input->post('date_end') != "") {
+			$date = explode("-", $this->input->post('date_end'));  
+			$date_end = $date[2] . "-" . $date[0] . "-" . $date[1];  
+			
+			if($date_filter == 'payment') {
+				$this->db->where("payroll_batch.check_date <= ", $date_end);
+			} else {
+				$this->db->where("payroll_batch_process.payroll_batch_process_date <=", $date_end);
+			}
+		}*/	
+		
+		
+			
+		
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}elseif (!is_null($keyword)) {
+			$this->db->like("CONCAT_WS(' ', us_agy.last_name, us_agy.first_name, us_agy.legal_name)", $keyword);
+		}
+		
+		if (!is_null($profile_id)) {
+			$this->db->where("us_agy.profile_id", $profile_id);
+		}
+		
+		if(is_array($not_prifile_ids) and count($not_prifile_ids) > 0){
+			$this->db->where_not_in("us_agy.profile_id", $not_prifile_ids);
+		}
+
+		if (!empty($not_discipline_id)) {
+			$this->db->where_not_in('us_agy.discipline_id', $not_discipline_id);
+		}
+
+		if (!empty($not_usagy_ids)) {
+			$this->db->where_not_in('us_agy.us_agy_id', $not_usagy_ids);
+		}
+		
+		if (!is_null($permission_id)) {
+
+			$this->db->join('us_agy_permission', 'us_agy_permission.us_agy_id = us_agy.us_agy_id');
+
+			if (is_array($permission_id)) {
+				$this->db->where_in("permission_id", $permission_id);
+			} else {
+				$this->db->where("permission_id", $permission_id);
+			}
+
+		}
+
+		if(!is_null($agency_type) AND $agency_type=='C'){
+			$this->db->where("us_agy.agency_id = agency_contractor.agency_id");  
+		}else{
+			$this->db->where("us_agy.agency_id", $agency_id);
+		}
+
+		if(!is_null($user_status)){
+			$this->db->where("us_agy.tab_021_user_status", $user_status);
+		}		
+		if (!is_null($agy_status)) {
+			$this->db->where("tab_021_user_status", $agy_status);
+		}
+
+		if ($major_discip_id) {
+			$this->db->where("dis_discipline.major_discip_id", $major_discip_id);
+		}		
+		$this->db->groupby("us_agy.us_agy_id");
+		// $this->db->orderby("first_name, last_name");
+		$this->db->orderby("us1_user.last_name, us1_user.first_name");
+		
+		$query = $this->db->get('us_agy');
+    	// echo $this->db->last_query();exit;
+		
+		if ($normal_result == true):
+			return $query->result();
+		elseif($email_list and $query->num_rows()):
+			$rows=$query->result();
+			foreach($rows as $row):
+				$email[]=$row->complete_name." <".$row->user_email.">";
+			endforeach;	
+			return $email;
+		else:
+			$list = array();
+			$rows=$query->result();
+			foreach($rows as $row):
+				$list[$row->us_agy_id]=$row->user_last_name." ".$row->user_first_name;
+			endforeach;	
+			return $list;
+
+			// return $query->result2('us_agy_id', 'complete_name');
+		endif;
+	}
+
+  function getContrcatorUsersByAgencyId ( $agency_id, $keyword=null, $search_type=null, $profile_id=null, $permission_id=null, $normal_result=true, $email_list=false, $agency_type=null, $not_prifile_ids=array()  ) {
+		$this->db->select("us_agy.*,dis_discipline.*,x_profile.*,tab_parameters.*,us1_user.user_email as email, CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name, agy_agency.agency_name,us1_user.first_name, us1_user.last_name",false);
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('x_profile', 'us_agy.profile_id = x_profile.profile_id', 'LEFT');
+		$this->db->join('dis_discipline', 'us_agy.discipline_id = dis_discipline.discipline_id', 'LEFT');
+		$this->db->join('tab_parameters', 'us_agy.tab_006_employee_type = tab_parameters.tab_value AND tab_parameters.tab_type = 6', 'LEFT');
+
+	    if(!is_null($agency_type) AND $agency_type=='C'){
+	      $this->db->join('agency_contractor', 'agency_contractor.contractor_id = '.$agency_id, 'LEFT');
+	    }else{
+	      $this->db->join('agency_contractor', 'agency_contractor.agency_id = '.$agency_id, 'LEFT');
+	    }
+	  
+		
+		$this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id');
+    
+		if (!is_null($keyword) && !is_null($search_type)) {
+			$this->db->like($search_type, $keyword);
+		}elseif (!is_null($keyword)) {
+			$this->db->like("CONCAT_WS(' ', us1_user.last_name, us1_user.first_name)", $keyword);
+		}
+		
+		if (!is_null($profile_id)) {
+			$this->db->where("us_agy.profile_id", $profile_id);
+		}
+		
+	    if(is_array($not_prifile_ids) and count($not_prifile_ids) > 0){
+	      $this->db->where_not_in("us_agy.profile_id", $not_prifile_ids);
+	    }
+    
+		if (!is_null($permission_id)) {
+
+			$this->db->join('us_agy_permission', 'us_agy_permission.us_agy_id = us_agy.us_agy_id');
+
+			if (is_array($permission_id)) {
+				$this->db->where_in("permission_id", $permission_id);
+			} else {
+				$this->db->where("permission_id", $permission_id);
+			}
+
+		}
+		
+		$this->db->where("us_agy.agency_id = agency_contractor.contractor_id");
+		if ($this->input->post('status') !== FALSE AND $this->input->post('status') != "") {
+			$this->db->where("us_agy.tab_021_user_status", $this->input->post('status'));
+		} else {
+			$this->db->where("us_agy.tab_021_user_status != ", 0);
+		}
+		
+		$this->db->groupby("us_agy.us_agy_id");
+		$this->db->orderby("us1_user.last_name, us1_user.first_name");
+		
+		$query = $this->db->get('us_agy');
+    
+		if ($normal_result == true):
+			return $query->result();
+		elseif($email_list and $query->num_rows()):
+			$rows=$query->result();
+			foreach($rows as $row):
+				$email[]=$row->complete_name." <".$row->user_email.">";
+			endforeach;	
+			return $email;
+		else:
+			return $query->result2('us_agy_id', 'complete_name');
+		endif;
+	}
+  
+	function insert () {
+		
+		$this->create_datetime = date('Y-m-d');
+		if (is_null($this->contractor_or_employee)) {
+			$this->contractor_or_employee = 'E';
+		}
+		if (is_null($this->score)) {
+			$this->score = '1';
+		}
+		
+		$this->db->insert("us_agy", $this);
+		$this->us_agy_id = $this->db->insert_id();
+		
+	}
+	
+	function update ( $us_agy_id ) {
+		if (is_null($this->score)) {
+			$this->score = '1';
+		}
+		
+		$this->db->where("us_agy_id", $us_agy_id);
+		$this->db->update("us_agy", $this);
+		
+	}
+	
+	function updatePayrollSettings ( $us_agy_id, $payroll_visit_rate, $payroll_mileage_rate ) {
+		
+		$this->db->set('payroll_visit_rate',   $payroll_visit_rate);
+		$this->db->set('payroll_mileage_rate', $payroll_mileage_rate);
+		
+		$this->db->where("us_agy_id", $us_agy_id);
+		
+		$this->db->update("us_agy");
+		
+	}
+	
+	function delete ( $us_agy_id ) {
+		
+		$this->db->where("us_agy_id", $us_agy_id);
+		$this->db->delete("us_agy");
+		
+	}
+
+	function updateFlex($us_agy_id, $attribute, $value, $where = 'us_agy_id') {
+
+		$this->db->where($where, $us_agy_id);
+		$this->db->set($attribute, $value);
+
+		$this->db->update('us_agy');
+
+	}
+	
+	function get_null_user_tab111_product_id() {		
+		$this->db->select("us_agy.us_agy_id, us_agy.first_name, us_agy.last_name, us_agy.user_tab111_product_id, agy_agency_product.tab111_product_id");
+		$this->db->join('agy_agency_product', 'agy_agency_product.agency_id = us_agy.agency_id', 'LEFT');
+		$this->db->where("(user_tab111_product_id  = '' ||  user_tab111_product_id  IS NULL)");
+		//$this->db->limit(5000, 0);
+		$query = $this->db->get('us_agy');
+		return $query->result();
+	}
+
+	function getUsersProfile($agency_id, $profile_id) {
+		$this->db->select("us1_user.user_id, us1_user.user_email as email, us1_user.internal_email_to_mailbox,
+		CONCAT_WS(' ', us1_user.first_name, us1_user.last_name) as complete_name, x_profile.profile_name, us_agy.us_agy_id");
+		$this->db->join('us1_user', 'us1_user.user_id = us_agy.user_id', 'LEFT');
+		$this->db->join('x_profile', 'x_profile.profile_id = us_agy.profile_id', 'LEFT');
+		$this->db->join('agy_agency', 'agy_agency.agency_id = us_agy.agency_id', 'LEFT');
+		$this->db->where('us_agy.profile_id', $profile_id);
+		$this->db->where('agy_agency.agency_id', $agency_id);
+		$query = $this->db->get('us_agy');
+		return $query->result();
+	}
+
+ }

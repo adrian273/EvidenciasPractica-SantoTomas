@@ -1,0 +1,64 @@
+<?php
+
+ class DoctorOrder extends MY_Controller {
+ 	
+ 	function DoctorOrder () {
+ 		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "agencyprofile/doctororder");
+		
+		$this->tpl->assign('tab_page', true);
+		$this->tpl->assign('noedit', true);
+		$this->tpl->assign('no_grid_buttons', true);
+ 		
+ 	}
+ 	
+ 	function index ( $agency_id=null ) {
+ 		
+ 		$this->tpl->assign_include("filter_tpl", "agencyprofile/doctororder_gfilter");
+ 		$this->tpl->assign('tab_013_status', 1);
+ 		if (!is_null($agency_id)) $this->tpl->assign("entity_id", $agency_id);
+ 		
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+ 		
+ 	}
+ 	
+ 	function grid ( $agency_id=null ) {
+ 		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=12", "Order Date"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=10", "Patient Status"));
+		$head->append($this->xml->Element("column", "width=15", "Created By"));
+		$head->append($this->xml->Element("column", "width=15", "Physician"));
+		$head->append($this->xml->Element("column", "width=15", "Status"));
+		$head->append($this->xml->Element("column", "width=10", "Date"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		foreach($this->doctorordermdl->report1((is_null($agency_id) ? $this->getAgencyId()  : $agency_id)) as $order) {
+
+			$cell = $this->xml->Element("row", "id=" . $order->doctor_order_id);
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($order->order_date))));
+			$cell->append($this->xml->Element("cell", null, $order->first_name . " " . $order->last_name));
+			$cell->append($this->xml->Element("cell", null, @$this->parametermdl->get(13, $order->tab_013_status)->tab_description));
+			
+			$created_by = $this->usagymdl->getByUsAgyId($order->order_by_user_id);
+			$cell->append($this->xml->Element("cell", null, @$created_by->first_name . " " . @$created_by->last_name));
+
+			$doctorOffice = $this->agencymdl->getByAgencyId($order->doctor_office_id);
+			$cell->append($this->xml->Element("cell", null, @$doctorOffice->agency_name));
+			
+			$cell->append($this->xml->Element("cell", null, $order->tab_description));
+
+			$document->append($cell);
+			
+		}
+ 		
+ 	}
+ 	
+ }

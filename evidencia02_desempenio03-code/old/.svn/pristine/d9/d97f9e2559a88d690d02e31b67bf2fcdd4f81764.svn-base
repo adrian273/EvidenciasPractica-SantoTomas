@@ -1,0 +1,206 @@
+
+<div id="toolbarObj" style="float: left"></div>
+<div id="toolbarObj2" style="float: right">		{if !$no_advance_filter}<a style="float:right; padding-top:5px;" href="" onclick="$('#modal_filter').toggle();return false ;"><strong>Advanced Filters</strong></a>{/if}</div>
+<div id="toolbarObj3" style="position:absolute; left:0; bottom:0;"></div>	
+
+<input type="hidden" value="" name="record_ids" id="record_ids">
+
+<script>
+	function checkall() {literal}{{/literal}
+		rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(1);
+                {literal}}{/literal}
+        {literal}}{/literal}
+
+	{literal}}{/literal}
+
+	function uncheckall() {literal}{{/literal}
+        rows = grid.getAllItemIds(",");
+        rows = rows.split(",");
+
+        if (rows.length > 0 && rows != "") {literal}{{/literal}
+                for (var i = 0; i < rows.length; i++) {literal}{{/literal}
+                        grid.cells(rows[i], 0).setValue(0);
+                {literal}}{/literal}
+        {literal}}{/literal}
+	{literal}}{/literal}
+
+
+</script>
+
+<script language="JavaScript" type="text/javascript">
+
+    var webBar = new dhtmlXToolbarObject("toolbarObj", "standard");
+    webBar.setIconsPath("{$base_url}style/images/");
+    webBar.addText('sel', 0, "Select: ");
+    webBar.addButton("all", 1, "All");
+	webBar.addButton("none", 2, "None");
+	webBar.addSeparator('sp1', 3);
+	webBar.addButton("print", 4, "Print");
+	  
+    webBar.attachEvent("onClick", function(eid){literal}{{/literal}
+		switch (eid)
+		{literal}{{/literal}
+		case 'all':
+		  checkall()
+		  break;
+		case 'none':
+		  uncheckall()
+		  break;		
+		case 'print':
+		  printSelected()
+		  break;	
+		{literal}}{/literal}
+    {literal}}{/literal});
+  
+	function printSelected() {literal}{{/literal}
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}{$resource_path}/pdf_selected';
+			gform.target='_blank';
+			gform.submit();
+		{literal}}{/literal}   
+	{literal}}{/literal}   	  
+	
+	function removeSelected() {literal}{{/literal}
+
+		if (grid.getCheckedRows(0)) {literal}{{/literal}
+			if(confirm("Are you sure you want to remove selected records?")){literal}{{/literal}   
+			setValue('record_ids', grid.getCheckedRows(0));
+			gform.action='{$index_url}{$resource_path}/remove_selected';
+			//gform.target='_blank';
+			//gform.submit();
+			
+			ajax("{$index_url}{$resource_path}/remove_selected", ajaxParseAction, 'gform');
+			{literal}}{/literal}   
+		{literal}}{/literal}   
+	{literal}}{/literal}   	  
+</script>
+
+
+
+
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+  <tr> 
+    <td align="left">
+		<input type="radio" name="queue_status" onclick="loadGrid()" value="Pending Print" id="at3"> <label for="at3">Pending</label>
+		<input type="radio" name="queue_status" onclick="loadGrid()" value="Printed" id="at2"> <label for="at2">Printed</label>
+		<input type="radio" name="queue_status" onclick="loadGrid()" value="" checked id="at1"> <label for="at1">All</label>		
+    </td>
+		<td align="right">
+			Type of Docs: {html_options name='docum_source' options=$docum_source_options first_option='All' selected=$docum_source_id onchange=loadGrid()}
+    </td>
+  </tr>
+</table> 
+{if !$no_advance_filter}
+<!-- -->
+</td>
+</form>
+<tr><td>
+<!-- -->
+<div id="modal_filter" style="width:300px;height:300px;position:absolute;top:35px;right:30px;z-index:10;background:#F4F4F4;border:solid 2px #C9DAE1; padding:10px;display:none;">
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="4"> 
+	 <form id="gform_modal" method="POST" onsubmit="load_grid_from_modal( this );return false;">
+		<input type="hidden" name="modal" value="1"/>
+	  <tr>
+		<td colspan="2" height="10"></td>
+	  </tr> 
+	  <tr>
+		<td class="ftitle" colspan="2">Advanced Filters</td>
+	  </tr>
+		<tr>
+			<td style="width:50%;"><label for="">Patient Status</label></td>
+			<td align="left">{html_options first_option='All' options=$status_list name='status_id'}</td>
+		</tr>
+		<tr>
+			<td><label for="">Patient Name</label></td>
+			<td ><input type="text" id="patient_name" name="patient_name" value=""></td>
+		</tr>
+		<tr>
+			<td><label for="">Document type </label></td>
+			<td align="left">{html_options first_option='All' options=$docum_source_options name='doc_type'}</td>
+		</tr>
+		<tr>
+			<td><label for="">From date</label></td>
+			<td>
+				<input type="text" id="date_from" name="date_from" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)">
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td><label for="">End date</label></td>
+			<td>
+				<input type="text" id="date_to" name="date_to" value="" size="10" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('date_from'), document.getElementById('date_to'));return false;" >
+			</td>
+		</tr>
+		<tr>
+			<td><label for="">Created by User </label></td>
+			<td align="left">{html_options first_option='All' options=$clinician_list name='clinitian'}</td>
+		</tr>
+	  <tr> 
+		<td valign="bottom" colspan="2" style="text-align:right;padding-top:20px;">
+			<input type="submit" name="submit" class="btn" value="Search">
+			<input type="reset" name="reset" class="btn" value="Reset">
+			<input type="reset" class="btn" value="Close" onclick="$('#modal_filter').hide();">
+		</td>
+	  </tr>
+	 </form>
+	</table> 
+
+</div>
+{/if}
+<!-- script -->
+<script type="text/javascript" src="{$base_url}/style/jquery/base.js"></script>
+
+<script language="JavaScript" type="text/javascript">
+
+	function deleteQueue (prt_id) {literal}{{/literal}
+
+		ajax("{$index_url}{$resource_path}/delete/"+prt_id, ajaxParseAction);
+
+	{literal}}{/literal}
+	
+	function checkRegister ( idr, idc, value ) {literal}{{/literal}
+	
+		ajax("{$index_url}{$resource_path}/checkHandler{if $entity_id}/{$entity_id}{/if}/" + idr + "/" + idc + "/" + value, ajaxParseAction);
+	  
+	{literal}}{/literal}
+
+    function modalEdit (prt_id ) {literal}{{/literal}
+ 
+    	dhxWins = new dhtmlXWindows();
+    	dhxWins.enableAutoViewport(false);
+    	dhxWins.attachViewportTo("vp_container");
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+		
+		var w1 = dhxWins.createWindow("w1", (getWindowWidht()/2)-170, (getWindowHeight()/2) - 160, 400, 100);
+		w1.setText("Print Status");
+		w1.button("park").hide();
+		w1.button("minmax1").hide();
+	    w1.denyResize(); // deny resizing
+	    w1.denyMove(); 
+	    dhxWins.window('w1').setModal(true);
+		w1.attachURL("{$index_url}{$resource_path}/modalEdit/" + prt_id);
+    	
+    {literal}}{/literal}
+    
+    function deleteIcd ( cms_485_icd9 ) {literal}{{/literal}
+ 
+    	setValue('icd_to_delete', cms_485_icd9);
+		loadGrid();
+		
+    {literal}}{/literal}
+	
+    function cancelModal () {literal}{{/literal}
+ 
+     	dhxWins.window('w1').close();
+    	
+    {literal}}{/literal}
+	
+	
+</script>

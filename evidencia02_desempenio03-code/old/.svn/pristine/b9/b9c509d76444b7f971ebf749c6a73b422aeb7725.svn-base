@@ -1,0 +1,47 @@
+</form>
+{if $records_are_from_save_agency eq false}
+	Please select orders from the same Agency.
+{else}
+<form id="gform2" method="POST" action="{$index_url}{$resource_path}/email_doctor_orders/{$task_ids}">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  <tr>		
+	<td height="10"><b>Agency Email:</b> </td>
+    <td height="10">
+		<input type="text" name="email" value="{$agency_email}" style="width: 255px;" />
+		<input type="hidden" name="tasks_ids" id="tasks_ids" value="" />
+    </td>
+  </tr>	
+  {*<tr>		
+		<td height="10"><small>Email a copy to Company:</small> </td>
+    <td height="10">
+			<input type="checkbox" name="email_copy_company" value="1" checked="checked" /> <small>{$company_email}</small>
+    </td>
+  </tr>*}
+  <tr>		
+		<td height="10"><b>Subject :</b> </td>
+    <td height="10">
+			<input type="text" name="subject" style="width: 255px;" value="Please find Doctor Orders attached from {$agency->agency_name}" />
+    </td>
+  </tr>	
+  <tr>		
+		<td height="10"><b>Special Notes:</b> </td>
+    <td height="10">
+			<textarea name="special_notes" rows="3" cols="30"></textarea>
+    </td>
+  </tr>	
+  <tr>
+    <td colspan="2" height="100%" valign="bottom">
+    	<input type="button" class="btn" value="Send Email" onclick="validate_form();">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>
+<script language="JavaScript" type="text/javascript">
+	function validate_form() {literal}{{/literal}
+		//alert(parent.grid.getCheckedRows(0));
+		document.getElementById('tasks_ids').value = parent.grid.getCheckedRows(0);
+		document.getElementById('gform2').submit();  
+	{literal}}{/literal} 
+</script>
+{/if}

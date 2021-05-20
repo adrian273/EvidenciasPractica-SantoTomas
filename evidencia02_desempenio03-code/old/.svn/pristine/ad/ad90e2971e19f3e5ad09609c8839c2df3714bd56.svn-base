@@ -1,0 +1,44 @@
+<table border=0 cellpadding="1" cellspacing=1 width="100%">
+  <input type="hidden" name="us_agy_id" value="{if $us_agy_id neq ''}{$us_agy_id}{else}{$entity_id}{/if}">
+	<tr>
+		<td class="ftitle">Credential Type</td>
+		<td>
+			{html_options options=$type_list selected=$tab_086_credential_type name='tab_086_credential_type'} *
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle" width="200">Credential Id</td>
+		<td><input type="text" name="credential_id" value="{$credential_id}" maxlenght="20">
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle" width="200">Expiration Date</td>
+		<td><input type="text" name="expiration_date" value="{$expiration_date|date_format}" id="expiration_date" onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+		<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('expiration_date'), document.getElementById('fecha_help'));return false;" >
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle" width="200">Alert Days</td>
+		<td><input type="text" name="alert_days" value="{$alert_days}" size="5" /></td>
+	</tr>
+	<tr>
+		<td class="ftitle">Notes</td>
+		<td>
+			<textarea name="cred_note" style="width:50%;" wrap="auto" rows="6">{$cred_note}</textarea>
+		</td>
+	</tr>
+	<tr>
+		<td class="ftitle">Upload Credential Copy</td>
+		<td>
+			<input type="file" name="attachment" />
+		</td>
+	</tr>	
+	<tr>
+		<td class="ftitle">Credential Renewed</td>
+		<td>
+			<input type="radio" name="credential_renewed" id="credential_renewed_yes" value="Y" {if $credential_renewed eq 'Y'}checked="checked"{/if}/> <label for="credential_renewed_yes">Yes</label>
+			<input type="radio" name="credential_renewed" id="credential_renewed_no" value="N" {if $credential_renewed eq 'N'}checked="checked"{/if} /> <label for="credential_renewed_no">No</label>
+		</td>
+	</tr>
+	
+</table>

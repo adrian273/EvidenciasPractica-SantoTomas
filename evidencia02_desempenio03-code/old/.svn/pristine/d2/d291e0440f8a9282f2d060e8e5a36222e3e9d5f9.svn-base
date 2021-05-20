@@ -1,0 +1,72 @@
+<?php
+
+include ('admin_controller.php');
+
+class AuditLog extends Admin_Controller {
+
+	function AuditLog () {
+		
+		parent::Admin_Controller();
+		$this->tpl->assign("resource_path", "administrator/auditlog");
+		
+	}
+
+	function index () {
+    $this->tpl->assign(array("no_grid_buttons" => true));	
+		$this->tpl->assign("list_title", "Audit Log");
+		$this->tpl->assign_include("filter_tpl", "administrator/auditlog/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid () {
+		//$agency_types = $this->lang->line('agency_type_list');
+		//$status		  = $this->lang->line('agency_status_list');
+    
+		$this->load->model('auditlogmdl');
+    $this->auditlogmdl->user_id = $this->session->userdata('user_id');
+    $this->auditlogmdl->insert();
+      
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+		//$head->append($this->xml->Element("column", "width=5;align=center", "Id"));
+		$head->append($this->xml->Element("column", "width=*", "Login Date"));
+		$head->append($this->xml->Element("column", "width=*", "Login Time"));
+		$head->append($this->xml->Element("column", "width=*", "User Name"));
+		$head->append($this->xml->Element("column", "width=*", "Agency Name"));
+		
+		//$head->append($this->xml->Element("column", "width=6;align=center;type=link", "Actions"));
+		//$head->append($this->xml->Element("column", "width=6;align=center;type=link", "#cspan"));
+		
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		foreach ($this->auditlogmdl->get($this->input->post('keyword'), $this->input->post('search_type')) as $audit) {
+			
+			$cell = $this->xml->Element("row", "id=" . $audit->audit_id);
+			$cell->append($this->xml->Element("cell", null, date("m/d/Y",strtotime($audit->login_datetime)) ));
+			$cell->append($this->xml->Element("cell", null, date("H:i a",strtotime($audit->login_datetime)) ));
+			$cell->append($this->xml->Element("cell", null, $audit->first_name." ".$audit->last_name));
+			$cell->append($this->xml->Element("cell", null, $audit->agency_name));			
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	
+	function delete ( $audit_id ) {
+    $this->load->model('auditlogmdl'); 
+		$audit = $this->auditlogmdl->getById($audit_id);
+		if(!empty($audit)){
+      $this->agencymdl->delete($audit_id);
+		}
+		$this->tpl->assign('gmessage', 'An audit log record ' . $this->lang->line('grl_del_msg'));
+		$this->index();
+		
+	}
+	
+ }

@@ -1,0 +1,47 @@
+<?php
+
+class DoctorOrderStatusMdl extends Model {
+
+	var $doctor_order_status_id	= null;
+	var $doctor_order_id		= '';
+	var $tab_023_order_status	= '';
+	var $order_status_date		= '';
+
+	function DoctorOrderStatusMdl() {
+		parent::Model();
+	}
+
+	function _getByDoctorOrder($doctor_order_id) {
+
+		$this->db->where("doctor_order_id",$doctor_order_id);
+		$query = $this->db->get("doctor_order_status");
+
+		return $query->result();
+	}
+
+	function getByDoctorOrder($doctor_order_id) {
+
+		$this->db->select("date_format(order_status_date,'%m-%d-%Y') as status_date,tab_description");
+		$this->db->join("tab_parameters tp","tp.tab_value=dos.tab_023_order_status");
+		$this->db->where("tp.tab_type",23);
+		$this->db->where("dos.doctor_order_id",$doctor_order_id);
+		$this->db->orderby("doctor_order_status_id","DESC");
+
+		$query = $this->db->get("doctor_order_status dos");
+
+		return $query->result();
+	}
+
+	function insert() {
+
+		$this->db->insert("doctor_order_status",$this);
+	}
+
+	function delete($doctor_order_id) {
+
+		$this->db->delete("doctor_order_status",array("doctor_order_id"=>$doctor_order_id));
+	}
+
+
+}
+?>

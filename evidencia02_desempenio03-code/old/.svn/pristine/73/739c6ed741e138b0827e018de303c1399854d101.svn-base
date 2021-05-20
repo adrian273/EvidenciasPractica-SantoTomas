@@ -1,0 +1,32 @@
+</form>
+
+<form id="gform" method="POST" action="{$index_url}{$resource_path}/confirm_delete_invoice/{$invoice_id}/{$back}">
+<table border="0" width="100%" height="100%" cellpadding="0" cellspacing="4"> 
+  {if $error_string}
+  <tr>
+    <td class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+  {if $invoice_payment gt 0}
+  <tr>
+    <td class="error tbl_msg">Caution: ${$invoice_payment} of payment already received against this invoice.</td>
+  </tr>
+  {/if}
+  <tr>
+    <td><b>Delete all associations to this invoice for the following:</b></td>
+  </tr>
+  <tr>    
+    <td height="10">
+      <label><input type="checkbox" name="visits" value="1" checked="checked" /> Visits </label><br>
+      <label><input type="checkbox" name="other_charges" value="1" checked="checked" /> Other Charges </label><br>
+      <label><input type="checkbox" name="payments" value="1" checked="checked" /> Payments </label>
+    </td>
+  </tr>   
+  <tr>
+    <td height="100%" valign="bottom">
+    	<input type="submit" class="btn" name="confirm" value="Confirm">
+    	<input type="button" class="btn" value="{$grl_cancel}" onclick="parent.dhxWins.window('w2').close()">
+    </td>
+  </tr>
+</table> 
+</form>

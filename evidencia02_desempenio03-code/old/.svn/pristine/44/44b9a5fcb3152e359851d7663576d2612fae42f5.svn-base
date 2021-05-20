@@ -1,0 +1,151 @@
+<?php
+
+class Contractorcontacts extends MY_Controller {
+
+    public function Contractorcontacts() {
+        parent::MY_Controller();
+        $this->load->model('contractorcontactsmdl');
+        $this->load->model('parametermdl');
+        $this->tpl->assign("resource_path", "contractor/contractorcontacts");
+        $this->tpl->assign('tab_page', true);
+    }
+
+    public function index($agency_id) {
+        $this->tpl->assign("add_sufix", "Contacts");
+        $this->tpl->assign("entity_id", $agency_id);
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->assign_include("script_tpl", "contractor/contacts/contact_script");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    public function grid($agency_id) {
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+        $contractor_id = $this->getAgencyId();
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*", "Dept/Role Descrip"));
+        $head->append($this->xml->Element("column", "width=10", "Last Name"));
+        $head->append($this->xml->Element("column", "width=10", "First Name"));
+        $head->append($this->xml->Element("column", "width=*", "Email"));
+        $head->append($this->xml->Element("column", "width=12;type=link", "Phone"));
+        $head->append($this->xml->Element("column", "width=5", "Ext"));
+        $head->append($this->xml->Element("column", "width=4", "Dft"));
+        $head->append($this->xml->Element("column", "width=*", "Note"));
+        $head->append($this->xml->Element("column", "width=5;align=center;type=link", "Actions"));
+        //$head->append($this->xml->Element("column", "width=5;align=center;type=link", "#cspan"));
+
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+        $data = $this->contractorcontactsmdl->getContractorContacts($contractor_id, $agency_id);
+        foreach ($data as $d) {
+            $cell = $this->xml->Element("row", "id=" . $d->contact_id );
+            $cell->append($this->xml->Element("cell", null, $d->tab_description));
+            $cell->append($this->xml->Element("cell", null, $d->last_name));
+            $cell->append($this->xml->Element("cell", null, $d->first_name));
+            $cell->append($this->xml->Element("cell", null, $d->email));
+            $cell->append($this->xml->Element("cell", null, $d->phone.'^tel:'.$d->phone));
+            $cell->append($this->xml->Element("cell", null, $d->phone_ext));
+
+            $img = '<![CDATA[';
+            $img.= '<img src="'.$this->config->config["base_url"].'style/images/drop-yes.gif" width="16" border="0"/>';
+            $img .= ']]>';
+            if($d->make_default == 1) {
+                $cell->append($this->xml->Element("cell", null, $img));
+            } else {
+                $cell->append($this->xml->Element("cell", null, null));
+            }
+            $cell->append($this->xml->Element("cell", null, $d->notes));
+            $cell->append($this->xml->Element("cell", null, "Edit^" . $this->config->config['index_url'] . "contractor/contractorcontacts/edit/" . $agency_id ."/$d->contact_id "));
+            $document->append($cell);
+        }
+
+
+    }
+
+    public function add($agency_id) {
+        $contractor_id = $this->getAgencyId();
+        $this->tpl->assign('faction', 'add');
+        $this->tpl->assign("entity_id", $agency_id);
+        $this->tpl->assign("contractor_id", $contractor_id);
+
+        $this->tpl->assign('departament_tab110_list', $this->parametermdl->getByType(110));
+
+
+        $this->validation->set_rules(array(
+            'department_tab110' => 'required',
+            'last_name' => 'required',
+            'first_name' => 'required',
+            'email' => 'required|valid_email',
+            'phone' => 'required|valid_phone'
+        ));
+
+        $this->validation->set_fields(array(
+            'department_tab110' => 'Department',
+            'phone' => 'Telephone'
+        ));
+
+        if ($this->validation->run() == FALSE) {
+
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "contractor/contacts/add_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        } else {
+            $this->assignPostData($this->contractorcontactsmdl);
+
+            $contractor_contacts = $this->contractorcontactsmdl->insert();
+
+            $this->session->set_userdata('success_string', "Contacts has been created.");
+            $this->index($agency_id);
+        }
+    }
+
+    public function edit($agency_id, $id) {
+        $contractor_id = $this->getAgencyId();
+        $this->tpl->assign('faction', 'edit');
+        $this->tpl->assign("record_id", $id);
+        $this->tpl->assign("entity_id", $agency_id);
+        $this->tpl->assign("contractor_id", $contractor_id);
+
+        $contact = $this->contractorcontactsmdl->getById($id);
+        $this->assignObject($contact);
+
+        $departament_tab110_list = $this->parametermdl->getByType(110);
+        $this->tpl->assign('departament_tab110_list', $departament_tab110_list);
+
+        $this->validation->set_rules(array(
+            'department_tab110' => 'required',
+            'last_name' => 'required',
+            'first_name' => 'required',
+            'email' => 'required|valid_email',
+            'phone' => 'required'
+        ));
+
+        $this->validation->set_fields(array(
+            'department_tab110' => 'Department',
+            'phone' => 'Telephone'
+        ));
+
+        if ($this->validation->run() == FALSE) {
+            $this->tpl->assign('no_commit_form', FALSE);
+            $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            $this->tpl->assign_include("dynamic_form", "contractor/contacts/edit_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+
+        } else {
+
+            $this->assignPostData($this->contractorcontactsmdl);
+            $this->contractorcontactsmdl->update($id);
+            $this->tpl->assign('gmessage', "Contact" . $this->lang->line('grl_upd_msg'));
+            $this->index($agency_id);
+        }
+    }
+
+    public function delete($id_agency, $id_contact) {
+        $this->contractorcontactsmdl->delete($id_contact);
+        $this->tpl->assign('gmessage', "Contact " . $this->lang->line('grl_del_msg'));
+        $this->index($id_agency);
+    }
+
+}

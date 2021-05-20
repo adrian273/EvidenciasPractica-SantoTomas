@@ -1,0 +1,479 @@
+<?
+
+ include('visitform.php');
+
+ class Approval extends VisitForm {
+
+	function Approval () {
+
+		parent::VisitForm();
+		$this->tpl->assign("resource_path", "task/approval");
+		$this->tpl->assign(array("tab_page" => true));
+
+	}
+
+	function beta () {
+		//$visit_date_ini = '01-11-2018';
+    	/**
+          #  Get visit open settings. Will it open in new window or not.
+          */
+    	$user_id = $this->session->userdata('user_id');
+    	$user_info = $this->usermdl->getById($user_id);
+		$this->tpl->assign('open_new_window', $user_info->open_new_window);
+		
+		
+
+		$this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign('visit_status_id', ($this->getAgencyType() == 'A' ? 3 : 8));
+		$this->tpl->assign('clinician_list', $this->usagymdl->getAllCliniciansList($this->getAgencyId()));
+
+		$this->tpl->assign(array("no_grid_buttons" => true));
+		$this->tpl->assign("items_per_page", 250);
+		// $agency_list = $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false);
+    	// $this->tpl->assign("agency_list", $agency_list);
+
+    	// $usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+    	// $this->tpl->assign("default_pat_filter_agency", $usAgy->default_pat_filter_agency);
+		// $this->tpl->assign('Lob', $usAgy->user_tab111_product_id);
+
+
+		$visit_date_ini = $this->session->userdata('visit_date_ini');
+		$visit_date_fin = $this->session->userdata('visit_date_fin');
+		$search_type = $this->session->userdata('task.approval.search_type');
+		$keyword = $this->session->userdata('task.approval.keyword');
+		$search_type_val = $this->session->userdata('task.approval.visit_type_id');
+		$clinician_id = $this->session->userdata('task.approval.clinician_id');
+		
+		$this->tpl->assign("visit_type_id", $search_type_val);
+		$this->tpl->assign("clinician_id", $clinician_id);
+		$this->tpl->assign("visit_date_ini", $visit_date_ini);
+    	$this->tpl->assign("visit_date_fin", $visit_date_fin);
+    	$this->tpl->assign("search_type", $search_type);
+    	$this->tpl->assign("keyword", $keyword);
+
+		// $this->tpl->assign(array("date_filter" => standard_date(mktime(0, 0, 0, date("m")  , date("d")-7, date("Y")), 'USA_DATE')));
+
+    	if ($this->getUserProfileId() == 3) {
+    		$this->tpl->assign('is_profile_company', true);
+    	}
+
+    	$this->tpl->assign("resource_grid", "grid_beta");
+
+		$this->tpl->assign_include("filter_tpl", "task/gfilter_beta");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+
+	}
+
+	function grid_beta () {
+		$us_agy_id = $this->getUsAgyId();
+		// $usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+      	// if ($usAgy->default_pat_filter_agency != $this->input->post('agency_id')) {
+       //  	$this->usagymdl->updateFlex($us_agy_id, 'default_pat_filter_agency', $this->input->post('agency_id'));
+      	// }
+    	
+    	$this->session->set_userdata('visit_date_ini', $this->input->post('visit_date_ini'));
+		$this->session->set_userdata('visit_date_fin', $this->input->post('visit_date_fin'));
+		$this->session->set_userdata('task.approval.search_type', $this->input->post('search_type'));
+		$this->session->set_userdata('task.approval.keyword', $this->input->post('keyword'));
+		$this->session->set_userdata('task.approval.visit_type_id', $this->input->post('visit_type_id'));
+		$this->session->set_userdata('task.approval.clinician_id', $this->input->post('clinician_id'));
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		// $visit_status_id = array($this->input->post('visit_status_id'));
+		$visit_status_id = array($this->getAgencyType() == 'A' ? 3 : 8);
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10", "Date"));
+		$head->append($this->xml->Element("column", "width=*",  "Clinician"));
+		$head->append($this->xml->Element("column", "width=*",  "Visit/Task Name"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		
+		
+		$gdata = $this->visitlogmdl->getVisitsForApproval($this->input->post('clinician_id'), $us_agy_id, null, $this->input->post('visit_type_id'), $visit_status_id, $this->input->post('keyword'));
+
+		$this->load->helper('general');
+		if (count($gdata)) {
+
+			foreach ($gdata as $visit) {
+
+				// $clinician = $this->usagymdl->getByUsAgyId($visit->visit_user_id);
+				
+				$visti_timespan = mysql_to_unix($visit->visit_date_time);
+
+				if ($visti_timespan + 172800 < time()) {
+					$cell = $this->xml->Element("row", "class=bgorange;id=" . $visit->visit_log_id);
+				}
+
+				if ($visti_timespan + 518400 < time()) {
+					$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+				}
+
+				if ($visti_timespan + 172800 > time()) {
+					$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+				}
+
+				if ($visit->visit_status_id == 6) {
+					$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+				}
+
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')));
+				$cell->append($this->xml->Element("cell", null, $visit->visit_user_first_name . " " . $visit->visit_user_last_name));
+				// $cell->append($this->xml->Element("cell", null, $visit->patient_first_name . " " . $visit->patient->last_name));
+				
+				
+				$qstr = calculate_q_text($visit);	
+				
+				$cell->append($this->xml->Element("cell", null, $visit->visit_description.$qstr));
+
+
+				$document->append($cell);
+
+			}
+
+		} else {
+
+			$cell = $this->xml->Element("row");
+			$cell->append($this->xml->Element("cell", null, "No data to display"));
+			$document->append($cell);
+
+		}
+
+	}
+
+	function index () {
+		//$visit_date_ini = '01-11-2018';
+    /**
+          #  Get visit open settings. Will it open in new window or not.
+          */
+    	$user_id = $this->session->userdata('user_id');
+    	$user_info = $this->usermdl->getById($user_id);
+		$this->tpl->assign('open_new_window', $user_info->open_new_window);
+		
+		
+
+		$this->tpl->assign('visit_status_list', $this->parametermdl->getByType(83));
+		$this->tpl->assign('visit_type_list', $this->visittypemdl->get(false));
+		$this->tpl->assign('visit_status_id', ($this->getAgencyType() == 'A' ? 3 : 8));
+		$this->tpl->assign('clinician_list', $this->usagymdl->getAllCliniciansList($this->getAgencyId()));
+
+		$this->tpl->assign(array("no_grid_buttons" => true));
+		$this->tpl->assign("items_per_page", 250);
+		$agency_list = $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false);
+    	$this->tpl->assign("agency_list", $agency_list);
+
+    	$usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+    	$this->tpl->assign("default_pat_filter_agency", $usAgy->default_pat_filter_agency);
+		$this->tpl->assign('Lob', $usAgy->user_tab111_product_id);
+
+
+		$visit_date_ini = $this->session->userdata('visit_date_ini');
+		$visit_date_fin = $this->session->userdata('visit_date_fin');
+		$search_type = $this->session->userdata('task.approval.search_type');
+		$keyword = $this->session->userdata('task.approval.keyword');
+		$search_type_val = $this->session->userdata('task.approval.visit_type_id');
+		$clinician_id = $this->session->userdata('task.approval.clinician_id');
+		
+		$this->tpl->assign("visit_type_id", $search_type_val);
+		$this->tpl->assign("clinician_id", $clinician_id);
+		$this->tpl->assign("visit_date_ini", $visit_date_ini);
+    	$this->tpl->assign("visit_date_fin", $visit_date_fin);
+    	$this->tpl->assign("search_type", $search_type);
+    	$this->tpl->assign("keyword", $keyword);
+
+//		$this->tpl->assign(array("date_filter" => standard_date(mktime(0, 0, 0, date("m")  , date("d")-7, date("Y")), 'USA_DATE')));
+
+    	if ($this->getUserProfileId() == 3) {
+    		$this->tpl->assign('is_profile_company', true);
+    	}
+		$this->tpl->assign_include("filter_tpl", "task/gfilter");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+
+	}
+
+	function grid () {
+		// if ($this->input->post('agency_id')) {
+      	$usAgy = $this->usagymdl->getByUsAgyId($this->getUsAgyId());
+      	if ($usAgy->default_pat_filter_agency != $this->input->post('agency_id')) {
+        	$this->usagymdl->updateFlex($this->getUsAgyId(), 'default_pat_filter_agency', $this->input->post('agency_id'));
+      	}
+    	// }
+
+    	$this->session->set_userdata('visit_date_ini', $this->input->post('visit_date_ini'));
+		$this->session->set_userdata('visit_date_fin', $this->input->post('visit_date_fin'));
+		$this->session->set_userdata('task.approval.search_type', $this->input->post('search_type'));
+		$this->session->set_userdata('task.approval.keyword', $this->input->post('keyword'));
+		$this->session->set_userdata('task.approval.visit_type_id', $this->input->post('visit_type_id'));
+		$this->session->set_userdata('task.approval.clinician_id', $this->input->post('clinician_id'));
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		// $visit_status_id = array($this->input->post('visit_status_id'));
+		$visit_status_id = array($this->getAgencyType() == 'A' ? 3 : 8);
+
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10", "Date"));
+		$head->append($this->xml->Element("column", "width=*",  "Clinician"));
+		$head->append($this->xml->Element("column", "width=*", "Patient"));
+		$head->append($this->xml->Element("column", "width=*",  "Visit/Task Name"));
+		$head->append($this->xml->Element("column", "width=6;align=center",  "Pt Sign"));
+		//$head->append($this->xml->Element("column", "width=15",  "Status"));
+		$head->append($this->xml->Element("column", "width=*",  "Agency Name"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+
+		
+		if ($this->input->post('co_sign_only') == 2) {
+			$this->load->model('agencycontractormdl');
+			$agencies = $this->agencycontractormdl->getByContractor($this->getAgencyId(), null, false);
+			$agency_ids = array_keys($agencies);
+			$_POST['agency_ids'] = implode(",", $agency_ids);
+		}
+
+		$gdata = $this->visitlogmdl->getVisitsForApproval($this->input->post('clinician_id'), $this->getUsAgyId(), null, $this->input->post('visit_type_id'), $visit_status_id, $this->input->post('keyword'));
+
+		$this->load->helper('general');
+		if (count($gdata)) {
+
+			foreach ($gdata as $visit) {
+
+				$clinician = $this->usagymdl->getByUsAgyId($visit->visit_user_id);
+				
+				$visti_timespan = mysql_to_unix($visit->visit_date_time);
+
+				if ($visti_timespan + 172800 < time()) {
+					$cell = $this->xml->Element("row", "class=bgorange;id=" . $visit->visit_log_id);
+				}
+
+				if ($visti_timespan + 518400 < time()) {
+					$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+				}
+
+				if ($visti_timespan + 172800 > time()) {
+					$cell = $this->xml->Element("row", "id=" . $visit->visit_log_id);
+				}
+
+				if ($visit->visit_status_id == 6) {
+					$cell = $this->xml->Element("row", "class=bgred;id=" . $visit->visit_log_id);
+				}
+
+				$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($visit->visit_date_time), 'VIS_LIST')));
+				$cell->append($this->xml->Element("cell", null, $clinician->first_name . " " . $clinician->last_name));
+				$cell->append($this->xml->Element("cell", null, $visit->first_name . " " . $visit->last_name));
+				/*$qstr = "";
+				if($visit->visit_type_id == 104) {
+					$month = date("m",strtotime($visit->visit_date_time));
+					switch ($month) {
+						case "01":
+						case "02":
+						case "03":
+							$qstr = "Q1";
+							break;
+						case "04":
+						case "05":
+						case "06":
+							$qstr = "Q2";
+							break;
+						case "07":
+						case "08":
+						case "09":
+							$qstr = "Q3";
+							break;
+						case "10":
+						case "11":
+						case "12":
+							$qstr = "Q4";
+							break;
+						default:
+							break;
+					}
+				}*/
+				
+				$qstr = calculate_q_text($visit);	
+				
+				$cell->append($this->xml->Element("cell", null, $visit->visit_description.$qstr));
+
+				$ptSignCellStr = '<![CDATA[';
+				// display only for billable visits
+				if( $visit->visit_status_id != 1 AND $visit->billable_YN==1) {
+					// add the edit icon for a popup to capture the signature
+					if($visit->signature == "") {
+						$not_signed = "<span style='color: red; background: yellow; '>&nbsp;&nbsp;!&nbsp;&nbsp;</span>";
+						$ptSignCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true;"> '.$not_signed.' </a>';
+					} else {
+
+						$ptSignCellStr.= '<a href="javascript://" onclick="(isIE()?event:arguments[0]).cancelBubble = true;"><img src="'.$this->config->config["base_url"].'style/images/drop-yes.gif" width="16" border="0" /></a>';
+					}
+				}
+				$ptSignCellStr .= ']]>';
+				$cell->append($this->xml->Element("cell", null, $ptSignCellStr));
+				//$cell->append($this->xml->Element("cell", null, $visit->tab_description));
+
+				$patient      = $this->patientmdl->getById($visit->patient_id);
+		        $agency       = $this->agencymdl->getByAgencyId($patient->agency_id);
+		        // Agency name column
+		        $cell->append($this->xml->Element("cell", null, $agency->agency_name));
+
+				$document->append($cell);
+
+			}
+
+		} else {
+
+			$cell = $this->xml->Element("row");
+			$cell->append($this->xml->Element("cell", null, "No data to display"));
+			$document->append($cell);
+
+		}
+
+	}
+
+	function edit ( $visit_log_id ) {
+
+		$config =& get_config();
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+
+		if ($visit_log->visit_status_id == 6) {
+
+			$this->missed($visit_log_id);
+
+		} else {
+
+			$visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+
+			if ($visit_type->visit_program == null) {
+				echo "Visit Type Form not implemented...";
+				return false;
+			}
+
+			header("Location: " . $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id . "/approval");
+
+		}
+
+	}
+
+	function missed ( $visit_log_id ) {
+
+		$this->tpl->assign('cancelbtn', true);
+		$this->tpl->assign('no_commit_form', true);
+
+		$this->assignObject($this->visitmissedmdl->getByVisitLogId($visit_log_id));
+
+		$this->tpl->assign_include("dynamic_tpl", "parts/fbase2");
+		$this->tpl->assign_include("dynamic_form", "task/missed_view");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+
+	}
+
+	function changeStatus ( $visit_log_id ) {
+
+		$this->assignPostData($this->visitlogmdl);
+		$this->visitlogmdl->updateComments($visit_log_id, $this->input->post('comments'));
+
+		$this->visitlogmdl->updateStatus($visit_log_id, $this->input->post('visit_status_id'));
+
+		$visitlog = $this->visitlogmdl->getById($visit_log_id);
+		$visit_type = $this->visittypemdl->getById($visitlog->visit_type_id);
+
+		if ($this->getAgencyType() == 'C' && $this->input->post('visit_status_id') == 4) {
+
+			$patient = $this->patientmdl->getById($visitlog->patient_id);
+			$visit_type_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, $visitlog->approver_type_id);
+			$cm_approver = $this->teammdl->get($visitlog->patient_id, null, null, $patient->agency_id, null, 3);
+			$user_approver = 0;
+			if (count($visit_type_approver)) { // assigning to visit type approver
+
+				$this->visitlogmdl->updateUserApprover($visit_log_id, $visit_type_approver[0]->us_agy_id);
+				$user_approver = $visit_type_approver[0]->us_agy_id;
+			} else if (count($cm_approver) && !count($visit_type_approver)) { // assigning to CM approver
+
+				$this->visitlogmdl->updateUserApprover($visit_log_id, $cm_approver[0]->us_agy_id);
+				$user_approver = $cm_approver[0]->us_agy_id;
+
+			} else {
+
+				$agency_settings = $this->agencysettingsmdl->get($patient->agency_id);
+				$this->visitlogmdl->updateUserApprover($visit_log_id, ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver));
+				$user_approver = ($visitlog->approver_type_id == 1 ? $agency_settings->sn_approver : $agency_settings->pt_approver);
+
+			}
+
+			$this->visitlogmdl->updateStatus($visit_log_id, 3);
+
+			// An internal (and personal) email have to be sent to the “Approver”.
+			if ($visit_type->visit_program == "dorder") {
+				// send internal email
+				$subject = "You have a Doctor Order for Approval";
+				$msg_text = "A Doctor Order for patient {$patient->first_name} {$patient->last_name}  has been sent to you for your Approval";
+				$msg_imp = 0; // message importance "normal";
+				$user_to = $user_approver;
+
+				$this->messagemdl->msg_subject	= $subject;
+				$this->messagemdl->msg_text		= "\n".$msg_text;
+				$this->messagemdl->user_from = $this->getUsAgyId();
+				$msg_id = $this->messagemdl->insert();
+				$this->usermessagemdl->insert($msg_id, $user_to, $msg_imp);
+
+				// send to personal email if user have this settings ON
+				$usAgyInfo = $this->usagymdl->getByUsAgyId($user_to);
+				$userToInfo = $this->usermdl->getById($usAgyInfo->user_id);
+				if ( $userToInfo->internal_email_to_mailbox == 1 AND $this->validation->valid_email($userToInfo->user_email) ) {
+					$this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+					$this->email->to($userToInfo->user_email);
+					$this->email->subject('Internal Email: '.$this->messagemdl->msg_subject);
+
+					$body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$this->messagemdl->msg_text;
+	            	// $this->email->set_mailtype("html");
+
+					$this->email->message($body);
+					$this->email->send();
+					//$this->email->print_debugger();
+					$this->email->clear(TRUE);
+				}
+			}
+		}
+
+		if ($this->input->post('visit_status_id') == 4) {
+      		if ($visit_type->visit_program == "dorder") {
+				$this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 1);
+			}else{
+      			$this->visitlogmdl->updateConfirm($visit_log_id, 1);
+			}
+
+			$this->add2printqueue($visit_log_id);
+		}
+
+		// When a PTEV (assessment type=Discharge) has been approved (status=3or4)
+		if ($this->input->post('visit_status_id') == 4 OR $this->input->post('visit_status_id') == 3) {
+			if ($visit_type->visit_program == "ptev"){
+				$this->load->model('ptevmdl');
+				$PTEV = $this->ptevmdl->get($visit_log_id);
+				// when assessment type discharge,
+				if (isset($PTEV->tab_32_assess_type) AND $PTEV->tab_32_assess_type==5) {
+					// change the Contractor Patient Status to "Discharged"
+					$visit_user = $this->usagymdl->getByUsAgyId($visitlog->visit_user_id);
+					$this->load->model('patientcontractormdl');
+					$contractor = $this->patientcontractormdl->get($visitlog->patient_id, $visit_user->agency_id);
+					if (isset($contractor[0])) {
+						$contractor = $contractor[0];
+						$this->patientcontractormdl->updateFlex($contractor->pat_contractor_id, 'company_patient_status', 3);
+					}
+					 // in the Team, change all the users from this contractor (same contractor as the visit-user) to “Inactive”
+					$this->load->model('teammdl');
+					$this->teammdl->inactiveForAllUsersOfContractor($visitlog->patient_id, $visit_user->agency_id);
+				}
+			}
+		}
+
+		$this->index();
+
+	}
+
+ }

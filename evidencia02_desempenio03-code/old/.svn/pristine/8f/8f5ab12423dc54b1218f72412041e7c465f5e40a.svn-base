@@ -1,0 +1,20 @@
+{literal}
+<style type="text/css" media="print">
+@page {
+  size: A4 landscape;
+  margin: 42pt 12pt;
+}
+</style>
+{/literal}
+
+{assign var='inloop' value='yes'}
+{foreach key=uid item=user from=$users}
+	{assign var='rows' value=$user->rows}
+	{assign var='user' value="`$user->first_name` `$user->last_name`"}
+	{include file="calendar/print_agenda/print_preview.tpl"}
+	<br>
+{/foreach}
+
+<div style="text-align:center; padding-top:10px; width:1000px;">
+<input type="button" value="Print" name="btnPrint" id="btnPrint" onclick="print_order();" />&nbsp;&nbsp;&nbsp;<input type="button" value="Close" name="btnClose" id="btnClose" onclick="window.close();" />
+</div>

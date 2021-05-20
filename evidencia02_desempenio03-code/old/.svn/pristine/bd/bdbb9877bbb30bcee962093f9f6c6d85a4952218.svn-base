@@ -1,0 +1,270 @@
+<table border="0" width="100%" cellpadding="2" cellspacing="0">
+    <input type="hidden" name="us_agy_id" value="{$us_agy_id}">
+    <input type="hidden" name="agency_id" value="{$agency_id}">
+    <input type="hidden" name="user_id" value="{$user_id}">
+    <input type="hidden" name="user_email" value="{$user_email}">
+    <input type="hidden" name="payroll_visit_rate" value="{$payroll_visit_rate}">
+	
+    <input type="hidden" id="update_user" name="update_user" value="no">
+    <!-- <input type="hidden" name="payroll_mileage_rate" value="{$payroll_mileage_rate}"> -->
+    <input type="hidden" name="create_datetime" value="{$create_datetime|date_format}">
+    <tr>
+        <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User Personal Information</td>
+    </tr>
+    <tr>
+        <td colspan="4" class="subtitle">
+            <table cellpadding="5" cellspacing="2" border="0" width="100%">
+                <tr>
+                    <td class="ftitle" style="background-color: #cccccc;">User Name</td>
+                    <td style="background-color: #EFEFEF;">
+                        
+						<input type="text" class="js-input-field" disabled="disabled" id="first_name" name="first_name" value="{$user->first_name}"  />
+						<input type="text" class="js-input-field" disabled="disabled" id="last_name" name="last_name" value="{$user->last_name}"  />     
+                    </td>
+                    <td class="ftitle" style="background-color: #cccccc;">Birthdate </td>
+                    <td style="background-color: #EFEFEF;">
+						{*{$user->date_birth|date_format}*}
+						<input type="text" class="js-input-field" disabled="disabled" id="date_birth" name="date_birth" value="{$user->date_birth|date_format}" 
+						onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> *
+						<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('date_birth'), document.getElementById('fecha_help'));return false;" >						
+					</td>
+                </tr>
+                <tr>
+                    <td class="ftitle" style="background-color: #cccccc;">Address (address, city, zipcode) </td>
+                    <td style="background-color: #EFEFEF;">
+                        {*{$user->address} <br />
+						{$user->city}, {$user->state_name_long} {$user->zip_code}*}
+						<input type="text" class="js-input-field" disabled="disabled" placeholder="Address" id="address" name="address" value="{$user->address}" />
+						<input type="text" class="js-input-field" disabled="disabled" placeholder="City" id="city" name="city" value="{$user->city}" /> <br />
+						{html_options options=$state_list selected=$user->state_id name='state_id' class='js-input-field' disabled='disabled'}
+						<input type="text" class="js-input-field" disabled="disabled" placeholder="Zipcode" id="v" name="zip_code" value="{$user->zip_code}" />
+                             
+					 </td>
+                    <td class="ftitle" style="background-color: #cccccc;">Sex</td>
+                    <td style="background-color: #EFEFEF;">
+                        {*{$sex_list[$usersex]}
+                        {$sex_list|print_r}   
+                        {$user->tab_002_sex}*}  
+						{html_options name='tab_002_sex' options=$sex_list selected=$usersex class='js-input-field' disabled='disabled'}      
+					</td>
+                </tr>
+                <tr>
+                    <td class="ftitle" style="background-color: #cccccc;">Cell Phone</td>
+                    <td style="background-color: #EFEFEF;"><input type="text" class="js-input-field" disabled="disabled" id="phone_cell" name="phone_cell" value="{$user->phone_cell}" /></td>
+                    <td class="ftitle" style="background-color: #cccccc;">Other Language</td>
+                    <td style="background-color: #EFEFEF;;">
+                        {*{$other_lang_list[$user_otherlang]}         
+                        {$user->tab_010_other_lang_1}*}  
+						{html_options name='tab_010_other_lang_1' options=$other_lang_list selected=$user_otherlang class='js-input-field' disabled='disabled'}     
+                    </td>
+                </tr>
+                <tr>
+                    <td class="ftitle" style="background-color: #cccccc;">Other Phone</td>
+                    <td style="background-color: #EFEFEF;"><input type="text" class="js-input-field" disabled="disabled" id="phone_home" name="phone_home" value="{$user->phone_home}" /></td>
+                    <td class="ftitle" style="background-color: #cccccc;">S.S.N </td>
+                    <td style="background-color: #EFEFEF;"><input type="text" class="js-input-field" disabled="disabled" id="soc_sec_nbr" name="soc_sec_nbr" value="{$user->soc_sec_nbr}" /></td>
+                </tr>
+                <tr>
+                    <td class="ftitle" style="background-color: #cccccc;">Fax </td>
+                    <td colspan="3" style="background-color: #EFEFEF;"><input type="text" class="js-input-field" disabled="disabled" id="fax" name="fax" value="{$user->fax}" /></td>
+                </tr>
+                
+                <tr>
+                    <td class="ftitle" style="background-color: #cccccc;">Email </td>
+                    <td colspan="3" style="background-color: #EFEFEF;"><input type="text" class="js-input-field" disabled="disabled" id="user_email" name="user_email" value="{$user->user_email}" /></td>
+                </tr>           
+            </table>
+        
+        </td>
+    </tr>    
+    <tr>
+        <td colspan="4" class="subtitle">&nbsp;</td>
+    </tr>  
+    <tr>
+        <td colspan="4" class="subtitle">
+			<input class="btn" id="update-user-profile" value="Update User Profile" type="button" {if $no_commit_form}disabled="disabled"{/if}>
+            <input type="button" onClick="javascript:change_user_password({$user->user_id})" class="btn" value="Reset Password" {if $no_commit_form}disabled="disabled"{/if}>
+		</td>
+    </tr>
+    <tr>
+        <td colspan="4" class="subtitle">&nbsp;</td>
+    </tr>
+    <tr>
+        <td colspan="4" class="subtitle"><img src="{$image_url}button_small_side.png" style="vertical-align: middle"> User Settings</td>
+    </tr>
+    <tr>
+        <td colspan="4" height="10"></td>
+    </tr>
+    <tr>
+        <td class="ftitle">Status</td>
+        <td>{html_radios name='tab_021_user_status' options=$user_status_list selected=$tab_021_user_status}</td>
+    </tr>
+    <tr>
+        <td class="ftitle">Discipline</td>
+        <td> {if $profile_id==6 && $discipline_id ==9}
+            <input type="hidden" id="discipline_id" name="discipline_id" value="{$discipline_id}">
+            Physian
+            {else}
+            
+            {html_options options=$discipline_list selected=$discipline_id name='discipline_id' onchange='upinVisibility(this.value)'} *
+            {/if} </td>
+    </tr>
+    <tbody id="upin_td" style="display: none">
+        <tr>
+            <td class="ftitle">NPI</td>
+            <td><input type="text" id="upin" name="npi" value="{$npi}">            </td>
+        </tr>
+        <tr>
+            <td class="ftitle">Upin</td>
+            <td><input type="text" id="upin" name="upin" value="{$upin}">            </td>
+        </tr>
+    </tbody>
+    <tr>
+        <td class="ftitle">Profile</td>
+        <td>
+            {if $log_user_profile_id eq 1 or $log_user_profile_id eq 3}
+                {html_options options=$profile_list selected=$profile_id name='profile_id'} *
+                           
+            {else}
+                {html_options options=$profile_list selected=$profile_id name='profile_id' disabled='disabled'} *
+                <input type="hidden" name="profile_id" value="{$profile_id}">
+                    
+            {/if}
+        </td> 
+    </tr>
+    <tr>
+        <td class="ftitle">Relationship &nbsp;&nbsp; <a href="javascript:void(0);" style="font-weight: bold; font-size: 17px; color: #880000;" title='Payroll Stubs will be created for this user" when Employee is selected and "Invoices will be created for this user" when Contractor is selected.'>?</a></td>
+        <td>
+            <label><input type="radio" {if $contractor_or_employee eq 'E' OR !$contractor_or_employee}checked="checked"{/if} value="E" name="contractor_or_employee">
+            Employee Per Visit</label>
+
+            <label><input type="radio" {if $contractor_or_employee eq 'S'}checked="checked"{/if} value="E" name="contractor_or_employee">
+            Employee Salary</label>
+            
+            <label><input type="radio" {if $contractor_or_employee eq 'C'}checked="checked"{/if} value="C" name="contractor_or_employee">
+            Contractor</label>
+            * <br>		
+        </td>
+    </tr>
+    <tr>
+        <td class="ftitle">Cover area</td>
+        <td><input type="text" id="cover_area" name="cover_area" value="{$cover_area}"  ></td>
+    </tr>
+    <tr>    
+        <td class="ftitle"><b>Default Payment Type</b></td>
+        <td>
+          {html_options options=$payment_type_list selected=$default_payment_type name='default_payment_type'}
+        </td>
+    </tr>
+    <tr>
+        <td class="ftitle">Pay for Mileage &nbsp;&nbsp;</td>
+        <td>
+            <input type="radio" id="pay_mileage" name="pay_mileage" value="1" {if $pay_mileage eq 1}checked {/if}> Yes
+            <input type="radio" id="pay_mileage" name="pay_mileage" value="0" {if $pay_mileage eq 0} checked {/if}> No
+        </td>
+    </tr>
+    <tr {if $pay_mileage neq 1}style="display:none" {/if} id="tr_payroll_mileage_rate">    
+            <td class="ftitle">Rate per Mile </td>
+            <td>
+                $ <input type="text" id="payroll_mileage_rate" name="payroll_mileage_rate" value="{$payroll_mileage_rate}"  >   
+            </td>
+        
+    </tr>
+    <tr>
+        <td class="ftitle">Notes</td>
+        <td><textarea name="notes" rows="5" cols="50" wrap="auto">{$notes}</textarea> </td>
+    </tr>	
+	
+
+</table>
+<script type="text/javascript" src="{$base_url}style/maskedinput.js"></script>
+<script language="JavaScript" type="text/javascript">
+
+    function change_user_password(user_id) {literal}{{/literal}
+        dhxWins = new dhtmlXWindows();
+        dhxWins.setImagePath("{$base_url}style/window/imgs/");
+        //alert(user_id);
+        var w2 = dhxWins.createWindow("w2", 10, 10, 450, 300);
+        w2.setText("Reset Password");
+        //w2.button("park").hide();
+        //w2.button("minmax1").hide();
+        //w2.denyResize(); // deny resizing
+        //w2.denyMove(); 
+        dhxWins.window('w2').center();
+        dhxWins.window('w2').setModal(true);
+        w2.attachURL("{$index_url}/useragency/user/change_password/"+user_id+"/demographic");
+    
+    
+    {literal}}{/literal}
+
+	function send_invitation(user_id) {literal}{
+		if ($('#btn-send-invitation').val() != 'Send Invitation') {
+            return;
+        }
+
+        var btn_value = $('#btn-send-invitation').val();
+        $('#btn-send-invitation').val('Sending Invitation...');    
+        {/literal}var url = "{$index_url}/useragency/user/send_invitation/"+user_id;{literal}
+        
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: url,
+            success: function(data){
+                if(data.status=='1'){
+                    $('#btn-send-invitation').val(data.msg);
+                } else {
+                    $('#btn-send-invitation').val(btn_value);
+                    if (data.msg){
+                        alert(data.msg);
+                    }
+                }
+            },  
+            error: function (data, status, e)
+            {
+                alert('An error orrcured. Check internet connection or Contact Administrator.');
+                $('#btn-send-invitation').val(btn_value);
+            }
+        });
+    }
+    {/literal}
+	
+
+	{literal}
+	jQuery(function($){
+		$("#update-user-profile").click(function(){
+			$("#update_user").val('yes');
+			$(".js-input-field").attr('disabled', false);			
+		});
+        $("#phone_work").mask("999-999-9999");
+        $("#fax").mask("999-999-9999");
+        $("#phone_cell").mask("999-999-9999");
+        $("#phone_home").mask("999-999-9999");
+  
+        $("input[name=pay_mileage]").change(function(){
+            if($(this).attr('value')=='1'){
+                $('#tr_payroll_mileage_rate').show();
+            } else {
+                $('#tr_payroll_mileage_rate').hide();
+            }
+                
+        });
+    });
+	{/literal}
+
+	function upinVisibility ( discipline_id ) {literal}{{/literal}
+
+		if (discipline_id == 9)  {literal}{{/literal}
+			switchDisplay2('upin_td', '');
+			setCheckedValue('electronic_sign_setup',0);
+		{literal}}{/literal} else {literal}{{/literal}
+		 	switchDisplay2('upin_td', 'none');setValue('upin', '');
+		 	setCheckedValue('electronic_sign_setup',1);
+		{literal}}{/literal}
+	  
+	{literal}}{/literal}
+	
+	upinVisibility({$discipline_id});
+
+
+</script>

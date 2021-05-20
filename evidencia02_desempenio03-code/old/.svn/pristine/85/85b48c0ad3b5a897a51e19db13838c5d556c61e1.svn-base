@@ -1,0 +1,144 @@
+
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center">
+{if $is_special eq 1}
+  <tr>
+    <td colspan="2"><b>[SPECIAL INVOICE]</b></td>
+  </tr>
+{/if}
+{if $credit_invoice eq 1}
+  <tr>
+    <td colspan="2"><b>[CREDIT INVOICE]</b></td>
+  </tr>
+{/if}
+  <tr>
+    <td valign="top">
+			<table border="0" width="100%" cellpadding="5" cellspacing="0" align="center"> 
+				<tr> 
+					<td valign="top"><strong>Invoice Number:</strong>  {$invoice_no} </td>
+					<td valign="top"><strong>Invoice Amount:</strong> {$amount}</td>
+					<td valign="top" width="50%"><strong>Balance:</strong> {if $balance_in_red}<font color="#FF0000">{$balance}</font>{else}{$balance}{/if}</td>
+				</tr>
+				<tr>
+					<td valign="top"><strong>Invoice Date:</strong> {$invoice_date|date_format} </td>
+					<td valign="top"><strong>Invoice Due Date:</strong> {$invoice_due_date|date_format}</td>
+					<td valign="top" width="50%">
+						<strong>Agency:</strong> {$agency_name}
+					</td>
+				</tr>
+				<tr>
+					<td valign="top" colspan="3"> 
+						<strong>Internal Notes:</strong><br />
+						<div id="note-txt">{$notes}</div>
+						<!--div id="note-input" style="display:none;">
+							<form name="invoice_notes_form" id="invoice_notes_form" method="POST" onsubmit="return false">
+							<div><textarea name="notes" id="invoice-notes" cols="50" rows="2">{$notes}</textarea></div>
+							<div><input type="button" value="Save" onclick="save_invoice_notes();" /><input type="button" value="Cancel" onclick="cancel_edit_notes(0)" /></div>
+							</form>
+						</div-->
+						{if $credit_invoice neq 1}
+						 <span id="edit_link">[<a href="javascript://" onclick="editInvoice({$invoice_id})">Edit Invoice</a>]</span>
+						{/if}
+						{if $can_delete_invoice}
+						 <span id="delete_link">[<a href="javascript://" onclick="deleteInvoice({$invoice_id})"><font color="red">Delete Invoice</font></a>]</span>
+						{/if}
+						 {if $is_special eq 1}
+						 <span>[<a href="javascript://" onclick="printInvoice({$invoice_id})">Print Invoice</a>]</span>
+
+						 <form id="print_form" name="print_form" method="POST" action="{$index_url}contractor/invoices/print_invoice/{$invoice_id}" target="print_invoice">
+							<input type="hidden" name="include_notes" id="include_notes" value="0" />
+						 	<input type="submit" value="Print" style="display:none;" />
+						 </form>
+						<script type="text/javascript">
+							{literal}
+							function printInvoice(){
+								document.print_form.submit();
+							}
+							{/literal}
+						</script>						 
+						 {/if}
+					</td>
+				</tr>				
+			</table> 
+    </td>
+  </tr>
+  {if $credit_invoice neq 1}
+  <tr>
+    <td height="100%" valign="top">
+
+	    <div hrefmode="iframes-refresh-always" tabstyle="dhx_blue" id="a_tabbar" class="dhtmlxTabBar" imgpath="{$base_url}style/tab/imgs/" style="width:99.5%; height:100%;" skinColors="#f4f4f4,#F4F3EE" >
+	       	{if $is_special neq 1}
+	       	<div id="b1" width="120" name="Invoice Detail"   href="{$index_url}/contractor/invoices/detail_visits/{$invoice_id}/{$back}"></div>
+	       	<div id="b3" width="120" name="Other Charges"   href="{$index_url}/contractor/invoices/other_charges/{$invoice_id}/{$back}"></div>
+	       	{/if}
+			<div id="b2" width="120" name="Payments" href="{$index_url}/contractor/invoices/payments/{$invoice_id}/{$back}"></div>
+			{if $invoice_note == ''} 
+				<div id="b4" width="120" name="Invoice Notes" href="{$index_url}/contractor/invoices/edit_invoice_note/{$invoice_id}"></div>
+			{else}
+				<div id="b4" width="120" name="<span style='color: #2222dd;'>Invoice Notes</span>" href="{$index_url}/contractor/invoices/edit_invoice_note/{$invoice_id}"></div>
+			{/if}
+	    </div>
+    </td>
+  </tr>
+  {else}
+  <tr height="30"> 
+    <td valign="bottom">    	
+		<input type="button" class="btn" value="Back" onclick="history.go(-1)">
+  </tr>
+  {/if}
+</table>
+
+<iframe id="print_invoice" name="print_invoice" src="blank.html" height="0" width="0" style="border:0;height:0;width:0"></iframe>
+	
+<script>
+  function editInvoice (invoice_id) {literal}{{/literal}
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 500, 350);
+			w2.setText("Update Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/edit_invoice/"+invoice_id);
+			
+  {literal}}{/literal}
+
+  function deleteInvoice (invoice_id) {literal}{{/literal}
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 300, 250);
+			w2.setText("Confirm Delete Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/confirm_delete_invoice/"+invoice_id+"/{$back}");
+			
+  {literal}}{/literal}
+
+
+{literal}
+function edit_invoice_notes(){
+	$('#invoice-notes').val($('#note-txt').text());
+	$('#edit_link').hide();
+	$('#note-txt').hide();
+	$('#note-input').show();	
+}
+function save_invoice_notes(){
+	{/literal}ajax('{$index_url}{$resource_path}/save_invoice_notes/{$invoice_id}', ajaxParseAction, 'invoice_notes_form');{literal}
+}
+
+function cancel_edit_notes(saved){
+	if(typeof(saved) !== 'undefined' && saved == 1)
+	$('#note-txt').text($('#invoice-notes').val());
+	
+	$('#note-input').hide(); $('#note-txt').show();	$('#edit_link').show();
+}
+{/literal}
+</script>

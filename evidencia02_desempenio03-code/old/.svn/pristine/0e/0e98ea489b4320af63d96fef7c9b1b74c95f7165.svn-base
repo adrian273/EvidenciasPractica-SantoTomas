@@ -1,0 +1,27 @@
+<?
+
+ class TabFreqDurationMdl extends Model {
+
+	var $tab_freq_dur_id;
+	var $frequency;
+	var $duration;
+
+	function TabFreqDurationMdl () {
+
+		parent::Model();
+		
+	}
+	
+	function getOptions () {
+		
+		$query = $this->db->get('tab_freq_duration');
+		$result	=	$query->result();
+		foreach($result as $row){
+			$return[$row->tab_freq_dur_id] = $row->frequency.' week '.$row->duration;
+		}
+		
+		return $return;
+
+	}
+		
+ }

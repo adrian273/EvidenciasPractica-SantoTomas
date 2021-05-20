@@ -1,0 +1,54 @@
+	<script src="{$base_url}style/jquery-1.4.2.min.js" type="text/javascript"></script>
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>*}
+	{*<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>*}
+	<script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+	{*<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/blitzer/jquery-ui.css" type="text/css" />*}
+	<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+	
+</form>
+<form method="POST" action="{$index_url}{$resource_path}" onsubmit="this.action='{$index_url}{$resource_path}/byprocessdate/' + getValue('process_date_ini') + '/' + getValue('process_date_fin')">
+	<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+		<tr> 
+			<td>
+				<b>Payroll Period Start:</b>
+				<input type="text" id="process_date_ini" name="process_date_ini" value="{$process_date_ini}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('process_date_ini'), document.getElementById('process_date_fin'));return false;" >
+				&nbsp;&nbsp;&nbsp;
+				<b>End:</b>
+				<input type="text" id="process_date_fin" name="process_date_fin" value="{$process_date_fin}" size="10"
+				onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 
+				<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fEndPop(document.getElementById('process_date_ini'), document.getElementById('process_date_fin'));return false;" >
+				<input type="submit" value="Update">
+			</td>			
+		</tr>		
+	</table>
+
+<script type="text/javascript">
+    function confirmPayroll ( payroll_batch_no ) {literal}{
+
+    	var x = "Confirming the Payment will update the system as if the user's payments are correct and have already been made. After this point, only the Check Number, Check Date and Notes are allowed to be modified";
+		$('<div>' + x + '</div>').dialog({
+				title: "Confirm Payment",
+				resizable: false,
+				buttons: {								
+						"Confirm": function() {
+								$(this).dialog("close");
+								{/literal}url = '{$index_url}payroll/pending/confirmAll/' + payroll_batch_no;{literal}
+							    ajaxRequest.getRequest(url, [], [], function(data){
+									loadGrid();
+							    });
+						},
+						"Cancel": function() {
+								$(this).dialog("close");
+								
+						}
+				}
+		});
+  
+  	}{/literal}  
+
+  function printPrePayroll(payroll_batch_no) {literal}{
+  		{/literal}document.location = '{$index_url}payroll/pending/pdf/' + payroll_batch_no;{literal}
+  }{/literal}  
+</script>

@@ -1,0 +1,31 @@
+<?
+
+ class StateMdl extends Model {
+
+	var $state_id;
+  	var $state_name_long;
+	var $state_name_short;
+
+	function StateMdl () {
+
+		parent::Model();
+		
+	}
+
+	function getAll ( $return_mode = 'result2' ) {
+
+		$query = $this->db->get('sta_states');
+		return $query->result2('state_id', 'state_name_long');			
+	
+	}
+    
+    function getNameShort($state_id){
+        $this->db->select('state_name_short');
+        $this->db->where("state_id", $state_id);
+    
+        $query = $this->db->get('sta_states');
+        $state = $query->result();
+        return $state[0]->state_name_short;
+    }
+	
+ }

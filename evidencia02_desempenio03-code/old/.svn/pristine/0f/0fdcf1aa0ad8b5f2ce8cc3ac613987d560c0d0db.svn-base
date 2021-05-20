@@ -1,0 +1,2517 @@
+<?
+
+ class DoctorOrder extends MY_Controller {
+
+	function DoctorOrder () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "printqueue/doctororder");
+	}
+
+	function index () {
+	
+		$this->tpl->assign("tab_page", true);
+		$this->tpl->assign("no_grid_buttons", true);
+		$this->tpl->assign("noedit", true);
+    $this->tpl->assign("no_advance_filter" , true );
+    
+		$this->tpl->assign_include("filter_tpl", "printqueue/actions");
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+	
+	}	
+	
+	function grid () {
+		
+
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+
+		$head = $this->xml->Element("head");
+    $head->append($this->xml->Element("column", "width=3;type=ch", " "));		
+		$head->append($this->xml->Element("column", "width=10", "Creation Date"));
+		$head->append($this->xml->Element("column", "width=15", "Created by User"));
+		$head->append($this->xml->Element("column", "width=10", "Task Type"));
+		$head->append($this->xml->Element("column", "width=*", "Patient Name"));
+		$head->append($this->xml->Element("column", "width=10", "Print Status"));
+		$head->append($this->xml->Element("column", "width=7;align=center;type=link", "Actions"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link;sort=na", "#cspan"));
+		$head->append($this->xml->Element("column", "width=5;align=center;type=link;sort=na", "#cspan"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+
+		$document->append($head);
+		
+		foreach ($this->doprintqueuemdl->get($this->getAgencyId(), $this->input->post('queue_status')) as $prtqueue) {
+			
+			$cell = $this->xml->Element("row", "id=" . $prtqueue->prt_do_print_queue_id);
+      $cell->append($this->xml->Element("cell", null, "0"));
+			$cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($prtqueue->creation_datetime))));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->user_name));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->doc_doctor_order_type_description));
+			$cell->append($this->xml->Element("cell", null, $prtqueue->patient_name));
+
+			$prtStatus = $prtqueue->prt_do_print_queue_status == "PE" ? "Pending Print" : "Printed";			
+			$cell->append($this->xml->Element("cell", null, $prtStatus));
+			
+			$cell->append($this->xml->Element("cell", null, "Edit Status^javascript:modalEdit(".$prtqueue->prt_do_print_queue_id.")"));
+			$cell->append($this->xml->Element("cell", null, "Remove^javascript:deleteQueue(".$prtqueue->prt_do_print_queue_id.")"));
+			$cell->append($this->xml->Element("cell", null, "Print^".$this->config->config['index_url']."doctororder/".$prtqueue->doc_doctor_order_type_program."/pdf/".$prtqueue->doc_doctor_order_id));
+			$document->append($cell);
+			
+		}
+		
+	}
+	
+	function modalEdit ( $prt_id, $val=null ) {
+		
+		$this->tpl->assign("entity_id", $prt_id);
+		$this->tpl->assign("faction", 'modalEdit');
+
+		$prtqueue = $this->doprintqueuemdl->getById($prt_id);			
+
+		$this->tpl->assign('status_options', array(
+		                                "PE" => 'PENDING PRINT',
+		                                "PR" => 'PRINTED'));
+		                                
+		$this->tpl->assign('status_id', $prtqueue->prt_do_print_queue_status);
+		
+				
+		if ($this->validation->run() == FALSE) {
+			
+			$this->tpl->assign("prtqueue", $prtqueue);		
+				
+			$this->tpl->assign_include("dynamic_tpl", "printqueue/prtqueue_status_form");
+			$this->tpl->view("parts/ibase", $this->lang->language);
+			
+		} else {
+			
+			$this->assignPostData($this->doprintqueuemdl);
+			$this->doprintqueuemdl->prt_do_print_queue_status = $this->input->post('print_status');
+			$this->doprintqueuemdl->updatePrintStatus($prt_id);
+			
+			echo "<SCRIPT>parent.loadGrid();parent.cancelModal()</SCRIPT>";
+			
+		}
+	
+	}
+
+	function delete($prt_id){
+		
+		$document = $this->xml->Document();
+		$prtqueue = $this->doprintqueuemdl->getById($prt_id);			
+		
+		if ($prtqueue->prt_do_print_queue_status == 'PR') {
+			
+			$this->doprintqueuemdl->delete($prt_id);
+			$document->append($this->xml->Element('js', 'script=loadGrid()', null));
+			
+		} else {
+			
+			$document->append($this->xml->Element('alert', null, "Document must be printed first!"));
+			return;
+			
+		}
+		
+	}
+
+ function pdf(){
+    if (!is_null($this->input->post('record_ids'))) {
+      	//$this->load->library('Wick');
+      
+		//var_dump($this->input->post('record_ids'));exit;
+      	$record_ids = $this->input->post('record_ids');
+      	$recods = explode(",", $record_ids);
+      
+      	$filenames = array();
+      
+      	foreach ($this->doprintqueuemdl->getByIds($this->getAgencyId(), $recods) as $prtqueue) {
+        
+	        //$pdf = $this->wick->light("task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id);
+	        $method = $prtqueue->doc_doctor_order_type_program.'_pdf';
+	        if(!method_exists($this,$method))
+	        continue;
+	        
+	        $this->load->model($prtqueue->doc_doctor_order_type_program.'mdl');
+	        
+	        if(!isset($filenames[$prtqueue->doc_doctor_order_id])){
+	          	$filenames[$prtqueue->doc_doctor_order_id] = $this->$method($prtqueue->doc_doctor_order_id);
+	        }
+	        //break;
+	        //$this->config->config['index_url']."task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id;
+      	}
+      
+      
+		/** 
+		* New Code support >= PHP 5.3.0
+		*/
+		require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+		require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+		require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+		// and we can do stuff
+		$pdf = new \Jurosh\PDFMerge\PDFMerger;
+      	foreach($filenames as $name){
+        	$pdf->addPDF($name, 'all');
+      	}      
+      	$pdf->merge('download', 'all.pdf');
+        // End of code for PHP >= 5.3.0
+      
+      	foreach($filenames as $name){
+        	@unlink($name);
+      	} 
+           
+	}
+ }
+
+	function ptev_pdf ( $doctor_order_id ) {
+		
+		$this->load->model('ptevmdl');
+		$this->load->model('doctororder/doctororderptevmdl');
+		
+		// saving before printing pdf
+		
+		$do_ptev = $this->doctororderptevmdl->getByDoctorOrder($doctor_order_id);
+		$do = $this->docdoctorordermdl->getById($do_ptev->doc_doctor_order_id);
+		
+		$visit_log_id = $do_ptev->visit_log_id;
+		
+		$visit_log = $this->visitlogmdl->getById($visit_log_id);
+		if (!$this->request->is_get() && ($visit_log->visit_status_id == 1 || $visit_log->visit_status_id == 2)) {
+			
+			$this->visitlogmdl->updateStatus($visit_log_id, 2);
+			$this->assignPostData($this->ptevmdl);
+			
+			if ($visit_log->visit_status_id == 2) {
+				$this->ptevmdl->update($visit_log_id);
+			} else {
+				$this->ptevmdl->insert($visit_log_id);
+			}
+			
+		}
+		
+		// printing pdf
+		$ptev 	 	    = $this->ptevmdl->get($visit_log_id);
+		$patient    	= $this->patientmdl->getById($visit_log->patient_id);
+		$assigned_to    = $this->usagymdl->getByUsAgyId($visit_log->visit_user_id);
+		$approver    	= $this->usagymdl->getByUsAgyId($do->physician_id);
+		$agency	    	= $this->agencymdl->getByAgencyId($patient->agency_id);
+		$episde_icd		= $this->episodeicdmdl->get($visit_log->cms485_id);
+		$phys_user_id  	= $this->usagymdl->getByUsAgyId($visit_log->phys_user_id);
+		
+		$tab_20			= $this->parametermdl->getByType(20);
+		$tab_20[NULL]   = NULL;
+		$tab_27			= $this->parametermdl->getByType(27);
+		$tab_27[NULL]   = NULL;
+		$tab_33			= $this->parametermdl->getByType(33);
+		$tab_48			= $this->parametermdl->getByType(48);
+		$tab_48[NULL]   = NULL;
+		$tab_49			= $this->parametermdl->getByType(49);
+		$tab_49[NULL]   = NULL;
+		$tab_52			= $this->parametermdl->getByType(52);
+		$tab_52[NULL]   = NULL;
+		$tab_63			= $this->parametermdl->getByType(63);
+		$tab_63[NULL]   = NULL;
+		$tab_64			= $this->parametermdl->getByType(64);
+		$tab_78			= $this->parametermdl->getByType(78);
+		$tab_78[NULL]   = NULL;
+		$tab_79			= $this->parametermdl->getByType(79);
+		$tab_79[NULL]   = NULL;
+		$tab_87			= $this->parametermdl->getByType(87);
+		$tab_90			= $this->parametermdl->getByType(90);
+		$tab_90[NULL]   = NULL;
+		
+		$path_ticket = realpath("style/images/icon_enable_negro.gif");
+		
+        $__FONT['PDF']['SIZE'] = 9;
+        $__FONT['PDF']['FORM_MEDIUM'] = 10;
+        $__FONT['PDF']['FORM_SMALL'] = 9;
+        $__FONT['PDF']['FORM_SMALL2'] = 9;
+        $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+        $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+        $__FONT['PDF']['FORM_arial8'] = 9.5;
+        
+		
+		$this->load->library('fpdf');
+		if(!defined('FPDF_FONTPATH'))
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+
+    $this->fpdf = new fpdf;
+
+		
+        $cero_x = 11;
+        $cero_y = 2;
+		$this->fpdf->Open();
+		
+		$pdf = $this->fpdf;
+		
+
+		$this->fpdf->AddPage();
+		
+        $this->fpdf->SetDrawColor(130,100);
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $agency->agency_name); // agency name
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 22 ),"Licensed and Certified Home Health Agency");
+        
+        $this->fpdf->Rect(8,28, 577, 780);
+        
+        $this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 190),( $cero_y + 36 ),"PHYSICAL THERAPY ASSESSMENT                            " .
+        													"VISIT DATE: " . standard_date(mysql_to_unix($visit_log->visit_date_time))); // visit date
+    	$this->fpdf->Line(( $cero_x - 3 ) , ($cero_y + 40.5 ), ( $cero_x + 574 ), ($cero_y + 40.5 ));
+    	
+        $cero_y = 20;
+        $this->fpdf->SetTextColor(0,0,0);
+        $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(( $cero_x + 0),( $cero_y + 32 ),"Patient Name: ");
+	    
+	    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(( $cero_x + 60),( $cero_y + 32 ), $patient->first_name . " " . $patient->last_name); // pacient name
+	    
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetTextColor(0,0,0);
+
+        $this->fpdf->SetDrawColor(130,100);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 32 ),"Medicare #: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 290),( $cero_y + 32 ), $patient->medicare_id); // medicare id
+        
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390 +20),( $cero_y + 32 ), "  NA ");
+        $this->fpdf->Rect(( $cero_x + 380 +20),($cero_y + 23.5), 8.4, 8.4);
+        if (is_null($patient->medicare_id)){
+        	$this->fpdf->Image( $path_ticket, ( $cero_x + 381 +20 ),($cero_y + 24.5),6);
+        }
+        
+        $this->fpdf->Text(( $cero_x + 420 +20),( $cero_y + 32 ),"Medical Rec#: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 480 +20),( $cero_y + 32 ), $patient->medical_rec_nbr); // medicare id
+        
+        
+        
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 42 ), "SOC: ");
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 42 ), standard_date(mysql_to_unix($visit_log->estimated_soc_date))); // soc date
+        
+        // primary and second icd
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 42 ),"Primary Dx: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 42 ), substr($ptev->primary_diag, 0, 30));
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 42 ),"Date: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']); 
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 42 ), (!is_null(@$episde_icd[0]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[0]->icd_date)) : ""));
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 52 ),"Second Dx: ");              
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 52 ), substr($ptev->secondary_diag, 0, 30));
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 52 ),"Date: ");
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 52 ), (!is_null(@$episde_icd[1]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[1]->icd_date)) : ""));
+        
+
+        // start and end soc date
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 52 ),"From: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);                                
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_start_date)));
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 490),( $cero_y + 52 ),"To: ");
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 505),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_end_date)));
+        
+        
+        if ($visit_log->episode_start_date == $visit_log->estimated_soc_date)     {
+            $this->fpdf->Text(( $cero_x + 495),( $cero_y + 42 ),"   Certification");
+        } else {
+            $this->fpdf->Text(( $cero_x + 495),( $cero_y + 42 ),"   Recertif.");
+        }
+
+        $this->fpdf->Rect(( $cero_x + 490),($cero_y + 33.5), 8.4, 8.4);
+        $this->fpdf->Image( $path_ticket,( $cero_x + 491 ),($cero_y + 34.5),6);
+		
+		
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 62 ),"Physician: ");
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+		$this->fpdf->Text(( $cero_x + 60),($cero_y + 62 ), @$phys_user_id->complete_name);
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 62 ), "Therapist:");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+        $this->fpdf->Text(( $cero_x + 282),(  $cero_y + 62 ), $visit_log->first_name . " " .  $visit_log->last_name);
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 62 ), "Time In: ");
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(( $cero_x + 424),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in), 'USA_TIME_C'));
+        
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 490),( $cero_y + 62 ), "Time Out: ");
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(( $cero_x + 531),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out), 'USA_TIME_C'));
+
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+        
+        $cero_y =$cero_y+5;
+        $this->fpdf->SetLineWidth( 0.9 );
+        $this->fpdf->Line(8, 85, 584, 85);
+        
+		$item=22;
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+		foreach ($this->parametermdl->getByType(32) as $assess_type_id => $assess_type) {
+			
+	        $this->fpdf->Text($item, 95, $assess_type);
+			$pdf->Rect(($item - 11), 87, 8.4, 8.4);
+			
+            if ($assess_type_id == @@$ptev->tab_32_assess_type) {
+            	$pdf->Image($path_ticket, ($item - 10), 88, 6);
+            }
+			
+	        $item=$item+80;
+			
+		}
+
+		$this->fpdf->Text(( $cero_x + 435),( $cero_y + 70 ), "Mileage: "  );
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(( $cero_x + 475),( $cero_y + 70 ),$visit_log->mileage);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+		$pdf->Text(11, 107, "Cognition/Subjective:");
+		
+        
+        $this->fpdf->SetXY(101, 100.5);
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->MultiCell(470, 10, substr(@$ptev->cognition_subjective,0, 120));
+        
+        $pdf->SetLineWidth( 0.5);
+        $pdf->Line(101, 110.5, 571, 110.5);
+        $pdf->Line(101, 120.5, 571, 120.5);
+        
+        $pdf->SetFont('Arial','',$__FONT['PDF']['SIZE']);
+        $pdf->Text(11, 130, "Hx:");
+        
+        $this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_SMALL4']);
+        $pdf->Text(30, 130, substr(@$ptev->hx_comments, 0, 95));
+        
+        $pdf->Line(31, 131, 571, 131);
+        
+        
+        $pdf->SetLineWidth( 0.9);
+        $pdf->Line(8, 142, 585, 142);
+        
+        $pdf->SetLineWidth( 0.5);
+        
+        $pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $pdf->Text($cero_x, 152, "PHYSICAL ASSESSMENT");
+        
+        $pdf->Text($cero_x, 165, "JOINT ACTION                       STRENGTH                   R.O.M");
+        $pdf->Line(8, 167, 585, 167);
+        
+        $pdf->Text($cero_x, 175, "HIP                                            L               R                 L             R");
+        $pdf->Line(8, 177, 300, 177);
+        
+        
+        // vertival lines
+        $pdf->Line(120, 167, 120, 400);
+        $pdf->Line(165, 177, 165, 287);
+        $pdf->Line(210, 167, 210, 400);
+        $pdf->Line(255, 177, 255, 287);
+        $pdf->Line(300, 167, 300, 400);
+        
+        $pdf->Line(165, 317, 165, 400);
+        $pdf->Line(255, 317, 255, 400);
+        
+        
+        
+        $pdf->Text($cero_x, 185, "Abduction");
+        $pdf->Line(8, 187, 300, 187);
+        $pdf->Text(132, 185, $tab_20[@$ptev->tab_020_hip_abd_sl]);
+        $pdf->Text(177, 185, $tab_20[@$ptev->tab_020_hip_abd_sr]);
+        $pdf->Text(224, 185, (@$ptev->tab_052_hip_abd_rl ? $tab_52[@$ptev->tab_052_hip_abd_rl] : @$ptev->tab_052_hip_abd_rl_deg));
+        $pdf->Text(264, 185, (@$ptev->tab_052_hip_abd_rr ? $tab_52[@$ptev->tab_052_hip_abd_rr] : @$ptev->tab_052_hip_abd_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 195, "Adduction");
+        $pdf->Line(8, 197, 300, 197);
+        $pdf->Text(132, 195, $tab_20[@$ptev->tab_020_hip_add_sl]);
+        $pdf->Text(177, 195, $tab_20[@$ptev->tab_020_hip_add_sr]);
+        $pdf->Text(224, 195, (@$ptev->tab_052_hip_add_rl ? $tab_52[@$ptev->tab_052_hip_add_rl] : @$ptev->tab_052_hip_add_rl_deg));
+        $pdf->Text(264, 195, (@$ptev->tab_052_hip_add_rr ? $tab_52[@$ptev->tab_052_hip_add_rr] : @$ptev->tab_052_hip_add_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 205, "Rotation");
+        $pdf->Line(8, 207, 300, 207);
+        $pdf->Text(132, 205, $tab_20[@$ptev->tab_020_hip_rot_sl]);
+        $pdf->Text(177, 205, $tab_20[@$ptev->tab_020_hip_rot_sr]);
+        $pdf->Text(224, 205, (@$ptev->tab_052_hip_rot_rl ? $tab_52[@$ptev->tab_052_hip_rot_rl] : @$ptev->tab_052_hip_rot_rl_deg));
+        $pdf->Text(264, 205, (@$ptev->tab_052_hip_rot_rr ? $tab_52[@$ptev->tab_052_hip_rot_rr] : @$ptev->tab_052_hip_rot_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 215, "Flexion");
+        $pdf->Line(8, 217, 300, 217);
+        $pdf->Text(132, 215, $tab_20[@$ptev->tab_020_hip_fle_sl]);
+        $pdf->Text(177, 215, $tab_20[@$ptev->tab_020_hip_fle_sr]);
+        $pdf->Text(224, 215, (@$ptev->tab_052_hip_fle_rl ? $tab_52[@$ptev->tab_052_hip_fle_rl] : @$ptev->tab_052_hip_fle_rl_deg));
+        $pdf->Text(264, 215, (@$ptev->tab_052_hip_fle_rr ? $tab_52[@$ptev->tab_052_hip_fle_rr] : @$ptev->tab_052_hip_fle_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 225, "Extension");
+        $pdf->Line(8, 227, 300, 227);
+        $pdf->Text(132, 225, $tab_20[@$ptev->tab_020_hip_ext_sl]);
+        $pdf->Text(177, 225, $tab_20[@$ptev->tab_020_hip_ext_sr]);
+        $pdf->Text(224, 225, (@$ptev->tab_052_hip_ext_rl ? $tab_52[@$ptev->tab_052_hip_ext_rl] : @$ptev->tab_052_hip_ext_rl_deg));
+        $pdf->Text(264, 225, (@$ptev->tab_052_hip_ext_rr ? $tab_52[@$ptev->tab_052_hip_ext_rr] : @$ptev->tab_052_hip_ext_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 235, "KNEE");
+        $pdf->Line(8, 237, 300, 237);
+        
+        
+        $pdf->Text($cero_x, 245, "Flexion");
+        $pdf->Line(8, 247, 300, 247);
+        $pdf->Text(132, 245, $tab_20[@$ptev->tab_020_kne_fle_sl]);
+        $pdf->Text(177, 245, $tab_20[@$ptev->tab_020_kne_fle_sr]);
+        $pdf->Text(224, 245, (@$ptev->tab_052_kne_fle_rl ? $tab_52[@$ptev->tab_052_kne_fle_rl] : @$ptev->tab_052_kne_fle_rl_deg));
+        $pdf->Text(264, 245, (@$ptev->tab_052_kne_fle_rr ? $tab_52[@$ptev->tab_052_kne_fle_rr] : @$ptev->tab_052_kne_fle_rr_deg));
+        
+ 
+        $pdf->Text($cero_x, 255, "Extension");
+        $pdf->Line(8, 257, 300, 257);
+        $pdf->Text(132, 255, $tab_20[@$ptev->tab_020_kne_ext_sl]);
+        $pdf->Text(177, 255, $tab_20[@$ptev->tab_020_kne_ext_sr]);
+        $pdf->Text(224, 255, (@$ptev->tab_052_kne_ext_rl ? $tab_52[@$ptev->tab_052_kne_ext_rl] : @$ptev->tab_052_kne_ext_rl_deg));
+        $pdf->Text(264, 255, (@$ptev->tab_052_kne_ext_rr ? $tab_52[@$ptev->tab_052_kne_ext_rr] : @$ptev->tab_052_kne_ext_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 265, "ANKLE");
+        $pdf->Line(8, 267, 300, 267);
+        
+        
+        $pdf->Text($cero_x, 275, "Dorsiflex / Plantar Flex");
+        $pdf->Line(8, 277, 300, 277);
+        $pdf->Text(132, 275, $tab_20[@$ptev->tab_020_ank_dor_sl]);
+        $pdf->Text(177, 275, $tab_20[@$ptev->tab_020_ank_dor_sr]);
+        $pdf->Text(224, 275, (@$ptev->tab_052_ank_dor_rl ? $tab_52[@$ptev->tab_052_ank_dor_rl] : @$ptev->tab_052_ank_dor_rl_deg));
+        $pdf->Text(264, 275, (@$ptev->tab_052_ank_dor_rr ? $tab_52[@$ptev->tab_052_ank_dor_rr] : @$ptev->tab_052_ank_dor_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 285, "Inversion / Eversion");
+        $pdf->Line(8, 287, 300, 287);
+        $pdf->Text(132, 285, $tab_20[@$ptev->tab_020_ank_inv_sl]);
+        $pdf->Text(177, 285, $tab_20[@$ptev->tab_020_ank_inv_sr]);
+        $pdf->Text(224, 285, (@$ptev->tab_052_ank_inv_rl ? $tab_52[@$ptev->tab_052_ank_inv_rl] : @$ptev->tab_052_ank_inv_rl_deg));
+        $pdf->Text(264, 285, (@$ptev->tab_052_ank_inv_rr ? $tab_52[@$ptev->tab_052_ank_inv_rr] : @$ptev->tab_052_ank_inv_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 295, "TRUNK");
+        $pdf->Line(8, 297, 300, 297);
+        
+        $pdf->Text($cero_x, 305, "PART/ACTION                        STRENGTH                   R.O.M");
+        $pdf->Line(8, 307, 300, 307);
+        
+        $pdf->Text($cero_x, 315, "SHOULDER                              L               R                 L             R");
+        $pdf->Line(8, 317, 300, 317);
+        
+        
+        $pdf->Text($cero_x, 325, "Flexion");
+        $pdf->Line(8, 327, 300, 327);
+        $pdf->Text(132, 325, $tab_20[@$ptev->tab_020_sho_fle_sl]);
+        $pdf->Text(177, 325, $tab_20[@$ptev->tab_020_sho_fle_sr]);
+        $pdf->Text(224, 325, (@$ptev->tab_052_sho_fle_rl ? $tab_52[@$ptev->tab_052_sho_fle_rl] : @$ptev->tab_052_sho_fle_rl_deg));
+        $pdf->Text(264, 325, (@$ptev->tab_052_sho_fle_rr ? $tab_52[@$ptev->tab_052_sho_fle_rr] : @$ptev->tab_052_sho_fle_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 335, "Extension");
+        $pdf->Line(8, 337, 300, 337);
+        $pdf->Text(132, 335, $tab_20[@$ptev->tab_020_sho_ext_sl]);
+        $pdf->Text(177, 335, $tab_20[@$ptev->tab_020_sho_ext_sr]);
+        $pdf->Text(224, 335, (@$ptev->tab_052_sho_ext_rl ? $tab_52[@$ptev->tab_052_sho_ext_rl] : @$ptev->tab_052_sho_ext_rl_deg));
+        $pdf->Text(264, 335, (@$ptev->tab_052_sho_ext_rr ? $tab_52[@$ptev->tab_052_sho_ext_rr] : @$ptev->tab_052_sho_ext_rr_deg));
+
+
+        $pdf->Text($cero_x, 345, "Abduction");
+        $pdf->Line(8, 347, 300, 347);
+        $pdf->Text(132, 345, $tab_20[@$ptev->tab_020_sho_abd_sl]);
+        $pdf->Text(177, 345, $tab_20[@$ptev->tab_020_sho_abd_sr]);
+        $pdf->Text(224, 345, (@$ptev->tab_052_sho_abd_rl ? $tab_52[@$ptev->tab_052_sho_abd_rl] : @$ptev->tab_052_sho_abd_rl_deg));
+        $pdf->Text(264, 345, (@$ptev->tab_052_sho_abd_rr ? $tab_52[@$ptev->tab_052_sho_abd_rr] : @$ptev->tab_052_sho_abd_rr_deg));
+        
+
+        $pdf->Text($cero_x, 355, "Adduction");
+        $pdf->Line(8, 357, 300, 357);
+        $pdf->Text(132, 355, $tab_20[@$ptev->tab_020_sho_add_sl]);
+        $pdf->Text(177, 355, $tab_20[@$ptev->tab_020_sho_add_sr]);
+        $pdf->Text(224, 355, (@$ptev->tab_052_sho_add_rl ? $tab_52[@$ptev->tab_052_sho_add_rl] : @$ptev->tab_052_sho_add_rl_deg));
+        $pdf->Text(264, 355, (@$ptev->tab_052_sho_add_rr ? $tab_52[@$ptev->tab_052_sho_add_rr] : @$ptev->tab_052_sho_add_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 365, "ELBOW");
+        $pdf->Line(8, 367, 300, 367);
+        
+        
+        $pdf->Text($cero_x, 375, "Flexion");
+        $pdf->Line(8, 377, 300, 377);
+        $pdf->Text(132, 375, $tab_20[@$ptev->tab_020_elb_fle_sl]);
+        $pdf->Text(177, 375, $tab_20[@$ptev->tab_020_elb_fle_sr]);
+        $pdf->Text(224, 375, (@$ptev->tab_052_elb_fle_rl ? $tab_52[@$ptev->tab_052_elb_fle_rl] : @$ptev->tab_052_elb_fle_rl_deg));
+        $pdf->Text(264, 375, (@$ptev->tab_052_elb_fle_rr ? $tab_52[@$ptev->tab_052_elb_fle_rr] : @$ptev->tab_052_elb_fle_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 385, "Extension");
+        $pdf->Line(8, 387, 300, 387);
+        $pdf->Text(132, 385, $tab_20[@$ptev->tab_020_elb_ext_sl]);
+        $pdf->Text(177, 385, $tab_20[@$ptev->tab_020_elb_ext_sr]);
+        $pdf->Text(224, 385, (@$ptev->tab_052_elb_ext_rl ? $tab_52[@$ptev->tab_052_elb_ext_rl] : @$ptev->tab_052_elb_ext_rl_deg));
+        $pdf->Text(264, 385, (@$ptev->tab_052_elb_ext_rr ? $tab_52[@$ptev->tab_052_elb_ext_rr] : @$ptev->tab_052_elb_ext_rr_deg));
+        
+        
+        $pdf->Text($cero_x, 395, "Wrist/Grip");
+        $pdf->Line(8, 397, 300, 397);
+        $pdf->Text(132, 395, $tab_20[@$ptev->tab_020_wri_gri_sl]);
+        $pdf->Text(177, 395, $tab_20[@$ptev->tab_020_wri_gri_sr]);
+        $pdf->Text(224, 395, (@$ptev->tab_052_wri_gri_rl ? $tab_52[@$ptev->tab_052_wri_gri_rl] : @$ptev->tab_052_wri_gri_rl_deg));
+        $pdf->Text(264, 395, (@$ptev->tab_052_wri_gri_rr ? $tab_52[@$ptev->tab_052_wri_gri_rr] : @$ptev->tab_052_wri_gri_rr_deg));
+    
+    
+    
+    	$pdf->Text(340, 165, "FUNCTIONAL STATUS");
+    
+        $pdf->Text(340, 185, "Bed Mobility");
+        $pdf->Text(440, 185, $tab_48[@$ptev->p1_fun_sts_tab048_bed_mob]);
+		$this->fpdf->Line(300, 187, 584, 187);
+        
+        $pdf->Text(340, 195, "Transfers W/C");
+        $pdf->Text(440, 195, $tab_48[@$ptev->p1_fun_sts_tab048_trans_wc_bed]);
+        $this->fpdf->Line(300, 197, 584, 197);
+		
+        $pdf->Text(340, 205, "Transfers Tub/Showe");
+        $pdf->Text(440, 205, $tab_48[@$ptev->p1_fun_sts_tab048_trans_tub_show]);
+        $this->fpdf->Line(300, 207, 584, 207);
+		
+        $pdf->Text(340, 215, "Supine to Sit");
+        $pdf->Text(440, 215, $tab_48[@$ptev->p1_fun_sts_tab048_supine_tosit]);
+        $this->fpdf->Line(300, 217, 584, 217);
+		
+        $pdf->Text(340, 225, "Sit to stand");
+        $pdf->Text(440, 225, $tab_48[@$ptev->p1_fun_sts_tab048_sittostand]);
+        $this->fpdf->Line(300, 227, 584, 227);
+		
+        $pdf->Text(340, 235, "Gaint:");
+        $pdf->Text(366, 235, @$ptev->p1_fun_sts_gait_feet);
+        $this->fpdf->Line(300, 237, 584, 237);
+		
+        $pdf->Text(386, 235, "feet");
+        $pdf->Text(440, 235, $tab_48[@$ptev->p1_fun_sts_tab048_gait_ft]);
+        		
+        $pdf->Text(340, 245, "Gait Device Type");
+        $pdf->Text(440, 245, $tab_78[@$ptev->p1_fun_sts_tab078_gait_dev_typ]);
+        $this->fpdf->Line(300, 247, 584, 247);
+		
+        $pdf->Text(340, 255, "Weight Bearing Status");
+        $pdf->Text(440, 255, $tab_79[@$ptev->p1_fun_sts_tab079_weig_bear_12345]);
+        $this->fpdf->Line(300, 257, 584, 257);
+		
+        $pdf->Rect(340, 263, 8.4, 8.4);
+        if (@$ptev->p1_fun_sts_tab090_weig_bear_12345 == 1) {
+        	$this->fpdf->Image( $path_ticket, 341, 264, 6);
+        }
+        $pdf->Rect(400, 263, 8.4, 8.4);
+        if (@$ptev->p1_fun_sts_tab090_weig_bear_12345 == 2) {
+        	$this->fpdf->Image( $path_ticket, 401, 264, 6);
+        }
+        $pdf->Text(340, 270, "         FWB               WBAT");
+        
+        $pdf->Rect(340, 273, 8.4, 8.4);
+        if (@$ptev->p1_fun_sts_tab090_weig_bear_12345 == 3) {
+        	$this->fpdf->Image( $path_ticket, 341, 274, 6);
+        }
+        $pdf->Rect(400, 273, 8.4, 8.4);
+        if (@$ptev->p1_fun_sts_tab090_weig_bear_12345 == 4) {
+        	$this->fpdf->Image( $path_ticket, 401, 274, 6);
+        }
+        $pdf->Text(340, 280, "         PWB               TDWB");
+        
+        $pdf->Rect(340, 283, 8.4, 8.4);
+        if (@$ptev->p1_fun_sts_tab090_weig_bear_12345 == 5) {
+        	$this->fpdf->Image( $path_ticket, 341, 284, 6);
+        }
+        $pdf->Text(340, 290, "         NWB");
+        $this->fpdf->Line(300, 297, 584, 297);
+		
+        $pdf->Text(340, 305, "Other:");
+        $pdf->Text(376, 305, @$ptev->p1_fun_sts_weig_bear_sts_other_weight);
+        $pdf->Text(400, 305, $tab_27[@$ptev->p1_fun_sts_tab027_weig_bear_sts_other_weight]);
+        $this->fpdf->Line(300, 307, 584, 307);
+		
+        $pdf->Text(340, 315, "Stairs");
+        $pdf->Text(440, 315, $tab_48[@$ptev->p1_fun_sts_tab048_stairs]);
+        $this->fpdf->Line(300, 317, 584, 317);
+		
+        $pdf->Text(340, 325, "Steps / Curb");
+        $pdf->Text(440, 325, $tab_48[@$ptev->p1_fun_sts_tab048_stepscurb]);
+        $this->fpdf->Line(300, 327, 584, 327);
+		
+        $pdf->Text(340, 335, "Toileting");
+        $pdf->Text(440, 335, $tab_48[@$ptev->p1_fun_sts_tab048_toileting]);
+        $this->fpdf->Line(300, 337, 584, 337);
+		
+        $pdf->Text(340, 345, "Wheelchair Mgmnt");
+        $pdf->Text(440, 345, $tab_48[@$ptev->p1_fun_sts_tab048_wheelcha]);
+        $this->fpdf->Line(300, 347, 584, 347);
+		
+        $pdf->Text(340, 355, "Other");
+        $pdf->Text(440, 355, $tab_48[@$ptev->p1_fun_sts_tab048_Other]);
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(340, 365, substr(@$ptev->p1_fun_sts_Other_desc, 0, 30));
+		$this->fpdf->Line(300, 367, 584, 367);
+    
+    	$pdf->Line(8, 400, 585, 400);
+    	
+    	
+    	
+    	$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(66, 410, "BALANCE");
+    	$pdf->Line(194, 400, 194, 483);
+    	
+    	
+    	$pdf->Rect(12, 413, 8.4, 8.4);
+    	$pdf->Text(23, 420, "Tinetti");
+        if (@$ptev->p1_bal_tinetti == 1) {
+        	$this->fpdf->Image( $path_ticket, 13, 414, 6);
+        }
+        
+        $pdf->Text(12, 430, "Gait Score");
+        $pdf->Text(80, 430, @$ptev->p1_bal_gait_score);
+        $pdf->Line(76, 432, 94, 432);
+		
+        $pdf->Text(12, 440, "Balance Score");
+        $pdf->Text(80, 440, @$ptev->p1_bal_score);
+        $pdf->Line(76, 442, 94, 442);
+		
+        $pdf->Text(12, 450, "Total Score");
+        $pdf->Text(80, 450, @@$ptev->p1_bal_gait_score + @@$ptev->p1_bal_score);
+    	$pdf->Line(76, 452, 94, 452);
+    	
+    	$pdf->Rect(12, 453, 8.4, 8.4);
+        if (@$ptev->p1_bal_berg == 1) {
+        	$this->fpdf->Image( $path_ticket, 13, 454, 6);
+        }
+    	
+    	$pdf->Rect(52, 453, 8.4, 8.4);
+        if (@$ptev->p1_bal_na == 1) {
+        	$this->fpdf->Image( $path_ticket, 53, 454, 6);
+        }
+    	
+    	$pdf->Text(12, 460, "     Berg        N/A ");
+    	
+    	$pdf->Text(12, 470, "Note:");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+    	$pdf->Text(40, 470, substr(@$ptev->p1_bal_desc,  0, 30));
+    	$pdf->Text(40, 480, substr(@$ptev->p1_bal_desc, 30, 60));
+    	$pdf->Line(38, 472, 190, 472);
+    	
+    	$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(253, 410, "BALANCE ASSISST");
+		$pdf->Line(375, 400, 375, 483);
+		
+		$pdf->Text(195, 430, "Static Sitting");
+		$pdf->Text(285, 430, $tab_48[@$ptev->p1_bal_tab048_assist_stat]);
+		$pdf->Line(280, 432, 308, 432);
+		
+		$pdf->Text(195, 440, "Dynamic Sitting");
+		$pdf->Text(285, 440, $tab_48[@$ptev->p1_bal_tab048_assist_dyn_sitt]);
+		$pdf->Line(280, 442, 308, 442);
+		
+		$pdf->Text(195, 450, "Dynamic Standing");
+		$pdf->Text(285, 450, $tab_48[@$ptev->p1_bal_tab048_assist_dyn_stan]);
+		$pdf->Line(280, 452, 308, 452);
+		
+		$pdf->Text(195, 470, "Note:");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(223, 470, substr(@$ptev->p1_bal_assist_desc, 0, 30));
+		$pdf->Text(223, 480, substr(@$ptev->p1_bal_assist_desc, 30, 60));
+		$pdf->Line(221, 472, 371, 472);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(461, 410, "POSTURE");
+    	
+		$pdf->Text(376, 430, "Sitting Posture");
+		$pdf->Text(460, 430, $tab_49[@$ptev->p1_pos_tab049_sitt_tabyyy]);
+		$pdf->Line(455, 432, 490, 432);
+		
+		$pdf->Text(376, 440, "Standing Posture");
+		$pdf->Text(460, 440, $tab_49[@$ptev->p1_pos_tab049_stand_tabyyy]);
+    	$pdf->Line(455, 442, 490, 442);
+		
+		$pdf->Text(376, 450, "Transitional");
+		$pdf->Text(460, 450, $tab_49[@$ptev->p1_postab_049_tran_tabyyy]);
+		$pdf->Line(455, 452, 490, 452);
+		
+		$pdf->Text(376, 470, "Note:");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(404, 470, substr(@$ptev->p1_pos_desc,  0, 30));
+		$pdf->Text(404, 480, substr(@$ptev->p1_pos_desc, 30, 60));
+		$pdf->Line(403, 472, 580, 472);
+		
+		$pdf->Line(8, 483, 585, 483);
+    
+    	$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(11, 493, "GAIT / DISTANCE / SURFACE");
+    	
+    	$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+    	$pdf->Text(11, 503, substr(@$ptev->p1_gait_dist_surf, 0, 100));
+    	
+
+    	$pdf->Line(8, 513, 585, 513);
+    	
+    	
+    	$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(11, 523, "SYSTEMS ASSESSMENT");
+    	
+    	$pdf->Text(11, 533, "BP:  " . @$ptev->p1_sa_bp1 . "    " . @$ptev->p1_sa_bp2);
+
+    	$pdf->Rect(74, 526, 8.4, 8.4);
+        if (@$ptev->tab_062_right_left == 1) {
+        	$this->fpdf->Image( $path_ticket, 75, 527, 6);
+        }
+
+    	$pdf->Rect(100, 526, 8.4, 8.4);
+        if (@$ptev->tab_062_right_left == 2) {
+        	$this->fpdf->Image( $path_ticket, 101, 527, 6);
+        }
+        
+    	$pdf->Text(80, 533, "  R        L");
+    	
+    	
+    	$pdf->Rect(24, 536, 8.4, 8.4);
+        if (@$ptev->p1_sa_sitt_lyi_stand == 1) {
+        	$this->fpdf->Image( $path_ticket, 25, 537, 6);
+        }
+    	
+    	$pdf->Rect(72, 536, 8.4, 8.4);
+        if (@$ptev->p1_sa_sitt_lyi_stand == 2) {
+        	$this->fpdf->Image( $path_ticket, 73, 537, 6);
+        }
+    	
+    	$pdf->Rect(119, 536, 8.4, 8.4);
+        if (@$ptev->p1_sa_sitt_lyi_stand == 3) {
+        	$this->fpdf->Image( $path_ticket, 120, 537, 6);
+        }
+    	
+    	$pdf->Text(11, 543, "          Sitting         Lying          Standing");
+    	
+    	
+    	
+    	$pdf->Text(11, 553, "HR:                      02 Sat:");
+    	$pdf->Text(31, 553, @$ptev->p1_sa_hr);
+    	$pdf->Text(118, 553, @$ptev->p1_sa_o2_sat);
+    	
+    	
+    	$pdf->Text(11, 563, "Skin:");
+    	$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+    	$pdf->Text(11, 573, @$ptev->p1_sa_skin);
+    	$pdf->Line(11, 575, 185, 575);
+    	
+    	$pdf->Line(187, 513, 187, 701);
+    	
+    	
+    	$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(230, 523, "PAIN ASSESSMENT");
+    	
+    	$countx = 0;
+    	$county = 0;
+    	foreach ($tab_87 as $pa_id => $pa) {
+    		
+    		$pdf->Rect(200 + $countx - 10, 526 + $county, 8.4, 8.4);
+	        if (@$ptev->p1_pa_nbr == $pa_id) {
+	        	$this->fpdf->Image( $path_ticket, 200 + $countx - 9, 526 + $county + 1, 6);
+	        }
+    		$pdf->Text(200 + $countx, 533 + $county, $pa);
+    		
+    		$countx += ($pa_id < 2 ? 50 : 25);
+    		if ($countx > 162) { 
+    			$countx  = 0;
+    			$county += 10;
+    		}
+    		
+    	}
+    	
+    	$pdf->Text(190, 553, "Location:");
+    	
+    	$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+    	$pdf->Text(190, 563, @$ptev->p1_pa_locat);
+    	$pdf->Line(190, 565, 368, 565);
+		
+    	$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(190, 573, "Current Pain control:");
+    	
+    	$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+    	$pdf->Text(190, 583, @$ptev->p1_pa_curr_pain);
+		
+    	
+    	$pdf->Line(374, 513, 374, 701);
+
+    	
+    	$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Text(430, 523, "MENTAL STATUS");
+    	
+    	// mental status checkboxes
+    	$array_ms = array ('p1_ms_alert' => "Alert ",
+    					   'p1_ms_oriented' => "Oriented",
+    					   'p1_ms_disoriented' => "Disoriented",
+    					   'p1_ms_forget' => "Forgetful",
+    					   'p1_ms_agitated' => "Agitated",
+    					   'p1_ms_depressed' => "Depressed");
+    	
+    	$count = 0;
+    	foreach ($array_ms as $ms_field => $ms_name) {
+    		
+    		$pdf->Rect(378 + ($count % 2 == 1 ? 70 : 0), 526 + (floor($count/2) * 10), 8.4, 8.4);
+	        if (@$ptev->$ms_field == 1) {
+	        	$this->fpdf->Image( $path_ticket, 379 + ($count % 2 == 1 ? 70 : 0), 527 + (floor($count/2) * 10), 6);
+	        }
+    		
+    		$pdf->Text(390 + ($count % 2 == 1 ? 70 : 0), 533 + (floor($count/2) * 10), $ms_name);
+    		
+    		$count++;
+    		
+    	}
+    	
+    	$pdf->Line(8, 586, 585, 586);
+    	
+    	
+    	$pdf->Text(11, 596, "HOME EVALUATION");
+    	
+    	$pdf->Rect(11, 599, 8.4, 8.4);
+        if (@$ptev->p1_he_alone == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 600, 6);
+        }
+        $pdf->Text(22, 606, "Alone");
+        
+		
+        $pdf->Text(22, 616, "Other:");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(50, 616, @$ptev->p1_he_other_desc);
+		$pdf->Line(48, 618, 161, 618);
+		$pdf->Line(11, 627, 161, 627);
+    
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+    	$pdf->Rect(11, 629, 8.4, 8.4);
+        if (@$ptev->p1_he_alone == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 630, 6);
+        }
+    	$pdf->Rect(62, 629, 8.4, 8.4);
+        if (@$ptev->p1_he_apt == 1) {
+        	$this->fpdf->Image( $path_ticket, 63, 630, 6);
+        }
+        $pdf->Text(22, 636, "Home           Apt ");
+    
+    
+    	$pdf->Rect(11, 639, 8.4, 8.4);
+        if (@$ptev->p1_he_mobile == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 640, 6);
+        }
+    	$pdf->Rect(83, 639, 8.4, 8.4);
+        if (@$ptev->p1_he_stairs == 1) {
+        	$this->fpdf->Image( $path_ticket, 84, 640, 6);
+        }
+        $pdf->Text(22, 646, "Mobile Home        Stairs");    
+    
+    
+    	$pdf->Rect(11, 649, 8.4, 8.4);
+        if (@$ptev->p1_he_senior == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 650, 6);
+        }
+        $pdf->Text(22, 656, "Senior Complex");
+        
+        
+    	$pdf->Rect(11, 659, 8.4, 8.4);
+        if (@$ptev->p1_he_spacious == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 660, 6);
+        }
+    	$pdf->Rect(83, 659, 8.4, 8.4);
+        if (@$ptev->p1_he_clean == 1) {
+        	$this->fpdf->Image( $path_ticket, 84, 660, 6);
+        }
+        $pdf->Text(22, 666, "Spacious              Clean");
+        
+        
+    	$pdf->Rect(11, 669, 8.4, 8.4);
+        if (@$ptev->p1_he_crowded == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 670, 6);
+        }
+    	$pdf->Rect(83, 669, 8.4, 8.4);
+        if (@$ptev->p1_he_clutter == 1) {
+        	$this->fpdf->Image( $path_ticket, 84, 670, 6);
+        }
+        $pdf->Text(22, 676, "Crowded              Cluttered");
+    
+    
+    	$pdf->Rect(11, 679, 8.4, 8.4);
+        if (@$ptev->p1_he_unsound == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 680, 6);
+        }
+        $pdf->Text(22, 686, "Unsound Structure");
+        
+        
+    	$pdf->Rect(11, 689, 8.4, 8.4);
+        if (@$ptev->p1_he_no_tel == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 690, 6);
+        }
+        $pdf->Text(22, 696, "No Telephone available or unusable");
+        
+        
+        
+    	$pdf->Text(230, 596, "SAFETY MEASURES");
+    	
+    	$pdf->Rect(190, 599, 8.4, 8.4);
+        if (@$ptev->p1_saf_clear_path == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 600, 6);
+        }
+    	$pdf->Rect(284, 599, 8.4, 8.4);
+        if (@$ptev->p1_saf_fall_precau == 1) {
+        	$this->fpdf->Image( $path_ticket, 285, 600, 6);
+        }        
+        $pdf->Text(201, 606, "Clear Pathways            Fall Precaution");
+        
+        
+    	$pdf->Rect(190, 609, 8.4, 8.4);
+        if (@$ptev->p1_saf_at_home == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 610, 6);
+        }
+        $pdf->Text(201, 616, "Safety at home");
+
+
+    	$pdf->Rect(190, 619, 8.4, 8.4);
+        if (@$ptev->p1_saf_emerg_manag == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 620, 6);
+        }
+        $pdf->Text(201, 626, "Emergency Management");
+        
+        
+    	$pdf->Rect(190, 629, 8.4, 8.4);
+        if (@$ptev->p1_saf_ortho_precau == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 630, 6);
+        }
+        $pdf->Text(201, 636, "Ortho Precautions / Restrictions");
+    	
+		
+    	$pdf->Rect(190, 639, 8.4, 8.4);
+        if (@$ptev->p1_saf_steps == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 640, 6);
+        }
+        $pdf->Text(201, 646, "Steps");
+
+
+    	$pdf->Rect(190, 649, 8.4, 8.4);
+        if (@$ptev->p1_saf_stairs == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 650, 6);
+        }
+        $pdf->Text(201, 656, "Stairs");
+
+
+    	$pdf->Rect(190, 659, 8.4, 8.4);
+        if (@$ptev->p1_saf_24_hour_sup == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 660, 6);
+        }
+        $pdf->Text(201, 666, "24 hr. supervision");
+
+
+    	$pdf->Rect(190, 669, 8.4, 8.4);
+        if (@$ptev->p1_saf_infec_control == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 670, 6);
+        }
+        $pdf->Text(201, 676, "Infection control measures");
+
+
+    	$pdf->Rect(190, 679, 8.4, 8.4);
+        if (@$ptev->p1_saf_use_dme == 1) {
+        	$this->fpdf->Image( $path_ticket, 191, 680, 6);
+        }
+        $pdf->Text(201, 686, "Use DME Equipment:");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(201, 696, @$ptev->p1_saf_use_dme_desc);
+
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(376, 596, "OTHER ASSESSMENTS:");
+
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $pdf->SetXY(376, 600);
+        $pdf->MultiCell(202, 10, substr(@$ptev->p1_other_assessment, 0, 300));
+
+
+		$pdf->Line(8, 701, 585, 701);
+
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 711, "EQUIPMENT IN THE HOME");
+
+		$pdf->Text(11, 721, "     Tub          Shower Bench          Handheld Shower              Reacher          Wheelchair            Hospital Bed");
+    	
+    	$pdf->Rect(11, 714, 8.4, 8.4);
+        if (@$ptev->p1_equi_tub == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 715, 6);
+        }
+        
+    	$pdf->Rect(54, 714, 8.4, 8.4);
+        if (@$ptev->p1_equi_shower == 1) {
+        	$this->fpdf->Image( $path_ticket, 55, 715, 6);
+        }
+
+    	$pdf->Rect(137, 714, 8.4, 8.4);
+        if (@$ptev->p1_equi_handheld == 1) {
+        	$this->fpdf->Image( $path_ticket, 138, 715, 6);
+        }
+        
+    	$pdf->Rect(241, 714, 8.4, 8.4);
+        if (@$ptev->p1_equi_reacher == 1) {
+        	$this->fpdf->Image( $path_ticket, 242, 715, 6);
+        }
+        
+    	$pdf->Rect(301, 714, 8.4, 8.4);
+        if (@$ptev->p1_equi_wheelch == 1) {
+        	$this->fpdf->Image( $path_ticket, 302, 715, 6);
+        }
+        
+    	$pdf->Rect(376, 714, 8.4, 8.4);
+        if (@$ptev->p1_equi_hosp_bed == 1) {
+        	$this->fpdf->Image( $path_ticket, 377, 715, 6);
+        }
+
+
+		$pdf->Text(11, 731, "     Bedside Comm                         Raised Toilet Seat             Grab Bars  Toilet                           Grab Bars Bath ");
+    	
+    	$pdf->Rect(11, 724, 8.4, 8.4);
+        if (@$ptev->p1_equi_beside_comm == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 725, 6);
+        }
+        
+    	$pdf->Rect(137, 724, 8.4, 8.4);
+        if (@$ptev->p1_equi_raised_toil == 1) {
+        	$this->fpdf->Image( $path_ticket, 138, 725, 6);
+        }
+
+    	$pdf->Rect(241, 724, 8.4, 8.4);
+        if (@$ptev->p1_equi_grab_toil == 1) {
+        	$this->fpdf->Image( $path_ticket, 242, 725, 6);
+        }
+
+    	$pdf->Rect(376, 724, 8.4, 8.4);
+        if (@$ptev->p1_equi_grab_bars_bath == 1) {
+        	$this->fpdf->Image( $path_ticket, 377, 725, 6);
+        }
+
+
+		$pdf->Text(11, 741, "     Grab Bars Shower                    Walker                               Rolling Walker             Cane         Other:");
+    	
+    	$pdf->Rect(11, 734, 8.4, 8.4);
+        if (@$ptev->p1_equi_grab_bars_shower == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 735, 6);
+        }
+
+    	$pdf->Rect(137, 734, 8.4, 8.4);
+        if (@$ptev->p1_equi_walker == 1) {
+        	$this->fpdf->Image( $path_ticket, 138, 735, 6);
+        }
+
+    	$pdf->Rect(241, 734, 8.4, 8.4);
+        if (@$ptev->p1_equi_rolling_walk == 1) {
+        	$this->fpdf->Image( $path_ticket, 242, 735, 6);
+        }
+
+    	$pdf->Rect(331, 734, 8.4, 8.4);
+        if (@$ptev->p1_equi_cane == 1) {
+        	$this->fpdf->Image( $path_ticket, 332, 735, 6);
+        }
+
+    	$pdf->Rect(376, 734, 8.4, 8.4);
+        if (@$ptev->p1_equi_other == 1) {
+        	$this->fpdf->Image( $path_ticket, 377, 735, 6);
+        }
+
+
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(416, 741, @$ptev->p1_equi_other_desc);
+
+
+		$pdf->Line(8, 746, 585, 746);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 756, "THERAPY INTERVENTION / INSTRUCTION");
+		
+		$pdf->Text(11, 766, "      Evaluation               Lymphadema         Chest Physiotherapy         Ultrasound          Home Therapy Program         Therapeutic Exercise ");
+    	
+    	$pdf->Rect(11, 759, 8.4, 8.4);
+        if (@$ptev->p1_ther_evaluation == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 760, 6);
+        }
+        
+    	$pdf->Rect(91, 759, 8.4, 8.4);
+        if (@$ptev->p1_ther_lymphadema == 1) {
+        	$this->fpdf->Image( $path_ticket, 92, 760, 6);
+        }
+		
+    	$pdf->Rect(171, 759, 8.4, 8.4);
+        if (@$ptev->p1_ther_chest_phys == 1) {
+        	$this->fpdf->Image( $path_ticket, 172, 760, 6);
+        }
+
+    	$pdf->Rect(278, 759, 8.4, 8.4);
+        if (@$ptev->p1_ther_ultra_sound == 1) {
+        	$this->fpdf->Image( $path_ticket, 279, 760, 6);
+        }
+
+    	$pdf->Rect(346, 759, 8.4, 8.4);
+        if (@$ptev->p1_ther_home_ther == 1) {
+        	$this->fpdf->Image( $path_ticket, 347, 760, 6);
+        }
+
+    	$pdf->Rect(465, 759, 8.4, 8.4);
+        if (@$ptev->p1_ther_thera_exerc == 1) {
+        	$this->fpdf->Image( $path_ticket, 466, 760, 6);
+        }
+
+
+		$pdf->Text(11, 776, "      Electrotherapy         Muscle Reeduc      Balance                             Gait Trainig         Transfer Training                     Prosthetic Training");
+    	
+    	$pdf->Rect(11, 769, 8.4, 8.4);
+        if (@$ptev->p1_ther_electro == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 770, 6);
+        }
+        
+    	$pdf->Rect(91, 769, 8.4, 8.4);
+        if (@$ptev->p1_ther_muscle_reeduc == 1) {
+        	$this->fpdf->Image( $path_ticket, 92, 770, 6);
+        }
+
+    	$pdf->Rect(171, 769, 8.4, 8.4);
+        if (@$ptev->p1_ther_balance == 1) {
+        	$this->fpdf->Image( $path_ticket, 172, 770, 6);
+        }
+
+    	$pdf->Rect(278, 769, 8.4, 8.4);
+        if (@$ptev->p1_ther_gait_trai == 1) {
+        	$this->fpdf->Image( $path_ticket, 279, 770, 6);
+        }
+
+    	$pdf->Rect(346, 769, 8.4, 8.4);
+        if (@$ptev->p1_ther_trans_trai == 1) {
+        	$this->fpdf->Image( $path_ticket, 347, 770, 6);
+        }
+
+    	$pdf->Rect(465, 769, 8.4, 8.4);
+        if (@$ptev->p1_ther_prosth_trai == 1) {
+        	$this->fpdf->Image( $path_ticket, 466, 770, 6);
+        }
+
+
+		$pdf->Text(11, 786, "      Fabrication of Devices");
+    	
+    	$pdf->Rect(11, 779, 8.4, 8.4);
+        if (@$ptev->p1_ther_fabric_devices == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 780, 6);
+        }
+
+
+		$pdf->Text(11, 796, "      Other: ");
+    	
+    	$pdf->Rect(11, 789, 8.4, 8.4);
+        if (@$ptev->p1_ther_other == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 790, 6);
+        }
+
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(53, 796, substr(@$ptev->p1_ther_other_text, 0, 90));
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(511, 820, "      Page: 1 of 2");
+		
+		
+		
+		##########
+		# Page 2 #
+		##########
+		
+		$cero_y = 2;
+		$this->fpdf->AddPage();
+		
+		
+        $this->fpdf->SetDrawColor(130,100);
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $agency->agency_name); // agency name
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 22 ),"Licensed and Certified Home Health Agency");
+        
+        $this->fpdf->Rect(8,28, 577, 780);
+        
+        $this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 190),( $cero_y + 36 ),"PHYSICAL THERAPY ASSESSMENT                            " .
+        													"VISIT DATE: " . standard_date(mysql_to_unix($visit_log->visit_date_time))); // visit date
+    	$this->fpdf->Line(( $cero_x - 3 ) , ($cero_y + 40.5 ), ( $cero_x + 574 ), ($cero_y + 40.5 ));
+    	
+        $cero_y = 20;
+        $this->fpdf->SetTextColor(0,0,0);
+        
+        
+        
+        
+        $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(( $cero_x + 0),( $cero_y + 32 ),"Patient Name: ");
+	    
+	    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(( $cero_x + 60),( $cero_y + 32 ), $patient->first_name . " " . $patient->last_name); // pacient name
+	    
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetTextColor(0,0,0);
+
+        $this->fpdf->SetDrawColor(130,100);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 32 ),"Medicare #: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 290),( $cero_y + 32 ), $patient->medicare_id); // medicare id
+        
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390 + 20),( $cero_y + 32 ), "  NA ");
+        $this->fpdf->Rect(( $cero_x + 380 + 20),($cero_y + 23.5), 8.4, 8.4);
+        if (is_null($patient->medicare_id)){
+        	$this->fpdf->Image( $path_ticket, ( $cero_x + 381 + 20 ),($cero_y + 24.5),6);
+        }
+        
+        $this->fpdf->Text(( $cero_x + 420 + 20),( $cero_y + 32 ),"Medical Rec#: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 480 +20),( $cero_y + 32 ), $patient->medical_rec_nbr); // medicare id
+        
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 42 ), "SOC: ");
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 42 ), standard_date(mysql_to_unix($visit_log->estimated_soc_date))); // soc date
+        
+        // primary and second icd
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 42 ),"Primary Dx: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 42 ), @$episde_icd[0]->icd9_name);
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 42 ),"Date: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']); 
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 42 ), (!is_null(@$episde_icd[0]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[0]->icd_date)) : ""));
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 52 ),"Second Dx: ");              
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 60),( $cero_y + 52 ), @$episde_icd[1]->icd9_name);
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 52 ),"Date: ");
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 288),( $cero_y + 52 ), (!is_null(@$episde_icd[1]->icd_date) ? standard_date(mysql_to_unix(@$episde_icd[1]->icd_date)) : ""));
+        
+
+        // start and end soc date
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 52 ),"From: ");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);                                
+        $this->fpdf->Text(( $cero_x + 415),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_start_date)));
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 490),( $cero_y + 52 ),"To: ");
+
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 505),( $cero_y + 52 ), standard_date(mysql_to_unix($visit_log->episode_end_date)));
+        
+        
+        if ($visit_log->episode_start_date == $visit_log->estimated_soc_date)     {
+            $this->fpdf->Text(( $cero_x + 495),( $cero_y + 42 ),"   Certification");
+        } else {
+            $this->fpdf->Text(( $cero_x + 495),( $cero_y + 42 ),"   Recertif.");
+        }
+
+        $this->fpdf->Rect(( $cero_x + 490),($cero_y + 33.5), 8.4, 8.4);
+        $this->fpdf->Image( $path_ticket,( $cero_x + 491 ),($cero_y + 34.5),6);
+
+
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 62 ),"Physician: ");
+
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+		$this->fpdf->Text(( $cero_x + 60),($cero_y + 62 ), @$phys_user_id->complete_name);
+
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 240),( $cero_y + 62 ), "Therapist:");
+        
+        $this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_arial8']);
+        $this->fpdf->Text(( $cero_x + 282),(  $cero_y + 62 ), $visit_log->first_name . " " .  $visit_log->last_name);
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 390),( $cero_y + 62 ), "Time In: ");
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(( $cero_x + 424),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_in), 'USA_TIME_C'));
+        
+		$this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(( $cero_x + 490),( $cero_y + 62 ), "Time Out: ");
+		$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_SMALL']);
+		$this->fpdf->Text(( $cero_x + 531),( $cero_y + 62 ), standard_date(mysql_to_unix($visit_log->visited_date . " " . $visit_log->visited_time_out), 'USA_TIME_C'));
+
+        
+        
+       
+        
+        $cero_y =$cero_y+5;
+        $this->fpdf->SetLineWidth( 0.9 );
+        $this->fpdf->Line(8, 85, 584, 85);
+
+        $pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $pdf->Text(11, 96, "FUNCTIONAL LIMITATIONS / PROBLEMS AREAS");	
+        
+		$pdf->Text(11, 106, "      Amputation                                           Ambulation                  Hearing ");
+    	
+    	$pdf->Rect(11, 99, 8.4, 8.4);
+        if (@$ptev->p2_amputation == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 100, 6);
+        }
+        
+    	$pdf->Rect(168, 99, 8.4, 8.4);
+        if (@$ptev->p2_amputation == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 100, 6);
+        }
+        
+    	$pdf->Rect(257, 99, 8.4, 8.4);
+        if (@$ptev->p2_amputation == 1) {
+        	$this->fpdf->Image( $path_ticket, 258, 100, 6);
+        }
+
+
+		$pdf->Text(11, 116, "      Bowel Bladder Incontinence                 Speech                        Legally Blind ");
+    	
+    	$pdf->Rect(11, 109, 8.4, 8.4);
+        if (@$ptev->p2_bowel == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 110, 6);
+        }
+        
+    	$pdf->Rect(168, 109, 8.4, 8.4);
+        if (@$ptev->p2_speech == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 110, 6);
+        }
+        
+    	$pdf->Rect(257, 109, 8.4, 8.4);
+        if (@$ptev->p2_legally_blind == 1) {
+        	$this->fpdf->Image( $path_ticket, 258, 110, 6);
+        }
+        
+        
+		$pdf->Text(11, 126, "      Contracture                                           Endurance                   Paralysis ");
+    	
+    	$pdf->Rect(11, 119, 8.4, 8.4);
+        if (@$ptev->p2_contracture == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 120, 6);
+        }
+        
+    	$pdf->Rect(168, 119, 8.4, 8.4);
+        if (@$ptev->p2_endurance == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 120, 6);
+        }
+        
+    	$pdf->Rect(257, 119, 8.4, 8.4);
+        if (@$ptev->p2_paralysis == 1) {
+        	$this->fpdf->Image( $path_ticket, 258, 120, 6);
+        }
+        
+
+		$pdf->Text(11, 136, "      Dyspnea w/min exertion                       Poor Conditioning ");
+    	
+    	$pdf->Rect(11, 129, 8.4, 8.4);
+        if (@$ptev->p2_dyspnea == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 130, 6);
+        }
+        
+    	$pdf->Rect(168, 129, 8.4, 8.4);
+        if (@$ptev->p2_poor_cond == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 130, 6);
+        }
+
+
+		$pdf->Text(11, 146, "      Decreased Range of Motion                 Impaired Functional Strength");
+    	
+    	$pdf->Rect(11, 139, 8.4, 8.4);
+        if (@$ptev->p2_decreased == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 140, 6);
+        }
+        
+    	$pdf->Rect(168, 139, 8.4, 8.4);
+        if (@$ptev->p2_imp_func_stre == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 140, 6);
+        }
+
+
+		$pdf->Text(11, 156, "      Shuffling/wide based Gait                     Impaired Functional Mobility");
+    	
+    	$pdf->Rect(11, 149, 8.4, 8.4);
+        if (@$ptev->p2_shuffling == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 150, 6);
+        }
+        
+    	$pdf->Rect(168, 149, 8.4, 8.4);
+        if (@$ptev->p2_imp_func_mob == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 150, 6);
+        }
+
+
+		$pdf->Text(11, 166, "      Dysfunctional Posture                           Impaired Transfer Technique");
+    	
+    	$pdf->Rect(11, 159, 8.4, 8.4);
+        if (@$ptev->p2_dysfunct == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 160, 6);
+        }
+        
+    	$pdf->Rect(168, 159, 8.4, 8.4);
+        if (@$ptev->p2_imp_func_trans == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 160, 6);
+        }
+
+
+		$pdf->Text(11, 176, "      Impaired Safety Awareness                  Impaired Balance");
+    	
+    	$pdf->Rect(11, 169, 8.4, 8.4);
+        if (@$ptev->p2_impaired_safe == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 170, 6);
+        }
+        
+    	$pdf->Rect(168, 169, 8.4, 8.4);
+        if (@$ptev->p2_balance == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 170, 6);
+        }
+
+
+		$pdf->Text(11, 186, "      Soft Tissue spasm/restriction/Edema");
+    	
+    	$pdf->Rect(11, 179, 8.4, 8.4);
+        if (@$ptev->p2_soft_tissue == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 180, 6);
+        }
+
+
+		$pdf->Text(11, 196, "      Impaired Coordination                          Pain Restricting Activity");
+    	
+    	$pdf->Rect(11, 189, 8.4, 8.4);
+        if (@$ptev->p2_impaired_coord == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 190, 6);
+        }
+        
+    	$pdf->Rect(168, 189, 8.4, 8.4);
+        if (@$ptev->p2_pain_restrict == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 190, 6);
+        }
+
+
+		$pdf->Text(11, 206, "      Swollen painful joints (specify):");
+    	
+    	$pdf->Rect(11, 199, 8.4, 8.4);
+        if (@$ptev->p2_swollen == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 200, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(155, 206, @$ptev->p2_swollen_specify);
+		$pdf->Line(155, 208, 430, 208);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL4']);
+		$pdf->Text(11, 216, "      Other:");
+    	
+    	$pdf->Rect(11, 209, 8.4, 8.4);
+        if (@$ptev->p2_other_func == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 210, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(58, 216, @$ptev->p2_other_func_desc);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		
+		
+		$this->fpdf->Line(8, 221, 584, 221);
+		
+		
+        $pdf->Text(11, 232, "INTERVENTION / TREATMENT MODALITY / PLAN OF CARE");	
+        
+		$pdf->Text(11, 242, "      Evaluation                                             Lymphadema              Chest PT");
+    	
+    	$pdf->Rect(11, 235, 8.4, 8.4);
+        if (@$ptev->p2_evalua == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 236, 6);
+        }
+        
+    	$pdf->Rect(168, 235, 8.4, 8.4);
+        if (@$ptev->p2_int_lympha == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 236, 6);
+        }
+        
+    	$pdf->Rect(257, 235, 8.4, 8.4);
+        if (@$ptev->p2_int_chest == 1) {
+        	$this->fpdf->Image( $path_ticket, 258, 236, 6);
+        }
+        
+        
+		$pdf->Text(11, 252, "      Ultrasound                                            Gait Training               Balance");
+    	
+    	$pdf->Rect(11, 245, 8.4, 8.4);
+        if (@$ptev->p2_ultra == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 246, 6);
+        }
+        
+    	$pdf->Rect(168, 245, 8.4, 8.4);
+        if (@$ptev->p2_int_gait == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 246, 6);
+        }
+        
+    	$pdf->Rect(257, 245, 8.4, 8.4);
+        if (@$ptev->p2_int_balance == 1) {
+        	$this->fpdf->Image( $path_ticket, 258, 246, 6);
+        }
+
+
+		$pdf->Text(11, 262, "      Home Therapy program                        Electrotherapy");
+    	
+    	$pdf->Rect(11, 255, 8.4, 8.4);
+        if (@$ptev->p2_home == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 256, 6);
+        }
+        
+    	$pdf->Rect(168, 255, 8.4, 8.4);
+        if (@$ptev->p2_elect == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 256, 6);
+        }
+
+
+		$pdf->Text(11, 272, "      Therapeutic Exercise                             Muscle Reeduction");
+    	
+    	$pdf->Rect(11, 265, 8.4, 8.4);
+        if (@$ptev->p2_therap == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 266, 6);
+        }
+        
+    	$pdf->Rect(168, 265, 8.4, 8.4);
+        if (@$ptev->p2_muscle == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 266, 6);
+        }
+
+
+		$pdf->Text(11, 282, "      Transfer Training                                   Prosthetic Training");
+    	
+    	$pdf->Rect(11, 275, 8.4, 8.4);
+        if (@$ptev->p2_transfer == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 276, 6);
+        }
+        
+    	$pdf->Rect(168, 275, 8.4, 8.4);
+        if (@$ptev->p2_prosthe == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 276, 6);
+        }
+
+
+		$pdf->Text(11, 292, "      Management & Eval                              Fabrication of Devices");
+    	
+    	$pdf->Rect(11, 285, 8.4, 8.4);
+        if (@$ptev->p2_manage == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 286, 6);
+        }
+        
+    	$pdf->Rect(168, 285, 8.4, 8.4);
+        if (@$ptev->p2_fabric == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 286, 6);
+        }
+
+
+		$pdf->Text(11, 302, "      Pulse Oximetry Prn                               Home Safety               Fall Prevention");
+    	
+    	$pdf->Rect(11, 295, 8.4, 8.4);
+        if (@$ptev->p2_pulse_oxi == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 296, 6);
+        }
+        
+    	$pdf->Rect(168, 295, 8.4, 8.4);
+        if (@$ptev->p2_home_safety == 1) {
+        	$this->fpdf->Image( $path_ticket, 169, 296, 6);
+        }
+        
+    	$pdf->Rect(257, 295, 8.4, 8.4);
+        if (@$ptev->p2_fall_prev == 1) {
+        	$this->fpdf->Image( $path_ticket, 258, 296, 6);
+        }
+
+
+		$pdf->Text(11, 312, "      Modality (specify frequency, duration, amount):");
+
+    	$pdf->Rect(11, 305, 8.4, 8.4);
+        if (@$ptev->p2_modal == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 306, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(221, 312, @$ptev->p2_modal_desc);
+		$pdf->Line(221, 314, 524, 314);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 322, "      Other:");
+
+    	$pdf->Rect(11, 315, 8.4, 8.4);
+        if (@$ptev->p2_other_interv == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 316, 6);
+        }
+
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(58, 322, @$ptev->p2_other_interv_desc);
+
+
+		$this->fpdf->Line(8, 327, 584, 327);
+
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 338, "SHORT TERM AND LONG TERM OUTCOMES WITH TIME FRAMES");	
+
+
+		$pdf->Text(11, 348, "      Return to pre-injury / illness level of function within:");
+    	
+    	$pdf->Rect(11, 341, 8.4, 8.4);
+        if (@$ptev->p2_return_to_pre == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 342, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 348, $tab_63[@$ptev->p2_return_to_pre_weeks]);
+		$pdf->Line(260, 350, 303, 350);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 358, "      Patient will meet maximum potential within:");
+    	
+    	$pdf->Rect(11, 351, 8.4, 8.4);
+        if (@$ptev->p2_patient_will == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 352, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 358, $tab_63[@$ptev->p2_patient_will_weeks]);
+		$pdf->Line(260, 360, 303, 360);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 368, "      Return to optimal and safe functionality within:");
+    	
+    	$pdf->Rect(11, 361, 8.4, 8.4);
+        if (@$ptev->p2_return_to_opti == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 362, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 368, $tab_63[@$ptev->p2_return_to_opti_weeks]);
+		$pdf->Line(260, 370, 303, 370);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 378, "      Demonstrate effective pain management within:");
+    	
+    	$pdf->Rect(11, 371, 8.4, 8.4);
+        if (@$ptev->p2_demost_eff == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 372, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 378, $tab_63[@$ptev->p2_demost_eff_weeks]);
+		$pdf->Line(260, 380, 303, 380);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 388, "      Improve bed mobility to:");
+    	$pdf->Line(131, 389, 195, 389);
+    	$pdf->Rect(11, 381, 8.4, 8.4);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+        if (@$ptev->p2_improv_bed_mov == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 382, 6);
+        }
+		
+		$pdf->Text(131, 388, @$ptev->p2_improv_bed_mov_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(193, 388, "    assist within:  " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 388, $tab_63[@$ptev->p2_improv_bed_mov_weeks]);
+		$pdf->Line(260, 389, 303, 389);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 398, "      Improve bed mobilty to independent within:");
+    	
+    	$pdf->Rect(11, 391, 8.4, 8.4);
+		if (@$ptev->p2_improv_bed_mov_indep == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 392, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 398, $tab_63[@$ptev->p2_improv_bed_mov_indep_weeks]);
+		$pdf->Line(260, 400, 303, 400);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 408, "      Improve transfers to");
+    	$pdf->Line(113, 410, 173, 410);
+		
+    	$pdf->Rect(11, 401, 8.4, 8.4);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+        if (@$ptev->p2_improv_trans == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 402, 6);
+        }
+
+		$pdf->Text(113, 408, @$ptev->p2_improv_trans_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(174, 408, "  assist using " );
+		$pdf->Line(233, 410, 292, 410);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->text(233, 408, @$ptev->p2_improv_trans_desc2);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(298, 408, " within: " ); 
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(332, 408, $tab_63[@$ptev->p2_improv_trans_weeks]);
+		$pdf->Line(332, 410, 373, 410);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 418, "      Independent with transfer skills within:");
+    	
+    	$pdf->Rect(11, 411, 8.4, 8.4);
+        if (@$ptev->p2_indep_trans == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 412, 6);
+        }
+	
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 418, $tab_63[@$ptev->p2_indep_trans_weeks]);
+		$pdf->Line(260, 420, 303, 420);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 428, "      Patient to be independent with safety issues in:");
+    	
+    	$pdf->Rect(11, 421, 8.4, 8.4);
+        if (@$ptev->p2_pat_indep == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 422, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 428, $tab_63[@$ptev->p2_pat_indep_weeks]);
+		$pdf->Line(260, 430, 303, 430);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 438, "      Improve wheelchair use to:");
+    	$pdf->Line(136, 440, 197, 440);
+		
+    	$pdf->Rect(11, 431, 8.4, 8.4);
+        if (@$ptev->p2_improv_wheel == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 432, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(143, 438, @$ptev->p2_improv_wheel_desc);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(202, 438, "  within:    " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(260, 438, $tab_63[@$ptev->p2_improv_wheel_weeks]);
+		$pdf->Line(260, 440, 303, 440);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 448, "      Patient will ambulate with");
+    	$pdf->Line(134, 450, 193, 450);
+    	$pdf->Rect(11, 441, 8.4, 8.4);
+        if (@$ptev->p2_pat_ambul == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 442, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(134, 448, @$ptev->p2_pat_ambul_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(199, 448, "device with   " );
+		$pdf->Line(254, 450, 317, 450);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(254, 448, @$ptev->p2_pat_ambul_desc2);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(325, 448, "assist within: " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(384, 448, $tab_63[@$ptev->p2_pat_ambul_weeks]);
+		$pdf->Line(384, 450, 424, 450);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 458, "      Patient will be able to climb stairs/uneven surfaces with:");
+    	$pdf->Line(255, 460, 317, 460);
+    	$pdf->Rect(11, 451, 8.4, 8.4);
+        if (@$ptev->p2_climb == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 452, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(255, 458, @$ptev->p2_climb_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(315, 458, "    device with:   " );
+		$pdf->Line(378, 460, 439, 460);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(378, 458, @$ptev->p2_climb_desc2);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(440, 458, "  assist within:   " );
+$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(503, 458, $tab_63[@$ptev->p2_tab_063_climb_weeks]);
+		$pdf->Line(503, 460, 542, 460);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 468, "      Independent with ambulation with:");
+    	$pdf->Line(170, 470, 228, 470);
+		
+    	$pdf->Rect(11, 461, 8.4, 8.4);
+        if (@$ptev->p2_indep_ambul == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 462, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(170, 468, @$ptev->p2_indep_ambul_desc);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(232, 468, "  assist within:   " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(293, 468, $tab_63[@$ptev->p2_indep_ambul_weeks]);
+		$pdf->Line(293, 470, 330, 470);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 478, "      Ambulation endurance will be:");
+    	$pdf->Line(154, 480, 213, 480);
+		
+    	$pdf->Rect(11, 471, 8.4, 8.4);
+        if (@$ptev->p2_ambul_endur == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 472, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(154, 478, @$ptev->p2_ambul_endur_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(218, 478, " minutes or " ); 
+		$pdf->Line(270, 480, 330, 480);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(270, 478, @$ptev->p2_ambul_endur_desc2);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(334, 478, " feet within:   " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(384, 478,$tab_63[@$ptev->p2_ambul_endur_weeks]);
+		$pdf->Line(384, 480, 427, 480);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 488, "      Increase strength of extremity: " ); 
+		$pdf->Line(154, 490, 309, 490);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(154, 488, @$ptev->p2_increa_stren_UE_5);
+    	
+		$pdf->Rect(11, 481, 8.4, 8.4);
+        if (@$ptev->p2_increa_stren_UE == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 482, 6);
+        }
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(317, 488, "in: ");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(334, 488, $tab_63[@$ptev->p2_increa_stren_UE_weeks]);
+		$pdf->Line(334, 490, 371, 490);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 498, "      Increase strength of extremity: " );
+		$pdf->Line(154, 500, 309, 500);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(154, 498, @$ptev->p2_increa_stren_LE_5);
+    	
+    	$pdf->Rect(11, 491, 8.4, 8.4);
+        if (@$ptev->p2_increa_stren_LE == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 492, 6);
+        }
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(317, 498, "in: ");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(334, 498, $tab_63[@$ptev->p2_increa_stren_LE_weeks]);
+		$pdf->Line(334, 500, 371, 500);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 508, "      Increase ROM of");
+    	$pdf->Line(103, 510, 168, 510);
+    	$pdf->Rect(11, 501, 8.4, 8.4);
+        if (@$ptev->p2_increa_rom == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 502, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(106, 508, @$ptev->p2_increa_rom_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(175, 508, " joint to  ");
+		$pdf->Line(213, 510, 272, 510);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(213, 508, @$ptev->p2_increa_rom_desc2);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(277, 508, " degree flexion and ");
+		$pdf->Line(359, 510, 420, 510);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(359, 508, @$ptev->p2_increa_rom_desc3);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(426, 508, "degree extension in: " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(512, 508, $tab_63[@$ptev->p2_increa_rom_weeks]);
+		$pdf->Line(512, 510, 554, 510);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 518, "      Increase ROM of");
+    	$pdf->Line(103, 520, 168, 520);
+		
+    	$pdf->Rect(11, 511, 8.4, 8.4);
+        if (@$ptev->p2_increa_rom2 == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 512, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(106, 518, @$ptev->p2_increa_rom2_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(175, 518, " joint to  ");
+		$pdf->Line(213, 520, 272, 520);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(213, 518, @$ptev->p2_increa_rom2_desc2);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(277, 518, " degree of ");
+		$pdf->Line(323, 520, 385, 520);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(323, 518, @$ptev->p2_increa_rom2_desc3);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(378, 518, "    in:       " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(402, 518, $tab_63[@$ptev->p2_increa_rom2_weeks]);
+		$pdf->Line(402, 520, 443, 520);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 528, "      Demonstrate ROM to WNL within:");
+    	
+    	$pdf->Rect(11, 521, 8.4, 8.4);
+        if (@$ptev->p2_demos_rom == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 522, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(172, 528, $tab_63[@$ptev->p2_demos_rom_weeks]);
+		$pdf->Line(172, 529, 212, 529);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 538, "      Demonstrate proper use of");
+		
+    	$pdf->Rect(11, 531, 8.4, 8.4);
+        if (@$ptev->p2_demos_proper == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 532, 6);
+        }
+        
+		$pdf->Text(151, 538, "Prosthesis");
+		
+    	$pdf->Rect(140, 531, 8.4, 8.4);
+        if (@$ptev->p2_demos_proper_prosthe == 1) {
+        	$this->fpdf->Image( $path_ticket, 141, 532, 6);
+        }
+
+		$pdf->Text(211, 538, "Brace");
+		
+    	$pdf->Rect(200, 531, 8.4, 8.4);
+        if (@$ptev->p2_demos_proper_brace == 1) {
+        	$this->fpdf->Image( $path_ticket, 201, 532, 6);
+        }
+
+		$pdf->Text(256, 538, "Splint within:");
+		
+    	$pdf->Rect(245, 531, 8.4, 8.4);
+        if (@$ptev->p2_demos_proper_splint == 1) {
+        	$this->fpdf->Image( $path_ticket, 246, 532, 6);
+        }
+        $pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $pdf->Text(312, 538, $tab_63[@$ptev->p2_demos_proper_weeks]);
+		$pdf->Line(312, 540, 354, 540);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 548, "      Demonstrate proper use of DME within:     ");
+    	
+    	$pdf->Rect(11, 541, 8.4, 8.4);
+        if (@$ptev->p2_demos_proper_dme == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 542, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(186, 548, $tab_63[@$ptev->p2_demos_proper_dme_weeks]);
+		$pdf->Line(186, 550, 226, 550);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 558, "      Patient will have an increase in Tinetti Balance score to:");
+		$pdf->Line(255, 560, 277, 560);
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(255, 558, @$ptev->p2_tinetti_bal_score);
+    	
+    	$pdf->Rect(11, 551, 8.4, 8.4);
+        if (@$ptev->p2_tinetti_bal == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 552, 6);
+        }
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(281, 558, " /28 within:      " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(330, 558, $tab_63[@$ptev->p2_tinetti_bal_weeks]);
+		$pdf->Line(330, 560, 370, 560);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 568, "      Improve balance score to:");
+		$pdf->Line(135, 570, 257, 570);
+    	$pdf->Rect(11, 561, 8.4, 8.4);
+        if (@$ptev->p2_improv_score == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 562, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(137, 568, @$ptev->p2_improv_score_desc1);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Line(287, 570, 412, 570);
+		$pdf->Text(262, 568, " using   ");
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(292, 568, @$ptev->p2_improv_score_desc2);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(415, 568, " test.");
+
+
+		$pdf->Text(11, 578, "      Patient will demonstrate ability to follow home exercise program by:");
+
+    	$pdf->Rect(11, 571, 8.4, 8.4);
+        if (@$ptev->p2_follow_exer == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 572, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(300, 578, standard_date(mysql_to_unix(@$ptev->p2_follow_exer_date)));
+		$pdf->Line(300, 580, 362, 580);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 588, "      Other:");
+		$pdf->Line(53, 590, 503, 590);
+    	$pdf->Rect(11, 581, 8.4, 8.4);
+        if (@$ptev->p2_other3 == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 582, 6);
+        }
+        $pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $pdf->Text(53, 588, @$ptev->p2_other3_desc);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(500, 588, "    within: " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(538, 588, $tab_63[@$ptev->p2_other3_weeks]);
+		$pdf->Line(538, 590, 583, 590);
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 598, "      Other:");
+		$pdf->Line(53, 599, 503, 599);
+		
+    	$pdf->Rect(11, 591, 8.4, 8.4);
+        if (@$ptev->p2_other4 == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 592, 6);
+        }
+        $pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $pdf->Text(53, 598, @$ptev->p2_other4_desc);
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(500, 598, "    within: " );
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(538, 598, $tab_63[@$ptev->p2_other4_weeks]);
+		$pdf->Line(538, 600, 583, 600);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 608, "      Discharge from PT");
+
+    	$pdf->Rect(11, 601, 8.4, 8.4);
+        if (@$ptev->p2_discha == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 602, 6);
+        }
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 608, "                                           Reason: ");
+		$count = 0;
+		foreach (array_slice($tab_64, 0, 4) as $key => $discha_reason) {
+			
+			$pdf->Rect(170 + $count, 601, 8.4, 8.4);
+	        if (@$ptev->p2_tab_064_discha_reason == $key + 1) {
+	        	$this->fpdf->Image( $path_ticket, 171 + $count, 602, 6);
+	        }
+			$pdf->Text(180 + $count, 608, $discha_reason);
+			
+			$count += 80;
+			
+		}
+		
+		$pdf->Text(42, 618, $tab_64[5]);
+
+    	$pdf->Rect(31, 611, 8.4, 8.4);
+        if (@$ptev->p2_tab_064_discha_reason == 5) {
+        	$this->fpdf->Image( $path_ticket, 32, 612, 6);
+        }
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(67, 618, @$ptev->p2_discha_other);
+		$pdf->Line(65, 620, 190, 620);
+		
+		$this->fpdf->Line(8, 624, 584, 624);
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 635, "DISCHARGE PLANS:");	
+
+
+		$pdf->Text(22, 645, " Return to an independent level of self care ");
+
+    	$pdf->Rect(11, 638, 8.4, 8.4);
+        if (@$ptev->p2_dis_return_to_indep == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 639, 6);
+        }
+
+		$pdf->Text(216, 645, "Able to remain in residence with assist. of primary cg / support from community agencies");
+
+    	$pdf->Rect(203, 638, 8.4, 8.4);
+        if (@$ptev->p2_dis_able_to_remain_assist_cg == 1) {
+        	$this->fpdf->Image( $path_ticket, 204, 639, 6);
+        }
+
+
+		$pdf->Text(22, 655, " When maximium functional potential reached");
+
+    	$pdf->Rect(11, 648, 8.4, 8.4);
+        if (@$ptev->p2_dis_when_max == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 649, 6);
+        }
+
+		$pdf->Text(220, 655, " Able to understand care related to Diagnosis");
+
+    	$pdf->Rect(210, 648, 8.4, 8.4);
+        if (@$ptev->p2_dis_able_to_unders == 1) {
+        	$this->fpdf->Image( $path_ticket, 211, 649, 6);
+        }
+        
+		$pdf->Text(415, 655, "Other:");
+
+    	$pdf->Rect(404, 648, 8.4, 8.4);
+        if (@$ptev->p2_dis_other == 1) {
+        	$this->fpdf->Image( $path_ticket, 405, 649, 6);
+        }
+
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(441, 655, substr(@$ptev->p2_dis_other_desc, 0, 25));
+
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		
+		$pdf->Text(22, 665, " Patient / Caregiver participated in plan of care");
+
+    	$pdf->Rect(11, 658, 8.4, 8.4);
+        if (@$ptev->p2_pat_care_particip == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 659, 6);
+        }
+
+		$pdf->Text(241, 665, "Patient is OK with family involvement with care");
+
+    	$pdf->Rect(229, 658, 8.4, 8.4);
+        if (@$ptev->p2_pat_ok_family_involv == 1) {
+        	$this->fpdf->Image( $path_ticket, 230, 659, 6);
+        }
+
+
+		$this->fpdf->Line(8, 671, 584, 671);
+
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(11, 682, "REHAB POTENCIAL");	
+
+		$count = 0;
+		foreach ($tab_33 as $key => $rehab_pot) {
+			
+			$pdf->Rect(11 + $count, 685, 8.4, 8.4);
+	        if (@$ptev->p2_tab_033_rehab_pot == $key) {
+	        	$this->fpdf->Image( $path_ticket, 12 + $count, 686, 6);
+	        }
+			$pdf->Text(22 + $count, 692, $rehab_pot);
+			
+			$count += 60;
+			
+		}
+
+
+		$this->fpdf->Line(8, 698, 584, 698);
+		
+		
+		$pdf->Text(11, 709, "HOME BOUND STATUS");	
+		
+		
+		$pdf->Text(22, 719, "Considerable & taxing effort to leave home");
+		
+    	$pdf->Rect(11, 712, 8.4, 8.4);
+        if (@$ptev->p2_home_consider == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 713, 6);
+        }
+
+		$pdf->Text(211, 719, "Requires assistance to ambulate");
+		
+    	$pdf->Rect(200, 712, 8.4, 8.4);
+        if (@$ptev->p2_home_req_assis == 1) {
+        	$this->fpdf->Image( $path_ticket, 201, 713, 6);
+        }
+
+
+        $pdf->Text(22, 729, "Residual weakness");
+        
+    	$pdf->Rect(11, 722, 8.4, 8.4);
+        if (@$ptev->p2_home_resid == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 723, 6);
+        }
+
+		$pdf->Text(211, 729, "Dependent upon adaptive device(s)");
+		
+    	$pdf->Rect(200, 722, 8.4, 8.4);
+        if (@$ptev->p2_home_depen == 1) {
+        	$this->fpdf->Image( $path_ticket, 201, 723, 6);
+        }
+
+
+        $pdf->Text(22, 739, "Confusion, unable to go out alone");
+        
+    	$pdf->Rect(11, 732, 8.4, 8.4);
+        if (@$ptev->p2_home_confu == 1) {
+        	$this->fpdf->Image( $path_ticket, 12, 733, 6);
+        }
+
+		$pdf->Text(211, 739, "Other:");
+		
+    	$pdf->Rect(200, 732, 8.4, 8.4);
+        if (@$ptev->p2_home_other == 1) {
+        	$this->fpdf->Image( $path_ticket, 201, 733, 6);
+        }
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(255, 739, @$ptev->p2_home_other_desc);
+
+	
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		
+		$pdf->Text(380, 709, "FREQUENCY/DURATION");	
+		
+		$pdf->Text(380, 725, "_____________________________________");
+		$pdf->Text(380, 740, "_____________________________________");	
+		
+		$pdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		$pdf->Text(380, 725, substr(@$ptev->freq_duration, 0, 30));
+		$pdf->Text(380, 740, substr(@$ptev->freq_duration, 30));
+
+
+		$this->fpdf->Line(8, 745, 584, 745);
+		
+		
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+
+		$pdf->Text(13, 770, "Therapist: ____________________________________________________");
+		$pdf->Text(400, 770, "Date: ___________________");
+		
+		$pdf->Text(13, 790, "Physician: ____________________________________________________");
+		$pdf->Text(400, 790, "Date: ___________________");
+
+	
+		$this->fpdf->SetFont('Courier','B',$__FONT['PDF']['FORM_MEDIUM']);
+		
+		if ($visit_log->sent_to_approve_date) {
+			$this->fpdf->Text(60, 770, "ELECTRONICALLY SIGNED BY " . $assigned_to -> first_name." ".$assigned_to -> last_name);
+			$this->fpdf->Text(430, 770, standard_date(mysql_to_unix($visit_log->sent_to_approve_date)));
+		}
+		
+		if ($do->signed_date) {
+			$this->fpdf->Text(60, 790, "ELECTRONICALLY SIGNED BY " . $approver -> first_name." ".$approver -> last_name);
+			$this->fpdf->Text(430, 790, standard_date(mysql_to_unix($do->signed_date)));
+		}
+		
+
+		$pdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+		$pdf->Text(511, 820, "      Page: 2 of 2");
+
+
+		//$this->fpdf->Output('ptev.pdf','D');
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+    $filename = $filename.'tmp/'.time().'_'.$doctor_order_id.'_pqdo_ptev.pdf';
+    
+    
+    $this->fpdf->Output($filename,'F');
+    return $filename;		  
+	}
+	
+  function pdfPage ( $__FONT, $doctor_order, $agency ) {
+        $cero_x = 11;
+        $cero_y = 2;
+		$this->fpdf->Open();
+		$this->fpdf->AddPage();
+		
+        $this->fpdf->SetDrawColor(130, 100);
+        //$this->fpdf->SetFont('Arial','B',$__FONT['PDF']['FORM_MEDIUM']);
+        $this->fpdf->SetFont('Arial','B',12);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 12 ), $agency->agency_name); // agency name
+        
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL3']);
+        $this->fpdf->Text(( $cero_x + 0),( $cero_y + 20 ),"Licensed and Certified Home Health Agency");
+        
+        $this->fpdf->Rect(8,25, 577, 760);
+        
+        //$this->fpdf->SetFont('Arial', 'B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->SetFont('Arial', 'B', 13);
+        if($doctor_order->doc_doctor_order_type_id==5)
+        $this->fpdf->Text(210, 38, "DOCTOR COMMUNICATION NOTE");
+        else
+        $this->fpdf->Text(260, 38, "DOCTOR ORDER");
+        //$this->fpdf->Text(460, 38, "Order Date   " . standard_date(mysql_to_unix($doctor_order->order_date)));
+        
+    	$this->fpdf->Line(8 , 42.5, 585, 42.5);
+    	
+        $this->fpdf->SetFont('Arial','',$__FONT['PDF']['FORM_SMALL']);
+        $address = $agency->address.", ".$agency->city.", ".$agency->state_name_short.", ".$agency->zip;
+        $this->fpdf->Text(11, 800, $address);
+        $this->fpdf->Text(350, 800, "Phone: " . $agency->phone_primary);
+        $this->fpdf->Text(470, 800, "Fax: " . $agency->fax);
+        $this->fpdf->Text(230, 820, "HomeHealthSoft Inc.   2006 – ".date("Y")." ©");
+	}
+	
+	function doctororder_pdf ( $doctor_order_id ) {
+    $this->load->model('doctorordermdl');
+		// getting data
+		$doctor_order = $this->doctorordermdl->getByDoctorOrderId($doctor_order_id);
+		$patient 	  = $this->patientmdl->getById($doctor_order->patient_id);
+		$agency	      = $this->agencymdl->getByAgencyId($patient->agency_id);
+		$physician 	  = $this->usagymdl->getByUsAgyId($doctor_order->physician_id);
+		$order_by 	  = $this->usagymdl->getByUsAgyId($doctor_order->order_by_user_id);
+		
+		$path_ticket = realpath("style/images/icon_enable_negro.gif");
+		
+        $__FONT['PDF']['SIZE'] = 11;
+        $__FONT['PDF']['FORM_MEDIUM'] = 10;
+        //$__FONT['PDF']['FORM_SMALL'] = 9;
+        $__FONT['PDF']['FORM_SMALL'] = 11;
+        $__FONT['PDF']['FORM_SMALL2'] = 9;
+        $__FONT['PDF']['FORM_SMALL3'] = 6.5;
+        $__FONT['PDF']['FORM_SMALL4'] = 9.5;
+        $__FONT['PDF']['FORM_arial8'] = 9.5;
+		
+		$this->load->library('fpdf');
+		if(!defined('FPDF_FONTPATH'))
+		define('FPDF_FONTPATH',$this->config->item('fonts_path'));
+
+    $this->fpdf = new fpdf;
+
+		$this->pdfPage($__FONT, $doctor_order, $agency);
+      
+      // Order Date
+      $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 55+30, "Order Date: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 55+30, standard_date(mysql_to_unix($doctor_order->order_date)));
+      
+    
+    	// physician
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 70+30+10, "Physician: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 70+30+10, $physician->complete_name);
+	    
+    	// physician
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 85+30+20, "Patient Name: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 85+30+20, $patient->first_name . ' ' . $patient->last_name);
+	    
+    	// order by
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 100+30+30, "Ordered By: ");
+	    
+	    $this->fpdf->SetFont('Arial','', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(150, 100+30+30, $order_by->complete_name);
+	    
+    	// order by
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+	    $this->fpdf->Text(30, 115+30+40, "Order Description: ");
+	    
+	    $eje_y = 115+15+30+40+10;
+		$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+    /*$this->fpdf->SetXY(11, $eje_y);
+    $this->fpdf->MultiCell(566, 12, $doctor_order->order_description);
+        */
+		foreach (str_split($doctor_order->order_description, 77) as $substring) {
+			
+			//$this->fpdf->Text(150, $eje_y, $substring);
+			$this->fpdf->Text(30, $eje_y, $substring);      
+      $this->fpdf->SetLineWidth( 0.5 );
+      $this->fpdf->Line(30, $eje_y+4, 554, $eje_y+4);
+        
+			$eje_y += 15;
+			
+			if ($eje_y > 660) {
+				$this->pdfPage($__FONT, $doctor_order, $agency);
+
+        $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+        $this->fpdf->Text(30, 55, "Order Description: ");
+
+				$this->fpdf->SetFont('Courier', '', $__FONT['PDF']['FORM_SMALL'] );
+				$eje_y = 55+30;
+			}
+			
+		}
+		
+		if ($eje_y >= 675) {
+			$this->pdfPage($__FONT, $doctor_order, $agency);
+		}
+		
+    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+    $this->fpdf->Text(30, 700-20,  "Clinician Signature:");
+    $this->fpdf->Text(125, 700-20, "____________________________________________            Date: _____________");
+	    if ($doctor_order->electronic_signed == 1 ) {
+	      $this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+  			$this->fpdf->Text(130, 700-20, "ELECTRONICALLY SIGNED BY " . $order_by->complete_name);
+  			$this->fpdf->Text(500, 700-20, standard_date(mysql_to_unix($doctor_order->sent_date)));	    	
+	    }
+      if($doctor_order->doc_doctor_order_type_id!=5)  {
+  	    $this->fpdf->SetFont('Arial','B', $__FONT['PDF']['FORM_SMALL']);
+  	    $this->fpdf->Text(30, 740-20, "Physician Signature:");
+  	    $this->fpdf->Text(125, 740-20, "____________________________________________            Date: _____________");
+
+  		$this->fpdf->SetFont('Courier','',$__FONT['PDF']['FORM_MEDIUM']);
+  	    if ($doctor_order->physician_id && !is_null($doctor_order->signed_date)) {	    
+    			if ($doctor_order->electronic_doctor_sign == 1) {
+    				$this->fpdf->Text(130, 740-20, "ELECTRONICALLY SIGNED BY " . $physician->complete_name);
+    			} else {
+    				$this->fpdf->Text(130, 740-20, $physician->complete_name);
+    			}
+  	    }
+  	    
+  	    if ($doctor_order->signed_date) {	    
+  			$this->fpdf->Text(500, 740-20, standard_date(mysql_to_unix($doctor_order->signed_date)));
+  	    }
+  	    
+      }  
+      //$this->fpdf->Output('order_order.pdf','D');
+
+    $filename = FCPATH;
+    $filename = str_replace("\\","/", $filename);
+    $filename = $filename.'tmp/'.time().'_'.$doctor_order_id.'_pqdo_order.pdf';
+    
+    
+    $this->fpdf->Output($filename,'F');
+    return $filename;		        
+	}
+ }

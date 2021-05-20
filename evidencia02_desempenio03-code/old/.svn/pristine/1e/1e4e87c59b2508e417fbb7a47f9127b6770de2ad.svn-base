@@ -1,0 +1,1212 @@
+<?php  
+include (dirname(realpath(__file__)).'/task/visitform.php');
+
+class agencydoctororder extends VisitForm {
+
+    function agencydoctororder () {
+
+        parent::VisitForm();
+        $this->tpl->assign("resource_path", "agencydoctororder");
+        $this->load->model('dordermdl');
+    }
+
+    function index (){
+		$this->tpl->assign_include("dynamic_tpl", "doctororder/tbase");
+		$this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function ready () {
+        $this->tpl->assign_include("dynamic_tpl", "doctororder/ready_tbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+
+    function ready_all(){
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        $this->tpl->assign("resource_grid", 'grid');    
+        // $this->tpl->assign("resource_edit", 'readyorders');    
+        // $this->tpl->assign(array("list_title" => "Doctors have orders ready"));
+
+        $this->tpl->assign('additional_buttons', array(
+            // 'Email to Physician'=>'emailToPhysician()', 
+            'Email to Physician'=>'checkEmailToPhysician()', 
+            'Move to Pending Physician'=>'sentToPhysician()', 
+            'Print'=>'printSelected()', 
+            ));
+
+        $this->session->set_userdata('task_return', "agencydoctororder/ready_all");
+        $this->tpl->assign_include("filter_tpl", "doctororder/do_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);        
+    }
+
+    function grid(){
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+
+        $delivery_types_list = $this->parametermdl->getByType(105);
+        $delivery_types_list[NULL] = NULL;
+        /*if (isset($delivery_types_list[5])) {
+            unset($delivery_types_list[5]);
+        }*/
+        
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=15", "Order Date"));
+        // $head->append($this->xml->Element("column", "width=15", "Order Type"));
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=*", "Doctor Name"));        
+        $head->append($this->xml->Element("column", "width=*", "Doctor Phone"));        
+        // $head->append($this->xml->Element("column", "width=*", "Ordered By"));        
+        $head->append($this->xml->Element("column", "width=*", "Deliv Pref"));        
+        // $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actions"));
+        // $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, 1) as $task) {
+            $cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+            $cell->append($this->xml->Element("cell", null, "0"));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            // $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            // $cell->append($this->xml->Element("cell", null, $task->visit_description));
+
+            $cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+            $cell->append($this->xml->Element("cell", null, $task->doctor_name));
+            $cell->append($this->xml->Element("cell", null, $task->phone_primary));                
+            $cell->append($this->xml->Element("cell", null, $delivery_types_list[$task->tab105_delivery_pref]));                
+            // $cell->append($this->xml->Element("cell", null, $task->visit_user_first_name . " " . $task->visit_user_last_name));
+            // $cell->append($this->xml->Element("cell", null, $task->agency_comments));
+            // $cell->append($this->xml->Element("cell", null, "Edit Order Flow^javascript:editOrdeFlow(".$task->visit_log_id.")"));
+            $document->append($cell);
+        }
+
+    }
+
+    function ready_by_physician(){
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        $this->tpl->assign("resource_grid", 'readygrid');    
+        $this->tpl->assign("resource_edit", 'readyorders');    
+        // $this->tpl->assign(array("list_title" => "Doctors have orders ready"));
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);        
+    }
+
+    function readyorders ($doctorid) {        
+        $delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";
+
+        // $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        $doctor = $this->usagymdl->getByUsAgyId($doctorid);
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+		$this->tpl->assign("doctorid", $doctorid);
+        $this->tpl->assign("resource_grid", 'readyordersgrid/'.$doctorid);    
+        // $this->tpl->assign("resource_edit", 'contractor');    
+        $this->tpl->assign(array("list_title" => "Doctor: ".$doctor->first_name ." ".$doctor->last_name . " <small>(delivery preference: ".$delivery_prefs_list[$doctor->tab105_delivery_pref] .")</small>"));
+
+        $this->tpl->assign('additional_buttons', array(
+            'Email to Physician'=>'emailToPhysician()', 
+            'Move to Pending Physician'=>'sentToPhysician()', 
+            'Print'=>'printSelected()', 
+            'Back'=>"document.location = '" . $this->config->config['index_url'] . "agencydoctororder/ready'"
+            ));
+
+        $this->session->set_userdata('task_return', "agencydoctororder/readyorders/{$doctorid}");
+        $this->tpl->assign_include("filter_tpl", "doctororder/do_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+
+    function readygrid () {
+        $delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";
+
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+        $doctors = array();
+        $doctorsInfo = array();
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*;type=link", "Doctor Name"));        
+        $head->append($this->xml->Element("column", "width=*", "Phone"));        
+        $head->append($this->xml->Element("column", "width=*", "Fax"));        
+        $head->append($this->xml->Element("column", "width=*", "Email"));        
+        $head->append($this->xml->Element("column", "width=*", "Delivery Preference"));        
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, 1) as $task) {
+            if (in_array($task->doctorid, $doctors)) {
+                continue;
+            }
+            if (!isset($doctorsInfo[$task->doctorid])) {                
+                $doctorsInfo[$task->doctorid] = $this->usagymdl->getByUsAgyId($task->doctorid);
+            }
+            $doctors[] = $task->doctorid;
+            $doctor = $doctorsInfo[$task->doctorid];
+
+            $cell = $this->xml->Element("row", "id=" . $task->doctorid);
+            $cell->append($this->xml->Element("cell", null,$task->doctor_name. "^" . $this->config->config['index_url'] . "agencydoctororder/readyorders/" . $task->doctorid));
+            $cell->append($this->xml->Element("cell", null, $doctor->phone_work));
+            $cell->append($this->xml->Element("cell", null, $doctor->fax));
+            $cell->append($this->xml->Element("cell", null, $doctor->email));
+            $cell->append($this->xml->Element("cell", null, $delivery_prefs_list[$doctor->tab105_delivery_pref]));
+            $document->append($cell);
+        }
+
+    }
+    function readyordersgrid ($doctorid) {
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+        
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=15", "Order Date"));
+        // $head->append($this->xml->Element("column", "width=15", "Order Type"));
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=*", "Ordered By"));        
+        // $head->append($this->xml->Element("column", "width=*", "Doctor Name"));        
+        $head->append($this->xml->Element("column", "width=*", "Agency Comments"));        
+        $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actions"));
+        // $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, 1, $doctorid) as $task) {
+            $cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+            $cell->append($this->xml->Element("cell", null, "0"));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            // $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            // $cell->append($this->xml->Element("cell", null, $task->visit_description));
+            $cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+            $cell->append($this->xml->Element("cell", null, $task->visit_user_first_name . " " . $task->visit_user_last_name));
+            // $cell->append($this->xml->Element("cell", null, $task->doctor_name));
+            $cell->append($this->xml->Element("cell", null, $task->agency_comments));
+            $cell->append($this->xml->Element("cell", null, "Edit Order Flow^javascript:editOrdeFlow(".$task->visit_log_id.")"));
+            $document->append($cell);
+        }
+
+    }
+    
+    function pending () {
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        $this->tpl->assign("resource_grid", 'pendinggrid');    
+        $this->tpl->assign("resource_edit", 'pendingorders');    
+        // $this->tpl->assign(array("list_title" => "Doctors have orders pending"));
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+    function pendinggrid () {
+        $delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";
+
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+        $doctors = array();
+        $doctorsInfo = array();
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*;type=link", "Doctor Name"));        
+        $head->append($this->xml->Element("column", "width=*", "Phone"));        
+        $head->append($this->xml->Element("column", "width=*", "Fax"));        
+        $head->append($this->xml->Element("column", "width=*", "Email"));        
+        $head->append($this->xml->Element("column", "width=*", "Send Via"));        
+        $head->append($this->xml->Element("column", "width=*", "Nbr of Orders"));        
+        $head->append($this->xml->Element("column", "width=*", "#Days of Oldest"));        
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, 2) as $task) {
+            if (in_array($task->doctorid, $doctors)) {
+                $doctorsInfo[$task->doctorid]['nbrOrders']++;
+                if (strtotime($task->sent_to_physician_date) < strtotime($doctorsInfo[$task->doctorid]['oldestOrder'])) {
+                    $doctorsInfo[$task->doctorid]['oldestOrder'] = $task->sent_to_physician_date;
+                }
+                continue;
+            }
+            if (!isset($doctorsInfo[$task->doctorid])) {                
+                $doctorsInfo[$task->doctorid]['info'] = $this->usagymdl->getByUsAgyId($task->doctorid);
+                $doctorsInfo[$task->doctorid]['nbrOrders'] = 1;
+                $doctorsInfo[$task->doctorid]['oldestOrder'] = $task->sent_to_physician_date;
+            }
+            $doctors[] = $task->doctorid;
+            $doctor = $doctorsInfo[$task->doctorid];
+        }
+
+        foreach ($doctors as $doctorid) {
+            $doctor = $doctorsInfo[$doctorid];
+            $cell = $this->xml->Element("row", "id=" . $doctorid);
+            $cell->append($this->xml->Element("cell", null,$doctor['info']->first_name. " " . $doctor['info']->last_name . "^" . $this->config->config['index_url'] . "agencydoctororder/pendingorders/" . $doctorid));
+            $cell->append($this->xml->Element("cell", null, $doctor['info']->phone_work));
+            $cell->append($this->xml->Element("cell", null, $doctor['info']->fax));
+            $cell->append($this->xml->Element("cell", null, $doctor['info']->email));
+            $cell->append($this->xml->Element("cell", null, $delivery_prefs_list[$doctor['info']->tab105_delivery_pref]));
+            $cell->append($this->xml->Element("cell", null, $doctor['nbrOrders']));
+
+            if (!is_null($doctor['oldestOrder']) AND $doctor['oldestOrder'] != '0000:00:00 00:00:00') {
+                $datediff = time() - strtotime($doctor['oldestOrder']);
+                $nbrDays = floor($datediff/(60*60*24));
+                $cell->append($this->xml->Element("cell", null, $nbrDays));
+            }else{
+                $cell->append($this->xml->Element("cell", null, ""));
+            }
+            $document->append($cell);
+        }
+
+    }
+
+    function pendingorders ($doctorid) {        
+        /*$delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";*/
+
+        // $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        $doctor = $this->usagymdl->getByUsAgyId($doctorid);
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        $this->tpl->assign("doctorid", $doctorid);
+        $this->tpl->assign("resource_grid", 'pendingordersgrid/'.$doctorid);            
+        /*$this->tpl->assign(array("list_title" => "Doctor: ".$doctor->first_name ." ".$doctor->last_name . " <small>(send via: ".$delivery_prefs_list[$doctor->tab105_delivery_pref] .")</small>"));*/
+        $this->tpl->assign(array("list_title" => "Doctor: ".$doctor->first_name ." ".$doctor->last_name ));
+        $this->tpl->assign('additional_buttons', array(
+            'Print'=>'printSelected()', 
+            'Signed by Physician'=>'signedByPhysician()', 
+            'Email to Physician'=>'emailToPhysician()', 
+            'Back'=>"document.location = '" . $this->config->config['index_url'] . "agencydoctororder/pending'"
+            ));
+
+        $this->session->set_userdata('task_return', "agencydoctororder/pendingorders/{$doctorid}");
+        $this->tpl->assign_include("filter_tpl", "doctororder/do_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+    function pendingordersgrid ($doctorid) {
+        $delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";
+
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+        
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=15", "Order Date"));
+        $head->append($this->xml->Element("column", "width=15", "Nbr of Days"));
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=*", "Ordered By"));        
+        // $head->append($this->xml->Element("column", "width=*", "Doctor Name"));        
+        $head->append($this->xml->Element("column", "width=*", "Agency Comments"));        
+        $head->append($this->xml->Element("column", "width=*", "Sent to Physician Date"));        
+        $head->append($this->xml->Element("column", "width=*", "Sent Via"));        
+        $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actions"));
+        // $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, 2, $doctorid) as $task) {
+            $cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+            $cell->append($this->xml->Element("cell", null, "0"));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            if(!is_null($task->sent_to_physician_date) AND $task->sent_to_physician_date !== "0000-00-00 00:00:00") {
+                $datediff = time() - strtotime($task->sent_to_physician_date);
+                $nbrDays = floor($datediff/(60*60*24));
+                $cell->append($this->xml->Element("cell", null, $nbrDays));
+            }else{
+                $cell->append($this->xml->Element("cell", null, ""));
+            }
+            $cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+            $cell->append($this->xml->Element("cell", null, $task->visit_user_first_name . " " . $task->visit_user_last_name));
+            // $cell->append($this->xml->Element("cell", null, $task->doctor_name));
+            $cell->append($this->xml->Element("cell", null, $task->agency_comments));
+            if (!is_null($task->sent_to_physician_date) AND $task->sent_to_physician_date !== "0000-00-00 00:00:00") {
+                $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->sent_to_physician_date, 'USA_DATE'))));
+            }else{
+                $cell->append($this->xml->Element("cell", null, ""));
+            }
+            $cell->append($this->xml->Element("cell", null, $delivery_prefs_list[$task->tab105_delivery_sent_via]));
+            $cell->append($this->xml->Element("cell", null, "Edit Order Flow^javascript:editOrdeFlow(".$task->visit_log_id.")"));
+            $document->append($cell);
+        }
+
+    }
+
+    function signed () {
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        $this->tpl->assign("resource_grid", 'signedgrid');    
+        $this->tpl->assign("resource_edit", 'signedorders');    
+        // $this->tpl->assign(array("list_title" => "Doctors have orders signed"));
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+    function signedgrid () {
+        $delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";
+
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+        $doctors = array();
+        $doctorsInfo = array();
+
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=*;type=link", "Doctor Name"));        
+        $head->append($this->xml->Element("column", "width=*", "Phone"));        
+        $head->append($this->xml->Element("column", "width=*", "Fax"));        
+        $head->append($this->xml->Element("column", "width=*", "Email"));        
+        $head->append($this->xml->Element("column", "width=*", "Send Via"));        
+        // $head->append($this->xml->Element("column", "width=*", "Oldest Order"));        
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, array(3, 5)) as $task) {
+            if (in_array($task->doctorid, $doctors)) {
+                continue;
+            }
+            if (!isset($doctorsInfo[$task->doctorid])) {                
+                $doctorsInfo[$task->doctorid] = $this->usagymdl->getByUsAgyId($task->doctorid);
+            }
+            $doctors[] = $task->doctorid;
+            $doctor = $doctorsInfo[$task->doctorid];
+
+            $cell = $this->xml->Element("row", "id=" . $task->doctorid);
+            $cell->append($this->xml->Element("cell", null,$task->doctor_name. "^" . $this->config->config['index_url'] . "agencydoctororder/signedorders/" . $task->doctorid));
+            $cell->append($this->xml->Element("cell", null, $doctor->phone_work));
+            $cell->append($this->xml->Element("cell", null, $doctor->fax));
+            $cell->append($this->xml->Element("cell", null, $doctor->email));
+            $cell->append($this->xml->Element("cell", null, $delivery_prefs_list[$doctor->tab105_delivery_pref]));
+            // $cell->append($this->xml->Element("cell", null, "not implemented"));
+            $document->append($cell);
+        }
+
+    }    
+    
+    /*function signed () {
+
+        $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        $this->tpl->assign("resource_grid", 'signedgrid');    
+        $this->tpl->assign("resource_edit", 'edit_legacy');    
+        // $this->tpl->assign(array("list_title" => "Doctor Offices", "add_sufix" => " Doctor Office"));
+        $this->tpl->assign('additional_buttons', array('Print'=>'printSelected()'));
+        $this->session->set_userdata('task_return', "agencydoctororder/signed");
+        $this->tpl->assign_include("filter_tpl", "doctororder/do_signed_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }*/
+
+    function signedorders ($doctorid) {        
+        /*$delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";*/
+
+        // $agency = $this->agencymdl->getByAgencyId($this->getAgencyId());
+        $doctor = $this->usagymdl->getByUsAgyId($doctorid);
+        // $this->tpl->assign("noedit", true);
+        $this->tpl->assign("visit_date_ini", date("Y-m-d", mktime(0,0,0,date("m"), date("d")-90, date("Y"))));
+        $this->tpl->assign("visit_date_fin", date("Y-m-d"));
+        $this->tpl->assign("no_grid_buttons", TRUE);
+        $this->tpl->assign("doctorid", $doctorid);
+        $this->tpl->assign("resource_grid", 'signedordersgrid/'.$doctorid);            
+        /*$this->tpl->assign(array("list_title" => "Doctor: ".$doctor->first_name ." ".$doctor->last_name . " <small>(send via: ".$delivery_prefs_list[$doctor->tab105_delivery_pref] .")</small>"));*/
+        $this->tpl->assign(array("list_title" => "Doctor: ".$doctor->first_name ." ".$doctor->last_name ));
+        $this->tpl->assign('additional_buttons', array(
+            'Print'=>'printSelected()', 
+            // 'Signed by Physician'=>'signedByPhysician()', 
+            // 'Email to Physician'=>'emailToPhysician()', 
+            'Back'=>"document.location = '" . $this->config->config['index_url'] . "agencydoctororder/signed'"
+            ));
+
+        $this->session->set_userdata('task_return', "agencydoctororder/signedorders/{$doctorid}");
+        // $this->tpl->assign_include("filter_tpl", "doctororder/do_gfilter");
+        $this->tpl->assign_include("filter_tpl", "doctororder/do_signed_gfilter");
+        $this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+        $this->tpl->view("parts/ibase", $this->lang->language);
+
+    }
+    function signedordersgrid ($doctorid) {
+        $delivery_prefs_list = $this->parametermdl->getByType(105);
+        $delivery_prefs_list[NULL] = "";
+
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+        
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=15", "Order Date"));        
+        $head->append($this->xml->Element("column", "width=*", "Sent Via"));        
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=*", "Ordered By"));        
+        // $head->append($this->xml->Element("column", "width=*", "Doctor Name"));        
+        
+        $head->append($this->xml->Element("column", "width=*", "Date Sent"));        
+        $head->append($this->xml->Element("column", "width=*", "Date Signed"));        
+        $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actions"));
+        // $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, array(3, 5), $doctorid, "visit_date_time", "DESC") as $task) {
+            $cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+            $cell->append($this->xml->Element("cell", null, "0"));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            $cell->append($this->xml->Element("cell", null, $delivery_prefs_list[$task->tab105_delivery_sent_via]));
+            $cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+            $cell->append($this->xml->Element("cell", null, $task->visit_user_first_name . " " . $task->visit_user_last_name));
+            // $cell->append($this->xml->Element("cell", null, $task->doctor_name));        
+            if (!is_null($task->sent_to_physician_date) AND $task->sent_to_physician_date !== "0000-00-00 00:00:00") {
+                $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->sent_to_physician_date, 'USA_DATE'))));
+            }else{
+                $cell->append($this->xml->Element("cell", null, ""));
+            }
+            if (!is_null($task->signed_by_physician_date) AND $task->signed_by_physician_date !== "0000-00-00 00:00:00") {
+                $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->signed_by_physician_date, 'USA_DATE'))));
+            }else{
+                $cell->append($this->xml->Element("cell", null, ""));
+            }
+            $cell->append($this->xml->Element("cell", null, "Edit Order Flow^javascript:editOrdeFlow(".$task->visit_log_id.")"));
+            $document->append($cell);
+        }
+
+    }
+
+/*    function signedgrid () {
+        $agency_id = $this->getAgencyId();    
+        $agency = $this->agencymdl->getByAgencyId($agency_id);    
+        $assesment_types_list = $this->parametermdl->getByType(32);
+        
+        $this->xml->root_name = "rows";
+        $document = $this->xml->Document();
+
+        $head = $this->xml->Element("head");
+        $head->append($this->xml->Element("column", "width=3;type=ch", " "));
+        $head->append($this->xml->Element("column", "width=15", "Order Date"));
+        $head->append($this->xml->Element("column", "width=15", "Order Type"));
+        $head->append($this->xml->Element("column", "width=*", "Patient Name"));
+        $head->append($this->xml->Element("column", "width=*", "Ordered By"));        
+        $head->append($this->xml->Element("column", "width=*", "Doctor Name"));        
+        // $head->append($this->xml->Element("column", "width=15;align=center;type=link", "Actiones"));
+        // $head->append($this->xml->Element("column", "width=8;align=center;type=link", "#cspan"));
+        $head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+        $document->append($head);
+
+        foreach($this->visitlogmdl->get_doctororder($agency_id, $agency->agency_type, 3) as $task) {
+
+            $cell = $this->xml->Element("row", "id=" . $task->visit_log_id);
+            $cell->append($this->xml->Element("cell", null, "0"));
+            $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->do_date, 'USA_DATE')) ));
+            // $cell->append($this->xml->Element("cell", null, standard_date(mysql_to_unix($task->visit_date_time, 'USA_DATE')) ));
+            $cell->append($this->xml->Element("cell", null, $task->visit_description));
+            $cell->append($this->xml->Element("cell", null, $task->first_name . " " . $task->last_name));
+            $cell->append($this->xml->Element("cell", null, $task->visit_user_first_name . " " . $task->visit_user_last_name));
+            $cell->append($this->xml->Element("cell", null, $task->doctor_name));
+            $document->append($cell);
+        }
+    }
+*/
+    /*function sendto_physician(){
+        if (!is_null($this->input->post('record_ids'))) {
+            //$this->load->library('Wick');
+
+            //var_dump($this->input->post('record_ids'));exit;
+            $record_ids = $this->input->post('record_ids');
+            $recods = explode(",", $record_ids);
+
+            $filenames = array();
+            $this->load->helper('visit_pdf');
+            foreach ($recods as $visit_log_id) {
+                $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 2);                                
+                // setting date sent to physician
+                $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', standard_date(now(), 'MYSQL')); 
+            }
+        }
+
+        header("Location: " . $this->config->config["index_url"] . 'agencydoctororder/ready');
+        return;
+    }*/
+
+    function sentto_physician($record_ids){
+        if (!is_null($record_ids)) {
+            $recods = explode(",", $record_ids);
+            foreach ($recods as $visit_log_id) {
+                $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 2);
+                // setting date sent to physician
+                $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', standard_date(now(), 'MYSQL')); 
+            }
+            echo "1";exit();                              
+        }
+        echo "0";
+    }
+
+    function checkemailto_physician($record_ids){
+        $doctorid = 0;
+        if (!is_null($record_ids)) {
+            $recods = explode(",", $record_ids);
+            foreach ($recods as $visit_log_id) {
+                $this->db->where('visit_log_id', $visit_log_id);
+                $query = $this->db->get('vis_visit_log');
+                $visitlog = $query->row();
+                
+                if($visitlog->phys_user_id){
+                    if (!$doctorid) {
+                        $doctorid = $visitlog->phys_user_id;
+                    } else if((int)$visitlog->phys_user_id != $doctorid){
+                        exit("0");
+                    }
+                } else {
+                    $this->db->where('cms485_id', $visitlog->cms485_id);
+                    $query = $this->db->get('cms_485');
+                    $cms485 = $query->row();    
+                    if (!$doctorid) {
+                        $doctorid = $cms485->phys_user_id;
+                    } else if((int)$cms485->phys_user_id != $doctorid){
+                        exit("0");
+                    }
+                }
+            }
+        }        
+        exit($doctorid);                              
+    }
+    /**
+    * Send doctor order as attachment to given email adresses
+    */
+    function emailto_physician($doctorid, $record_ids){
+        $doctor = $this->usagymdl->getByUsAgyId($doctorid);
+        $doctor_office = $this->agencymdl->getByAgencyId($doctor->agency_id);      
+        $this->tpl->assign("to", $doctor_office->agency_email);
+        
+        $agency_info = $this->agencymdl->getByAgencyId($this->getAgencyId());      
+        $this->tpl->assign("agency_email", $agency_info->agency_email);
+
+        $this->tpl->assign("entity_id", $record_ids);
+        $this->tpl->assign("faction", "emailto_physician/{$doctorid}");
+        $this->validation->set_rules(array('to' => 'required'));
+        $this->validation->set_fields(array('to' => 'Doctor Office Email'));
+        
+        if ($this->validation->run() == FALSE) {
+            $this->tpl->assign_include("dynamic_tpl", "task/emailto_physician");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        }else{
+            if (!is_null($record_ids)) {
+                //var_dump($this->input->post('record_ids'));exit;
+                $record_ids = $record_ids;
+                $recods = explode(",", $record_ids);
+
+                $filenames = array();
+                $this->load->helper('visit_pdf');
+                $this->load->library('email');
+
+                foreach ($recods as $visit_log_id) {
+                    $visit_log = $this->visitlogmdl->getById($visit_log_id);
+                    $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+                    if ($visit_type->visit_program == null) {
+                        continue;
+                    }
+                    $method = $visit_type->visit_program.'_pdf';
+                    if(!function_exists($method)){          
+                        continue;
+                    }
+                    $this->load->model($visit_type->visit_program.'mdl');
+                    if(!isset($filenames[$visit_log_id])){
+                        $filenames[$visit_log_id] = $method($visit_log_id);
+                    }
+                    $toemails = $this->input->post('to');
+                    $emails = explode(",", $toemails);
+                    $message = $this->input->post('message');
+                    $patient  = $this->patientmdl->getById($visit_log->patient_id);
+                    foreach ($emails as $email) {
+                        $email = trim($email);
+                        if ($this->email->valid_email($email)) {        
+                            // $subject = "Patient ".$patient->first_name." ".$patient->last_name." DOCTOR ORDER Order Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+                            $subject = $this->input->post('subject');
+                            if (!$subject) {
+                                $subject = 'Please see attached order(s) for your signature and approval -  Priority=Normal. Thank you';
+                            }
+                            $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+                            $this->email->to($email);                       
+                            $this->email->subject($subject);
+                            $body = "** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary\n\n".$message;
+                            $this->email->message($body);   
+                            // $this->email->set_mailtype("html");   
+                            $this->email->attach($filenames[$visit_log_id]);
+                            $this->email->send();
+                            //$this->email->print_debugger();
+                            $this->email->clear();
+
+                            // Update Status as Sent to Pahysician
+                            $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 2);
+                            // setting date sent to physician
+                            $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', standard_date(now(), 'MYSQL')); 
+                            $this->visitlogmdl->updateFlex($visit_log_id, 'tab105_delivery_sent_via', 2); 
+                            if ($this->input->post('agency_comments') != "") {
+                                $this->visitlogmdl->updateFlex($visit_log_id, 'agency_comments', $this->input->post('agency_comments')); 
+                            }
+                            if($this->input->post('copyto_agency') == '1'){
+                                $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+                                $this->email->to($agency_info->agency_email);              
+                                $this->email->subject("Copy of - ".$subject);
+                                $this->email->set_mailtype("html");   
+                                $this->email->message($body);      
+                                // $this->email->attach($filenames[$visit_log_id]);
+                                $this->email->send();
+                            }
+                            $this->email->clear(true);
+                        }
+                    }
+                }
+                // remove attached file from server
+                foreach($filenames as $name){
+                    @unlink($name);
+                } 
+            }
+            
+            /*****
+            */
+            echo "<b>Email sent to physician.</b>";
+            echo "<SCRIPT>alert('Email sent to physician.'); parent.loadGrid(); parent.cancelModal();</SCRIPT>";
+        }
+
+    }
+    /*function emailto_physician_bkup(){
+        if (!is_null($this->input->post('record_ids'))) {
+            //var_dump($this->input->post('record_ids'));exit;
+            $record_ids = $this->input->post('record_ids');
+            $recods = explode(",", $record_ids);
+
+            $filenames = array();
+            $this->load->helper('visit_pdf');
+            $this->load->library('email');
+
+            foreach ($recods as $visit_log_id) {
+
+                $visit_log = $this->visitlogmdl->getById($visit_log_id);
+                $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+
+                if ($visit_type->visit_program == null) {
+                    continue;
+                }
+                $method = $visit_type->visit_program.'_pdf';
+
+                if(!function_exists($method)){          
+                    continue;
+                }
+
+                $this->load->model($visit_type->visit_program.'mdl');
+
+                if(!isset($filenames[$visit_log_id])){
+                    $filenames[$visit_log_id] = $method($visit_log_id);
+                }
+                
+
+                $doctor_order = $this->dordermdl->get($visit_log_id);
+                $patient  = $this->patientmdl->getById($visit_log->patient_id);
+                $doctorid = $visit_log->phys_user_id;
+                if (is_null($doctorid)) {
+                    $cms485 = $this->episodemdl->getById($visit_log->cms485_id);
+                    $doctorid = $cms485->phys_user_id;  
+                }
+                $doctor = $this->usagymdl->getByUsAgyId($doctorid);
+                
+                if ($doctor->email AND $this->email->valid_email($doctor->email)) {                    
+                    $subject = "Patient ".$patient->first_name." ".$patient->last_name." DOCTOR ORDER Order Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+                    
+                    $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+                    $this->email->to($doctor->email);                       
+                    $this->email->subject($subject);
+                    $this->email->message('<b>Order Description: </b>'.@$doctor_order->do_description);   
+                    $this->email->set_mailtype("html");   
+                    $this->email->attach($filenames[$visit_log_id]);
+                    
+                    $this->email->send();
+                    //$this->email->print_debugger();
+                    $this->email->clear(TRUE);
+
+                    // Update Status as Sent to Pahysician
+                    $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 2);
+                    // setting date sent to physician
+                    $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', standard_date(now(), 'MYSQL')); 
+                    $this->visitlogmdl->updateFlex($visit_log_id, 'tab105_delivery_sent_via', 2); 
+                }
+
+                //break;                
+            }
+            foreach($filenames as $name){
+                @unlink($name);
+            } 
+
+        }
+
+        header("Location: " . $this->config->config["index_url"] . 'agencydoctororder/ready');
+        return;
+    }*/
+
+    function emailto_physician_pending(){
+        if (!is_null($this->input->post('record_ids'))) {
+            //var_dump($this->input->post('record_ids'));exit;
+            $record_ids = $this->input->post('record_ids');
+            $recods = explode(",", $record_ids);
+
+            $filenames = array();
+            $this->load->helper('visit_pdf');
+            $this->load->library('email');
+
+            foreach ($recods as $visit_log_id) {
+
+                $visit_log = $this->visitlogmdl->getById($visit_log_id);
+                $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+
+                if ($visit_type->visit_program == null) {
+                    continue;
+                }
+                $method = $visit_type->visit_program.'_pdf';
+
+                if(!function_exists($method)){          
+                    continue;
+                }
+
+                $this->load->model($visit_type->visit_program.'mdl');
+
+                if(!isset($filenames[$visit_log_id])){
+                    $filenames[$visit_log_id] = $method($visit_log_id);
+                }
+                
+
+                $doctor_order = $this->dordermdl->get($visit_log_id);
+                $patient  = $this->patientmdl->getById($visit_log->patient_id);
+                $doctorid = $visit_log->phys_user_id;
+                if (is_null($doctorid)) {
+                    $cms485 = $this->episodemdl->getById($visit_log->cms485_id);
+                    $doctorid = $cms485->phys_user_id;  
+                }
+                $doctor = $this->usagymdl->getByUsAgyId($doctorid);
+                
+                if ($doctor->email AND $this->email->valid_email($doctor->email)) {                    
+                    $subject = "Patient ".$patient->first_name." ".$patient->last_name." DOCTOR ORDER Order Date " . standard_date(mysql_to_unix($visit_log->visit_date_time));
+                    
+                    $this->email->from('noreply@homehealthsoft.com', 'HHS Notification');
+                    $this->email->to($doctor->email);
+                    $this->email->subject($subject);
+                    $body = '** This is a no-reply email ** - Please respond through the HHS application internal email system if necessary<br><br>'.'<b>Order Description: </b>'.@$doctor_order->do_description;
+                    $this->email->message($body); 
+                    $this->email->set_mailtype("html");     
+                    $this->email->attach($filenames[$visit_log_id]);
+                    
+                    $this->email->send();
+                    //$this->email->print_debugger();
+                    $this->email->clear(TRUE);
+                }
+
+                //break;                
+            }
+      
+
+            /*$this->load->library('fpdf');
+            require_once(APPPATH.'third_party/PDFMerger/PDFMerger.php');          
+            $pdf = new PDFMerger;
+            foreach($filenames as $name){
+                $pdf->addPDF($name, 'all');
+            }      
+            //print_r($filenames);
+
+
+            $pdf->merge('download', 'all.pdf');*/
+
+            foreach($filenames as $name){
+                @unlink($name);
+            } 
+
+        }
+
+        header("Location: " . $this->config->config["index_url"] . 'agencydoctororder/pending');
+        return;
+    }
+
+    function signedby_physician($record_ids){
+        $this->tpl->assign("entity_id", $record_ids);
+        $this->tpl->assign("faction", "signedby_physician");
+        $this->validation->set_rules(array('signed_by_physician_date' => 'required', 'received_by_agency_date' => 'required'));
+        $this->validation->set_fields(array('signed_by_physician_date' => 'Physician Sign Date', 'received_by_agency_date' => 'Received by Agency Date'));
+        
+        if ($this->validation->run() == FALSE) {
+            $this->tpl->assign_include("dynamic_tpl", "task/signedby_physician");
+            $this->tpl->view("parts/ibase", $this->lang->language);
+        }else{   
+            if (!is_null($record_ids)) {         
+                $recods = explode(",", $record_ids);
+                $filenames = array();
+                $this->load->helper('visit_pdf');
+                foreach ($recods as $visit_log_id) {
+                    $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 5);
+                    // setting date signed by physician
+                    $this->visitlogmdl->updateFlex($visit_log_id, 'signed_by_physician_date', standard_date(human_to_unix($this->input->post('signed_by_physician_date')), 'MYSQL')); 
+                    $this->visitlogmdl->updateFlex($visit_log_id, 'received_by_agency_date', standard_date(human_to_unix($this->input->post('received_by_agency_date')), 'MYSQL')); 
+                    if ($this->input->post('agency_comments') != "") {
+                        $this->visitlogmdl->updateFlex($visit_log_id, 'agency_comments', $this->input->post('agency_comments')); 
+                    }
+                }
+            }
+            echo "<SCRIPT>parent.loadGrid(); parent.cancelModal3();</SCRIPT>";
+        }
+
+
+        /*if (!is_null($this->input->post('record_ids'))) {
+            //$this->load->library('Wick');
+
+            //var_dump($this->input->post('record_ids'));exit;
+            $record_ids = $this->input->post('record_ids');
+            $recods = explode(",", $record_ids);
+
+            $filenames = array();
+            $this->load->helper('visit_pdf');
+            foreach ($recods as $visit_log_id) {
+                $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', 3);
+                // setting date signed by physician
+                $this->visitlogmdl->updateFlex($visit_log_id, 'signed_by_physician_date', standard_date(now(), 'MYSQL')); 
+            }
+        }
+
+        header("Location: " . $this->config->config["index_url"] . 'agencydoctororder/pending');
+        return;*/
+    }
+
+    function edit($visit_log_id, $action = 'view') {
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $this->db->where('tab_083_visit_status', $visitlog->visit_status_id);
+        $query = $this->db->get('color_lengend_mycalendar');
+        $row = $query->row();
+        $visit_tab_status_color = $row->color_backg;
+        $this->tpl->assign("visit_tab_status_color", $visit_tab_status_color);
+
+        $patient = $this->getPatientInfo($visit_log_id);
+        if (is_null($visitlog->phys_user_id)) {         
+            $cms485 = $this->episodemdl->getById($visitlog->cms485_id);
+            $visitlog->phys_user_id = $cms485->phys_user_id;            
+        }
+        $this->assignObject($visitlog);
+        $physician_list = array();
+        foreach ($this->patientdoctorofficemdl->get($patient->patient_id, false) as $doctor_office_id => $name) {
+            $doctorOfficeUsers = $this->usagymdl->getByAgencyId($doctor_office_id, null, null, 7);
+            if (count($doctorOfficeUsers)) {
+                $doctorOfficeAdmin = $doctorOfficeUsers[0];
+                $physician_list[$doctorOfficeAdmin->us_agy_id] = $name;             
+            }
+        }
+        
+        $this->tpl->assign('physician_list',  $physician_list);
+        $DO = $this->dordermdl->get($visit_log_id);
+        
+        // if (!$DO->primary_diag OR !$DO->secondary_diag OR !$DO->primary_diag_date OR !$DO->secondary_diag_date) {
+        if (TRUE) {
+            $prev_eval = array();
+            $this->load->model('ptevmdl');
+            $ptevs = $this->ptevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+            if (count($ptevs) == 0) {
+                $ptevs = $this->ptevmdl->getPrevious(null, @ $visitlog->visit_date_time, @ $visitlog->cms485_id, TRUE); // look all PTEV of current SOC        
+            }           
+            if (count($ptevs)) {
+                $prev_eval = $ptevs[count($ptevs) - 1];             
+            }
+
+            if (empty($prev_eval)) {
+                $this->load->model('otevmdl');
+                $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+                if (count($otevs) == 0) {
+                    $otevs = $this->otevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+                }
+                if (count($otevs)) {
+                    $prev_eval = $otevs[count($otevs) - 1];
+                }
+            }
+
+            if (empty($prev_eval)) {
+                $this->load->model('stevmdl');
+                $stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id);
+                if (count($stevs) == 0) {
+                    $stevs = $this->stevmdl->getPrevious(null, $visitlog->visit_date_time, $visitlog->cms485_id, TRUE); // Look into all prev periods
+                }
+                if (count($stevs)) {
+                    $prev_eval = $stevs[count($stevs) - 1];
+                }           
+            }
+
+            
+            if (isset($prev_eval->primary_diag)) {
+                // @$DO->primary_diag = $prev_eval->primary_diag;
+                $this->tpl->assign("primary_diag", $prev_eval->primary_diag);
+            }
+
+            if (isset($prev_eval->secondary_diag)) {
+                // @$DO->secondary_diag = $prev_eval->secondary_diag;
+                $this->tpl->assign("secondary_diag", $prev_eval->secondary_diag);
+            }
+
+            if (isset($prev_eval->primary_diag_date)) {
+                // @$DO->primary_diag_date = $prev_eval->primary_diag_date;
+                $this->tpl->assign("primary_diag_date", $prev_eval->primary_diag_date);
+            }
+
+            if (isset($prev_eval->secondary_diag_date)) {
+                // @$DO->secondary_diag_date = $prev_eval->secondary_diag_date;
+                $this->tpl->assign("secondary_diag_date", $prev_eval->secondary_diag_date);
+            }
+
+        }
+        $this->assignObject($DO);
+        $this->tpl->assign("visit_log_id", $visit_log_id);
+        $this->tpl->assign_include("dynamic_form", "task/documents/dorder");
+        $this->setfbase($visit_log_id, $action);
+        // overwite cancel action asigned by the setfbase() method
+        $this->tpl->assign('cancel_action', "agencydoctororder/ready");
+        if ($this->session->userdata('task_return')) {
+            $this->tpl->assign('cancel_action', $this->session->userdata('task_return'));
+        }
+        $this->tpl->assign('can_approve', false);
+        $this->tpl->assign('return_from_approved', false);
+        $this->tpl->assign('print_url', $this->config->config['index_url'] . "task/dorder/pdf/" . $visit_log_id);
+
+        $additional_buttons = array();
+        if ($visitlog->tab_023_doctor_order_status == 2) {
+            $additional_buttons['Signed By Physician'] = 'signedByPhysician()';
+        }
+        $additional_buttons['Email to Physician'] = 'emailToPhysician()';
+        $additional_buttons['Move to Pending Physician'] = 'sentToPhysician()';
+
+        $this->tpl->assign('additional_buttons', $additional_buttons);
+
+        $this->tpl->view("parts/ibase", $this->lang->language);
+    }
+    /**
+    * Edit Doctor Order Flow
+    */
+    function edit_order_flow($visit_log_id){
+        $visitlog = $this->visitlogmdl->getById($visit_log_id);
+        $this->assignObject($visitlog);
+        $this->tpl->assign('faction', 'edit_order_flow/'.$visit_log_id);        
+        $delivery_types_list = $this->parametermdl->getByType(105);
+        if (isset($delivery_types_list[5])) {
+            unset($delivery_types_list[5]);
+        }
+        $this->tpl->assign('delivery_types_list', $delivery_types_list);
+        $this->tpl->assign('order_status_list', array(1=>'Ready to Send to Physician', 2=>'Pending Physician Signature', 3=>'Signed by Physician'));
+     
+        if ($this->validation->run() == FALSE) {
+            $this->tpl->assign('form_title', 'Edit Doctor Order Flow');
+            $this->tpl->assign_include("dynamic_tpl", "doctororder/order_flow_form");
+            // $this->tpl->assign_include("dynamic_tpl", "parts/fbase");
+            // $this->tpl->assign_include("dynamic_form", "doctororder/order_flow_form");
+            $this->tpl->view("parts/ibase", $this->lang->language);            
+        }else{
+            $this->visitlogmdl->updateFlex($visit_log_id, 'tab_023_doctor_order_status', $this->input->post('tab_023_doctor_order_status')); 
+
+            $sent_to_physician_date = standard_date(human_to_unix($this->input->post('sent_to_physician_date')), 'MYSQL');            
+            $this->visitlogmdl->updateFlex($visit_log_id, 'sent_to_physician_date', $sent_to_physician_date); 
+            
+            $signed_by_physician_date = standard_date(human_to_unix($this->input->post('signed_by_physician_date')), 'MYSQL');            
+            $this->visitlogmdl->updateFlex($visit_log_id, 'signed_by_physician_date', $signed_by_physician_date); 
+
+            $this->visitlogmdl->updateFlex($visit_log_id, 'tab105_delivery_sent_via', $this->input->post('tab105_delivery_sent_via')); 
+            $this->visitlogmdl->updateFlex($visit_log_id, 'agency_comments', $this->input->post('agency_comments')); 
+
+            echo "<SCRIPT>parent.loadGrid(); parent.cancelModal2();</SCRIPT>";
+        }
+    }
+    function edit_legacy ( $visit_log_id, $window='self' ) {
+    
+        // This Visit is not yet Due
+        $this->load->helper('url');
+    
+        $config =& get_config();
+        $visit_log = $this->visitlogmdl->getById($visit_log_id);
+        $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+        
+        if ($visit_type->visit_program == null) {
+      
+            $this->load->model('oasis_model');
+            if(isset($_POST['submit']))
+            {
+                $oasis = $this->oasis_model->getOasisData($visit_log_id);
+                if(empty($oasis)){
+                    unset($_POST['submit']);
+                  
+                    foreach($_POST as $key=>$val){    
+                        if(strrpos($key, "_DT")!==false){
+                          if(!is_null($val) AND strlen($val)>0 AND strpos($val,"-")!==FALSE){                              
+                            list($M,$D,$Y) = explode("-",$val);
+                            if($Y AND $M AND $D)
+                            $_POST[$key] = $Y."-".$M."-".$D;              
+                          }
+                        }
+                    }
+                  
+                    $_POST['visit_log_id'] = $visit_log_id;
+                    $this->oasis_model->insertData($_POST);
+                }else{
+                    unset($_POST['submit']);
+                    foreach($_POST as $key=>$val){    
+                        if(strrpos($key, "_DT")!==false){
+                          if(!is_null($val) AND strlen($val)>0 AND strpos($val,"-")!==FALSE){                              
+                            list($M,$D,$Y) = explode("-",$val);
+                            if($Y AND $M AND $D)
+                            $_POST[$key] = $Y."-".$M."-".$D;              
+                          }
+                        }
+                    }
+                    if(!isset($_POST['M0102_PHYSN_ORDRD_SOCROC_DT_NA']))
+                    $_POST['M0102_PHYSN_ORDRD_SOCROC_DT_NA'] = '';
+                  
+                    $_POST['visit_log_id'] = $visit_log_id;
+                    $this->oasis_model->updateData($_POST, $visit_log_id);
+                }
+                            
+                //$task_return = $this->session->userdata('task_return');               
+                //header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+                //echo $this->config->config["index_url"].$task_return;exit;
+                header("Location: " . $this->config->config["index_url"] . $this->session->userdata('task_return'));
+                return;
+            }else{
+                //$task_return = $this->session->userdata('task_return');               
+                //echo $this->config->config["index_url"].$task_return;exit;
+                $oasis = $this->oasis_model->getOasisData($visit_log_id);
+                if(sizeof($oasis)>0){
+                  $oasis = $oasis[0];
+                  foreach($oasis as $key=>$val){    
+                    if(strrpos($key, "_DT")!==false){
+                      if(!is_null($val) AND strlen($val)>0 AND strpos($val,"-")!==FALSE){                              
+                        list($Y,$M,$D) = explode("-",$val);
+                        if($Y AND $M AND $D)
+                        $oasis[$key] = $M."-".$D."-".$Y;              
+                      }
+                    }
+                  }
+                }
+                
+                $data['oasis'] = $oasis;
+                
+                $data['visit_log_id'] = $visit_log_id;
+                $data['cancel_url'] = $this->config->config["index_url"] . $this->session->userdata('task_return');
+                $this->load->view('task/documents/oasis_c_form',$data); 
+
+                //$this->tpl->assign_include("dynamic_tpl", "mail/comnotes/compose_form");
+                //$this->tpl->view("parts/ibase", $this->lang->language);
+            
+                    //echo "Visit Type Form not implemented...";
+                    return false;
+            }
+        }
+        
+        if ($this->app->validateVisit($visit_log_id) == false) {        
+            if($window=='nw'){
+                $this->tpl->assign('continue_url', $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id."/task/nw" );        
+                $this->tpl->assign('cancel_action', 'window.close();window.opener.loadGrid();' );        
+            }
+            else{
+                $this->tpl->assign('continue_url', $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id );                
+                $this->tpl->assign('cancel_action', 'history.go(-1);' );        
+            }
+      
+            $this->tpl->assign('popupmessage', "Therapy Schedule not complying with 13th and 19th visit rules. Please review and correct." );                
+            $this->tpl->assign('popuptitle', "Warning" );                
+            $this->tpl->assign_include("dynamic_tpl", "task/documents/pre_opendocument");
+            $this->tpl->view("parts/ibase", $this->lang->language);      
+            return false;
+        }
+    
+        if($window=='nw'){
+          header("Location: " . $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id."/task/nw");
+        }
+        else{
+          header("Location: " . $config["index_url"] . "task/" . $visit_type->visit_program . "/index/" . $visit_log_id);
+        }
+            
+    }
+    
+
+    function pdf(){
+        if (!is_null($this->input->post('record_ids'))) {
+
+            //var_dump($this->input->post('record_ids'));exit;
+            $record_ids = $this->input->post('record_ids');
+            $recods = explode(",", $record_ids);
+
+            $filenames = array();
+            $this->load->helper('visit_pdf');
+            foreach ($recods as $visit_log_id) {
+
+                $visit_log = $this->visitlogmdl->getById($visit_log_id);
+                $visit_type = $this->visittypemdl->getById($visit_log->visit_type_id);
+
+                if ($visit_type->visit_program == null) {
+                    continue;
+                }
+                $method = $visit_type->visit_program.'_pdf';
+
+                if(!function_exists($method)){          
+                    continue;
+                }
+
+                $this->load->model($visit_type->visit_program.'mdl');
+
+                if(!isset($filenames[$visit_log_id])){
+                    $filenames[$visit_log_id] = $method($visit_log_id);
+                }
+                //break;
+                //$this->config->config['index_url']."task/".$prtqueue->visit_program."/pdf/".$prtqueue->visit_log_id;
+            }
+                  
+
+            /** 
+            * New Code support >= PHP 5.3.0
+            */
+            require_once(APPPATH.'third_party/itbz/fpdf/FPDF.php');          
+            require_once(APPPATH.'third_party/itbz/fpdi/FPDI.php');          
+            require_once(APPPATH.'third_party/Jurosh/PDFMerge/PDFMerger.php');          
+            // and we can do stuff
+            $pdf = new \Jurosh\PDFMerge\PDFMerger;
+
+            foreach($filenames as $name){
+                $pdf->addPDF($name, 'all');
+            }  
+            $pdf->merge('download', 'all.pdf');
+            // End of code for PHP >= 5.3.0
+
+
+            foreach($filenames as $name){
+                @unlink($name);
+            } 
+
+        }
+    }
+
+}

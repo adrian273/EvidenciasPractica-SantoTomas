@@ -1,0 +1,83 @@
+ {if !$no_commit_form}<form name="gform" id="gform" method="POST" action="{$index_url}{$resource_path}/{$faction}{if $entity_id}/{$entity_id}{/if}{if $record_id}/{$record_id}{/if}"
+  onsubmit="if (submitCheck) {literal}{{/literal} submitCheck(); return false; {literal}}{/literal} else {literal}{{/literal} return true; {literal}}{/literal}" enctype="multipart/form-data">{/if}
+ <input type="hidden" id="fecha_help">
+<table border="0" height="100%" width="100%" cellpadding="2" cellspacing="0" align="center"> 
+  {if $form_title}
+  <tr>
+    <td valign="top" nowrap class="title" colspan="2">
+    	<img src="{$image_url}button_arrow_right.png" style="vertical-align: bottom"> {$form_title}
+    </td>
+  </tr>
+  {/if}
+  <tr> 
+    <td height="10" colspan="2"></td>
+  </tr>
+  <tr> 
+    <td valign="bottom">
+  		{if !$no_commit_form}<input type="submit" name="btnsave" class="btn" value="{$grl_save}">{/if}
+  		{if $cancelbtn}
+        {if !$cancel_url}
+          <input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$resource_path}/index{if $entity_id}/{$entity_id}{/if}{if $record_id}/{$record_id}{/if}'">
+        {else}
+          <input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_url}'">
+        {/if}        
+      {/if}
+  		{$smarty.capture.addition_button}
+			{foreach from=$additional_buttons key=label item=action}
+				<input type="button" class="btn" value="{$label}" onclick="{$action}">
+			{/foreach}
+
+    </td>
+    <td valign="bottom" align="right">
+    </td>  
+  </tr>
+  <tr> 
+    <td height="10" colspan="2"></td>
+  </tr>
+  {if $error_string}
+  <tr>
+    <td colspan="2" class="error tbl_msg">{$error_string}</td>
+  </tr>
+  {/if}
+  {if $success_string}
+  <tr>
+    <td colspan="2" align="center"><span class="tbl_msg_ok">{$success_string}</span></td>
+  </tr>
+  {/if}
+  <tr> 
+    <td valign="top" colspan="2" id="form_td">
+      <div id="form_div" style="overflow: auto; height: 100%">
+		    {include file=$dynamic_form}
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2"></td>
+  </tr>
+  <tr> 
+    <td valign="bottom">
+  		{if !$no_commit_form}<input type="submit" name="btnsave" class="btn" value="{$grl_save}">{/if}
+      {if $cancelbtn}
+        {if !$cancel_url}
+          <input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$resource_path}/index{if $entity_id}/{$entity_id}{/if}{if $record_id}/{$record_id}{/if}'">
+        {else}
+          <input type="button" class="btn" value="{$grl_cancel}" onclick="document.location = '{$index_url}{$cancel_url}'">
+        {/if}        
+      {/if}
+  		{$smarty.capture.addition_button}
+			{foreach from=$additional_buttons key=label item=action}
+				<input type="button" class="btn" value="{$label}" onclick="{$action}">
+			{/foreach}
+			
+    </td>
+    <td valign="bottom" align="right">
+    </td>  
+  </tr>
+</table> 
+{if !$no_commit_form}</form>{/if}
+
+<script type="text/javascript">
+  document.getElementById('form_div').style.height = getWindowHeight() - 110 + "px";
+  document.body.style.overflow = 'hidden';
+    
+</script>

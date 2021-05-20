@@ -1,0 +1,188 @@
+<table border="0" height="100%" width="100%" cellpadding="0" cellspacing="0" align="center"> 
+	<tr id="lala"> 
+    	<td style="padding: 5px;">
+			<b>Agency:</b> {$agency_name}
+		</td>
+		<td style="padding: 5px;" align="right">
+			<!-- <b>TOTAL</b> 
+			Bill Amount: <b id="total_amount">{$co_amount}</b>&nbsp;&nbsp;
+			Paid: <b id="total_paid">{$co_paid}</b>&nbsp;&nbsp;
+			Balance: <b id="total_balance">{$co_balance}</b>&nbsp;&nbsp; -->
+		</td>
+	</tr>
+	<tr id="lala"> 
+    	<td style="padding: 5px;" colspan="2" nowrap>
+			<label><input type="radio" name="agency_filter" id="agency_filter_all" value="all"  {if $agency_filter eq 'all'}checked="checked"{/if} onclick="loadGrid();afterload();" /><b> All Invoices</b></label>
+			
+			<label><input type="radio" name="agency_filter" id="agency_filter_due" value="due" {if $agency_filter eq 'due'}checked="checked"{/if} onclick="loadGrid();afterload();" /><b> Balance Due</b></label>
+			
+			<label><input type="radio" name="agency_filter" id="agency_filter_paid" value="paid"  {if $agency_filter eq 'paid'}checked="checked"{/if} onclick="loadGrid();afterload();" /><b> Paid</b></label>
+			{if $patient_list}
+				&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label>Select Patient {html_options options=$patient_list id='filter_patient_id' name='patient_id' onchange='loadGrid();afterload();'}</label>
+			{/if}
+			
+		</td>
+	</tr>
+	<tr>
+		<td style="padding: 5px;" colspan="2" align="left">
+			<b id="date_range_title">Invoice From</b>&nbsp&nbsp <input type="text" id="invoice_from_date" name="invoice_from_date" value="{$invoice_from_date}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('invoice_from_date'),document.getElementById('fecha_help'));return false;" >&nbsp&nbsp&nbsp
+		
+			<b>to</b>&nbsp&nbsp&nbsp <input type="text" id="invoice_to_date" name="invoice_to_date" value="{$invoice_to_date}" size="10"
+    		onKeyUp="DateFormat(this,this.value,event,false)" onBlur="DateFormat(this,this.value,event,true)"> 	
+			<img src="{$image_url}icon_calendar.png" onclick="if(self.gfPop)gfPop.fStartPop(document.getElementById('invoice_to_date'),document.getElementById('fecha_help'));return false;" >&nbsp&nbsp&nbsp
+			<input type="button" value="Update" onclick="loadGrid();afterload();">
+			
+    	</td>    
+  	</tr>
+</table> 
+
+<script>
+
+	{literal}
+	jQuery(function($){
+		$("input[name='agency_filter']").change(function(){
+			console.log($("input[name='agency_filter']:checked").val());
+			if($("input[name='agency_filter']:checked").val() == 'paid') {
+				$('#date_range_title').text('Invoices Paid From');
+			} else {
+				$('#date_range_title').text('Invoice From');
+			}
+		});
+	});
+	{/literal}
+	
+	function downloadToExcell(){literal}{{/literal}
+		gform.action = "{$index_url}contractor/invoices/co_invoices_export_xls/{$agency_contractor_id}";
+		gform.target = "print_invoice";
+		gform.submit();
+	{literal}}{/literal}
+
+
+	function AddCreditInvoice() {literal}{{/literal}
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 500, 300);
+			w2.setText("Addd Credit Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/add_credit/{$agency_contractor_id}");
+			
+	{literal}}{/literal}
+
+	function CreateSpecialInvoice() {literal}{{/literal}
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 500, 300);
+			w2.setText("Create Special Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/create_special/{$agency_contractor_id}");
+			
+	{literal}}{/literal}
+	
+	function EmailStatement() {literal}{{/literal}
+		document.getElementById('act').value = 'email';
+		document.print_statement_form.submit();
+			
+	{literal}}{/literal}
+	
+	
+	function PrintStatement() {literal}{{/literal}
+		gform.action = "{$index_url}contractor/invoices/invoice_statement/{$agency_contractor_id}";
+		gform.target = "print_invoice";
+		gform.submit();
+		
+		// document.print_statement_form.submit();
+		// var invoice_from_date_print = document.getElementById("invoice_from_date").value;
+		// var invoice_to_date_print = document.getElementById("invoice_to_date").value;
+		// window.location.href = "{$index_url}contractor/invoices/invoice_statement/{$agency_contractor_id}/"+invoice_from_date_print+"/"+invoice_to_date_print;
+	{literal}}{/literal}
+	
+  function editInvoice (invoice_id) {literal}{{/literal}
+			dhxWins = new dhtmlXWindows();
+			dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+			var w2 = dhxWins.createWindow("w2", 10, 10, 500, 350);
+			w2.setText("Update Invoice");
+			w2.button("park").hide();
+			w2.button("minmax1").hide();
+			w2.denyResize(); // deny resizing
+			w2.denyMove(); 
+			dhxWins.window('w2').center();
+			dhxWins.window('w2').setModal(true);
+			w2.attachURL("{$index_url}contractor/invoices/edit_invoice/"+invoice_id);
+			
+  {literal}}{/literal}
+  
+	function email_statement(agency_contractor_id) {literal}{{/literal}
+     	dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+			
+		var w2 = dhxWins.createWindow("w2", 10, 10, 450, 280);
+		w2.setText("Email Statement");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+	    //w2.denyResize(); // deny resizing
+	    //w2.denyMove(); 
+	    dhxWins.window('w2').center();
+	    dhxWins.window('w2').setModal(true);
+	    
+	 	//    var invoice_from_date_print = document.getElementById("invoice_from_date").value;
+		// var invoice_to_date_print = document.getElementById("invoice_to_date").value;
+
+		var url = "{$index_url}/contractor/invoices/email_statement/"+agency_contractor_id;
+		//alert(url);
+		w2.attachURL(url);
+		
+    	
+	{literal}}{/literal}
+  
+  
+	function detailInvoice(invoice_id){literal}{{/literal}
+		window.location.href = "{$index_url}contractor/invoices/detail/"+invoice_id+"/{$back}";
+  {literal}}{/literal}	
+	
+	function show_emails(invoice_id) {literal}{{/literal}
+		dhxWins = new dhtmlXWindows();
+		dhxWins.setImagePath("{$base_url}style/window/imgs/");
+
+		var w2 = dhxWins.createWindow("w2", 10, 10, 800, 400);
+		w2.setText("Invoices Sent Emails");
+		w2.button("park").hide();
+		w2.button("minmax1").hide();
+		dhxWins.window('w2').center();
+		dhxWins.window('w2').setModal(true);
+		w2.attachURL("{$index_url}{$resource_path}/show_emails/" + invoice_id);
+    	
+    {literal}}{/literal}
+	
+	function print_invoice(invoice_id){literal}{{/literal}
+		gform.action = "{$index_url}contractor/invoices/print_invoice/"+invoice_id;
+		gform.target = "print_invoice";
+		gform.submit();
+	{literal}}{/literal}
+
+	{literal}
+	function updateCOBalance(balance, amount, paid){
+		document.getElementById('total_balance').innerHTML = balance;
+		document.getElementById('total_amount').innerHTML = amount;
+		document.getElementById('total_paid').innerHTML = paid;
+	}
+	{/literal}
+
+	function afterload () {literal}{{/literal}
+		ajax("{$index_url}contractor/invoices/co_balance/{$agency_contractor_id}", ajaxParseAction, 'gform');
+	{literal}}{/literal}
+</script>

@@ -1,0 +1,55 @@
+<?
+
+ class Alerts extends MY_Controller {
+
+	function Alerts () {
+		
+		parent::MY_Controller();
+		$this->tpl->assign("resource_path", "useragency/alerts");
+		
+		//$this->tpl->assign('resource_edit', 'metodo_del_controller a ejecutar');
+	}
+	function index ($us_agy_id) {
+
+		$this->tpl->assign("entity_id", $us_agy_id);
+		$this->tpl->assign("add_sufix", "Credential");
+
+		$this->tpl->assign(array("list_title" => "Alerts, Announcements and Actions","no_grid_buttons" => true));
+		$this->tpl->assign_include("dynamic_tpl", "parts/gbase");
+		$this->tpl->view("parts/ibase");
+	
+	}	
+	function edit($us_agy_id,$us_agy_credential){
+		redirect('useragency/credential/edit/'.$us_agy_id.'/'. $us_agy_credential);
+	}
+	function grid ($us_agy_id) {
+		
+		$this->xml->root_name = "rows";
+		$document = $this->xml->Document();
+		
+		$head = $this->xml->Element("head");
+		$head->append($this->xml->Element("column", "width=10","Credential Type"));
+		$head->append($this->xml->Element("column", "width=*", "Credential Id"));
+		$head->append($this->xml->Element("column", "width=*", "Expiration Date"));
+		$head->append($this->xml->Element("column", "width=15","Expires in"));
+		$head->append($this->xml->Element("settings", null, $this->xml->Element("colwidth", null, "%")));
+		$document->append($head);
+		
+		
+		$gdata = $this->usagycredentialmdl->getAlertDays($us_agy_id);
+		if (count($gdata)) {
+			foreach ($gdata as $row) {
+				$cell = $this->xml->Element("row", "id=" . $row->us_agy_credential_id);
+				$cell->append($this->xml->Element("cell", null, $row->tab_description));
+				$cell->append($this->xml->Element("cell", null, $row->credential_id));
+				$cell->append($this->xml->Element("cell", null, $row->expiration_date ));
+				$cell->append($this->xml->Element("cell", null, $row->left_days));
+			}
+			$document->append($cell);		
+		} else {
+			$cell = $this->xml->Element("row");
+			$cell->append($this->xml->Element("cell", null, "No data to display"));
+			$document->append($cell);
+		}
+	}
+ }

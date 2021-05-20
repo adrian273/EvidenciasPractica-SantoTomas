@@ -1,0 +1,340 @@
+<script src="{$base_url}style/jquery-ui.1.7.2.min.js" type="text/javascript"></script>
+{*<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/blitzer/jquery-ui.css" type="text/css" />*}
+<link rel="stylesheet" href="{$base_url}style/jquery-ui-themes-1.7.2/blitzer/jquery-ui.css" type="text/css" />
+<style type="text/css">
+{literal}
+  .subtitle{
+    padding-left: 5px;
+  }
+  .ui-widget-header{
+    background-image: none;
+    background-color: #BFDFFF;
+    border: 0px solid blue;
+  }
+{/literal}
+</style>
+<form name="tinetti_score_form" id="tinetti_score_form" action="{$index_url}{$resource_path}/save_tinetti_score/{$visit_log_id}" onsubmit="return false;">
+  <div id="tabs">
+    <ul>
+      <li><a href="#tabs-1">Balance</a></li>
+      <li><a href="#tabs-2">Gait</a></li>
+    </ul>
+    <div id="tabs-1"> 
+      <table border="0" width="100%" cellpadding="5" cellspacing="0">
+        <tr> 
+          <td valign="bottom" colspan="2">
+            {if !$no_commit_form}<input type="submit" class="btn btn-submit" value="{$grl_save}" onclick="save_tinetti_score()">{/if}
+            <input type="button" class="btn" value="Close" onclick="parent.location.reload(false);parent.dhxWins.window('w2').close()">
+          </td>
+        </tr>
+        <tr> 
+          <td height="10" colspan="2" style="padding-bottom: 10px;">
+            <span class="tbl_msg_ok" style="height: 25px; display: none;"></span>
+          </td>
+        </tr>
+      </table>   
+      <table border="1" width="100%" cellpadding="5" cellspacing="0">
+        <tr>
+          <td class="subtitle">Sitting Balance</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="sitting_balance" value="0" {if $sitting_balance eq '0'}checked="checked"{/if} > Leans or slides in chair</label><br>
+            <label><input type="radio" class="tinetti_balance" name="sitting_balance" value="1" {if $sitting_balance eq '1'}checked="checked"{/if} > Steady, safe</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Rises from chair</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="rises_from_chair" value="0" {if $rises_from_chair eq '0'}checked="checked"{/if} > Unable to without help</label><br>
+            <label><input type="radio" class="tinetti_balance" name="rises_from_chair" value="1" {if $rises_from_chair eq '1'}checked="checked"{/if} > Able, uses arms to help</label><br>
+            <label><input type="radio" class="tinetti_balance" name="rises_from_chair" value="2" {if $rises_from_chair eq '2'}checked="checked"{/if} > Able without use of arms</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Attempts to rise</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="attemps_to_rise" value="0" {if $attemps_to_rise eq '0'}checked="checked"{/if} > Unable to without help</label><br>
+            <label><input type="radio" class="tinetti_balance" name="attemps_to_rise" value="1" {if $attemps_to_rise eq '1'}checked="checked"{/if} > Able, requires > 1 attempt</label><br>
+            <label><input type="radio" class="tinetti_balance" name="attemps_to_rise" value="2" {if $attemps_to_rise eq '2'}checked="checked"{/if} > Able to rise, 1 attempt</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Immediate standing Balance (first 5 seconds)</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="immediate_standing_balance" value="0" {if $immediate_standing_balance eq '0'}checked="checked"{/if} > Unsteady (staggers, moves feet, trunk sway)</label><br>
+            <label><input type="radio" class="tinetti_balance" name="immediate_standing_balance" value="1" {if $immediate_standing_balance eq '1'}checked="checked"{/if} > Steady but uses walker or other support</label><br>
+            <label><input type="radio" class="tinetti_balance" name="immediate_standing_balance" value="2" {if $immediate_standing_balance eq '2'}checked="checked"{/if} > Steady without walker or other support</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Standing balance</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="standing_balance" value="0" {if $standing_balance eq '0'}checked="checked"{/if} > Unsteady</label><br>
+            <label><input type="radio" class="tinetti_balance" name="standing_balance" value="1" {if $standing_balance eq '1'}checked="checked"{/if} > Steady but wide stance and uses support</label><br>
+            <label><input type="radio" class="tinetti_balance" name="standing_balance" value="2" {if $standing_balance eq '2'}checked="checked"{/if} > Narrow stance without support</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Nudged</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="nudged" value="0" {if $nudged eq '0'}checked="checked"{/if} > Begins to fall</label><br>
+            <label><input type="radio" class="tinetti_balance" name="nudged" value="1" {if $nudged eq '1'}checked="checked"{/if} > Staggers, grabs, catches self</label><br>
+            <label><input type="radio" class="tinetti_balance" name="nudged" value="2" {if $nudged eq '2'}checked="checked"{/if} > Steady</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Eyes closed</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="eyes_closed" value="0" {if $eyes_closed eq '0'}checked="checked"{/if} > Unsteady</label><br>
+            <label><input type="radio" class="tinetti_balance" name="eyes_closed" value="1" {if $eyes_closed eq '1'}checked="checked"{/if} > Steady</label><br>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle" rowspan="2">Turning 360 degrees</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="turning_360_degrees_1" value="0" {if $turning_360_degrees_1 eq '0'}checked="checked"{/if} > Discontinuous steps</label><br>
+            <label><input type="radio" class="tinetti_balance" name="turning_360_degrees_1" value="1" {if $turning_360_degrees_1 eq '1'}checked="checked"{/if} > Continuous</label><br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="turning_360_degrees_2" value="0" {if $turning_360_degrees_2 eq '0'}checked="checked"{/if} > Unsteady (grabs, staggers)</label><br>
+            <label><input type="radio" class="tinetti_balance" name="turning_360_degrees_2" value="1" {if $turning_360_degrees_2 eq '1'}checked="checked"{/if} > Steady</label><br>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Sitting down</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_balance" name="sitting_down" value="0" {if $sitting_down eq '0'}checked="checked"{/if} > Unsafe (misjudged distance, falls into chair)</label><br>
+            <label><input type="radio" class="tinetti_balance" name="sitting_down" value="1" {if $sitting_down eq '1'}checked="checked"{/if} > Uses arms or not a smooth motion</label><br>
+            <label><input type="radio" class="tinetti_balance" name="sitting_down" value="2" {if $sitting_down eq '2'}checked="checked"{/if} > Safe, smooth motion</label>
+          </td>
+        </tr>
+      </table>      
+    
+      <table border="0" width="100%" cellpadding="5" cellspacing="0">
+        <thead>
+          <tr>
+            <th align="right" width="50%">Balance Score: </th>
+            <th align="left" width="50%" class="total_balance_score">{$total_balance_score|intval}/16</th>
+          </tr>
+          <tr>
+            <th align="right">Gait Score: </th>
+            <th align="left" class="total_gait_score">{$total_gait_score|intval}/12</th>
+          </tr>
+          <tr>
+            <th align="right">Total Score: </th>
+            <th align="left" class="total_score">{$total_score|intval}/28</th>
+          </tr>
+          <tr>
+            <th align="right">Risk of Falls: </th>
+            <th align="left" class="risk_of_falls">{$risk_of_falls}</th>
+          </tr>
+        </thead>
+        <tr> 
+          <td height="10" colspan="2"></td>
+        </tr>
+        <tr> 
+          <td valign="bottom" colspan="2">
+            {if !$no_commit_form}<input type="submit" class="btn btn-submit" value="{$grl_save}" onclick="save_tinetti_score()">{/if}
+            <input type="button" class="btn" value="Close" onclick="parent.location.reload(false);parent.dhxWins.window('w2').close()">
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div id="tabs-2">
+      <table border="0" width="100%" cellpadding="5" cellspacing="0">
+        <tr> 
+          <td valign="bottom" colspan="2">
+            {if !$no_commit_form}<input type="submit" class="btn btn-submit" value="{$grl_save}" onclick="save_tinetti_score()">{/if}
+            <input type="button" class="btn" value="Close" onclick="parent.location.reload(false);parent.dhxWins.window('w2').close()">
+          </td>
+        </tr>
+        <tr> 
+          <td height="10" colspan="2" style="padding-bottom: 10px;">
+            <span class="tbl_msg_ok" style="height: 25px; display: none;"></span>
+          </td>
+        </tr>
+      </table>   
+      <table border="1" width="100%" cellpadding="5" cellspacing="0">
+        <tr>
+          <td class="subtitle">Indication of gait <br><small><small>(Immediately after told to 'go'.)</small></small></td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_gait" name="indication_of_gait" value="0" {if $indication_of_gait eq '0'}checked="checked"{/if} > Any hesitancy or multiple attempts</label><br>
+            <label><input type="radio" class="tinetti_gait" name="indication_of_gait" value="1" {if $indication_of_gait eq '1'}checked="checked"{/if} > No hesitancy</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Step length and height</td>
+          <td valign="top">
+            <label><input type="checkbox" class="tinetti_gait" name="step_length_and_height_0" value="0" {if $step_length_and_height_0 eq '0'}checked="checked"{/if} > Step to</label><br>
+            <label><input type="checkbox" class="tinetti_gait" name="step_length_and_height_1" value="1" {if $step_length_and_height_1 eq '1'}checked="checked"{/if} > Step through R</label><br>
+            <label><input type="checkbox" class="tinetti_gait" name="step_length_and_height_2" value="1" {if $step_length_and_height_2 eq '1'}checked="checked"{/if} > Step through L</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Foot clearance</td>
+          <td valign="top">
+            <label><input type="checkbox" class="tinetti_gait" name="foot_clearance_0" value="0" {if $foot_clearance_0 eq '0'}checked="checked"{/if} > Foot drop</label><br>
+            <label><input type="checkbox" class="tinetti_gait" name="foot_clearance_1" value="1" {if $foot_clearance_1 eq '1'}checked="checked"{/if} > L foot clears floor</label><br>
+            <label><input type="checkbox" class="tinetti_gait" name="foot_clearance_2" value="1" {if $foot_clearance_2 eq '1'}checked="checked"{/if} > R foot clears floor</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Step symmetry</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_gait" name="step_symmetry" value="0" {if $step_symmetry eq '0'}checked="checked"{/if} > Right and left step length not equal</label><br>
+            <label><input type="radio" class="tinetti_gait" name="step_symmetry" value="1" {if $step_symmetry eq '1'}checked="checked"{/if} > Right and left step length appear equal</label><br>            
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Step continuity</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_gait" name="step_continuity" value="0" {if $step_continuity eq '0'}checked="checked"{/if} > Stopping or discontinuity between steps</label><br>
+            <label><input type="radio" class="tinetti_gait" name="step_continuity" value="1" {if $step_continuity eq '1'}checked="checked"{/if} > Steps appear continuous</label><br>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Path</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_gait" name="path" value="0" {if $path eq '0'}checked="checked"{/if} > Marked deviation</label><br>
+            <label><input type="radio" class="tinetti_gait" name="path" value="1" {if $path eq '1'}checked="checked"{/if} > Mild/moderate deviation or uses w. aid</label><br>
+            <label><input type="radio" class="tinetti_gait" name="path" value="2" {if $path eq '2'}checked="checked"{/if} > Straight without w. aid</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Trunk</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_gait" name="trunk" value="0" {if $trunk eq '0'}checked="checked"{/if} > Marked sway or uses w. aid</label><br>
+            <label><input type="radio" class="tinetti_gait" name="trunk" value="1" {if $trunk eq '1'}checked="checked"{/if} > No sway but flex. knees or back or uses arms for stability</label><br>
+            <label><input type="radio" class="tinetti_gait" name="trunk" value="2" {if $trunk eq '2'}checked="checked"{/if} > No sway, flex., use of arms or w. aid</label>
+          </td>
+        </tr>
+        <tr>
+          <td class="subtitle">Walking time</td>
+          <td valign="top">
+            <label><input type="radio" class="tinetti_gait" name="walking_time" value="0" {if $walking_time eq '0'}checked="checked"{/if} > Heels apart</label><br>
+            <label><input type="radio" class="tinetti_gait" name="walking_time" value="1" {if $walking_time eq '1'}checked="checked"{/if} > Heels almost touching while walking</label><br>
+          </td>
+        </tr>
+      </table>      
+      <table border="0" width="100%" cellpadding="5" cellspacing="0">
+        <thead>
+          <tr>
+            <th align="right" width="50%">Balance Score: </th>
+            <th align="left" width="50%" class="total_balance_score">{$total_balance_score|intval}/16</th>
+          </tr>
+          <tr>
+            <th align="right">Gait Score: </th>
+            <th align="left" class="total_gait_score">{$total_gait_score|intval}/12</th>
+          </tr>
+          <tr>
+            <th align="right">Total Score: </th>
+            <th align="left" class="total_score">{$total_score|intval}/28</th>
+          </tr>
+          <tr>
+            <th align="right">Risk of Falls: </th>
+            <th align="left" class="risk_of_falls">{$risk_of_falls}</th>
+          </tr>
+        </thead>
+        <tr> 
+          <td height="10" colspan="2"></td>
+        </tr>
+        <tr> 
+          <td valign="bottom"colspan="2">
+            {if !$no_commit_form}<input type="submit" class="btn btn-submit" value="{$grl_save}" onclick="save_tinetti_score()">{/if}
+            <input type="button" class="btn" value="Close" onclick="parent.location.reload(false);parent.dhxWins.window('w2').close()">
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</form>
+
+<script>
+  var total_balance_score = {$total_balance_score|intval};
+  var total_gait_score = {$total_gait_score|intval};
+  var total_score = {$total_score|intval};
+  var risk_of_falls = '{$risk_of_falls}';
+
+  {literal}
+  function get_risk_of_falls(score){
+    var risk = '';
+    if (score <= 18) {
+      risk = 'High';
+    } else if (score >= 19 && score <= 23) {
+      risk = 'Moderate';
+    } else if (score >= 24) {
+      risk = 'Low';
+    }
+
+    return risk;
+  }
+
+  function save_tinetti_score(){
+    var params = $('form#tinetti_score_form').serialize();
+    var url = $('form#tinetti_score_form').attr('action');
+    $('.btn-submit').val('Saving...');
+    $.ajax({
+      type: "POST",
+      url: url,
+      data: params,
+      success: function(data){
+        if(data=='1'){
+          // alert('Record Successfully Saved.');
+          $('.tbl_msg_ok').html('Record Successfully Saved').show();
+        } else {
+          alert('Data couldn\'t saved');
+        }
+        $('.btn-submit').val('Save');
+      },  
+      error: function (data, status, e)
+      {
+        $('.btn-submit').val('Save');
+      }
+    });
+  }
+
+  $( function() {
+    $( "#tabs" ).tabs();
+    $('.tinetti_balance').change(function(){
+      var t_b_s = 0;
+      // console.log($('.tinetti_balance:checked').length);
+      $('.tinetti_balance:checked').each(function(){
+        t_b_s += parseInt($(this).val());
+      });
+      // console.log(t);
+      total_balance_score = t_b_s;
+      total_score = total_balance_score+total_gait_score;
+      risk_of_falls = get_risk_of_falls(total_score);
+      if ($('.tinetti_gait:checked').length == 0) {
+        risk_of_falls = '';
+      }
+      $('.total_balance_score').html(total_balance_score+'/16');
+      $('.total_gait_score').html(total_gait_score+'/12');
+      $('.total_score').html(total_score+'/28');
+      $('.risk_of_falls').html(risk_of_falls);
+    });
+
+    $('.tinetti_gait').change(function(){
+      var t_g_s = 0;
+      // console.log($('.tinetti_gait:checked').length);
+      $('.tinetti_gait:checked').each(function(){
+        t_g_s += parseInt($(this).val());
+      });
+      // console.log(t_g_s);
+      total_gait_score = t_g_s;
+      total_score = total_balance_score+total_gait_score;
+      risk_of_falls = get_risk_of_falls(total_score);
+      
+      if ($('.tinetti_balance:checked').length == 0) {
+        risk_of_falls = '';
+      }
+
+      $('.total_balance_score').html(total_balance_score+'/16');
+      $('.total_gait_score').html(total_gait_score+'/12');
+      $('.total_score').html(total_score+'/28');
+      $('.risk_of_falls').html(risk_of_falls);
+    });
+  } );
+  {/literal}
+</script>

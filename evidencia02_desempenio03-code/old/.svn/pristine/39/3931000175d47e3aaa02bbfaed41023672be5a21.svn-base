@@ -1,0 +1,89 @@
+<?
+
+ class PayrollBatchProcessMdl extends Model {
+
+	var $payroll_batch_process_number;
+	var $payroll_batch_process_date;
+	var $payroll_batch_process_period_from;
+	var $payroll_batch_process_period_end;
+	var $agency_id;
+	
+	function PayrollBatchProcessMdl () {
+
+		parent::Model();
+		
+	}
+
+	
+	function get (  $agency_id, $payroll_batch_process_period_from=null, $payroll_batch_process_period_end=null ) {
+		
+		$this->db->select('*');
+		$this->db->where('agency_id', $agency_id);
+		if (!is_null($payroll_batch_process_period_from)) {
+			$this->db->where("payroll_batch_process_date >= '{$payroll_batch_process_period_from}'");
+		}
+		if (!is_null($payroll_batch_process_period_end)) {
+			$this->db->where("payroll_batch_process_date <= '{$payroll_batch_process_period_end}'");
+		}
+		$this->db->order_by('payroll_batch_process_date','desc');
+		$query = $this->db->get('payroll_batch_process');
+		// echo $this->db->last_query();
+		return $query->result();
+		
+	}
+	
+	function getOne ( $payroll_batch_process_number ) {
+		
+		$this->db->select('*');
+		$this->db->where('payroll_batch_process.payroll_batch_process_number', $payroll_batch_process_number);
+		$query = $this->db->get('payroll_batch_process');
+		return $query->row();
+		
+	}
+	
+	function insert ( $agency_id, $payroll_batch_process_period_from, $payroll_batch_process_period_end ) {
+		$this->db->select('state_id');
+		$this->db->where('agency_id', $agency_id);
+		$query = $this->db->get('agy_agency');
+		$row = $query->row();
+
+		$payroll_batch_process_date = date("Y-m-d");
+		if (isset($row->state_id) AND $row->state_id == 45) {
+			// State of Texas (state_id=45 of the contractor), add 2 hours
+			$payroll_batch_process_date = date("Y-m-d", mktime(date("H")+2, date("i"), date("s"), date("n"), date("j"), date("Y")));
+		}
+
+		$this->payroll_batch_process_date = $payroll_batch_process_date;
+		$this->payroll_batch_process_period_from = $payroll_batch_process_period_from;
+		$this->payroll_batch_process_period_end = $payroll_batch_process_period_end;
+		
+		$this->db->set('agency_id', $agency_id);
+		$this->db->set('payroll_batch_process_date', $this->payroll_batch_process_date);
+		$this->db->set('payroll_batch_process_period_from', $payroll_batch_process_period_from);
+		$this->db->set('payroll_batch_process_period_end', $payroll_batch_process_period_end);
+		
+		$this->db->insert('payroll_batch_process');
+		
+		$this->payroll_batch_process_number = $this->db->insert_id();
+		return  $this->payroll_batch_process_number;
+
+	}
+
+	
+	function updateFlex($payroll_batch_process_number, $attribute, $where = 'payroll_batch_process_number') {
+
+		$this->db->where($where, $payroll_batch_process_number);
+		$this->db->set($attribute); // example: $attribute = array('name' => $name, 'title' => $title, 'status' => $status);
+
+		$this->db->update('payroll_batch_process');
+
+	}
+
+	function delete( $payroll_batch_process_number ) {
+	
+		$this->db->where('payroll_batch_process_number', $payroll_batch_process_number);
+		
+		$this->db->delete('payroll_batch_process');		
+	}
+		
+ }

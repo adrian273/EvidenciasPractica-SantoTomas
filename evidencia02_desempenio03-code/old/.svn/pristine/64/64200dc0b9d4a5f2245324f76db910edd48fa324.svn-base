@@ -1,0 +1,111 @@
+<?
+
+ class VisitType extends MY_Controller {
+
+	var $rules;
+
+	function VisitType () {
+		
+		parent::MY_Controller();
+
+	}
+	
+	function getVisitOptions ( $us_agy_id , $visit_type_id=0) {
+		
+		$discipline_id = $this->usagymdl->getByUsAgyId($us_agy_id)->discipline_id;
+		
+		$document = $this->xml->Document();
+		
+		$document->append($this->xml->Option("", "Select Option"));
+		
+		foreach ($this->visittypemdl->getByDisciplineId($discipline_id) as $dis_id => $dis_name) {
+			if ($visit_type_id AND $dis_id==$visit_type_id) {
+				$document->append($this->xml->Option($dis_id, $dis_name, '', 'selected=selected'));
+			} else {
+				$document->append($this->xml->Option($dis_id, $dis_name));
+			}
+			
+		}
+		
+	}
+
+	function getVisitOptionsByDisc ( $discipline_id , $visit_type_id=0) {
+		
+		$document = $this->xml->Document();
+		
+		$document->append($this->xml->Option("", "Select Option"));
+
+		$contractor_id = $this->getAgencyId();
+		$us_agy_id = $this->getUsAgyId();
+		$LOB = null;
+
+		if ($us_agy_id) {
+			$usAgy = $this->usagymdl->getByUsAgyId($us_agy_id);
+			if (isset($usAgy->user_tab111_product_id)) {
+				$LOB = $usAgy->user_tab111_product_id;
+			}
+		}
+
+		$visit_type_ids = array();
+		$contractor = $this->agencymdl->getByAgencyId($contractor_id);
+		if (!empty($contractor)) {
+			if ($contractor->provides_altern_therapy == 'Y' OR $LOB == 3) {
+				$visit_type_ids = array(101, 103, 104, 113, 114, 115, 116, 117, 118, 119);
+
+				// if ($contractor_id == 32 ) {
+				// if ($contractor_id == 9521 ) {
+				if ($contractor->state_id == 6 ) {
+					$visit_type_ids = array(116, 120, 121, 122, 123);
+				}
+			}
+		}
+		
+		foreach ($this->visittypemdl->getByDisciplineId($discipline_id) as $dis_id => $dis_name) {
+			if (!empty($visit_type_ids)) {
+				if (!in_array($dis_id, $visit_type_ids)) {
+					continue;
+				}
+			}
+
+			if ($visit_type_id AND $dis_id==$visit_type_id) {
+				$document->append($this->xml->Option($dis_id, $dis_name, '', 'selected=selected'));
+			} else {
+				$document->append($this->xml->Option($dis_id, $dis_name));
+			}
+			
+		}
+		
+	}
+	
+	function getVisitOptionsFiltered ( $us_agy_id, $cms485_id ) {
+		
+		$document = $this->xml->Document();
+		$document->append($this->xml->Option("", "Select Option"));
+		
+		$eval = array('Y', 'N');
+		$quantity = $this->visitlogmdl->getDisciplineQuantity($cms485_id);
+		$discipline_id = $this->usagymdl->getByUsAgyId($us_agy_id)->discipline_id;
+		
+		if (count($quantity) == 1 && ($quantity[0]->quantity == 12 || $quantity[0]->quantity == 18)) {
+			
+			if ($quantity[0]->discipline_id == $discipline_id) {
+				$eval = array('Y');
+			} else {
+				return;
+			}
+			
+		} else if (count($quantity) == 2 || count($quantity) == 3) {
+		
+			
+		
+		}
+		
+		foreach ($this->visittypemdl->getByDisciplineId($discipline_id, $eval) as $dis_id => $dis_name) {
+			
+			$document->append($this->xml->Option($dis_id, $dis_name));
+			
+		}
+		
+	}
+	
+ }
